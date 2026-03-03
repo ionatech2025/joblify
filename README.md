@@ -2,6 +2,7 @@
 Joblify - Job Portal Platform
 Joblify is a full-stack job portal application that connects job seekers with employers. The platform provides separate interfaces for job seekers and companies, enabling job posting, applications, and profile management.
 
+
 🚀 Features
 For Job Seekers
 Create and manage professional profiles
@@ -16,6 +17,7 @@ Save favorite jobs
 
 Profile visibility settings (public/private)
 
+
 For Companies
 Create company profiles
 
@@ -28,6 +30,7 @@ Search for candidates
 Company branding and logo upload
 
 Subscription management
+
 
 Core Features
 🔐 Secure authentication with session management
@@ -43,6 +46,8 @@ Core Features
 📊 Application tracking
 
 💼 Advanced job search and filtering
+
+
 
 🛠️ Tech Stack
 Frontend
@@ -60,6 +65,8 @@ Axios - HTTP client
 
 Vite - Build tool
 
+
+
 Backend
 Node.js - Runtime environment
 
@@ -75,12 +82,16 @@ Bcrypt - Password hashing
 
 Express Session - Session management
 
+
+
 📋 Prerequisites
 Node.js (v18 or higher)
 
 MongoDB (v5 or higher)
 
 npm or yarn package manager
+
+
 
 🚀 Getting Started
 Clone the Repository
@@ -90,13 +101,16 @@ cd joblify
 Backend Setup
 Navigate to backend directory:
 
+
 bash
 cd joblify-backend
 Install dependencies:
 
+
 bash
 npm install
 Create a .env file:
+
 
 env
 DATABASE_URL="mongodb://127.0.0.1:27017/joblify"
@@ -104,33 +118,41 @@ JWT_SECRET="your_super_secret_jwt_key_here"
 NODE_ENV="development"
 Setup Prisma:
 
+
 bash
 npx prisma generate
 npx prisma db push
 Start the backend server:
 
+
 bash
 npm run dev
 The backend will run on http://localhost:3000
 
+
 Frontend Setup
 Navigate to frontend directory:
+
 
 bash
 cd joblify-frontend
 Install dependencies:
 
+
 bash
 npm install
 Create a .env file:
+
 
 env
 VITE_API_URL="http://localhost:3000/api"
 Start the frontend development server:
 
+
 bash
 npm run dev
 The frontend will run on http://localhost:5173
+
 
 📁 Project Structure
 text
@@ -163,9 +185,12 @@ joblify/
     │   └── main.jsx
     ├── index.html
     └── package.json
+
+    
 🔧 Configuration
 Database Schema
 The Prisma schema includes models for:
+
 
 Users (Job Seekers & Companies)
 
@@ -181,6 +206,7 @@ Subscriptions
 
 Resumes
 
+
 Environment Variables
 Backend (.env)
 env
@@ -188,9 +214,11 @@ DATABASE_URL="mongodb://127.0.0.1:27017/joblify"
 JWT_SECRET="your_secret_key"
 NODE_ENV="development"
 PORT=3000
+
 Frontend (.env)
 env
 VITE_API_URL="http://localhost:3000/api"
+
 🚦 API Endpoints
 Authentication
 POST /api/auth/signup - Unified signup for both user types
