@@ -1,4 +1,4 @@
-i need a read me to put on github, please generate me one for this project
+
 Joblify - Job Portal Platform
 Joblify is a full-stack job portal application that connects job seekers with employers. The platform provides separate interfaces for job seekers and companies, enabling job posting, applications, and profile management.
 
