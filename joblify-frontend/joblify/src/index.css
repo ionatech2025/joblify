@@ -1,0 +1,287 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 210 40% 98%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 217 91% 60%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 214 32% 91%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 214 32% 91%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 214 32% 91%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 217 91% 60%;
+    --radius: 0.75rem;
+    
+    /* Enhanced blue color palette */
+    --success: 142.1 76.2% 36.3%;
+    --success-foreground: 355.7 100% 97.3%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 48 96% 89%;
+    --info: 199 89% 48%;
+    --info-foreground: 210 40% 98%;
+    
+    /* Beautiful blue gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(217 91% 60%) 0%, hsl(221 83% 53%) 100%);
+    --gradient-secondary: linear-gradient(135deg, hsl(214 32% 91%) 0%, hsl(210 40% 96%) 100%);
+    --gradient-accent: linear-gradient(135deg, hsl(214 32% 91%) 0%, hsl(217 32% 17%) 100%);
+    --gradient-hero: linear-gradient(135deg, hsl(217 91% 60%) 0%, hsl(221 83% 53%) 50%, hsl(225 70% 45%) 100%);
+    --gradient-card: linear-gradient(135deg, hsl(214 32% 91%) 0%, hsl(210 40% 96%) 100%);
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 217 91% 60%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 217 32% 17%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217 32% 17%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217 32% 17%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217 32% 17%;
+    --input: 217 32% 17%;
+    --ring: 217 91% 60%;
+    
+    /* Enhanced dark mode blue colors */
+    --success: 142.1 70.6% 45.3%;
+    --success-foreground: 144.9 80.4% 10%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 48 96% 89%;
+    --info: 199 89% 48%;
+    --info-foreground: 210 40% 98%;
+    
+    /* Dark mode blue gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(217 91% 60%) 0%, hsl(221 83% 53%) 100%);
+    --gradient-secondary: linear-gradient(135deg, hsl(217 32% 17%) 0%, hsl(222.2 84% 4.9%) 100%);
+    --gradient-accent: linear-gradient(135deg, hsl(217 32% 17%) 0%, hsl(210 40% 96.1%) 100%);
+    --gradient-hero: linear-gradient(135deg, hsl(217 91% 60%) 0%, hsl(221 83% 53%) 50%, hsl(225 70% 45%) 100%);
+    --gradient-card: linear-gradient(135deg, hsl(217 32% 17%) 0%, hsl(222.2 84% 4.9%) 100%);
+  }
+}
+
+@layer base {
+  * {
+    border-color: hsl(var(--border));
+  }
+  
+  body {
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    font-feature-settings: "rlig" 1, "calt" 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  
+  /* Enhanced typography */
+  h1, h2, h3, h4, h5, h6 {
+    font-weight: 600;
+    line-height: 1.2;
+    letter-spacing: -0.025em;
+  }
+  
+  /* Smooth scrolling */
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+@layer components {
+  /* Enhanced card styles */
+  .card-elegant {
+    @apply bg-card rounded-xl shadow-sm border border-border/50 hover:shadow-lg hover:border-border/80 transition-all duration-300;
+  }
+  
+  .card-glass {
+    @apply bg-white/10 backdrop-blur-md border border-white/20 rounded-xl shadow-xl;
+  }
+  
+  .card-blue-gradient {
+    @apply bg-gradient-to-br from-blue-50 to-blue-100/50 border border-blue-200/50 rounded-xl shadow-sm hover:shadow-lg hover:border-blue-300/50 transition-all duration-300;
+  }
+  
+  .card-blue-glass {
+    @apply bg-blue-500/5 backdrop-blur-md border border-blue-500/20 rounded-xl shadow-xl hover:shadow-2xl hover:border-blue-500/30 transition-all duration-300;
+  }
+  
+  /* Enhanced button styles */
+  .btn-primary-gradient {
+    @apply bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 hover:shadow-blue-500/25;
+  }
+  
+  .btn-secondary-gradient {
+    @apply bg-gradient-to-r from-blue-100 to-blue-200 hover:from-blue-200 hover:to-blue-300 text-blue-800 shadow-md hover:shadow-lg transition-all duration-300 transform hover:scale-105;
+  }
+  
+  .btn-blue-outline {
+    @apply border-2 border-blue-500 text-blue-600 hover:bg-blue-500 hover:text-white transition-all duration-300 transform hover:scale-105 shadow-md hover:shadow-lg;
+  }
+  
+  /* Enhanced input styles */
+  .input-elegant {
+    @apply bg-white/80 backdrop-blur-sm border border-blue-200/50 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 rounded-lg transition-all duration-300;
+  }
+  
+  .input-blue-focus {
+    @apply bg-white border border-blue-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 rounded-lg transition-all duration-300 shadow-sm hover:shadow-md;
+  }
+  
+  /* Enhanced badge styles */
+  .badge-elegant {
+    @apply bg-gradient-to-r from-blue-500/10 to-blue-600/20 text-blue-700 border border-blue-500/20 rounded-full px-3 py-1 text-sm font-medium;
+  }
+  
+  .badge-blue {
+    @apply bg-blue-500 text-white rounded-full px-3 py-1 text-sm font-medium shadow-sm;
+  }
+  
+  /* Blue-themed backgrounds */
+  .bg-blue-gradient {
+    @apply bg-gradient-to-br from-blue-50 via-blue-100 to-blue-200;
+  }
+  
+  .bg-blue-glass {
+    @apply bg-blue-500/5 backdrop-blur-md border border-blue-500/20;
+  }
+  
+  /* Animation utilities */
+  .animate-fade-in {
+    animation: fadeIn 0.6s ease-out;
+  }
+  
+  .animate-slide-up {
+    animation: slideUp 0.6s ease-out;
+  }
+  
+  .animate-bounce-in {
+    animation: bounceIn 0.8s ease-out;
+  }
+  
+  .animate-float {
+    animation: float 3s ease-in-out infinite;
+  }
+  
+  /* Hover effects */
+  .hover-lift {
+    @apply transition-all duration-300 hover:transform hover:-translate-y-1 hover:shadow-xl;
+  }
+  
+  .hover-glow {
+    @apply transition-all duration-300 hover:shadow-lg hover:shadow-blue-500/25;
+  }
+  
+  .hover-blue-glow {
+    @apply transition-all duration-300 hover:shadow-lg hover:shadow-blue-400/30 hover:border-blue-400/50;
+  }
+}
+
+@layer utilities {
+  /* Custom animations */
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  
+  @keyframes slideUp {
+    from { 
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to { 
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  @keyframes bounceIn {
+    0% {
+      opacity: 0;
+      transform: scale(0.3);
+    }
+    50% {
+      opacity: 1;
+      transform: scale(1.05);
+    }
+    70% {
+      transform: scale(0.9);
+    }
+    100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+  
+  @keyframes float {
+    0%, 100% {
+      transform: translateY(0px);
+    }
+    50% {
+      transform: translateY(-10px);
+    }
+  }
+  
+  /* Enhanced shadows */
+  .shadow-elegant {
+    box-shadow: 0 10px 25px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  }
+  
+  .shadow-glow {
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.15);
+  }
+  
+  .shadow-blue {
+    box-shadow: 0 10px 25px -3px rgba(59, 130, 246, 0.15), 0 4px 6px -2px rgba(59, 130, 246, 0.1);
+  }
+  
+  .shadow-blue-glow {
+    box-shadow: 0 0 30px rgba(59, 130, 246, 0.2);
+  }
+  
+  /* Text gradients */
+  .text-gradient {
+    @apply bg-gradient-to-r from-blue-600 to-blue-500 bg-clip-text text-transparent;
+  }
+  
+  .text-blue-gradient {
+    @apply bg-gradient-to-r from-blue-700 via-blue-600 to-blue-500 bg-clip-text text-transparent;
+  }
+  
+  /* Background patterns */
+  .bg-pattern-dots {
+    background-image: radial-gradient(circle, currentColor 1px, transparent 1px);
+    background-size: 20px 20px;
+  }
+  
+  .bg-pattern-grid {
+    background-image: linear-gradient(currentColor 1px, transparent 1px), linear-gradient(90deg, currentColor 1px, transparent 1px);
+    background-size: 20px 20px;
+  }
+  
+  .bg-pattern-blue-dots {
+    background-image: radial-gradient(circle, rgba(59, 130, 246, 0.1) 1px, transparent 1px);
+    background-size: 20px 20px;
+  }
+  
+  .bg-pattern-blue-waves {
+    background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%233b82f6' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+  }
+}

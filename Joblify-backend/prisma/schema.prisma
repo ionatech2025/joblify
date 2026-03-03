@@ -1,0 +1,280 @@
+// This is your Prisma schema file,
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  // Connection URL moved to prisma.config.ts per Prisma 7; remove `url` from schema
+}
+
+// ==========================================
+// ENUMS (Must be defined BEFORE models)
+// ==========================================
+
+enum PaymentStatus {
+  PENDING
+  SUCCESSFUL
+  FAILED
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  INACTIVE
+  PENDING
+}
+
+enum UserType {
+  JOB_SEEKER
+  COMPANY
+}
+
+enum IndustryType {
+  TECHNOLOGY
+  HOSPITALITY
+  EDUCATION
+  AGRICULTURE
+  FINANCE
+  MANUFACTURING
+  CONSTRUCTION
+}
+
+enum CompanySize {
+  SIZE_1_10
+  SIZE_11_50
+  SIZE_51_200
+  SIZE_200_PLUS
+}
+
+enum ApplicationStatus {
+  APPLIED
+  ACCEPTED
+  REJECTED
+  INTERVIEW_SCHEDULED
+  HIRED
+}
+
+enum ProfileType {
+  EMPLOYABLE
+  VIRTUAL_INTERN
+}
+
+enum VerificationStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum AppliedForJobStatus {
+  VIEWED
+  NOT_VIEWED
+  SHORTLISTED
+  INTERVIEW_SCHEDULED
+  REJECTED
+  ACCEPTED
+}
+
+enum JobType {
+  FULL_TIME
+  PART_TIME
+  INTERNSHIP
+  CONTRACT
+  REMOTE
+}
+
+enum ExperienceLevel {
+  ENTRY
+  MID
+  SENIOR
+  EXECUTIVE
+}
+
+// ==========================================
+// MODELS (Defined AFTER all enums)
+// ==========================================
+
+model User {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  email       String   @unique
+  password    String
+  firstName   String?
+  lastName    String?
+  phone       String
+  userType    UserType
+  points      Int      @default(0)
+  avatar      String?  @default("https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png")
+  
+  // Company specific fields
+  companyName String?
+  industry    IndustryType?
+  companySize CompanySize?
+  establishmentYear Int?
+  description String?
+  address     String?
+  website     String?
+  linkedin    String?
+  contactPersonName String?
+  contactPersonPosition String?
+  
+  subscriptionStatus SubscriptionStatus @default(INACTIVE) 
+  surveysubscriptionStatus SubscriptionStatus @default(INACTIVE) 
+  currentSubscriptionId String? @db.ObjectId
+  verificationStatus VerificationStatus @default(PENDING)
+  
+  privacySettings Json?
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // ==========================================
+  // ✅ ESSENTIAL RELATIONS FOR JOBLIFY MVP
+  // ==========================================
+  jobSeekerProfile JobSeekerProfile?
+  companyProfile   CompanyProfile?
+  jobsPosted       JobPost[]
+  applications     JobApplication[]
+  
+  // ✅ Add relation names for CompanySubscription
+  companySubscriptions CompanySubscription[] @relation("CompanySubscriptions")
+  jobSeekerSubscriptions CompanySubscription[] @relation("JobSeekerSubscriptions")
+  
+  loginSessions    LoginSession[]
+  resumes          Resume[]
+
+  @@map("users")
+}
+
+model JobSeekerProfile {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId      String   @unique @db.ObjectId
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  profileType ProfileType
+  bio         String?
+  skills      String[]
+  education   String?
+  experience  String?
+  certifications String?
+  portfolio   String?
+  visibility  String   @default("PRIVATE")
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("job_seeker_profiles")
+}
+
+model CompanyProfile {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId      String   @unique @db.ObjectId
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  companyName String
+  industry    IndustryType
+  companySize CompanySize
+  establishmentYear Int
+  description String
+  logo        String?
+  phone       String
+  email       String
+  address     String
+  website     String?
+  linkedin    String?
+  contactPersonName String
+  contactPersonPosition String
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("company_profiles")
+}
+
+model JobPost {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  title       String
+  description String
+  companyId   String   @db.ObjectId
+  company     User     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  industry    IndustryType
+  jobType     JobType
+  location    String?
+  salaryRange String?
+  requirements String?
+  skillsRequired String[]
+  applicationDeadline DateTime
+  isActive    Boolean  @default(true)
+  hasChatArea Boolean  @default(false)
+  
+  // New fields
+  experienceLevel ExperienceLevel?
+  salaryMin    Int?
+  salaryMax    Int?
+  benefits     String[]
+  isRemote     Boolean  @default(false)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  applications JobApplication[]
+  
+  @@map("job_posts")
+}
+
+model JobApplication {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  jobPostId   String   @db.ObjectId
+  jobPost     JobPost  @relation(fields: [jobPostId], references: [id], onDelete: Cascade)
+  jobSeekerId String   @db.ObjectId
+  jobSeeker   User     @relation(fields: [jobSeekerId], references: [id], onDelete: Cascade)
+  resumeId    String   @db.ObjectId
+  resume      Resume   @relation(fields: [resumeId], references: [id], onDelete: Cascade) // This line causes the error
+  status      AppliedForJobStatus @default(NOT_VIEWED)
+  appliedAt   DateTime @default(now())
+  coverLetter String?
+  
+  @@unique([jobPostId, jobSeekerId])
+  @@map("job_applications")
+}
+model CompanySubscription {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  companyId   String   @db.ObjectId
+  company     User     @relation("CompanySubscriptions", fields: [companyId], references: [id], onDelete: Cascade)
+  jobSeekerId String   @db.ObjectId
+  jobSeeker   User     @relation("JobSeekerSubscriptions", fields: [jobSeekerId], references: [id], onDelete: Cascade)
+  profileType ProfileType
+  status      String   @default("PENDING")
+  createdAt   DateTime @default(now())
+  
+  @@unique([companyId, jobSeekerId, profileType])
+  @@map("company_subscriptions")
+}
+
+model LoginSession {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId      String   @db.ObjectId
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ipAddress   String?
+  userAgent   String?
+  loginTime   DateTime @default(now())
+  isActive    Boolean  @default(true)
+  
+  @@index([userId])
+  @@map("login_sessions")
+}
+
+model Resume {
+  id          String            @id @default(auto()) @map("_id") @db.ObjectId
+  userId      String            @db.ObjectId
+  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title       String
+  summary     String?
+  experience  Json?    
+  education   Json?    
+  skills      String[]
+  custom      Boolean           @default(false)
+  fileUrl     String?
+  createdAt   DateTime          @default(now())
+  // This is the required opposite relation field
+  applications JobApplication[] // Add this line to fix the error
+  
+  @@map("resumes")
+}
