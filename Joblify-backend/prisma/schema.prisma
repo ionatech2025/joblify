@@ -1,4 +1,4 @@
-// This is your Prisma schema file,
+// This is your Prisma schema file
 
 generator client {
   provider = "prisma-client-js"
@@ -6,11 +6,11 @@ generator client {
 
 datasource db {
   provider = "mongodb"
-  // Connection URL moved to prisma.config.ts per Prisma 7; remove `url` from schema
+  url      = env("DATABASE_URL")
 }
 
 // ==========================================
-// ENUMS (Must be defined BEFORE models)
+// ENUMS
 // ==========================================
 
 enum PaymentStatus {
@@ -91,7 +91,7 @@ enum ExperienceLevel {
 }
 
 // ==========================================
-// MODELS (Defined AFTER all enums)
+// MODELS
 // ==========================================
 
 model User {
@@ -104,8 +104,7 @@ model User {
   userType    UserType
   points      Int      @default(0)
   avatar      String?  @default("https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png")
-  
-  // Company specific fields
+
   companyName String?
   industry    IndustryType?
   companySize CompanySize?
@@ -116,31 +115,27 @@ model User {
   linkedin    String?
   contactPersonName String?
   contactPersonPosition String?
-  
-  subscriptionStatus SubscriptionStatus @default(INACTIVE) 
-  surveysubscriptionStatus SubscriptionStatus @default(INACTIVE) 
+
+  subscriptionStatus SubscriptionStatus @default(INACTIVE)
+  surveysubscriptionStatus SubscriptionStatus @default(INACTIVE)
   currentSubscriptionId String? @db.ObjectId
   verificationStatus VerificationStatus @default(PENDING)
-  
+
   privacySettings Json?
-  
+
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  // ==========================================
-  // ✅ ESSENTIAL RELATIONS FOR JOBLIFY MVP
-  // ==========================================
   jobSeekerProfile JobSeekerProfile?
   companyProfile   CompanyProfile?
   jobsPosted       JobPost[]
   applications     JobApplication[]
-  
-  // ✅ Add relation names for CompanySubscription
+
   companySubscriptions CompanySubscription[] @relation("CompanySubscriptions")
   jobSeekerSubscriptions CompanySubscription[] @relation("JobSeekerSubscriptions")
-  
-  loginSessions    LoginSession[]
-  resumes          Resume[]
+
+  loginSessions LoginSession[]
+  resumes       Resume[]
 
   @@map("users")
 }
@@ -157,7 +152,7 @@ model JobSeekerProfile {
   certifications String?
   portfolio   String?
   visibility  String   @default("PRIVATE")
-  
+
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -181,7 +176,7 @@ model CompanyProfile {
   linkedin    String?
   contactPersonName String
   contactPersonPosition String
-  
+
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -203,19 +198,18 @@ model JobPost {
   applicationDeadline DateTime
   isActive    Boolean  @default(true)
   hasChatArea Boolean  @default(false)
-  
-  // New fields
+
   experienceLevel ExperienceLevel?
   salaryMin    Int?
   salaryMax    Int?
   benefits     String[]
   isRemote     Boolean  @default(false)
-  
+
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   applications JobApplication[]
-  
+
   @@map("job_posts")
 }
 
@@ -226,14 +220,15 @@ model JobApplication {
   jobSeekerId String   @db.ObjectId
   jobSeeker   User     @relation(fields: [jobSeekerId], references: [id], onDelete: Cascade)
   resumeId    String   @db.ObjectId
-  resume      Resume   @relation(fields: [resumeId], references: [id], onDelete: Cascade) // This line causes the error
+  resume      Resume   @relation(fields: [resumeId], references: [id], onDelete: Cascade)
   status      AppliedForJobStatus @default(NOT_VIEWED)
   appliedAt   DateTime @default(now())
   coverLetter String?
-  
+
   @@unique([jobPostId, jobSeekerId])
   @@map("job_applications")
 }
+
 model CompanySubscription {
   id          String   @id @default(auto()) @map("_id") @db.ObjectId
   companyId   String   @db.ObjectId
@@ -243,7 +238,7 @@ model CompanySubscription {
   profileType ProfileType
   status      String   @default("PENDING")
   createdAt   DateTime @default(now())
-  
+
   @@unique([companyId, jobSeekerId, profileType])
   @@map("company_subscriptions")
 }
@@ -256,25 +251,25 @@ model LoginSession {
   userAgent   String?
   loginTime   DateTime @default(now())
   isActive    Boolean  @default(true)
-  
+
   @@index([userId])
   @@map("login_sessions")
 }
 
 model Resume {
-  id          String            @id @default(auto()) @map("_id") @db.ObjectId
-  userId      String            @db.ObjectId
-  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId      String   @db.ObjectId
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   title       String
   summary     String?
-  experience  Json?    
-  education   Json?    
+  experience  Json?
+  education   Json?
   skills      String[]
-  custom      Boolean           @default(false)
+  custom      Boolean  @default(false)
   fileUrl     String?
-  createdAt   DateTime          @default(now())
-  // This is the required opposite relation field
-  applications JobApplication[] // Add this line to fix the error
-  
+  createdAt   DateTime @default(now())
+
+  applications JobApplication[]
+
   @@map("resumes")
 }
