@@ -17,69 +17,40 @@ const PORT = process.env.PORT || 3000;
 
 app.use(cors({
   origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps, Postman, etc.)
     if (!origin) return callback(null, true);
     
     const allowedOrigins = [
-      process.env.CLIENT_URL || "http://localhost:3001",
+      process.env.CLIENT_URL, // Your Render Frontend URL (Set this in Render Env Vars)
       "http://localhost:3000",
       "http://127.0.0.1:3000",
       "http://localhost:3001",
-      "http://127.0.0.1:3001",
-      "https://yourdomain.com", // Add your production domain
-      "https://www.yourdomain.com" // Add your production domain
-    ];
+      "http://127.0.0.1:3001"
+    ].filter(Boolean); // Removes undefined values if CLIENT_URL isn't set yet
 
-    // Check if the origin is in the allowed list
-    if (allowedOrigins.includes(origin)) {
+    if (allowedOrigins.includes(origin) || process.env.NODE_ENV === 'development') {
       callback(null, true);
     } else {
-      // In development, log but allow the request
-      if (process.env.NODE_ENV === 'development') {
-        console.log('⚠️  CORS warning - allowing origin in development:', origin);
-        callback(null, true);
-      } else {
-        console.log('🚫 Blocked by CORS:', origin);
-        callback(new Error('Not allowed by CORS'));
-      }
+      console.log('🚫 Blocked by CORS:', origin);
+      callback(new Error('Not allowed by CORS'));
     }
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: [
-    'Content-Type',
-    'Authorization',
-    'Cookie',
-    'X-Requested-With',
-    'Accept',
-    'Origin',
-    'Access-Control-Request-Method',
-    'Access-Control-Request-Headers',
-    'X-CSRF-Token'
-  ],
-  exposedHeaders: [
-    'Set-Cookie',
-    'Authorization',
-    'Content-Length',
-    'X-Request-ID'
-  ],
-  optionsSuccessStatus: 200,
-  maxAge: 86400 // 24 hours
+  allowedHeaders: ['Content-Type', 'Authorization', 'Cookie', 'X-Requested-With', 'Accept'],
+  exposedHeaders: ['Set-Cookie'],
+  optionsSuccessStatus: 200
 }));
 
-// Handle preflight requests globally
 app.options('*', cors());
 
 // ==========================================
 // MIDDLEWARE
 // ==========================================
 
-app.use(bodyParser.json({ limit: '10mb' }));
-app.use(bodyParser.urlencoded({ extended: true, limit: '10mb' }));
-app.use(cookieParser());
-
+// Use express's built-in parsers (no need for extra body-parser calls)
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(cookieParser());
 
 // Session configuration
 app.use(session({
@@ -87,24 +58,16 @@ app.use(session({
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: process.env.NODE_ENV === 'production',
+    secure: process.env.NODE_ENV === 'production', 
     httpOnly: true,
-    maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    maxAge: 24 * 60 * 60 * 1000,
     sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
-  },
-  store: process.env.NODE_ENV === 'production' 
-    ? /* your production session store */ null 
-    : undefined
+  }
 }));
 
-// ==========================================
-// REQUEST LOGGING MIDDLEWARE
-// ==========================================
-
+// Request Logging
 app.use((req, res, next) => {
   console.log(`${new Date().toISOString()} - ${req.method} ${req.originalUrl}`);
-  console.log('Origin:', req.headers.origin);
-  console.log('User-Agent:', req.headers['user-agent']);
   next();
 });
 
@@ -112,106 +75,48 @@ app.use((req, res, next) => {
 // ROUTES
 // ==========================================
 
-// Import routes
 import authRouter from './routes/auth.route.mjs';
 import jobseekerRouter from './routes/jobseeker.route.mjs';
 import companyRouter from './routes/company.route.mjs';
 
-// Use routes
 app.use('/api/auth', authRouter);
 app.use('/api/jobseeker', jobseekerRouter);
 app.use('/api/company', companyRouter);
 
 // ==========================================
-// HEALTH CHECK & BASIC ROUTES
+// FIXED: ROOT ROUTE (Fixes the "Route / not found" error)
 // ==========================================
 
+app.get('/', (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: "Joblify API is live",
+    documentation: "/api/health"
+  });
+});
+
+// Health check
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'OK',
     timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV || 'development',
-    service: 'Joblify API',
-    version: '1.0.0',
-    cors: {
-      origin: req.headers.origin,
-      allowed: true
-    }
+    environment: process.env.NODE_ENV || 'development'
   });
 });
 
-// CORS test endpoint
-app.get('/api/cors-test', (req, res) => {
-  res.json({
-    success: true,
-    message: 'CORS is working correctly!',
-    origin: req.headers.origin,
-    credentials: true,
-    timestamp: new Date().toISOString()
-  });
-});
-
-// Database health check
+// DB health check
 app.get('/api/db-health', async (req, res) => {
   try {
     const dbHealth = await checkDatabaseHealth();
-    res.json({
-      ...dbHealth,
-      cors: {
-        origin: req.headers.origin,
-        allowed: true
-      }
-    });
+    res.json(dbHealth);
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Database health check failed',
-      error: error.message,
-      cors: {
-        origin: req.headers.origin,
-        allowed: true
-      }
-    });
+    res.status(500).json({ success: false, error: error.message });
   }
-});
-
-// Session test endpoint
-app.get('/api/session-test', (req, res) => {
-  if (!req.session.views) {
-    req.session.views = 1;
-  } else {
-    req.session.views++;
-  }
-  
-  res.json({
-    success: true,
-    message: 'Session test successful',
-    sessionId: req.sessionID,
-    views: req.session.views,
-    origin: req.headers.origin
-  });
 });
 
 // ==========================================
-// ERROR HANDLING MIDDLEWARE
+// ERROR HANDLING
 // ==========================================
-
-// CORS error handler
-app.use((err, req, res, next) => {
-  if (err.message === 'Not allowed by CORS') {
-    return res.status(403).json({
-      success: false,
-      message: 'CORS policy: Origin not allowed',
-      origin: req.headers.origin,
-      allowedOrigins: [
-        process.env.CLIENT_URL || "http://localhost:3001",
-        "http://localhost:3000",
-        "http://localhost:3001"
-      ]
-    });
-  }
-  next(err);
-});
 
 // 404 handler
 app.use('*', (req, res) => {
@@ -226,31 +131,10 @@ app.use('*', (req, res) => {
 // Global error handler
 app.use((error, req, res, next) => {
   console.error('Global error handler:', error);
-  
-  // Prisma errors
-  if (error.code?.startsWith('P')) {
-    return res.status(400).json({
-      success: false,
-      message: 'Database error occurred',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined,
-      code: error.code
-    });
-  }
-  
-  // Validation errors
-  if (error.name === 'ValidationError') {
-    return res.status(400).json({
-      success: false,
-      message: 'Validation error',
-      error: error.message
-    });
-  }
-  
-  // Default error
-  res.status(500).json({
+  const status = error.name === 'ValidationError' ? 400 : 500;
+  res.status(status).json({
     success: false,
-    message: 'Internal server error',
-    error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+    message: error.message || 'Internal server error',
     ...(process.env.NODE_ENV === 'development' && { stack: error.stack })
   });
 });
@@ -261,32 +145,18 @@ app.use((error, req, res, next) => {
 
 const server = app.listen(PORT, () => {
   console.log(`\n🚀 Server running on port ${PORT}`);
-  console.log(`📍 Health check: http://localhost:${PORT}/api/health`);
-  console.log(`📍 CORS test: http://localhost:${PORT}/api/cors-test`);
-  console.log(`📍 DB Health: http://localhost:${PORT}/api/db-health`);
-  console.log(`🔗 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`🌐 CORS Enabled for:`);
-  console.log(`   - ${process.env.CLIENT_URL || "http://localhost:3001"}`);
-  console.log(`   - http://localhost:3000`);
-  console.log(`   - http://127.0.0.1:3000`);
-  console.log(`   - http://localhost:3001`);
-  console.log(`   - http://127.0.0.1:3001`);
-  console.log(`\n📋 Server ready to accept requests!\n`);
+  console.log(`🔗 Root: http://localhost:${PORT}/`);
 });
 
 // Graceful shutdown
-process.on('SIGTERM', () => {
-  console.log('SIGTERM received, shutting down gracefully');
+const shutdown = () => {
   server.close(() => {
     console.log('Process terminated');
+    process.exit(0);
   });
-});
+};
 
-process.on('SIGINT', () => {
-  console.log('SIGINT received, shutting down gracefully');
-  server.close(() => {
-    console.log('Process terminated');
-  });
-});
+process.on('SIGTERM', shutdown);
+process.on('SIGINT', shutdown);
 
 export default app;
