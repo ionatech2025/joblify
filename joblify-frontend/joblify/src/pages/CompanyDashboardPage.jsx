@@ -1,18 +1,18 @@
-import React, { useState, useEffect } from "react"
-import { useNavigate, Link } from "react-router-dom"
-import { Sidebar } from "../components/Sidebar"
-import { Button } from "../components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card"
-import { Badge } from "../components/ui/badge"
-import { Input } from "../components/ui/input"
-import { Label } from "../components/ui/label"
-import { 
-  Building2, 
-  Briefcase, 
-  Users, 
-  Search, 
-  Clock, 
-  FileText, 
+import React, { useState, useEffect } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
+import { Sidebar } from '../components/Sidebar';
+import { Button } from '../components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+import { Badge } from '../components/ui/badge';
+import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
+import {
+  Building2,
+  Briefcase,
+  Users,
+  Search,
+  Clock,
+  FileText,
   Settings,
   LogOut,
   Home,
@@ -29,140 +29,164 @@ import {
   Globe,
   Send,
   X,
-  Users2
-} from "lucide-react"
+  Users2,
+} from 'lucide-react';
 
 export default function CompanyDashboardPage() {
-  const navigate = useNavigate()
-  const [company, setCompany] = useState(null)
-  const [recentActivity, setRecentActivity] = useState([])
-  const [searchQuery, setSearchQuery] = useState("")
-  const [isLoading, setIsLoading] = useState(true)
-  const [metrics, setMetrics] = useState({})
-  
-  // Broadcast messaging state
-  const [showBroadcastModal, setShowBroadcastModal] = useState(false)
-  const [selectedJob, setSelectedJob] = useState("")
-  const [broadcastMessage, setBroadcastMessage] = useState("")
-  const [isSendingBroadcast, setIsSendingBroadcast] = useState(false)
-  const [broadcastSuccess, setBroadcastSuccess] = useState(false)
-  const [availableJobs, setAvailableJobs] = useState([])
-  const [applicants, setApplicants] = useState([])
-  
-  // VI Chat Area state
-  const [showVIChatModal, setShowVIChatModal] = useState(false)
-  const [chatAreaName, setChatAreaName] = useState("")
-  const [chatAreaDescription, setChatAreaDescription] = useState("")
-  const [selectedChatType, setSelectedChatType] = useState("")
-  const [isCreatingChatArea, setIsCreatingChatArea] = useState(false)
-  const [chatAreaSuccess, setChatAreaSuccess] = useState(false)
-  
-  // Combined VI Chat & Broadcast Modal state
-  const [showCombinedModal, setShowCombinedModal] = useState(false)
-  
-  // Applicants Modal state
-  const [showApplicantsModal, setShowApplicantsModal] = useState(false)
+  const navigate = useNavigate();
+  const [company, setCompany] = useState(null);
+  const [recentActivity, setRecentActivity] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [metrics, setMetrics] = useState({});
 
-  // Mock company data - in real app, this would come from authentication context
+  // Broadcast messaging state
+  const [showBroadcastModal, setShowBroadcastModal] = useState(false);
+  const [selectedJob, setSelectedJob] = useState('');
+  const [broadcastMessage, setBroadcastMessage] = useState('');
+  const [isSendingBroadcast, setIsSendingBroadcast] = useState(false);
+  const [broadcastSuccess, setBroadcastSuccess] = useState(false);
+  const [availableJobs, setAvailableJobs] = useState([]);
+  const [applicants, setApplicants] = useState([]);
+
+  // VI Chat Area state
+  const [showVIChatModal, setShowVIChatModal] = useState(false);
+  const [chatAreaName, setChatAreaName] = useState('');
+  const [chatAreaDescription, setChatAreaDescription] = useState('');
+  const [selectedChatType, setSelectedChatType] = useState('');
+  const [isCreatingChatArea, setIsCreatingChatArea] = useState(false);
+  const [chatAreaSuccess, setChatAreaSuccess] = useState(false);
+
+  // Combined VI Chat & Broadcast Modal state
+  const [showCombinedModal, setShowCombinedModal] = useState(false);
+
+  // Applicants Modal state
+  const [showApplicantsModal, setShowApplicantsModal] = useState(false);
+
   useEffect(() => {
-    // Simulate API call to get company data
     const fetchCompanyData = async () => {
       try {
-        // Mock company data
-        const mockCompany = {
-          id: 1,
-          name: "TechCorp Solutions",
-          industry: "Technology & Software",
-          size: "51-200 employees",
-          email: "hr@techcorp.com",
-          role: "COMPANY",
-          profileComplete: 85,
-          lastLogin: "2024-01-15T10:30:00Z",
-          profileUpdated: "2024-01-12T14:20:00Z",
-          activeJobs: 12,
-          totalApplications: 156,
-          viewsThisWeek: 89,
-          logo: null,
-          location: "San Francisco, CA",
-          website: "https://techcorp.com",
-          description: "Leading technology solutions provider"
+        const storedUser = localStorage.getItem('currentUser');
+        let companyData = null;
+
+        if (storedUser) {
+          const userData = JSON.parse(storedUser);
+          console.log('Using stored user data for company:', userData);
+
+          companyData = {
+            id: userData.id || 1,
+            name: userData.companyName || userData.contactPersonName || 'Your Company',
+            industry: userData.industry || 'Technology',
+            size: userData.size || '51-200 employees',
+            email: userData.email || 'company@example.com',
+            role: userData.role || 'COMPANY',
+            profileComplete: userData.profileComplete || 85,
+            lastLogin: userData.lastLogin || new Date().toISOString(),
+            profileUpdated: userData.profileUpdated || new Date().toISOString(),
+            activeJobs: userData.activeJobs || 12,
+            totalApplications: userData.totalApplications || 156,
+            viewsThisWeek: userData.viewsThisWeek || 89,
+            logo: userData.logo || null,
+            location: userData.address || 'San Francisco, CA',
+            website: userData.website || 'https://example.com',
+            description: userData.description || 'Leading company in your industry',
+          };
+        } else {
+          companyData = {
+            id: 1,
+            name: 'TechCorp Solutions',
+            industry: 'Technology & Software',
+            size: '51-200 employees',
+            email: 'hr@techcorp.com',
+            role: 'COMPANY',
+            profileComplete: 85,
+            lastLogin: '2024-01-15T10:30:00Z',
+            profileUpdated: '2024-01-12T14:20:00Z',
+            activeJobs: 12,
+            totalApplications: 156,
+            viewsThisWeek: 89,
+            logo: null,
+            location: 'San Francisco, CA',
+            website: 'https://techcorp.com',
+            description: 'Leading technology solutions provider',
+          };
+          console.log('Using mock company data as fallback');
         }
 
-        // Mock applicants data
         const mockApplicants = [
           {
             id: 1,
-            name: "Sarah Johnson",
-            position: "Frontend Developer",
-            avatar: "https://randomuser.me/api/portraits/women/32.jpg",
-            experience: "3 years",
-            location: "New York, NY",
-            appliedDate: "2024-01-15T09:30:00Z",
-            status: "pending",
-            skills: ["React", "TypeScript", "CSS3"],
-            rating: 4.8
+            name: 'Sarah Johnson',
+            position: 'Frontend Developer',
+            avatar: 'https://randomuser.me/api/portraits/women/32.jpg',
+            experience: '3 years',
+            location: 'New York, NY',
+            appliedDate: '2024-01-15T09:30:00Z',
+            status: 'pending',
+            skills: ['React', 'TypeScript', 'CSS3'],
+            rating: 4.8,
           },
           {
             id: 2,
-            name: "Michael Chen",
-            position: "Backend Engineer",
-            avatar: "https://randomuser.me/api/portraits/men/45.jpg",
-            experience: "5 years",
-            location: "San Francisco, CA",
-            appliedDate: "2024-01-14T14:20:00Z",
-            status: "reviewed",
-            skills: ["Node.js", "Python", "MongoDB"],
-            rating: 4.9
+            name: 'Michael Chen',
+            position: 'Backend Engineer',
+            avatar: 'https://randomuser.me/api/portraits/men/45.jpg',
+            experience: '5 years',
+            location: 'San Francisco, CA',
+            appliedDate: '2024-01-14T14:20:00Z',
+            status: 'reviewed',
+            skills: ['Node.js', 'Python', 'MongoDB'],
+            rating: 4.9,
           },
           {
             id: 3,
-            name: "Emily Rodriguez",
-            position: "UX/UI Designer",
-            avatar: "https://randomuser.me/api/portraits/women/67.jpg",
-            experience: "4 years",
-            location: "Austin, TX",
-            appliedDate: "2024-01-13T11:15:00Z",
-            status: "shortlisted",
-            skills: ["Figma", "Adobe XD", "Prototyping"],
-            rating: 4.7
+            name: 'Emily Rodriguez',
+            position: 'UX/UI Designer',
+            avatar: 'https://randomuser.me/api/portraits/women/67.jpg',
+            experience: '4 years',
+            location: 'Austin, TX',
+            appliedDate: '2024-01-13T11:15:00Z',
+            status: 'shortlisted',
+            skills: ['Figma', 'Adobe XD', 'Prototyping'],
+            rating: 4.7,
           },
           {
             id: 4,
-            name: "David Kim",
-            position: "DevOps Engineer",
-            avatar: "https://randomuser.me/api/portraits/men/23.jpg",
-            experience: "6 years",
-            location: "Seattle, WA",
-            appliedDate: "2024-01-12T16:45:00Z",
-            status: "pending",
-            skills: ["Docker", "Kubernetes", "AWS"],
-            rating: 4.6
+            name: 'David Kim',
+            position: 'DevOps Engineer',
+            avatar: 'https://randomuser.me/api/portraits/men/23.jpg',
+            experience: '6 years',
+            location: 'Seattle, WA',
+            appliedDate: '2024-01-12T16:45:00Z',
+            status: 'pending',
+            skills: ['Docker', 'Kubernetes', 'AWS'],
+            rating: 4.6,
           },
           {
             id: 5,
-            name: "Lisa Thompson",
-            position: "Product Manager",
-            avatar: "https://randomuser.me/api/portraits/women/89.jpg",
-            experience: "7 years",
-            location: "Boston, MA",
-            appliedDate: "2024-01-11T10:30:00Z",
-            status: "reviewed",
-            skills: ["Agile", "Product Strategy", "User Research"],
-            rating: 4.9
+            name: 'Lisa Thompson',
+            position: 'Product Manager',
+            avatar: 'https://randomuser.me/api/portraits/women/89.jpg',
+            experience: '7 years',
+            location: 'Boston, MA',
+            appliedDate: '2024-01-11T10:30:00Z',
+            status: 'reviewed',
+            skills: ['Agile', 'Product Strategy', 'User Research'],
+            rating: 4.9,
           },
           {
             id: 6,
-            name: "James Wilson",
-            position: "Data Scientist",
-            avatar: "https://randomuser.me/api/portraits/men/56.jpg",
-            experience: "4 years",
-            location: "Chicago, IL",
-            appliedDate: "2024-01-10T13:20:00Z",
-            status: "shortlisted",
-            skills: ["Python", "Machine Learning", "SQL"],
-            rating: 4.8
-          }
-        ]
+            name: 'James Wilson',
+            position: 'Data Scientist',
+            avatar: 'https://randomuser.me/api/portraits/men/56.jpg',
+            experience: '4 years',
+            location: 'Chicago, IL',
+            appliedDate: '2024-01-10T13:20:00Z',
+            status: 'shortlisted',
+            skills: ['Python', 'Machine Learning', 'SQL'],
+            rating: 4.8,
+          },
+        ];
 
         // Mock metrics data
         const mockMetrics = {
@@ -171,268 +195,272 @@ export default function CompanyDashboardPage() {
           openPositions: 8,
           totalViews: 1247,
           averageRating: 4.6,
-          responseRate: 92
-        }
+          responseRate: 92,
+        };
 
         // Mock recent activity
         const mockActivity = [
           {
             id: 1,
-            type: "job_posted",
-            message: "Posted new Frontend Developer position",
-            timestamp: "2024-01-15T09:30:00Z",
-            icon: "📝",
-            details: "Frontend Developer - React, TypeScript"
+            type: 'job_posted',
+            message: 'Posted new Frontend Developer position',
+            timestamp: '2024-01-15T09:30:00Z',
+            icon: '📝',
+            details: 'Frontend Developer - React, TypeScript',
           },
           {
             id: 2,
-            type: "application_received",
-            message: "Received 15 new applications for Senior Developer",
-            timestamp: "2024-01-14T16:45:00Z",
-            icon: "👥",
-            details: "15 applications received"
+            type: 'application_received',
+            message: 'Received 15 new applications for Senior Developer',
+            timestamp: '2024-01-14T16:45:00Z',
+            icon: '👥',
+            details: '15 applications received',
           },
           {
             id: 3,
-            type: "profile_update",
-            message: "Updated company description and benefits",
-            timestamp: "2024-01-12T11:20:00Z",
-            icon: "🏢",
-            details: "Company profile updated"
+            type: 'profile_update',
+            message: 'Updated company description and benefits',
+            timestamp: '2024-01-12T11:20:00Z',
+            icon: '🏢',
+            details: 'Company profile updated',
           },
           {
             id: 4,
-            type: "vi_chat_created",
-            message: "Created new Virtual Intern chat area",
-            timestamp: "2024-01-10T14:15:00Z",
-            icon: "💬",
-            details: "Summer 2024 Internship Program"
-          }
-        ]
+            type: 'vi_chat_created',
+            message: 'Created new Virtual Intern chat area',
+            timestamp: '2024-01-10T14:15:00Z',
+            icon: '💬',
+            details: 'Summer 2024 Internship Program',
+          },
+        ];
 
-        setCompany(mockCompany)
-        setMetrics(mockMetrics)
-        setRecentActivity(mockActivity)
-        setApplicants(mockApplicants)
-        
+        setCompany(companyData);
+        setMetrics(mockMetrics);
+        setRecentActivity(mockActivity);
+        setApplicants(mockApplicants);
+
         // Mock available jobs for broadcast messaging
         const mockJobs = [
           {
-            id: "job1",
-            title: "Frontend Developer",
+            id: 'job1',
+            title: 'Frontend Developer',
             applicants: 15,
-            status: "active"
+            status: 'active',
           },
           {
-            id: "job2", 
-            title: "Backend Engineer",
+            id: 'job2',
+            title: 'Backend Engineer',
             applicants: 23,
-            status: "active"
+            status: 'active',
           },
           {
-            id: "job3",
-            title: "UX/UI Designer",
+            id: 'job3',
+            title: 'UX/UI Designer',
             applicants: 8,
-            status: "active"
-          }
-        ]
-        setAvailableJobs(mockJobs)
-        setIsLoading(false)
+            status: 'active',
+          },
+        ];
+        setAvailableJobs(mockJobs);
+        setIsLoading(false);
       } catch (error) {
-        console.error("Error fetching company data:", error)
-        setIsLoading(false)
+        console.error('Error fetching company data:', error);
+        setIsLoading(false);
       }
-    }
+    };
 
-    fetchCompanyData()
-  }, [])
+    fetchCompanyData();
+  }, []);
 
   // Check if user has COMPANY role
   useEffect(() => {
-    if (company && company.role !== "COMPANY") {
-      navigate("/login", { 
-        state: { 
-          message: "Access denied. Only company representatives can access this dashboard." 
-        } 
-      })
+    if (company && company.role !== 'COMPANY') {
+      navigate('/login', {
+        state: {
+          message: 'Access denied. Only company representatives can access this dashboard.',
+        },
+      });
     }
-  }, [company, navigate])
+  }, [company, navigate]);
 
   const handleLogout = () => {
-    // In real app, this would clear authentication tokens
-    navigate("/login", { 
-      state: { 
-        message: "You have been logged out successfully." 
-      } 
-    })
-  }
+    // Clear localStorage and navigate to login
+    localStorage.removeItem('currentUser');
+    navigate('/login', {
+      state: {
+        message: 'You have been logged out successfully.',
+      },
+    });
+  };
 
   const formatTimeAgo = (timestamp) => {
-    const now = new Date()
-    const time = new Date(timestamp)
-    const diffInHours = Math.floor((now - time) / (1000 * 60 * 60))
-    
-    if (diffInHours < 1) return "Just now"
-    if (diffInHours < 24) return `${diffInHours} hour${diffInHours > 1 ? 's' : ''} ago`
-    
-    const diffInDays = Math.floor(diffInHours / 24)
-    if (diffInDays < 7) return `${diffInDays} day${diffInDays > 1 ? 's' : ''} ago`
-    
-    const diffInWeeks = Math.floor(diffInDays / 7)
-    if (diffInWeeks < 4) return `${diffInWeeks} week${diffInWeeks > 1 ? 's' : ''} ago`
-    
-    return time.toLocaleDateString()
-  }
+    const now = new Date();
+    const time = new Date(timestamp);
+    const diffInHours = Math.floor((now - time) / (1000 * 60 * 60));
+
+    if (diffInHours < 1) return 'Just now';
+    if (diffInHours < 24) return `${diffInHours} hour${diffInHours > 1 ? 's' : ''} ago`;
+
+    const diffInDays = Math.floor(diffInHours / 24);
+    if (diffInDays < 7) return `${diffInDays} day${diffInDays > 1 ? 's' : ''} ago`;
+
+    const diffInWeeks = Math.floor(diffInDays / 7);
+    if (diffInWeeks < 4) return `${diffInWeeks} week${diffInWeeks > 1 ? 's' : ''} ago`;
+
+    return time.toLocaleDateString();
+  };
 
   const handleSearch = (e) => {
-    e.preventDefault()
+    e.preventDefault();
     if (searchQuery.trim()) {
-      navigate(`/company/search?q=${encodeURIComponent(searchQuery.trim())}`)
+      navigate(`/company/search?q=${encodeURIComponent(searchQuery.trim())}`);
     }
-  }
+  };
 
   // Broadcast messaging functions
   const handleSendBroadcast = async () => {
     if (!selectedJob || !broadcastMessage.trim()) {
-      return
+      return;
     }
 
-    setIsSendingBroadcast(true)
-    
+    setIsSendingBroadcast(true);
+
     try {
       // Simulate API call to send broadcast message
-      await new Promise(resolve => setTimeout(resolve, 1500))
-      
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+
       // Reset form and show success
-      setBroadcastMessage("")
-      setSelectedJob("")
-      setBroadcastSuccess(true)
-      
+      setBroadcastMessage('');
+      setSelectedJob('');
+      setBroadcastSuccess(true);
+
       // Hide success message after 3 seconds
       setTimeout(() => {
-        setBroadcastSuccess(false)
-        setShowBroadcastModal(false)
-      }, 3000)
-      
-      console.log(`Broadcast sent to applicants of job: ${selectedJob}`)
-      
+        setBroadcastSuccess(false);
+        setShowBroadcastModal(false);
+      }, 3000);
+
+      console.log(`Broadcast sent to applicants of job: ${selectedJob}`);
     } catch (error) {
-      console.error("Error sending broadcast:", error)
+      console.error('Error sending broadcast:', error);
     } finally {
-      setIsSendingBroadcast(false)
+      setIsSendingBroadcast(false);
     }
-  }
+  };
 
   const openBroadcastModal = () => {
-    setShowBroadcastModal(true)
-    setBroadcastMessage("")
-    setSelectedJob("")
-    setBroadcastSuccess(false)
-  }
+    setShowBroadcastModal(true);
+    setBroadcastMessage('');
+    setSelectedJob('');
+    setBroadcastSuccess(false);
+  };
 
   const closeBroadcastModal = () => {
-    setShowBroadcastModal(false)
-    setBroadcastMessage("")
-    setSelectedJob("")
-    setBroadcastSuccess(false)
-  }
+    setShowBroadcastModal(false);
+    setBroadcastMessage('');
+    setSelectedJob('');
+    setBroadcastSuccess(false);
+  };
 
   // VI Chat Area functions
   const openVIChatModal = () => {
-    setShowVIChatModal(true)
-    setChatAreaName("")
-    setChatAreaDescription("")
-    setSelectedChatType("")
-    setChatAreaSuccess(false)
-  }
+    setShowVIChatModal(true);
+    setChatAreaName('');
+    setChatAreaDescription('');
+    setSelectedChatType('');
+    setChatAreaSuccess(false);
+  };
 
   const openCombinedModal = () => {
-    setShowCombinedModal(true)
-  }
+    setShowCombinedModal(true);
+  };
 
   const closeCombinedModal = () => {
-    setShowCombinedModal(false)
-  }
+    setShowCombinedModal(false);
+  };
 
   const openApplicantsModal = () => {
-    setShowApplicantsModal(true)
-  }
+    setShowApplicantsModal(true);
+  };
 
   const closeApplicantsModal = () => {
-    setShowApplicantsModal(false)
-  }
+    setShowApplicantsModal(false);
+  };
 
   // Helper function to get status badge variant
   const getStatusBadgeVariant = (status) => {
     switch (status) {
       case 'pending':
-        return 'secondary'
+        return 'secondary';
       case 'reviewed':
-        return 'default'
+        return 'default';
       case 'shortlisted':
-        return 'outline'
+        return 'outline';
       default:
-        return 'secondary'
+        return 'secondary';
     }
-  }
+  };
 
   const getStatusLabel = (status) => {
     switch (status) {
       case 'pending':
-        return 'Pending Review'
+        return 'Pending Review';
       case 'reviewed':
-        return 'Reviewed'
+        return 'Reviewed';
       case 'shortlisted':
-        return 'Shortlisted'
+        return 'Shortlisted';
       default:
-        return 'Pending'
+        return 'Pending';
     }
-  }
+  };
 
   const closeVIChatModal = () => {
-    setShowVIChatModal(false)
-    setChatAreaName("")
-    setChatAreaDescription("")
-    setSelectedChatType("")
-    setChatAreaSuccess(false)
-  }
+    setShowVIChatModal(false);
+    setChatAreaName('');
+    setChatAreaDescription('');
+    setSelectedChatType('');
+    setChatAreaSuccess(false);
+  };
 
   const handleCreateChatArea = async () => {
     if (!chatAreaName.trim() || !chatAreaDescription.trim() || !selectedChatType) {
-      return
+      return;
     }
 
-    setIsCreatingChatArea(true)
-    
+    setIsCreatingChatArea(true);
+
     try {
       // Simulate API call to create chat area
-      await new Promise(resolve => setTimeout(resolve, 1500))
-      
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+
       // Reset form and show success
-      setChatAreaName("")
-      setChatAreaDescription("")
-      setSelectedChatType("")
-      setChatAreaSuccess(true)
-      
+      setChatAreaName('');
+      setChatAreaDescription('');
+      setSelectedChatType('');
+      setChatAreaSuccess(true);
+
       // Hide success message after 3 seconds
       setTimeout(() => {
-        setChatAreaSuccess(false)
-        setShowVIChatModal(false)
-      }, 3000)
-      
-      console.log(`VI Chat Area created: ${chatAreaName}`)
-      
+        setChatAreaSuccess(false);
+        setShowVIChatModal(false);
+      }, 3000);
+
+      console.log(`VI Chat Area created: ${chatAreaName}`);
     } catch (error) {
-      console.error("Error creating chat area:", error)
+      console.error('Error creating chat area:', error);
     } finally {
-      setIsCreatingChatArea(false)
+      setIsCreatingChatArea(false);
     }
-  }
+  };
 
   if (isLoading) {
     return (
       <div className="flex min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
-        <Sidebar userType="COMPANY" onLogout={handleLogout} onOpenVIChat={openCombinedModal} onOpenApplicants={openApplicantsModal} />
+        <Sidebar
+          userType="COMPANY"
+          onLogout={handleLogout}
+          onOpenVIChat={openCombinedModal}
+          onOpenApplicants={openApplicantsModal}
+        />
         <main className="flex-1 lg:ml-64 transition-all duration-300 flex items-center justify-center">
           <div className="text-center">
             <div className="w-16 h-16 border-4 border-primary/30 border-t-primary rounded-full animate-spin mx-auto mb-4"></div>
@@ -440,13 +468,18 @@ export default function CompanyDashboardPage() {
           </div>
         </main>
       </div>
-    )
+    );
   }
 
-  if (!company || company.role !== "COMPANY") {
+  if (!company || company.role !== 'COMPANY') {
     return (
       <div className="flex min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
-        <Sidebar userType="COMPANY" onLogout={handleLogout} onOpenVIChat={openCombinedModal} onOpenApplicants={openApplicantsModal} />
+        <Sidebar
+          userType="COMPANY"
+          onLogout={handleLogout}
+          onOpenVIChat={openCombinedModal}
+          onOpenApplicants={openApplicantsModal}
+        />
         <main className="flex-1 lg:ml-64 transition-all duration-300 flex items-center justify-center">
           <div className="text-center p-8">
             <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -456,27 +489,30 @@ export default function CompanyDashboardPage() {
             <p className="text-muted-foreground mb-4">
               You don't have permission to access this dashboard.
             </p>
-            <Button onClick={() => navigate("/login")}>
-              Go to Login
-            </Button>
+            <Button onClick={() => navigate('/login')}>Go to Login</Button>
           </div>
         </main>
       </div>
-    )
+    );
   }
 
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
-      <Sidebar userType="COMPANY" onLogout={handleLogout} onOpenVIChat={openCombinedModal} onOpenApplicants={openApplicantsModal} />
-      
+      <Sidebar
+        userType="COMPANY"
+        onLogout={handleLogout}
+        onOpenVIChat={openCombinedModal}
+        onOpenApplicants={openApplicantsModal}
+      />
+
       <main className="flex-1 lg:ml-64 ml-0 transition-all duration-300 py-8 px-4 lg:px-8">
         <div className="container mx-auto">
           {/* Welcome Header */}
           <div className="text-center mb-12">
             <div className="w-24 h-24 bg-gradient-to-br from-primary/20 to-primary/10 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-lg">
               {company.logo ? (
-                <img 
-                  src={company.logo} 
+                <img
+                  src={company.logo}
                   alt={company.name}
                   className="w-20 h-20 rounded-2xl object-cover"
                 />
@@ -489,9 +525,10 @@ export default function CompanyDashboardPage() {
               Welcome back, {company.name}! 🏢
             </h1>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-4">
-              Manage your company profile, post jobs, review applicants, and connect with virtual interns.
+              Manage your company profile, post jobs, review applicants, and connect with virtual
+              interns.
             </p>
-            
+
             {/* Company Info Badges */}
             <div className="flex flex-wrap justify-center gap-3 mb-6">
               <Badge variant="outline" className="px-3 py-1">
@@ -513,15 +550,19 @@ export default function CompanyDashboardPage() {
                 </Badge>
               )}
             </div>
-            
+
             {/* Profile Completion Bar */}
             <div className="max-w-md mx-auto">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-muted-foreground">Profile Completion</span>
-                <span className="text-sm font-semibold text-primary">{company.profileComplete}%</span>
+                <span className="text-sm font-medium text-muted-foreground">
+                  Profile Completion
+                </span>
+                <span className="text-sm font-semibold text-primary">
+                  {company.profileComplete}%
+                </span>
               </div>
               <div className="w-full bg-muted rounded-full h-2">
-                <div 
+                <div
                   className="bg-gradient-to-r from-primary to-primary/80 h-2 rounded-full transition-all duration-500"
                   style={{ width: `${company.profileComplete}%` }}
                 />
@@ -540,8 +581,8 @@ export default function CompanyDashboardPage() {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="h-14 pl-12 pr-4 text-lg rounded-2xl border-2 border-border/50 focus:border-primary/50 focus:ring-primary/20 transition-all duration-300"
               />
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 className="absolute right-2 top-1/2 transform -translate-y-1/2 h-10 px-6 rounded-xl bg-primary hover:bg-primary/90"
               >
                 Search
@@ -614,13 +655,11 @@ export default function CompanyDashboardPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="text-center">
-                <Button 
-                  asChild 
+                <Button
+                  asChild
                   className="w-full bg-gradient-to-r from-primary to-secondary/80 hover:from-primary/90 hover:to-secondary/70"
                 >
-                  <Link to="/company/profile">
-                    Manage Profile
-                  </Link>
+                  <Link to="/company/profile">Manage Profile</Link>
                 </Button>
               </CardContent>
             </Card>
@@ -637,13 +676,11 @@ export default function CompanyDashboardPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="text-center">
-                <Button 
-                  asChild 
+                <Button
+                  asChild
                   className="w-full bg-gradient-to-r from-secondary to-primary/80 hover:from-primary/90 hover:to-primary/70"
                 >
-                  <Link to="/post-job">
-                    Create Job Post
-                  </Link>
+                  <Link to="/post-job">Create Job Post</Link>
                 </Button>
               </CardContent>
             </Card>
@@ -663,14 +700,12 @@ export default function CompanyDashboardPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="text-center">
-                <Button 
-                  asChild 
+                <Button
+                  asChild
                   variant="outline"
                   className="w-full border-2 border-green-500/50 hover:border-green-500/70 hover:bg-green-500/10"
                 >
-                  <Link to="/company/applicants">
-                    Review Applications
-                  </Link>
+                  <Link to="/company/applicants">Review Applications</Link>
                 </Button>
               </CardContent>
             </Card>
@@ -687,14 +722,12 @@ export default function CompanyDashboardPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="text-center">
-                <Button 
-                  asChild 
+                <Button
+                  asChild
                   variant="outline"
                   className="w-full border-2 border-green-500/50 hover:border-green-500/70 hover:bg-green-500/10"
                 >
-                  <Link to="/jobseekers">
-                    Browse Candidates
-                  </Link>
+                  <Link to="/jobseekers">Browse Candidates</Link>
                 </Button>
               </CardContent>
             </Card>
@@ -708,15 +741,18 @@ export default function CompanyDashboardPage() {
                 <Link to="/company/applicants">View All Applications</Link>
               </Button>
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {applicants.map((applicant) => (
-                <Card key={applicant.id} className="hover:shadow-lg transition-shadow duration-300 group">
+                <Card
+                  key={applicant.id}
+                  className="hover:shadow-lg transition-shadow duration-300 group"
+                >
                   <CardHeader className="pb-3">
                     <div className="flex items-center space-x-3">
                       <div className="relative">
-                        <img 
-                          src={applicant.avatar} 
+                        <img
+                          src={applicant.avatar}
                           alt={applicant.name}
                           className="w-12 h-12 rounded-full object-cover"
                         />
@@ -730,19 +766,22 @@ export default function CompanyDashboardPage() {
                       </div>
                     </div>
                   </CardHeader>
-                  
+
                   <CardContent className="pt-0">
                     <div className="space-y-3">
                       {/* Status Badge */}
                       <div className="flex items-center justify-between">
-                        <Badge variant={getStatusBadgeVariant(applicant.status)} className="text-xs">
+                        <Badge
+                          variant={getStatusBadgeVariant(applicant.status)}
+                          className="text-xs"
+                        >
                           {getStatusLabel(applicant.status)}
                         </Badge>
                         <span className="text-xs text-muted-foreground">
                           {formatTimeAgo(applicant.appliedDate)}
                         </span>
                       </div>
-                      
+
                       {/* Experience & Location */}
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-muted-foreground">
@@ -754,7 +793,7 @@ export default function CompanyDashboardPage() {
                           {applicant.location}
                         </span>
                       </div>
-                      
+
                       {/* Skills */}
                       <div className="flex flex-wrap gap-1">
                         {applicant.skills.slice(0, 3).map((skill, index) => (
@@ -769,20 +808,20 @@ export default function CompanyDashboardPage() {
                         )}
                       </div>
                     </div>
-                    
+
                     {/* Action Buttons */}
                     <div className="mt-4 flex gap-2">
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
+                      <Button
+                        variant="outline"
+                        size="sm"
                         className="flex-1 text-xs"
                         onClick={() => navigate(`/company/applicants/${applicant.id}`)}
                       >
                         View Profile
                       </Button>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
+                      <Button
+                        variant="outline"
+                        size="sm"
                         className="flex-1 text-xs"
                         onClick={() => openBroadcastModal()}
                       >
@@ -809,7 +848,7 @@ export default function CompanyDashboardPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="text-center">
-                <Button 
+                <Button
                   onClick={openVIChatModal}
                   variant="outline"
                   className="w-full border-2 border-purple-500/50 hover:border-purple-500/70 hover:bg-purple-500/10 text-purple-600 hover:text-purple-700"
@@ -831,7 +870,7 @@ export default function CompanyDashboardPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="text-center">
-                <Button 
+                <Button
                   onClick={openBroadcastModal}
                   variant="outline"
                   className="w-full border-2 border-blue-500/50 hover:border-blue-500/70 hover:bg-blue-500/10 text-blue-600 hover:text-blue-700"
@@ -850,10 +889,13 @@ export default function CompanyDashboardPage() {
                 View All
               </Button>
             </div>
-            
+
             <div className="space-y-4">
               {recentActivity.map((activity) => (
-                <Card key={activity.id} className="p-4 hover:shadow-md transition-shadow duration-300">
+                <Card
+                  key={activity.id}
+                  className="p-4 hover:shadow-md transition-shadow duration-300"
+                >
                   <div className="flex items-center space-x-4">
                     <div className="w-10 h-10 bg-muted/50 rounded-full flex items-center justify-center text-lg">
                       {activity.icon}
@@ -897,13 +939,21 @@ export default function CompanyDashboardPage() {
                   <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
                     <span className="text-4xl">✅</span>
                   </div>
-                  <h3 className="text-xl font-semibold text-green-600 mb-2">Message Sent Successfully!</h3>
+                  <h3 className="text-xl font-semibold text-green-600 mb-2">
+                    Message Sent Successfully!
+                  </h3>
                   <p className="text-muted-foreground">
-                    Your broadcast message has been sent to all applicants of the selected job position.
+                    Your broadcast message has been sent to all applicants of the selected job
+                    position.
                   </p>
                 </div>
               ) : (
-                <form onSubmit={(e) => { e.preventDefault(); handleSendBroadcast(); }}>
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    handleSendBroadcast();
+                  }}
+                >
                   {/* Job Selection */}
                   <div className="mb-6">
                     <Label htmlFor="jobSelect" className="text-sm font-semibold mb-3 block">
@@ -945,8 +995,8 @@ export default function CompanyDashboardPage() {
 
                   {/* Action Buttons */}
                   <div className="flex flex-col sm:flex-row gap-3">
-                    <Button 
-                      type="submit" 
+                    <Button
+                      type="submit"
                       disabled={isSendingBroadcast || !selectedJob || !broadcastMessage.trim()}
                       className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
                     >
@@ -962,9 +1012,9 @@ export default function CompanyDashboardPage() {
                         </>
                       )}
                     </Button>
-                    
-                    <Button 
-                      type="button" 
+
+                    <Button
+                      type="button"
                       variant="outline"
                       onClick={closeBroadcastModal}
                       className="flex-1"
@@ -1002,13 +1052,20 @@ export default function CompanyDashboardPage() {
                   <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
                     <span className="text-4xl">✅</span>
                   </div>
-                  <h3 className="text-xl font-semibold text-green-600 mb-2">Chat Area Created Successfully!</h3>
+                  <h3 className="text-xl font-semibold text-green-600 mb-2">
+                    Chat Area Created Successfully!
+                  </h3>
                   <p className="text-muted-foreground">
                     Your virtual intern chat area has been created and is ready for use.
                   </p>
                 </div>
               ) : (
-                <form onSubmit={(e) => { e.preventDefault(); handleCreateChatArea(); }}>
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    handleCreateChatArea();
+                  }}
+                >
                   {/* Chat Area Name */}
                   <div className="mb-6">
                     <Label htmlFor="chatAreaName" className="text-sm font-semibold mb-3 block">
@@ -1046,7 +1103,10 @@ export default function CompanyDashboardPage() {
 
                   {/* Chat Area Description */}
                   <div className="mb-6">
-                    <Label htmlFor="chatAreaDescription" className="text-sm font-semibold mb-3 block">
+                    <Label
+                      htmlFor="chatAreaDescription"
+                      className="text-sm font-semibold mb-3 block"
+                    >
                       Description
                     </Label>
                     <textarea
@@ -1061,9 +1121,14 @@ export default function CompanyDashboardPage() {
 
                   {/* Action Buttons */}
                   <div className="flex flex-col sm:flex-row gap-3">
-                    <Button 
-                      type="submit" 
-                      disabled={isCreatingChatArea || !chatAreaName.trim() || !chatAreaDescription.trim() || !selectedChatType}
+                    <Button
+                      type="submit"
+                      disabled={
+                        isCreatingChatArea ||
+                        !chatAreaName.trim() ||
+                        !chatAreaDescription.trim() ||
+                        !selectedChatType
+                      }
                       className="flex-1 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700"
                     >
                       {isCreatingChatArea ? (
@@ -1078,9 +1143,9 @@ export default function CompanyDashboardPage() {
                         </>
                       )}
                     </Button>
-                    
-                    <Button 
-                      type="button" 
+
+                    <Button
+                      type="button"
                       variant="outline"
                       onClick={closeVIChatModal}
                       className="flex-1"
@@ -1126,10 +1191,10 @@ export default function CompanyDashboardPage() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="text-center">
-                    <Button 
+                    <Button
                       onClick={() => {
-                        closeCombinedModal()
-                        openVIChatModal()
+                        closeCombinedModal();
+                        openVIChatModal();
                       }}
                       variant="outline"
                       className="w-full border-2 border-purple-500/50 hover:border-purple-500/70 hover:bg-purple-500/10 text-purple-600 hover:text-purple-700"
@@ -1151,10 +1216,10 @@ export default function CompanyDashboardPage() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="text-center">
-                    <Button 
+                    <Button
                       onClick={() => {
-                        closeCombinedModal()
-                        openBroadcastModal()
+                        closeCombinedModal();
+                        openBroadcastModal();
                       }}
                       variant="outline"
                       className="w-full border-2 border-blue-500/50 hover:border-blue-500/70 hover:bg-blue-500/10 text-blue-600 hover:text-blue-700"
@@ -1194,12 +1259,15 @@ export default function CompanyDashboardPage() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {applicants.map((applicant) => (
-                  <Card key={applicant.id} className="hover:shadow-lg transition-shadow duration-300 group">
+                  <Card
+                    key={applicant.id}
+                    className="hover:shadow-lg transition-shadow duration-300 group"
+                  >
                     <CardHeader className="pb-3">
                       <div className="flex items-center space-x-3">
                         <div className="relative">
-                          <img 
-                            src={applicant.avatar} 
+                          <img
+                            src={applicant.avatar}
                             alt={applicant.name}
                             className="w-12 h-12 rounded-full object-cover"
                           />
@@ -1208,24 +1276,29 @@ export default function CompanyDashboardPage() {
                           </div>
                         </div>
                         <div className="flex-1 min-w-0">
-                          <h3 className="font-semibold text-foreground truncate">{applicant.name}</h3>
+                          <h3 className="font-semibold text-foreground truncate">
+                            {applicant.name}
+                          </h3>
                           <p className="text-sm text-muted-foreground">{applicant.position}</p>
                         </div>
                       </div>
                     </CardHeader>
-                    
+
                     <CardContent className="pt-0">
                       <div className="space-y-3">
                         {/* Status Badge */}
                         <div className="flex items-center justify-between">
-                          <Badge variant={getStatusBadgeVariant(applicant.status)} className="text-xs">
+                          <Badge
+                            variant={getStatusBadgeVariant(applicant.status)}
+                            className="text-xs"
+                          >
                             {getStatusLabel(applicant.status)}
                           </Badge>
                           <span className="text-xs text-muted-foreground">
                             {formatTimeAgo(applicant.appliedDate)}
                           </span>
                         </div>
-                        
+
                         {/* Experience & Location */}
                         <div className="flex items-center justify-between text-sm">
                           <span className="text-muted-foreground">
@@ -1237,7 +1310,7 @@ export default function CompanyDashboardPage() {
                             {applicant.location}
                           </span>
                         </div>
-                        
+
                         {/* Skills */}
                         <div className="flex flex-wrap gap-1">
                           {applicant.skills.slice(0, 3).map((skill, index) => (
@@ -1252,28 +1325,28 @@ export default function CompanyDashboardPage() {
                           )}
                         </div>
                       </div>
-                      
+
                       {/* Action Buttons */}
                       <div className="mt-4 flex gap-2">
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
+                        <Button
+                          variant="outline"
+                          size="sm"
                           className="flex-1 text-xs"
                           onClick={() => {
-                            closeApplicantsModal()
+                            closeApplicantsModal();
                             // In a real app, this would navigate to the applicant's profile
-                            console.log(`Viewing profile of ${applicant.name}`)
+                            console.log(`Viewing profile of ${applicant.name}`);
                           }}
                         >
                           View Profile
                         </Button>
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
+                        <Button
+                          variant="outline"
+                          size="sm"
                           className="flex-1 text-xs"
                           onClick={() => {
-                            closeApplicantsModal()
-                            openBroadcastModal()
+                            closeApplicantsModal();
+                            openBroadcastModal();
                           }}
                         >
                           Message
@@ -1294,5 +1367,5 @@ export default function CompanyDashboardPage() {
         </div>
       )}
     </div>
-  )
-} 
+  );
+}
