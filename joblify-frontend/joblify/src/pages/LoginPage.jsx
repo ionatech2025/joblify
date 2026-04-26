@@ -9,6 +9,7 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Checkbox } from '../components/ui/checkbox';
 import { Badge } from '../components/ui/badge';
+import { localStorageUtils } from '../utils/localStorage';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -59,11 +60,11 @@ export default function LoginPage() {
       }
 
       // Try to get user data from localStorage (from signup)
-      const storedUserData = localStorage.getItem(`userData_${email.toLowerCase()}`);
+      const storedUserData = localStorageUtils.getSignupData(email);
       let userData = null;
 
       if (storedUserData) {
-        userData = JSON.parse(storedUserData);
+        userData = storedUserData;
       } else {
         // Fallback: extract name from email for demo purposes
         const emailName = email.split('@')[0];
@@ -81,7 +82,7 @@ export default function LoginPage() {
       }
 
       // Store current user session
-      localStorage.setItem('currentUser', JSON.stringify(userData));
+      localStorageUtils.setUserData(userData);
 
       // Redirect based on role
       if (userRole === 'COMPANY') {

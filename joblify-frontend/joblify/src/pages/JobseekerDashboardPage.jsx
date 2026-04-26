@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../co
 import { Badge } from '../components/ui/badge';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
+import { localStorageUtils } from '../utils/localStorage';
 import {
   User,
   Building2,
@@ -69,11 +70,9 @@ export default function JobseekerDashboardPage() {
     const fetchUserData = async () => {
       try {
         // Try to get current user from localStorage first
-        const storedUser = localStorage.getItem('currentUser');
-        let userData = null;
+        const userData = localStorageUtils.getUserData();
 
-        if (storedUser) {
-          userData = JSON.parse(storedUser);
+        if (userData) {
           console.log('Using stored user data:', userData);
         } else {
           // Fallback to mock data if no stored user
@@ -191,7 +190,7 @@ export default function JobseekerDashboardPage() {
 
   const handleLogout = () => {
     // Clear localStorage and navigate to login
-    localStorage.removeItem('currentUser');
+    localStorageUtils.clearUserSession();
     navigate('/login', {
       state: {
         message: 'You have been logged out successfully.',
