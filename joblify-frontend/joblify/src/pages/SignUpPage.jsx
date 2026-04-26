@@ -1,14 +1,14 @@
-"use client"
+'use client';
 
-import { useState, useEffect } from "react"
-import { Link, useNavigate } from "react-router-dom"
-import { Header } from "../components/Header"
-import { Footer } from "../components/Footer"
-import { Button } from "../components/ui/button"
-import { Input } from "../components/ui/input"
-import { Label } from "../components/ui/label"
-import { Checkbox } from "../components/ui/checkbox"
-import { Card, CardContent } from "../components/ui/card"
+import { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Header } from '../components/Header';
+import { Footer } from '../components/Footer';
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
+import { Checkbox } from '../components/ui/checkbox';
+import { Card, CardContent } from '../components/ui/card';
 
 // API service functions
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
@@ -49,349 +49,373 @@ const apiService = {
       method: 'POST',
       body: userData,
     });
-  }
+  },
 };
 
 export default function SignUpPage() {
-  const navigate = useNavigate()
-  const [accountType, setAccountType] = useState("jobseeker")
+  const navigate = useNavigate();
+  const [accountType, setAccountType] = useState('jobseeker');
   const [formData, setFormData] = useState({
     // Common fields
-    email: "",
-    password: "",
-    confirmPassword: "",
-    phone: "",
+    email: '',
+    password: '',
+    confirmPassword: '',
+    phone: '',
     terms: false,
-    
+
     // Jobseeker fields
-    firstName: "",
-    lastName: "",
-    
+    firstName: '',
+    lastName: '',
+
     // Company fields - UI uses these names
-    companyName: "",
-    industry: "",
-    description: "",
-    size: "",
-    establishmentYear: "",
-    address: "",
-    website: "",
-    linkedin: "",
-    contactPersonName: "", // UI uses this
-    contactPersonPosition: "", // UI uses this
-    contactPhone: ""
-  })
-  const [errors, setErrors] = useState({})
-  const [passwordStrength, setPasswordStrength] = useState(0)
-  const [showPassword, setShowPassword] = useState(false)
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [logoFile, setLogoFile] = useState(null)
-  const [logoPreview, setLogoPreview] = useState(null)
+    companyName: '',
+    industry: '',
+    description: '',
+    size: '',
+    establishmentYear: '',
+    address: '',
+    website: '',
+    linkedin: '',
+    contactPersonName: '', // UI uses this
+    contactPersonPosition: '', // UI uses this
+    contactPhone: '',
+  });
+  const [errors, setErrors] = useState({});
+  const [passwordStrength, setPasswordStrength] = useState(0);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [logoFile, setLogoFile] = useState(null);
+  const [logoPreview, setLogoPreview] = useState(null);
 
   // Industry options - matching Prisma enum
   const industries = [
-    "TECHNOLOGY",
-    "HOSPITALITY",
-    "EDUCATION",
-    "AGRICULTURE",
-    "FINANCE",
-    "MANUFACTURING",
-    "CONSTRUCTION"
-  ]
+    'TECHNOLOGY',
+    'HOSPITALITY',
+    'EDUCATION',
+    'AGRICULTURE',
+    'FINANCE',
+    'MANUFACTURING',
+    'CONSTRUCTION',
+  ];
 
   const industryDisplayNames = {
-    "TECHNOLOGY": "Technology",
-    "HOSPITALITY": "Hospitality",
-    "EDUCATION": "Education",
-    "AGRICULTURE": "Agriculture",
-    "FINANCE": "Finance",
-    "MANUFACTURING": "Manufacturing",
-    "CONSTRUCTION": "Construction"
-  }
+    TECHNOLOGY: 'Technology',
+    HOSPITALITY: 'Hospitality',
+    EDUCATION: 'Education',
+    AGRICULTURE: 'Agriculture',
+    FINANCE: 'Finance',
+    MANUFACTURING: 'Manufacturing',
+    CONSTRUCTION: 'Construction',
+  };
 
   // Company size options - matching Prisma enum
-  const companySizes = [
-    "SIZE_1_10",
-    "SIZE_11_50",
-    "SIZE_51_200",
-    "SIZE_200_PLUS"
-  ]
+  const companySizes = ['SIZE_1_10', 'SIZE_11_50', 'SIZE_51_200', 'SIZE_200_PLUS'];
 
   const companySizeDisplayNames = {
-    "SIZE_1_10": "1-10 employees",
-    "SIZE_11_50": "11-50 employees",
-    "SIZE_51_200": "51-200 employees",
-    "SIZE_200_PLUS": "200+ employees"
-  }
+    SIZE_1_10: '1-10 employees',
+    SIZE_11_50: '11-50 employees',
+    SIZE_51_200: '51-200 employees',
+    SIZE_200_PLUS: '200+ employees',
+  };
 
   // Password strength checker
   useEffect(() => {
-    const strength = calculatePasswordStrength(formData.password)
-    setPasswordStrength(strength)
-  }, [formData.password])
+    const strength = calculatePasswordStrength(formData.password);
+    setPasswordStrength(strength);
+  }, [formData.password]);
 
   const calculatePasswordStrength = (password) => {
-    let score = 0
-    if (password.length >= 8) score += 1
-    if (/[a-z]/.test(password)) score += 1
-    if (/[A-Z]/.test(password)) score += 1
-    if (/[0-9]/.test(password)) score += 1
-    if (/[^A-Za-z0-9]/.test(password)) score += 1
-    return score
-  }
+    let score = 0;
+    if (password.length >= 8) score += 1;
+    if (/[a-z]/.test(password)) score += 1;
+    if (/[A-Z]/.test(password)) score += 1;
+    if (/[0-9]/.test(password)) score += 1;
+    if (/[^A-Za-z0-9]/.test(password)) score += 1;
+    return score;
+  };
 
   const getPasswordStrengthText = (strength) => {
-    if (strength <= 2) return { text: "Weak", color: "text-red-500", bgColor: "bg-red-100" }
-    if (strength <= 3) return { text: "Fair", color: "text-yellow-500", bgColor: "bg-yellow-100" }
-    if (strength <= 4) return { text: "Good", color: "text-blue-500", bgColor: "bg-blue-100" }
-    return { text: "Strong", color: "text-green-500", bgColor: "bg-green-100" }
-  }
+    if (strength <= 2) return { text: 'Weak', color: 'text-red-500', bgColor: 'bg-red-100' };
+    if (strength <= 3) return { text: 'Fair', color: 'text-yellow-500', bgColor: 'bg-yellow-100' };
+    if (strength <= 4) return { text: 'Good', color: 'text-blue-500', bgColor: 'bg-blue-100' };
+    return { text: 'Strong', color: 'text-green-500', bgColor: 'bg-green-100' };
+  };
 
   const validateForm = () => {
-    const newErrors = {}
+    const newErrors = {};
 
-    if (accountType === "jobseeker") {
+    if (accountType === 'jobseeker') {
       // Jobseeker validation
       if (!formData.firstName?.trim()) {
-        newErrors.firstName = "First name is required"
+        newErrors.firstName = 'First name is required';
       } else if (formData.firstName.trim().length < 2) {
-        newErrors.firstName = "First name must be at least 2 characters"
+        newErrors.firstName = 'First name must be at least 2 characters';
       }
 
       if (!formData.lastName?.trim()) {
-        newErrors.lastName = "Last name is required"
+        newErrors.lastName = 'Last name is required';
       } else if (formData.lastName.trim().length < 2) {
-        newErrors.lastName = "Last name must be at least 2 characters"
+        newErrors.lastName = 'Last name must be at least 2 characters';
       }
     } else {
       // Company validation
       if (!formData.companyName?.trim()) {
-        newErrors.companyName = "Company name is required"
+        newErrors.companyName = 'Company name is required';
       } else if (formData.companyName.trim().length < 2) {
-        newErrors.companyName = "Company name must be at least 2 characters"
+        newErrors.companyName = 'Company name must be at least 2 characters';
       }
 
       if (!formData.industry) {
-        newErrors.industry = "Please select an industry"
+        newErrors.industry = 'Please select an industry';
       }
 
       if (!formData.description?.trim()) {
-        newErrors.description = "Company description is required"
+        newErrors.description = 'Company description is required';
       } else if (formData.description.trim().length < 10) {
-        newErrors.description = "Description must be at least 10 characters"
+        newErrors.description = 'Description must be at least 10 characters';
       }
 
       if (!formData.size) {
-        newErrors.size = "Please select company size"
+        newErrors.size = 'Please select company size';
       }
 
       if (!formData.establishmentYear) {
-        newErrors.establishmentYear = "Establishment year is required"
-      } else if (!/^\d{4}$/.test(formData.establishmentYear) || 
-                 parseInt(formData.establishmentYear) < 1800 || 
-                 parseInt(formData.establishmentYear) > new Date().getFullYear()) {
-        newErrors.establishmentYear = "Please enter a valid year between 1800 and current year"
+        newErrors.establishmentYear = 'Establishment year is required';
+      } else if (
+        !/^\d{4}$/.test(formData.establishmentYear) ||
+        parseInt(formData.establishmentYear) < 1800 ||
+        parseInt(formData.establishmentYear) > new Date().getFullYear()
+      ) {
+        newErrors.establishmentYear = 'Please enter a valid year between 1800 and current year';
       }
 
       if (!formData.contactPersonName?.trim()) {
-        newErrors.contactPersonName = "Representative name is required"
+        newErrors.contactPersonName = 'Representative name is required';
       } else if (formData.contactPersonName.trim().length < 2) {
-        newErrors.contactPersonName = "Representative name must be at least 2 characters"
+        newErrors.contactPersonName = 'Representative name must be at least 2 characters';
       }
 
       if (!formData.contactPersonPosition?.trim()) {
-        newErrors.contactPersonPosition = "Position is required"
+        newErrors.contactPersonPosition = 'Position is required';
       } else if (formData.contactPersonPosition.trim().length < 2) {
-        newErrors.contactPersonPosition = "Position must be at least 2 characters"
+        newErrors.contactPersonPosition = 'Position must be at least 2 characters';
       }
 
       if (!formData.contactPhone?.trim()) {
-        newErrors.contactPhone = "Contact phone is required"
-      } else if (!/^\d{10}$/.test(formData.contactPhone.replace(/\D/g, ""))) {
-        newErrors.contactPhone = "Contact phone must be exactly 10 digits"
+        newErrors.contactPhone = 'Contact phone is required';
+      } else if (!/^\d{10}$/.test(formData.contactPhone.replace(/\D/g, ''))) {
+        newErrors.contactPhone = 'Contact phone must be exactly 10 digits';
       }
 
       if (formData.website && !/^https?:\/\/.+/.test(formData.website)) {
-        newErrors.website = "Please enter a valid website URL"
+        newErrors.website = 'Please enter a valid website URL';
       }
 
       if (formData.linkedin && !/^https?:\/\/.+/.test(formData.linkedin)) {
-        newErrors.linkedin = "Please enter a valid LinkedIn URL"
+        newErrors.linkedin = 'Please enter a valid LinkedIn URL';
       }
     }
 
     // Common validation for both types
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!formData.email?.trim()) {
-      newErrors.email = "Email is required"
+      newErrors.email = 'Email is required';
     } else if (!emailRegex.test(formData.email)) {
-      newErrors.email = "Please enter a valid email address"
+      newErrors.email = 'Please enter a valid email address';
     }
 
-    if (accountType === "jobseeker") {
-      const phoneRegex = /^\d{10}$/
+    if (accountType === 'jobseeker') {
+      const phoneRegex = /^\d{10}$/;
       if (!formData.phone?.trim()) {
-        newErrors.phone = "Phone number is required"
-      } else if (!phoneRegex.test(formData.phone.replace(/\D/g, ""))) {
-        newErrors.phone = "Phone number must be exactly 10 digits"
+        newErrors.phone = 'Phone number is required';
+      } else if (!phoneRegex.test(formData.phone.replace(/\D/g, ''))) {
+        newErrors.phone = 'Phone number must be exactly 10 digits';
       }
     } else {
-      const phoneRegex = /^\d{10}$/
+      const phoneRegex = /^\d{10}$/;
       if (!formData.phone?.trim()) {
-        newErrors.phone = "Company phone number is required"
-      } else if (!phoneRegex.test(formData.phone.replace(/\D/g, ""))) {
-        newErrors.phone = "Company phone number must be exactly 10 digits"
+        newErrors.phone = 'Company phone number is required';
+      } else if (!phoneRegex.test(formData.phone.replace(/\D/g, ''))) {
+        newErrors.phone = 'Company phone number must be exactly 10 digits';
       }
     }
 
     if (!formData.password) {
-      newErrors.password = "Password is required"
+      newErrors.password = 'Password is required';
     } else if (formData.password.length < 8) {
-      newErrors.password = "Password must be at least 8 characters"
+      newErrors.password = 'Password must be at least 8 characters';
     } else if (!/[a-zA-Z]/.test(formData.password) || !/[0-9]/.test(formData.password)) {
-      newErrors.password = "Password must contain both letters and numbers"
+      newErrors.password = 'Password must contain both letters and numbers';
     }
 
     if (!formData.confirmPassword) {
-      newErrors.confirmPassword = "Please confirm your password"
+      newErrors.confirmPassword = 'Please confirm your password';
     } else if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = "Passwords do not match"
+      newErrors.confirmPassword = 'Passwords do not match';
     }
 
     if (!formData.terms) {
-      newErrors.terms = "You must agree to the terms and conditions"
+      newErrors.terms = 'You must agree to the terms and conditions';
     }
 
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
-  }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   const handleInputChange = (field, value) => {
-    setFormData(prev => ({ ...prev, [field]: value }))
+    setFormData((prev) => ({ ...prev, [field]: value }));
     // Clear error when user starts typing
     if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: "" }))
+      setErrors((prev) => ({ ...prev, [field]: '' }));
     }
-  }
+  };
 
   const handlePhoneChange = (value) => {
     // Only allow numbers and limit to 10 digits
-    const numericValue = value.replace(/\D/g, "").slice(0, 10)
-    handleInputChange("phone", numericValue)
-  }
+    const numericValue = value.replace(/\D/g, '').slice(0, 10);
+    handleInputChange('phone', numericValue);
+  };
 
   const handleContactPhoneChange = (value) => {
     // Only allow numbers and limit to 10 digits
-    const numericValue = value.replace(/\D/g, "").slice(0, 10)
-    handleInputChange("contactPhone", numericValue)
-  }
+    const numericValue = value.replace(/\D/g, '').slice(0, 10);
+    handleInputChange('contactPhone', numericValue);
+  };
 
   const handleLogoUpload = (event) => {
-    const file = event.target.files[0]
+    const file = event.target.files[0];
     if (file) {
       // Validate file type
       if (!file.type.match(/image\/(jpeg|jpg|png)/)) {
-        setErrors(prev => ({ ...prev, logo: "Please upload a valid image file (JPG, PNG)" }))
-        return
+        setErrors((prev) => ({ ...prev, logo: 'Please upload a valid image file (JPG, PNG)' }));
+        return;
       }
-      
+
       // Validate file size (2MB)
       if (file.size > 2 * 1024 * 1024) {
-        setErrors(prev => ({ ...prev, logo: "File size must be less than 2MB" }))
-        return
+        setErrors((prev) => ({ ...prev, logo: 'File size must be less than 2MB' }));
+        return;
       }
-      
-      setLogoFile(file)
-      setLogoPreview(URL.createObjectURL(file))
-      setErrors(prev => ({ ...prev, logo: "" }))
+
+      setLogoFile(file);
+      setLogoPreview(URL.createObjectURL(file));
+      setErrors((prev) => ({ ...prev, logo: '' }));
     }
-  }
+  };
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
-    
+    e.preventDefault();
+
     if (!validateForm()) {
-      return
+      return;
     }
 
-    setIsSubmitting(true)
-    
+    setIsSubmitting(true);
+
     try {
       // Prepare data for API based on account type
-      const signupData = accountType === "jobseeker" 
-        ? {
-            userType: "JOB_SEEKER",
-            firstName: formData.firstName.trim(),
-            lastName: formData.lastName.trim(),
-            email: formData.email.trim().toLowerCase(),
-            password: formData.password,
-            phone: formData.phone.replace(/\D/g, ""),
-            confirmPassword: formData.confirmPassword,
-            terms: formData.terms
-          }
-        : {
-            userType: "COMPANY",
-            email: formData.email.trim().toLowerCase(),
-            password: formData.password,
-            confirmPassword: formData.confirmPassword,
-            phone: formData.phone.replace(/\D/g, ""),
-            companyName: formData.companyName.trim(),
-            industry: formData.industry,
-            size: formData.size,
-            establishmentYear: parseInt(formData.establishmentYear),
-            description: formData.description.trim(),
-            address: formData.address.trim(),
-            website: formData.website?.trim() || undefined,
-            linkedin: formData.linkedin?.trim() || undefined,
-            // IMPORTANT: Map UI field names to what backend expects
-            fullName: formData.contactPersonName.trim(), // UI contactPersonName -> backend fullName
-            position: formData.contactPersonPosition.trim(), // UI contactPersonPosition -> backend position
-            contactPhone: formData.contactPhone.replace(/\D/g, ""),
-            terms: formData.terms
-          };
+      const signupData =
+        accountType === 'jobseeker'
+          ? {
+              userType: 'JOB_SEEKER',
+              firstName: formData.firstName.trim(),
+              lastName: formData.lastName.trim(),
+              email: formData.email.trim().toLowerCase(),
+              password: formData.password,
+              phone: formData.phone.replace(/\D/g, ''),
+              confirmPassword: formData.confirmPassword,
+              terms: formData.terms,
+            }
+          : {
+              userType: 'COMPANY',
+              email: formData.email.trim().toLowerCase(),
+              password: formData.password,
+              confirmPassword: formData.confirmPassword,
+              phone: formData.phone.replace(/\D/g, ''),
+              companyName: formData.companyName.trim(),
+              industry: formData.industry,
+              size: formData.size,
+              establishmentYear: parseInt(formData.establishmentYear),
+              description: formData.description.trim(),
+              address: formData.address.trim(),
+              website: formData.website?.trim() || undefined,
+              linkedin: formData.linkedin?.trim() || undefined,
+              // IMPORTANT: Map UI field names to what backend expects
+              fullName: formData.contactPersonName.trim(), // UI contactPersonName -> backend fullName
+              position: formData.contactPersonPosition.trim(), // UI contactPersonPosition -> backend position
+              contactPhone: formData.contactPhone.replace(/\D/g, ''),
+              terms: formData.terms,
+            };
 
       console.log('Sending signup data:', JSON.stringify(signupData, null, 2));
       console.log('API Base URL:', API_BASE_URL);
 
       // Call the actual API
       const response = await apiService.signup(signupData);
-      
+
       if (response.success) {
+        // Store user data in localStorage for login retrieval
+        const userData =
+          accountType === 'jobseeker'
+            ? {
+                firstName: formData.firstName.trim(),
+                lastName: formData.lastName.trim(),
+                email: formData.email.trim().toLowerCase(),
+                phone: formData.phone.replace(/\D/g, ''),
+                role: 'JOB_SEEKER',
+              }
+            : {
+                companyName: formData.companyName.trim(),
+                email: formData.email.trim().toLowerCase(),
+                phone: formData.phone.replace(/\D/g, ''),
+                contactPersonName: formData.contactPersonName.trim(),
+                role: 'COMPANY',
+              };
+
+        localStorage.setItem(
+          `userData_${formData.email.trim().toLowerCase()}`,
+          JSON.stringify(userData)
+        );
+
         // Success - redirect to login
-        navigate("/login", { 
-          state: { 
+        navigate('/login', {
+          state: {
             accountType: accountType,
-            message: response.message || "Account created successfully! Please sign in." 
-          } 
+            message: response.message || 'Account created successfully! Please sign in.',
+          },
         });
       } else {
-        throw new Error(response.message || "Signup failed");
+        throw new Error(response.message || 'Signup failed');
       }
     } catch (error) {
-      console.error("Signup error:", error);
-      
+      console.error('Signup error:', error);
+
       // Handle specific error cases
-      if (error.message.includes("already exists")) {
-        setErrors({ 
-          email: "An account with this email already exists. Please use a different email or try logging in."
+      if (error.message.includes('already exists')) {
+        setErrors({
+          email:
+            'An account with this email already exists. Please use a different email or try logging in.',
         });
-      } else if (error.message.includes("validation")) {
-        setErrors({ 
-          general: "Please check your information and try again. Make sure all required fields are filled correctly."
+      } else if (error.message.includes('validation')) {
+        setErrors({
+          general:
+            'Please check your information and try again. Make sure all required fields are filled correctly.',
         });
-      } else if (error.message.includes("Failed to fetch")) {
-        setErrors({ 
-          general: "Cannot connect to server. Please check if the backend server is running."
+      } else if (error.message.includes('Failed to fetch')) {
+        setErrors({
+          general: 'Cannot connect to server. Please check if the backend server is running.',
         });
       } else {
-        setErrors({ 
-          general: error.message || "An error occurred while creating your account. Please try again." 
+        setErrors({
+          general:
+            error.message || 'An error occurred while creating your account. Please try again.',
         });
       }
     } finally {
       setIsSubmitting(false);
     }
-  }
+  };
 
   const renderJobSeekerForm = () => (
     <div className="space-y-6">
@@ -418,12 +442,12 @@ export default function SignUpPage() {
               id="firstName"
               type="text"
               placeholder="John"
-              value={formData.firstName || ""}
-              onChange={(e) => handleInputChange("firstName", e.target.value)}
+              value={formData.firstName || ''}
+              onChange={(e) => handleInputChange('firstName', e.target.value)}
               className={`h-12 rounded-xl border-2 transition-all duration-300 ${
-                errors.firstName 
-                  ? "border-red-300 focus:border-red-500 focus:ring-red-200" 
-                  : "border-border/50 focus:border-primary/50 focus:ring-primary/20"
+                errors.firstName
+                  ? 'border-red-300 focus:border-red-500 focus:ring-red-200'
+                  : 'border-border/50 focus:border-primary/50 focus:ring-primary/20'
               }`}
             />
             {errors.firstName && (
@@ -442,12 +466,12 @@ export default function SignUpPage() {
               id="lastName"
               type="text"
               placeholder="Doe"
-              value={formData.lastName || ""}
-              onChange={(e) => handleInputChange("lastName", e.target.value)}
+              value={formData.lastName || ''}
+              onChange={(e) => handleInputChange('lastName', e.target.value)}
               className={`h-12 rounded-xl border-2 transition-all duration-300 ${
-                errors.lastName 
-                  ? "border-red-300 focus:border-red-500 focus:ring-red-200" 
-                  : "border-border/50 focus:border-primary/50 focus:ring-primary/20"
+                errors.lastName
+                  ? 'border-red-300 focus:border-red-500 focus:ring-red-200'
+                  : 'border-border/50 focus:border-primary/50 focus:ring-primary/20'
               }`}
             />
             {errors.lastName && (
@@ -469,11 +493,11 @@ export default function SignUpPage() {
             type="email"
             placeholder="john.doe@example.com"
             value={formData.email}
-            onChange={(e) => handleInputChange("email", e.target.value)}
+            onChange={(e) => handleInputChange('email', e.target.value)}
             className={`h-12 rounded-xl border-2 transition-all duration-300 ${
-              errors.email 
-                ? "border-red-300 focus:border-red-500 focus:ring-red-200" 
-                : "border-border/50 focus:border-primary/50 focus:ring-primary/20"
+              errors.email
+                ? 'border-red-300 focus:border-red-500 focus:ring-red-200'
+                : 'border-border/50 focus:border-primary/50 focus:ring-primary/20'
             }`}
           />
           {errors.email && (
@@ -497,9 +521,9 @@ export default function SignUpPage() {
             onChange={(e) => handlePhoneChange(e.target.value)}
             maxLength={10}
             className={`h-12 rounded-xl border-2 transition-all duration-300 ${
-              errors.phone 
-                ? "border-red-300 focus:border-red-500 focus:ring-red-200" 
-                : "border-border/50 focus:border-primary/50 focus:ring-primary/20"
+              errors.phone
+                ? 'border-red-300 focus:border-red-500 focus:ring-red-200'
+                : 'border-border/50 focus:border-primary/50 focus:ring-primary/20'
             }`}
           />
           {errors.phone && (
@@ -518,14 +542,14 @@ export default function SignUpPage() {
           <div className="relative">
             <Input
               id="password"
-              type={showPassword ? "text" : "password"}
+              type={showPassword ? 'text' : 'password'}
               placeholder="Create a strong password"
               value={formData.password}
-              onChange={(e) => handleInputChange("password", e.target.value)}
+              onChange={(e) => handleInputChange('password', e.target.value)}
               className={`h-12 rounded-xl border-2 pr-12 transition-all duration-300 ${
-                errors.password 
-                  ? "border-red-300 focus:border-red-500 focus:ring-red-200" 
-                  : "border-border/50 focus:border-primary/50 focus:ring-primary/20"
+                errors.password
+                  ? 'border-red-300 focus:border-red-500 focus:ring-red-200'
+                  : 'border-border/50 focus:border-primary/50 focus:ring-primary/20'
               }`}
             />
             <button
@@ -533,20 +557,22 @@ export default function SignUpPage() {
               onClick={() => setShowPassword(!showPassword)}
               className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
             >
-              {showPassword ? "👁️" : "👁️‍🗨️"}
+              {showPassword ? '👁️' : '👁️‍🗨️'}
             </button>
           </div>
-          
+
           {/* Password Strength Indicator */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-xs text-muted-foreground">Password strength:</span>
-              <span className={`text-xs font-medium ${getPasswordStrengthText(passwordStrength).color}`}>
+              <span
+                className={`text-xs font-medium ${getPasswordStrengthText(passwordStrength).color}`}
+              >
                 {getPasswordStrengthText(passwordStrength).text}
               </span>
             </div>
             <div className="w-full bg-muted rounded-full h-2">
-              <div 
+              <div
                 className={`h-2 rounded-full transition-all duration-300 ${getPasswordStrengthText(passwordStrength).bgColor}`}
                 style={{ width: `${(passwordStrength / 5) * 100}%` }}
               />
@@ -555,7 +581,7 @@ export default function SignUpPage() {
               Must be at least 8 characters with letters and numbers
             </p>
           </div>
-          
+
           {errors.password && (
             <p className="text-sm text-red-500 flex items-center space-x-1">
               <span>⚠</span>
@@ -572,14 +598,14 @@ export default function SignUpPage() {
           <div className="relative">
             <Input
               id="confirmPassword"
-              type={showConfirmPassword ? "text" : "password"}
+              type={showConfirmPassword ? 'text' : 'password'}
               placeholder="Confirm your password"
               value={formData.confirmPassword}
-              onChange={(e) => handleInputChange("confirmPassword", e.target.value)}
+              onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
               className={`h-12 rounded-xl border-2 pr-12 transition-all duration-300 ${
-                errors.confirmPassword 
-                  ? "border-red-300 focus:border-red-500 focus:ring-red-200" 
-                  : "border-border/50 focus:border-primary/50 focus:ring-primary/20"
+                errors.confirmPassword
+                  ? 'border-red-300 focus:border-red-500 focus:ring-red-200'
+                  : 'border-border/50 focus:border-primary/50 focus:ring-primary/20'
               }`}
             />
             <button
@@ -587,7 +613,7 @@ export default function SignUpPage() {
               onClick={() => setShowConfirmPassword(!showConfirmPassword)}
               className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
             >
-              {showConfirmPassword ? "👁️" : "👁️‍🗨️"}
+              {showConfirmPassword ? '👁️' : '👁️‍🗨️'}
             </button>
           </div>
           {errors.confirmPassword && (
@@ -604,16 +630,16 @@ export default function SignUpPage() {
             <Checkbox
               id="terms"
               checked={formData.terms}
-              onCheckedChange={(checked) => handleInputChange("terms", checked)}
+              onCheckedChange={(checked) => handleInputChange('terms', checked)}
               className="mt-1"
             />
             <div className="space-y-1">
               <Label htmlFor="terms" className="text-sm font-medium leading-relaxed">
-                I agree to the{" "}
+                I agree to the{' '}
                 <Link to="/terms" className="text-primary hover:underline font-semibold">
                   Terms and Conditions
-                </Link>{" "}
-                and{" "}
+                </Link>{' '}
+                and{' '}
                 <Link to="/privacy" className="text-primary hover:underline font-semibold">
                   Privacy Policy
                 </Link>
@@ -640,7 +666,7 @@ export default function SignUpPage() {
               <span>Creating Account...</span>
             </div>
           ) : (
-            "Create Jobseeker Account"
+            'Create Jobseeker Account'
           )}
         </Button>
 
@@ -651,7 +677,7 @@ export default function SignUpPage() {
         )}
       </form>
     </div>
-  )
+  );
 
   const renderCompanyForm = () => (
     <div className="space-y-8">
@@ -676,7 +702,7 @@ export default function SignUpPage() {
             </div>
             <h3 className="text-xl font-semibold text-foreground">Account Credentials</h3>
           </div>
-          
+
           <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="companyEmail" className="text-sm font-semibold">
@@ -687,11 +713,11 @@ export default function SignUpPage() {
                 type="email"
                 placeholder="company@example.com"
                 value={formData.email}
-                onChange={(e) => handleInputChange("email", e.target.value)}
+                onChange={(e) => handleInputChange('email', e.target.value)}
                 className={`h-12 rounded-xl border-2 transition-all duration-300 ${
-                  errors.email 
-                    ? "border-red-300 focus:border-red-500 focus:ring-red-200" 
-                    : "border-border/50 focus:border-secondary/50 focus:ring-secondary/20"
+                  errors.email
+                    ? 'border-red-300 focus:border-red-500 focus:ring-red-200'
+                    : 'border-border/50 focus:border-secondary/50 focus:ring-secondary/20'
                 }`}
               />
               {errors.email && (
@@ -709,14 +735,14 @@ export default function SignUpPage() {
               <div className="relative">
                 <Input
                   id="companyPassword"
-                  type={showPassword ? "text" : "password"}
+                  type={showPassword ? 'text' : 'password'}
                   placeholder="Create a strong password"
                   value={formData.password}
-                  onChange={(e) => handleInputChange("password", e.target.value)}
+                  onChange={(e) => handleInputChange('password', e.target.value)}
                   className={`h-12 rounded-xl border-2 pr-12 transition-all duration-300 ${
-                    errors.password 
-                      ? "border-red-300 focus:border-red-500 focus:ring-red-200" 
-                      : "border-border/50 focus:border-secondary/50 focus:ring-secondary/20"
+                    errors.password
+                      ? 'border-red-300 focus:border-red-500 focus:ring-red-200'
+                      : 'border-border/50 focus:border-secondary/50 focus:ring-secondary/20'
                   }`}
                 />
                 <button
@@ -724,20 +750,22 @@ export default function SignUpPage() {
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  {showPassword ? "👁️" : "👁️‍🗨️"}
+                  {showPassword ? '👁️' : '👁️‍🗨️'}
                 </button>
               </div>
-              
+
               {/* Password Strength Indicator */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-muted-foreground">Password strength:</span>
-                  <span className={`text-xs font-medium ${getPasswordStrengthText(passwordStrength).color}`}>
+                  <span
+                    className={`text-xs font-medium ${getPasswordStrengthText(passwordStrength).color}`}
+                  >
                     {getPasswordStrengthText(passwordStrength).text}
                   </span>
                 </div>
                 <div className="w-full bg-muted rounded-full h-2">
-                  <div 
+                  <div
                     className={`h-2 rounded-full transition-all duration-300 ${getPasswordStrengthText(passwordStrength).bgColor}`}
                     style={{ width: `${(passwordStrength / 5) * 100}%` }}
                   />
@@ -746,7 +774,7 @@ export default function SignUpPage() {
                   Must be at least 8 characters with letters and numbers
                 </p>
               </div>
-              
+
               {errors.password && (
                 <p className="text-sm text-red-500 flex items-center space-x-1">
                   <span>⚠</span>
@@ -762,14 +790,14 @@ export default function SignUpPage() {
               <div className="relative">
                 <Input
                   id="companyConfirmPassword"
-                  type={showConfirmPassword ? "text" : "password"}
+                  type={showConfirmPassword ? 'text' : 'password'}
                   placeholder="Confirm your password"
                   value={formData.confirmPassword}
-                  onChange={(e) => handleInputChange("confirmPassword", e.target.value)}
+                  onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
                   className={`h-12 rounded-xl border-2 pr-12 transition-all duration-300 ${
-                    errors.confirmPassword 
-                      ? "border-red-300 focus:border-red-500 focus:ring-red-200" 
-                      : "border-border/50 focus:border-secondary/50 focus:ring-secondary/20"
+                    errors.confirmPassword
+                      ? 'border-red-300 focus:border-red-500 focus:ring-red-200'
+                      : 'border-border/50 focus:border-secondary/50 focus:ring-secondary/20'
                   }`}
                 />
                 <button
@@ -777,7 +805,7 @@ export default function SignUpPage() {
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                   className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  {showConfirmPassword ? "👁️" : "👁️‍🗨️"}
+                  {showConfirmPassword ? '👁️' : '👁️‍🗨️'}
                 </button>
               </div>
               {errors.confirmPassword && (
@@ -798,7 +826,7 @@ export default function SignUpPage() {
             </div>
             <h3 className="text-xl font-semibold text-foreground">Company Information</h3>
           </div>
-          
+
           <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="companyName" className="text-sm font-semibold">
@@ -809,11 +837,11 @@ export default function SignUpPage() {
                 type="text"
                 placeholder="Your Company Name"
                 value={formData.companyName}
-                onChange={(e) => handleInputChange("companyName", e.target.value)}
+                onChange={(e) => handleInputChange('companyName', e.target.value)}
                 className={`h-12 rounded-xl border-2 transition-all duration-300 ${
-                  errors.companyName 
-                    ? "border-red-300 focus:border-red-500 focus:ring-red-200" 
-                    : "border-border/50 focus:border-secondary/50 focus:ring-secondary/20"
+                  errors.companyName
+                    ? 'border-red-300 focus:border-red-500 focus:ring-red-200'
+                    : 'border-border/50 focus:border-secondary/50 focus:ring-secondary/20'
                 }`}
               />
               {errors.companyName && (
@@ -832,11 +860,11 @@ export default function SignUpPage() {
                 <select
                   id="industry"
                   value={formData.industry}
-                  onChange={(e) => handleInputChange("industry", e.target.value)}
+                  onChange={(e) => handleInputChange('industry', e.target.value)}
                   className={`h-12 rounded-xl border-2 px-3 transition-all duration-300 bg-background ${
-                    errors.industry 
-                      ? "border-red-300 focus:border-red-500 focus:ring-red-200" 
-                      : "border-border/50 focus:border-secondary/50 focus:ring-secondary/20"
+                    errors.industry
+                      ? 'border-red-300 focus:border-red-500 focus:ring-red-200'
+                      : 'border-border/50 focus:border-secondary/50 focus:ring-secondary/20'
                   }`}
                 >
                   <option value="">Select Industry</option>
@@ -861,11 +889,11 @@ export default function SignUpPage() {
                 <select
                   id="size"
                   value={formData.size}
-                  onChange={(e) => handleInputChange("size", e.target.value)}
+                  onChange={(e) => handleInputChange('size', e.target.value)}
                   className={`h-12 rounded-xl border-2 px-3 transition-all duration-300 bg-background ${
-                    errors.size 
-                      ? "border-red-300 focus:border-red-500 focus:ring-red-200" 
-                      : "border-border/50 focus:border-secondary/50 focus:ring-secondary/20"
+                    errors.size
+                      ? 'border-red-300 focus:border-red-500 focus:ring-red-200'
+                      : 'border-border/50 focus:border-secondary/50 focus:ring-secondary/20'
                   }`}
                 >
                   <option value="">Select Size</option>
@@ -892,12 +920,12 @@ export default function SignUpPage() {
                 id="description"
                 placeholder="Brief description of your company, mission, and values..."
                 value={formData.description}
-                onChange={(e) => handleInputChange("description", e.target.value)}
+                onChange={(e) => handleInputChange('description', e.target.value)}
                 rows={4}
                 className={`w-full rounded-xl border-2 p-3 transition-all duration-300 resize-none bg-background ${
-                  errors.description 
-                    ? "border-red-300 focus:border-red-500 focus:ring-red-200" 
-                    : "border-border/50 focus:border-secondary/50 focus:ring-secondary/20"
+                  errors.description
+                    ? 'border-red-300 focus:border-red-500 focus:ring-red-200'
+                    : 'border-border/50 focus:border-secondary/50 focus:ring-secondary/20'
                 }`}
               />
               {errors.description && (
@@ -920,11 +948,11 @@ export default function SignUpPage() {
                   min="1800"
                   max={new Date().getFullYear()}
                   value={formData.establishmentYear}
-                  onChange={(e) => handleInputChange("establishmentYear", e.target.value)}
+                  onChange={(e) => handleInputChange('establishmentYear', e.target.value)}
                   className={`h-12 rounded-xl border-2 transition-all duration-300 ${
-                    errors.establishmentYear 
-                      ? "border-red-300 focus:border-red-500 focus:ring-red-200" 
-                      : "border-border/50 focus:border-secondary/50 focus:ring-secondary/20"
+                    errors.establishmentYear
+                      ? 'border-red-300 focus:border-red-500 focus:ring-red-200'
+                      : 'border-border/50 focus:border-secondary/50 focus:ring-secondary/20'
                   }`}
                 />
                 {errors.establishmentYear && (
@@ -947,9 +975,9 @@ export default function SignUpPage() {
                   onChange={(e) => handlePhoneChange(e.target.value)}
                   maxLength={10}
                   className={`h-12 rounded-xl border-2 transition-all duration-300 ${
-                    errors.phone 
-                      ? "border-red-300 focus:border-red-500 focus:ring-red-200" 
-                      : "border-border/50 focus:border-secondary/50 focus:ring-secondary/20"
+                    errors.phone
+                      ? 'border-red-300 focus:border-red-500 focus:ring-red-200'
+                      : 'border-border/50 focus:border-secondary/50 focus:ring-secondary/20'
                   }`}
                 />
                 {errors.phone && (
@@ -970,11 +998,11 @@ export default function SignUpPage() {
                 type="text"
                 placeholder="123 Business St, City, State, ZIP"
                 value={formData.address}
-                onChange={(e) => handleInputChange("address", e.target.value)}
+                onChange={(e) => handleInputChange('address', e.target.value)}
                 className={`h-12 rounded-xl border-2 transition-all duration-300 ${
-                  errors.address 
-                    ? "border-red-300 focus:border-red-500 focus:ring-red-200" 
-                    : "border-border/50 focus:border-secondary/50 focus:ring-secondary/20"
+                  errors.address
+                    ? 'border-red-300 focus:border-red-500 focus:ring-red-200'
+                    : 'border-border/50 focus:border-secondary/50 focus:ring-secondary/20'
                 }`}
               />
               {errors.address && (
@@ -995,7 +1023,7 @@ export default function SignUpPage() {
             </div>
             <h3 className="text-xl font-semibold text-foreground">Representative Details</h3>
           </div>
-          
+
           <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -1007,11 +1035,11 @@ export default function SignUpPage() {
                   type="text"
                   placeholder="John Doe"
                   value={formData.contactPersonName}
-                  onChange={(e) => handleInputChange("contactPersonName", e.target.value)}
+                  onChange={(e) => handleInputChange('contactPersonName', e.target.value)}
                   className={`h-12 rounded-xl border-2 transition-all duration-300 ${
-                    errors.contactPersonName 
-                      ? "border-red-300 focus:border-red-500 focus:ring-red-200" 
-                      : "border-border/50 focus:border-secondary/50 focus:ring-secondary/20"
+                    errors.contactPersonName
+                      ? 'border-red-300 focus:border-red-500 focus:ring-red-200'
+                      : 'border-border/50 focus:border-secondary/50 focus:ring-secondary/20'
                   }`}
                 />
                 {errors.contactPersonName && (
@@ -1031,11 +1059,11 @@ export default function SignUpPage() {
                   type="text"
                   placeholder="HR Manager"
                   value={formData.contactPersonPosition}
-                  onChange={(e) => handleInputChange("contactPersonPosition", e.target.value)}
+                  onChange={(e) => handleInputChange('contactPersonPosition', e.target.value)}
                   className={`h-12 rounded-xl border-2 transition-all duration-300 ${
-                    errors.contactPersonPosition 
-                      ? "border-red-300 focus:border-red-500 focus:ring-red-200" 
-                      : "border-border/50 focus:border-secondary/50 focus:ring-secondary/20"
+                    errors.contactPersonPosition
+                      ? 'border-red-300 focus:border-red-500 focus:ring-red-200'
+                      : 'border-border/50 focus:border-secondary/50 focus:ring-secondary/20'
                   }`}
                 />
                 {errors.contactPersonPosition && (
@@ -1059,9 +1087,9 @@ export default function SignUpPage() {
                 onChange={(e) => handleContactPhoneChange(e.target.value)}
                 maxLength={10}
                 className={`h-12 rounded-xl border-2 transition-all duration-300 ${
-                  errors.contactPhone 
-                    ? "border-red-300 focus:border-red-500 focus:ring-red-200" 
-                    : "border-border/50 focus:border-secondary/50 focus:ring-secondary/20"
+                  errors.contactPhone
+                    ? 'border-red-300 focus:border-red-500 focus:ring-red-200'
+                    : 'border-border/50 focus:border-secondary/50 focus:ring-secondary/20'
                 }`}
               />
               {errors.contactPhone && (
@@ -1082,7 +1110,7 @@ export default function SignUpPage() {
             </div>
             <h3 className="text-xl font-semibold text-foreground">Online Presence (Optional)</h3>
           </div>
-          
+
           <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="website" className="text-sm font-semibold">
@@ -1093,11 +1121,11 @@ export default function SignUpPage() {
                 type="url"
                 placeholder="https://www.yourcompany.com"
                 value={formData.website}
-                onChange={(e) => handleInputChange("website", e.target.value)}
+                onChange={(e) => handleInputChange('website', e.target.value)}
                 className={`h-12 rounded-xl border-2 transition-all duration-300 ${
-                  errors.website 
-                    ? "border-red-300 focus:border-red-500 focus:ring-red-200" 
-                    : "border-border/50 focus:border-secondary/50 focus:ring-secondary/20"
+                  errors.website
+                    ? 'border-red-300 focus:border-red-500 focus:ring-red-200'
+                    : 'border-border/50 focus:border-secondary/50 focus:ring-secondary/20'
                 }`}
               />
               {errors.website && (
@@ -1117,11 +1145,11 @@ export default function SignUpPage() {
                 type="url"
                 placeholder="https://www.linkedin.com/company/yourcompany"
                 value={formData.linkedin}
-                onChange={(e) => handleInputChange("linkedin", e.target.value)}
+                onChange={(e) => handleInputChange('linkedin', e.target.value)}
                 className={`h-12 rounded-xl border-2 transition-all duration-300 ${
-                  errors.linkedin 
-                    ? "border-red-300 focus:border-red-500 focus:ring-red-200" 
-                    : "border-border/50 focus:border-secondary/50 focus:ring-secondary/20"
+                  errors.linkedin
+                    ? 'border-red-300 focus:border-red-500 focus:ring-red-200'
+                    : 'border-border/50 focus:border-secondary/50 focus:ring-secondary/20'
                 }`}
               />
               {errors.linkedin && (
@@ -1142,7 +1170,7 @@ export default function SignUpPage() {
             </div>
             <h3 className="text-xl font-semibold text-foreground">Company Logo (Optional)</h3>
           </div>
-          
+
           <div className="space-y-4">
             <div className="border-2 border-dashed border-border/50 rounded-xl p-6 text-center hover:border-secondary/50 transition-colors duration-300">
               <input
@@ -1155,9 +1183,9 @@ export default function SignUpPage() {
               <label htmlFor="logo" className="cursor-pointer">
                 {logoPreview ? (
                   <div className="space-y-4">
-                    <img 
-                      src={logoPreview} 
-                      alt="Company logo preview" 
+                    <img
+                      src={logoPreview}
+                      alt="Company logo preview"
                       className="w-24 h-24 mx-auto rounded-xl object-cover border-2 border-border/50"
                     />
                     <p className="text-sm text-muted-foreground">Click to change logo</p>
@@ -1190,16 +1218,16 @@ export default function SignUpPage() {
             <Checkbox
               id="companyTerms"
               checked={formData.terms}
-              onCheckedChange={(checked) => handleInputChange("terms", checked)}
+              onCheckedChange={(checked) => handleInputChange('terms', checked)}
               className="mt-1"
             />
             <div className="space-y-1">
               <Label htmlFor="companyTerms" className="text-sm font-medium leading-relaxed">
-                I agree to the{" "}
+                I agree to the{' '}
                 <Link to="/terms" className="text-secondary hover:underline font-semibold">
                   Terms and Conditions
-                </Link>{" "}
-                and{" "}
+                </Link>{' '}
+                and{' '}
                 <Link to="/privacy" className="text-secondary hover:underline font-semibold">
                   Privacy Policy
                 </Link>
@@ -1226,7 +1254,7 @@ export default function SignUpPage() {
               <span>Creating Company Account...</span>
             </div>
           ) : (
-            "Create Company Account"
+            'Create Company Account'
           )}
         </Button>
 
@@ -1237,12 +1265,12 @@ export default function SignUpPage() {
         )}
       </form>
     </div>
-  )
+  );
 
   return (
     <div className="flex flex-col min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
       <Header />
-      
+
       <main className="flex-1 flex items-center justify-center py-12 px-4">
         <div className="w-full max-w-2xl">
           {/* Account Type Selector */}
@@ -1250,11 +1278,11 @@ export default function SignUpPage() {
             <div className="bg-card rounded-2xl p-2 shadow-lg border border-border/50">
               <div className="flex space-x-1">
                 <button
-                  onClick={() => setAccountType("jobseeker")}
+                  onClick={() => setAccountType('jobseeker')}
                   className={`px-6 py-3 rounded-xl font-semibold transition-all duration-300 ${
-                    accountType === "jobseeker"
-                      ? "bg-primary text-primary-foreground shadow-lg scale-105"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                    accountType === 'jobseeker'
+                      ? 'bg-primary text-primary-foreground shadow-lg scale-105'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
                   }`}
                 >
                   <div className="flex items-center space-x-2">
@@ -1263,11 +1291,11 @@ export default function SignUpPage() {
                   </div>
                 </button>
                 <button
-                  onClick={() => setAccountType("company")}
+                  onClick={() => setAccountType('company')}
                   className={`px-6 py-3 rounded-xl font-semibold transition-all duration-300 ${
-                    accountType === "company"
-                      ? "bg-secondary text-secondary-foreground shadow-lg scale-105"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                    accountType === 'company'
+                      ? 'bg-secondary text-secondary-foreground shadow-lg scale-105'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
                   }`}
                 >
                   <div className="flex items-center space-x-2">
@@ -1282,16 +1310,16 @@ export default function SignUpPage() {
           {/* Form Card */}
           <Card className="shadow-2xl border-0 bg-white/95 backdrop-blur-sm">
             <CardContent className="p-8">
-              {accountType === "jobseeker" ? renderJobSeekerForm() : renderCompanyForm()}
+              {accountType === 'jobseeker' ? renderJobSeekerForm() : renderCompanyForm()}
             </CardContent>
           </Card>
 
           {/* Back to Login */}
           <div className="mt-8 text-center">
             <p className="text-muted-foreground">
-              Already have an account?{" "}
-              <Link 
-                to="/login" 
+              Already have an account?{' '}
+              <Link
+                to="/login"
                 className="text-primary hover:underline font-semibold hover:text-primary/80 transition-colors"
               >
                 Sign in here
@@ -1300,8 +1328,8 @@ export default function SignUpPage() {
           </div>
         </div>
       </main>
-      
+
       <Footer />
     </div>
-  )
+  );
 }

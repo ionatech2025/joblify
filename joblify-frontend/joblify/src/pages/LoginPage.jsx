@@ -1,73 +1,100 @@
-"use client"
+'use client';
 
-import { useState, useEffect } from "react"
-import { Link, useLocation, useNavigate } from "react-router-dom"
-import { Header } from "../components/Header"
-import { Footer } from "../components/Footer"
-import { Button } from "../components/ui/button"
-import { Input } from "../components/ui/input"
-import { Label } from "../components/ui/label"
-import { Checkbox } from "../components/ui/checkbox"
-import { Badge } from "../components/ui/badge"
+import { useState, useEffect } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Header } from '../components/Header';
+import { Footer } from '../components/Footer';
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
+import { Checkbox } from '../components/ui/checkbox';
+import { Badge } from '../components/ui/badge';
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [successMessage, setSuccessMessage] = useState("")
-  const [accountType, setAccountType] = useState("jobseeker")
-  const [isLoggingIn, setIsLoggingIn] = useState(false)
-  const location = useLocation()
-  const navigate = useNavigate()
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
+  const [accountType, setAccountType] = useState('jobseeker');
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const location = useLocation();
+  const navigate = useNavigate();
 
   useEffect(() => {
     // Check for reset=success in URL query params
-    const queryParams = new URLSearchParams(location.search)
-    if (queryParams.get("reset") === "success") {
-      setSuccessMessage("Your password has been successfully reset. Please log in with your new password.")
+    const queryParams = new URLSearchParams(location.search);
+    if (queryParams.get('reset') === 'success') {
+      setSuccessMessage(
+        'Your password has been successfully reset. Please log in with your new password.'
+      );
     }
-    
+
     // Check for signup success message and account type from navigation state
     if (location.state?.message) {
-      setSuccessMessage(location.state.message)
+      setSuccessMessage(location.state.message);
       if (location.state.accountType) {
-        setAccountType(location.state.accountType)
+        setAccountType(location.state.accountType);
       }
     }
-  }, [location])
+  }, [location]);
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
-    
-    if (!email || !password) return
-    
-    setIsLoggingIn(true)
-    
+    e.preventDefault();
+
+    if (!email || !password) return;
+
+    setIsLoggingIn(true);
+
     // Simulate login API call
     try {
       // Mock login logic - in real app, this would validate credentials
       // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
       // Mock user role detection based on email
-      let userRole = "JOB_SEEKER" // Default role
-      
+      let userRole = 'JOB_SEEKER'; // Default role
+
       // Simple logic to determine role (in real app, this would come from backend)
-      if (email.includes("company") || email.includes("hr") || email.includes("corp")) {
-        userRole = "COMPANY"
+      if (email.includes('company') || email.includes('hr') || email.includes('corp')) {
+        userRole = 'COMPANY';
       }
-      
-      // Redirect based on role
-      if (userRole === "COMPANY") {
-        navigate("/dashboard/company")
+
+      // Try to get user data from localStorage (from signup)
+      const storedUserData = localStorage.getItem(`userData_${email.toLowerCase()}`);
+      let userData = null;
+
+      if (storedUserData) {
+        userData = JSON.parse(storedUserData);
       } else {
-        navigate("/dashboard/jobseeker")
+        // Fallback: extract name from email for demo purposes
+        const emailName = email.split('@')[0];
+        const nameParts = emailName.split('.');
+        userData = {
+          firstName: nameParts[0]
+            ? nameParts[0].charAt(0).toUpperCase() + nameParts[0].slice(1)
+            : 'User',
+          lastName: nameParts[1]
+            ? nameParts[1].charAt(0).toUpperCase() + nameParts[1].slice(1)
+            : '',
+          email: email,
+          role: userRole,
+        };
+      }
+
+      // Store current user session
+      localStorage.setItem('currentUser', JSON.stringify(userData));
+
+      // Redirect based on role
+      if (userRole === 'COMPANY') {
+        navigate('/dashboard/company');
+      } else {
+        navigate('/dashboard/jobseeker');
       }
     } catch (error) {
-      console.error("Login error:", error)
+      console.error('Login error:', error);
     } finally {
-      setIsLoggingIn(false)
+      setIsLoggingIn(false);
     }
-  }
+  };
 
   return (
     <div className="flex flex-col min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
@@ -82,12 +109,13 @@ export default function LoginPage() {
               Welcome Back
             </h1>
             <p className="text-muted-foreground text-lg">
-              Sign in to your {accountType === "company" ? "company" : "jobseeker"} account to continue
+              Sign in to your {accountType === 'company' ? 'company' : 'jobseeker'} account to
+              continue
             </p>
             {accountType && (
               <div className="mt-3">
                 <Badge variant="outline" className="px-3 py-1 rounded-full">
-                  {accountType === "company" ? "🏢 Company Account" : "👤 Jobseeker Account"}
+                  {accountType === 'company' ? '🏢 Company Account' : '👤 Jobseeker Account'}
                 </Badge>
               </div>
             )}
@@ -103,7 +131,9 @@ export default function LoginPage() {
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-sm font-semibold">Email Address</Label>
+                <Label htmlFor="email" className="text-sm font-semibold">
+                  Email Address
+                </Label>
                 <Input
                   id="email"
                   type="email"
@@ -117,8 +147,13 @@ export default function LoginPage() {
 
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="password" className="text-sm font-semibold">Password</Label>
-                  <Link to="/forgot-password" className="text-sm text-primary hover:underline font-medium">
+                  <Label htmlFor="password" className="text-sm font-semibold">
+                    Password
+                  </Label>
+                  <Link
+                    to="/forgot-password"
+                    className="text-sm text-primary hover:underline font-medium"
+                  >
                     Forgot password?
                   </Link>
                 </div>
@@ -143,8 +178,8 @@ export default function LoginPage() {
                 </label>
               </div>
 
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 disabled={isLoggingIn}
                 className="w-full h-12 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 font-semibold text-lg"
               >
@@ -154,15 +189,18 @@ export default function LoginPage() {
                     <span>Signing In...</span>
                   </div>
                 ) : (
-                  "Sign In"
+                  'Sign In'
                 )}
               </Button>
             </form>
 
             <div className="mt-8 text-center text-sm">
               <p className="text-muted-foreground">
-                Don't have an account?{" "}
-                <Link to="/signup" className="text-primary hover:underline font-semibold hover:text-primary/80 transition-colors">
+                Don't have an account?{' '}
+                <Link
+                  to="/signup"
+                  className="text-primary hover:underline font-semibold hover:text-primary/80 transition-colors"
+                >
                   Sign up here
                 </Link>
               </p>
@@ -213,5 +251,5 @@ export default function LoginPage() {
       </main>
       <Footer />
     </div>
-  )
+  );
 }
