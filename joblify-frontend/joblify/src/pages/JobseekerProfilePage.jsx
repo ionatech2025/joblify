@@ -183,26 +183,36 @@ export default function JobseekerProfilePage() {
 
   // Load user data from localStorage on component mount
   useEffect(() => {
-    const userData = localStorageUtils.getUserData();
-    if (userData) {
+    try {
+      const userData = localStorageUtils.getUserData();
+      if (userData) {
+        setFormData((prev) => ({
+          ...prev,
+          email: userData.email || '',
+          phone: userData.phone || '',
+          address: userData.address || '',
+          city: userData.city || '',
+          state: userData.state || '',
+          zipCode: userData.zipCode || '',
+          country: userData.country || '',
+          bio: userData.bio || '',
+          profileType: userData.profileType || 'EMPLOYABLE',
+          profileVisibility: userData.profileVisibility || 'PRIVATE',
+          skills: userData.skills || [],
+        }));
+
+        if (userData.avatar) {
+          setProfileImagePreview(userData.avatar);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading user data in profile page:', error);
+      // Set default values if there's an error
       setFormData((prev) => ({
         ...prev,
-        email: userData.email || '',
-        phone: userData.phone || '',
-        address: userData.address || '',
-        city: userData.city || '',
-        state: userData.state || '',
-        zipCode: userData.zipCode || '',
-        country: userData.country || '',
-        bio: userData.bio || '',
-        profileType: userData.profileType || 'EMPLOYABLE',
-        profileVisibility: userData.profileVisibility || 'PRIVATE',
-        skills: userData.skills || [],
+        profileType: 'EMPLOYABLE',
+        profileVisibility: 'PRIVATE',
       }));
-
-      if (userData.avatar) {
-        setProfileImagePreview(userData.avatar);
-      }
     }
   }, []);
 
