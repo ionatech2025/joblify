@@ -183,8 +183,12 @@ export default function JobseekerProfilePage() {
 
   // Load user data from localStorage on component mount
   useEffect(() => {
+    console.log('Profile page: Loading user data from localStorage');
+
     try {
       const userData = localStorageUtils.getUserData();
+      console.log('Profile page: Retrieved user data:', userData);
+
       if (userData) {
         setFormData((prev) => ({
           ...prev,
@@ -204,9 +208,19 @@ export default function JobseekerProfilePage() {
         if (userData.avatar) {
           setProfileImagePreview(userData.avatar);
         }
+
+        console.log('Profile page: Successfully loaded user data into form');
+      } else {
+        console.log('Profile page: No user data found, using defaults');
+        // Set default values if no user data
+        setFormData((prev) => ({
+          ...prev,
+          profileType: 'EMPLOYABLE',
+          profileVisibility: 'PRIVATE',
+        }));
       }
     } catch (error) {
-      console.error('Error loading user data in profile page:', error);
+      console.error('Profile page: Error loading user data:', error);
       // Set default values if there's an error
       setFormData((prev) => ({
         ...prev,
@@ -439,26 +453,26 @@ export default function JobseekerProfilePage() {
 
   // Handle form submission
   const handleSubmit = async (e) => {
-    console.log('Form submission triggered');
+    console.log('Profile page: Form submission triggered');
     e.preventDefault();
 
     const isValid = validateForm();
-    console.log('Form validation result:', isValid);
+    console.log('Profile page: Form validation result:', isValid);
 
     if (!isValid) {
-      console.log('Validation failed, showing error notification');
+      console.log('Profile page: Validation failed, showing error notification');
       showNotification('error', 'Please fill in all required fields correctly.');
       return;
     }
 
-    console.log('Validation passed, starting save process');
+    console.log('Profile page: Validation passed, starting save process');
     setIsSaving(true);
 
     try {
       // Handle profile image - convert to data URL if needed
       let avatarUrl = null;
       if (profileImage) {
-        console.log('Processing profile image');
+        console.log('Profile page: Processing profile image');
         const reader = new FileReader();
         await new Promise((resolve) => {
           reader.onload = resolve;
@@ -471,7 +485,13 @@ export default function JobseekerProfilePage() {
 
       // Get current user data
       const currentUserData = localStorageUtils.getUserData();
-      console.log('Current user data:', currentUserData);
+      console.log('Profile page: Current user data:', currentUserData);
+
+      if (!currentUserData) {
+        console.error('Profile page: No current user data found, cannot save profile');
+        showNotification('error', 'User session not found. Please log in again.');
+        return;
+      }
 
       // Update user data with profile information
       const updatedUserData = {
@@ -495,27 +515,36 @@ export default function JobseekerProfilePage() {
         profileComplete: 100, // Mark profile as complete
       };
 
-      console.log('Updated user data:', updatedUserData);
+      console.log('Profile page: Updated user data:', updatedUserData);
 
       // Save to localStorage
-      localStorageUtils.setUserData(updatedUserData);
-      localStorageUtils.storeSignupData(formData.email, updatedUserData);
-      console.log('Data saved to localStorage');
+      const saveSuccess = localStorageUtils.setUserData(updatedUserData);
+      const signupSuccess = localStorageUtils.storeSignupData(formData.email, updatedUserData);
+
+      console.log('Profile page: localStorage save results:', { saveSuccess, signupSuccess });
+
+      if (!saveSuccess || !signupSuccess) {
+        console.error('Profile page: Failed to save data to localStorage');
+        showNotification('error', 'Failed to save profile data. Please try again.');
+        return;
+      }
+
+      console.log('Profile page: Data saved to localStorage successfully');
 
       // Simulate API call
       await new Promise((resolve) => setTimeout(resolve, 2000));
 
       // Show success notification
       showNotification('success', 'Profile saved successfully! Redirecting to dashboard...');
-      console.log('Success notification shown');
+      console.log('Profile page: Success notification shown');
 
       // Show success message and redirect after 3 seconds
       setTimeout(() => {
-        console.log('Redirecting to dashboard');
+        console.log('Profile page: Redirecting to dashboard');
         navigate('/dashboard/jobseeker');
       }, 3000);
     } catch (error) {
-      console.error('Error saving profile:', error);
+      console.error('Profile page: Error saving profile:', error);
       showNotification('error', 'Failed to save profile. Please try again.');
       setErrors({ general: 'An error occurred while saving your profile. Please try again.' });
     } finally {
