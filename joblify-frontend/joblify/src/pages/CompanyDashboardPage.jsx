@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../co
 import { Badge } from '../components/ui/badge';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
+import { localStorageUtils } from '../utils/localStorage';
 import {
   Building2,
   Briefcase,
@@ -66,11 +67,10 @@ export default function CompanyDashboardPage() {
   useEffect(() => {
     const fetchCompanyData = async () => {
       try {
-        const storedUser = localStorage.getItem('currentUser');
+        const userData = localStorageUtils.getUserData();
         let companyData = null;
 
-        if (storedUser) {
-          const userData = JSON.parse(storedUser);
+        if (userData) {
           console.log('Using stored user data for company:', userData);
 
           companyData = {
@@ -91,7 +91,9 @@ export default function CompanyDashboardPage() {
             website: userData.website || 'https://example.com',
             description: userData.description || 'Leading company in your industry',
           };
-        } else {
+        }
+
+        if (!companyData) {
           companyData = {
             id: 1,
             name: 'TechCorp Solutions',
@@ -284,7 +286,7 @@ export default function CompanyDashboardPage() {
 
   const handleLogout = () => {
     // Clear localStorage and navigate to login
-    localStorage.removeItem('currentUser');
+    localStorageUtils.clearUserSession();
     navigate('/login', {
       state: {
         message: 'You have been logged out successfully.',

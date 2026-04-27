@@ -9,6 +9,7 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Checkbox } from '../components/ui/checkbox';
 import { Card, CardContent } from '../components/ui/card';
+import { localStorageUtils } from '../utils/localStorage';
 
 // API service functions
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
@@ -373,10 +374,7 @@ export default function SignUpPage() {
                 role: 'COMPANY',
               };
 
-        localStorage.setItem(
-          `userData_${formData.email.trim().toLowerCase()}`,
-          JSON.stringify(userData)
-        );
+        localStorageUtils.storeSignupData(formData.email.trim().toLowerCase(), userData);
 
         // Success - redirect to login
         navigate('/login', {
