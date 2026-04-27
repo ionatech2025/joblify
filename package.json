@@ -1,4 +1,12 @@
 {
+  "name": "joblify",
+  "version": "1.0.0",
+  "description": "Job seeking platform",
+  "scripts": {
+    "build": "cd joblify-frontend/joblify && npm run build",
+    "dev": "cd joblify-frontend/joblify && npm run dev",
+    "install:frontend": "cd joblify-frontend/joblify && npm install"
+  },
   "dependencies": {
     "@prisma/client": "^7.5.0",
     "prisma": "^7.5.0"
