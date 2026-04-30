@@ -10,6 +10,55 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Checkbox } from '../components/ui/checkbox';
 import { localStorageUtils } from '../utils/localStorage';
+
+// API service functions
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+
+const apiService = {
+  async request(endpoint, options = {}) {
+    const url = `${API_BASE_URL}${endpoint}`;
+    const config = {
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers,
+      },
+      credentials: 'include',
+      ...options,
+    };
+
+    if (options.body) {
+      config.body = JSON.stringify(options.body);
+    }
+
+    try {
+      const response = await fetch(url, config);
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || `HTTP error! status: ${response.status}`);
+      }
+
+      return data;
+    } catch (error) {
+      console.error('API request failed:', error);
+      throw error;
+    }
+  },
+
+  async saveProfile(profileData) {
+    return this.request('/auth/job-seeker/profile', {
+      method: 'POST',
+      body: profileData,
+    });
+  },
+
+  async getProfile() {
+    return this.request('/jobseeker/profile', {
+      method: 'GET',
+    });
+  },
+};
+
 import {
   User,
   Briefcase,
@@ -181,53 +230,103 @@ export default function JobseekerProfilePage() {
     },
   ];
 
-  // Load user data from localStorage on component mount
+  // Load user data from API on component mount
   useEffect(() => {
-    console.log('Profile page: Loading user data from localStorage');
+    const loadProfileData = async () => {
+      console.log('Profile page: Loading user data from API');
+      setIsLoading(true);
 
-    try {
-      const userData = localStorageUtils.getUserData();
-      console.log('Profile page: Retrieved user data:', userData);
+      try {
+        // First try to fetch from API
+        const response = await apiService.getProfile();
+        console.log('Profile page: API response:', response);
 
-      if (userData) {
-        setFormData((prev) => ({
-          ...prev,
-          email: userData.email || '',
-          phone: userData.phone || '',
-          address: userData.address || '',
-          city: userData.city || '',
-          state: userData.state || '',
-          zipCode: userData.zipCode || '',
-          country: userData.country || '',
-          bio: userData.bio || '',
-          profileType: userData.profileType || 'EMPLOYABLE',
-          profileVisibility: userData.profileVisibility || 'PRIVATE',
-          skills: userData.skills || [],
-        }));
+        if (response.success && response.profile) {
+          // Profile data is nested in jobSeekerProfile
+          const userData = response.profile;
+          const profile = userData.jobSeekerProfile || {};
 
-        if (userData.avatar) {
-          setProfileImagePreview(userData.avatar);
+          setFormData((prev) => ({
+            ...prev,
+            email: userData.email || '',
+            phone: profile.phone || userData.phone || '',
+            address: profile.address || '',
+            city: profile.city || '',
+            state: profile.state || '',
+            zipCode: profile.zipCode || '',
+            country: profile.country || '',
+            bio: profile.bio || '',
+            profileType: profile.profileType || 'EMPLOYABLE',
+            profileVisibility: profile.visibility || 'PRIVATE',
+            skills: profile.skills || [],
+            education: profile.education?.length > 0 ? profile.education : prev.education,
+            experience: profile.experience?.length > 0 ? profile.experience : prev.experience,
+            certifications:
+              profile.certifications?.length > 0 ? profile.certifications : prev.certifications,
+          }));
+
+          if (profile.portfolio) {
+            setProfileImagePreview(profile.portfolio);
+          }
+
+          console.log('Profile page: Successfully loaded profile from API');
+        } else {
+          // Fall back to localStorage if API returns no profile
+          console.log('Profile page: No profile from API, falling back to localStorage');
+          const userData = localStorageUtils.getUserData();
+
+          if (userData) {
+            setFormData((prev) => ({
+              ...prev,
+              email: userData.email || '',
+              phone: userData.phone || '',
+              address: userData.address || '',
+              city: userData.city || '',
+              state: userData.state || '',
+              zipCode: userData.zipCode || '',
+              country: userData.country || '',
+              bio: userData.bio || '',
+              profileType: userData.profileType || 'EMPLOYABLE',
+              profileVisibility: userData.profileVisibility || 'PRIVATE',
+              skills: userData.skills || [],
+            }));
+
+            if (userData.avatar) {
+              setProfileImagePreview(userData.avatar);
+            }
+          }
         }
+      } catch (error) {
+        console.error('Profile page: Error loading from API:', error);
+        // Fall back to localStorage on API error
+        const userData = localStorageUtils.getUserData();
 
-        console.log('Profile page: Successfully loaded user data into form');
-      } else {
-        console.log('Profile page: No user data found, using defaults');
-        // Set default values if no user data
-        setFormData((prev) => ({
-          ...prev,
-          profileType: 'EMPLOYABLE',
-          profileVisibility: 'PRIVATE',
-        }));
+        if (userData) {
+          setFormData((prev) => ({
+            ...prev,
+            email: userData.email || '',
+            phone: userData.phone || '',
+            address: userData.address || '',
+            city: userData.city || '',
+            state: userData.state || '',
+            zipCode: userData.zipCode || '',
+            country: userData.country || '',
+            bio: userData.bio || '',
+            profileType: userData.profileType || 'EMPLOYABLE',
+            profileVisibility: userData.profileVisibility || 'PRIVATE',
+            skills: userData.skills || [],
+          }));
+
+          if (userData.avatar) {
+            setProfileImagePreview(userData.avatar);
+          }
+        }
+      } finally {
+        setIsLoading(false);
       }
-    } catch (error) {
-      console.error('Profile page: Error loading user data:', error);
-      // Set default values if there's an error
-      setFormData((prev) => ({
-        ...prev,
-        profileType: 'EMPLOYABLE',
-        profileVisibility: 'PRIVATE',
-      }));
-    }
+    };
+
+    loadProfileData();
   }, []);
 
   // Toggle section visibility
@@ -493,7 +592,38 @@ export default function JobseekerProfilePage() {
         return;
       }
 
-      // Update user data with profile information
+      // Prepare profile data for API
+      const profileData = {
+        profileType: formData.profileType,
+        bio: formData.bio,
+        skills: formData.skills,
+        education: formData.education,
+        experience: formData.experience,
+        certifications: formData.certifications,
+        portfolio: avatarUrl,
+        visibility: formData.profileVisibility,
+        // Include contact info in the profile
+        phone: formData.phone,
+        address: formData.address,
+        city: formData.city,
+        state: formData.state,
+        zipCode: formData.zipCode,
+        country: formData.country,
+      };
+
+      console.log('Profile page: Sending profile data to API:', profileData);
+
+      // Save to API first
+      const apiResponse = await apiService.saveProfile(profileData);
+      console.log('Profile page: API save response:', apiResponse);
+
+      if (!apiResponse.success) {
+        console.error('Profile page: API save failed:', apiResponse.message);
+        showNotification('error', apiResponse.message || 'Failed to save profile to server.');
+        return;
+      }
+
+      // Also save to localStorage as backup
       const updatedUserData = {
         ...currentUserData,
         email: formData.email,
@@ -512,27 +642,13 @@ export default function JobseekerProfilePage() {
         certifications: formData.certifications,
         avatar: avatarUrl,
         profileUpdated: new Date().toISOString(),
-        profileComplete: 100, // Mark profile as complete
+        profileComplete: 100,
       };
 
-      console.log('Profile page: Updated user data:', updatedUserData);
+      localStorageUtils.setUserData(updatedUserData);
+      localStorageUtils.storeSignupData(formData.email, updatedUserData);
 
-      // Save to localStorage
-      const saveSuccess = localStorageUtils.setUserData(updatedUserData);
-      const signupSuccess = localStorageUtils.storeSignupData(formData.email, updatedUserData);
-
-      console.log('Profile page: localStorage save results:', { saveSuccess, signupSuccess });
-
-      if (!saveSuccess || !signupSuccess) {
-        console.error('Profile page: Failed to save data to localStorage');
-        showNotification('error', 'Failed to save profile data. Please try again.');
-        return;
-      }
-
-      console.log('Profile page: Data saved to localStorage successfully');
-
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      console.log('Profile page: Profile saved to API and localStorage');
 
       // Show success notification
       showNotification('success', 'Profile saved successfully! Redirecting to dashboard...');
