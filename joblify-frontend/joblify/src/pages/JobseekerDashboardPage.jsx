@@ -70,7 +70,7 @@ export default function JobseekerDashboardPage() {
     const fetchUserData = async () => {
       try {
         // Try to get current user from localStorage first
-        const userData = localStorageUtils.getUserData();
+        let userData = localStorageUtils.getUserData();
 
         if (userData) {
           console.log('Using stored user data:', userData);
@@ -239,9 +239,12 @@ export default function JobseekerDashboardPage() {
   // Handle profile image upload
   const handleImageUpload = (event) => {
     const file = event.target.files[0];
+    console.log('Image upload attempt:', file);
+
     if (file) {
       // Validate file type
       if (!file.type.match(/image\/(jpeg|jpg|png)/)) {
+        console.log('Invalid file type:', file.type);
         setProfileErrors((prev) => ({
           ...prev,
           profileImage: 'Please upload a valid image file (JPG, PNG)',
@@ -251,13 +254,17 @@ export default function JobseekerDashboardPage() {
 
       // Validate file size (5MB max)
       if (file.size > 5 * 1024 * 1024) {
+        console.log('File too large:', file.size);
         setProfileErrors((prev) => ({ ...prev, profileImage: 'File size must be less than 5MB' }));
         return;
       }
 
+      console.log('Image validation passed, setting state');
       setProfileImage(file);
       setProfileImagePreview(URL.createObjectURL(file));
       setProfileErrors((prev) => ({ ...prev, profileImage: '' }));
+    } else {
+      console.log('No file selected');
     }
   };
 
@@ -336,14 +343,36 @@ export default function JobseekerDashboardPage() {
       // Simulate API call
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
+      // Handle profile image - in real app, this would be uploaded to a server
+      let avatarUrl = user?.avatar || null;
+      if (profileImage) {
+        // For demo purposes, we'll create a data URL from the image
+        // In production, this would be uploaded to a server and the URL would be returned
+        const reader = new FileReader();
+        await new Promise((resolve) => {
+          reader.onload = resolve;
+          reader.readAsDataURL(profileImage);
+        });
+        avatarUrl = reader.result;
+      }
+
       // Update user state with new data
-      setUser((prev) => ({
-        ...prev,
+      const updatedUser = {
+        ...user,
         firstName: profileFormData.firstName,
         lastName: profileFormData.lastName,
         email: profileFormData.email,
+        avatar: avatarUrl,
         profileUpdated: new Date().toISOString(),
-      }));
+      };
+
+      setUser(updatedUser);
+
+      // Update localStorage with the new user data
+      localStorageUtils.setUserData(updatedUser);
+
+      // Also update the signup data storage for future logins
+      localStorageUtils.storeSignupData(profileFormData.email.trim().toLowerCase(), updatedUser);
 
       // Reset form and close editing
       setIsEditingProfile(false);
@@ -356,8 +385,13 @@ export default function JobseekerDashboardPage() {
       }));
       setProfileErrors({});
 
+      // Reset image state
+      setProfileImage(null);
+      setProfileImagePreview(null);
+
       // Show success message (you can add a toast notification here)
       console.log('Profile updated successfully!');
+      alert('Profile updated successfully! Your changes have been saved.');
     } catch (error) {
       console.error('Error updating profile:', error);
       setProfileErrors((prev) => ({
@@ -429,11 +463,7 @@ export default function JobseekerDashboardPage() {
   if (isLoading) {
     return (
       <div className="flex min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
-        <Sidebar
-          userType="JOB_SEEKER"
-          onLogout={handleLogout}
-          onOpenProfile={() => setIsEditingProfile(true)}
-        />
+        <Sidebar userType="JOB_SEEKER" onLogout={handleLogout} />
         <main className="flex-1 lg:ml-64 transition-all duration-300 flex items-center justify-center">
           <div className="text-center">
             <div className="w-16 h-16 border-4 border-primary/30 border-t-primary rounded-full animate-spin mx-auto mb-4"></div>
@@ -447,11 +477,7 @@ export default function JobseekerDashboardPage() {
   if (!user || user.role !== 'JOB_SEEKER') {
     return (
       <div className="flex min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
-        <Sidebar
-          userType="JOB_SEEKER"
-          onLogout={handleLogout}
-          onOpenProfile={() => setIsEditingProfile(true)}
-        />
+        <Sidebar userType="JOB_SEEKER" onLogout={handleLogout} />
         <main className="flex-1 lg:ml-64 transition-all duration-300 flex items-center justify-center">
           <div className="text-center p-8">
             <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -549,11 +575,11 @@ export default function JobseekerDashboardPage() {
               </CardHeader>
               <CardContent className="text-center">
                 <Button
-                  onClick={() => setIsEditingProfile(true)}
+                  onClick={() => navigate('/profile')}
                   className="w-full bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70"
                 >
                   <Edit3 className="w-4 h-4 mr-2" />
-                  Edit Profile
+                  Create/Edit Profile
                 </Button>
               </CardContent>
             </Card>

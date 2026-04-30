@@ -1,5 +1,5 @@
-import asyncHandler from "express-async-handler";
-import prisma from "../lib/prisma.mjs";
+import asyncHandler from 'express-async-handler';
+import prisma from '../lib/prisma.mjs';
 
 // ==========================================
 // JOBSEEKER DASHBOARD (JOB_UC_03.0)
@@ -11,14 +11,14 @@ export const getJobseekerDashboard = asyncHandler(async (req, res) => {
   if (!userId) {
     return res.status(401).json({
       success: false,
-      message: "Not authenticated"
+      message: 'Not authenticated',
     });
   }
 
   try {
     // Get user with profile
     const user = await prisma.user.findUnique({
-      where: { id: userId, userType: "JOB_SEEKER" },
+      where: { id: userId, userType: 'JOB_SEEKER' },
       include: {
         jobSeekerProfile: true,
         applications: {
@@ -28,33 +28,33 @@ export const getJobseekerDashboard = asyncHandler(async (req, res) => {
                 company: {
                   select: {
                     companyName: true,
-                    industry: true
-                  }
-                }
-              }
-            }
+                    industry: true,
+                  },
+                },
+              },
+            },
           },
           orderBy: { appliedAt: 'desc' },
-          take: 5
+          take: 5,
         },
         jobSeekerSubscriptions: {
           include: {
             company: {
               select: {
                 companyName: true,
-                industry: true
-              }
-            }
+                industry: true,
+              },
+            },
           },
-          take: 5
-        }
-      }
+          take: 5,
+        },
+      },
     });
 
     if (!user) {
       return res.status(404).json({
         success: false,
-        message: "Jobseeker not found"
+        message: 'Jobseeker not found',
       });
     }
 
@@ -65,26 +65,26 @@ export const getJobseekerDashboard = asyncHandler(async (req, res) => {
 
     try {
       applicationsCount = await prisma.jobApplication.count({
-        where: { jobSeekerId: userId }
+        where: { jobSeekerId: userId },
       });
     } catch (error) {
-      console.log("⚠️ JobApplication count not available:", error.message);
+      console.log('⚠️ JobApplication count not available:', error.message);
     }
 
     try {
       subscriptionsCount = await prisma.companySubscription.count({
-        where: { jobSeekerId: userId }
+        where: { jobSeekerId: userId },
       });
     } catch (error) {
-      console.log("⚠️ CompanySubscription count not available:", error.message);
+      console.log('⚠️ CompanySubscription count not available:', error.message);
     }
 
     try {
       unreadNotifications = await prisma.notification.count({
-        where: { userId, isRead: false }
+        where: { userId, isRead: false },
       });
     } catch (error) {
-      console.log("⚠️ Notification count not available:", error.message);
+      console.log('⚠️ Notification count not available:', error.message);
     }
 
     res.json({
@@ -95,25 +95,24 @@ export const getJobseekerDashboard = asyncHandler(async (req, res) => {
           firstName: user.firstName,
           lastName: user.lastName,
           email: user.email,
-          points: user.points
+          points: user.points,
         },
         profile: user.jobSeekerProfile,
         stats: {
           applications: applicationsCount,
           subscriptions: subscriptionsCount,
-          unreadNotifications
+          unreadNotifications,
         },
         recentApplications: user.applications,
-        recentSubscriptions: user.jobSeekerSubscriptions
-      }
+        recentSubscriptions: user.jobSeekerSubscriptions,
+      },
     });
-
   } catch (error) {
-    console.error("Dashboard error:", error);
+    console.error('Dashboard error:', error);
     res.status(500).json({
       success: false,
-      message: "Failed to load dashboard",
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      message: 'Failed to load dashboard',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined,
     });
   }
 });
@@ -129,21 +128,21 @@ export const getCompanies = asyncHandler(async (req, res) => {
   if (!userId) {
     return res.status(401).json({
       success: false,
-      message: "Not authenticated"
+      message: 'Not authenticated',
     });
   }
 
   try {
     const where = {
-      userType: "COMPANY",
-      verificationStatus: "VERIFIED"
+      userType: 'COMPANY',
+      verificationStatus: 'VERIFIED',
     };
 
     // Add search filters
     if (search) {
       where.OR = [
         { companyName: { contains: search, mode: 'insensitive' } },
-        { description: { contains: search, mode: 'insensitive' } }
+        { description: { contains: search, mode: 'insensitive' } },
       ];
     }
 
@@ -169,20 +168,20 @@ export const getCompanies = asyncHandler(async (req, res) => {
         linkedin: true,
         companyProfile: {
           select: {
-            logo: true
-          }
+            logo: true,
+          },
         },
         _count: {
           select: {
             jobsPosted: {
-              where: { isActive: true }
-            }
-          }
-        }
+              where: { isActive: true },
+            },
+          },
+        },
       },
       skip: (parseInt(page) - 1) * parseInt(limit),
       take: parseInt(limit),
-      orderBy: { companyName: 'asc' }
+      orderBy: { companyName: 'asc' },
     });
 
     const total = await prisma.user.count({ where });
@@ -194,16 +193,15 @@ export const getCompanies = asyncHandler(async (req, res) => {
         page: parseInt(page),
         limit: parseInt(limit),
         total,
-        pages: Math.ceil(total / parseInt(limit))
-      }
+        pages: Math.ceil(total / parseInt(limit)),
+      },
     });
-
   } catch (error) {
-    console.error("Companies error:", error);
+    console.error('Companies error:', error);
     res.status(500).json({
       success: false,
-      message: "Failed to fetch companies",
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      message: 'Failed to fetch companies',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined,
     });
   }
 });
@@ -214,27 +212,19 @@ export const getCompanies = asyncHandler(async (req, res) => {
 
 export const getJobPosts = asyncHandler(async (req, res) => {
   const userId = req.user?.id || req.session?.userId;
-  const { 
-    search, 
-    industry, 
-    jobType, 
-    location, 
-    experienceLevel,
-    page = 1, 
-    limit = 10 
-  } = req.query;
+  const { search, industry, jobType, location, experienceLevel, page = 1, limit = 10 } = req.query;
 
   if (!userId) {
     return res.status(401).json({
       success: false,
-      message: "Not authenticated"
+      message: 'Not authenticated',
     });
   }
 
   try {
     const where = {
       isActive: true,
-      applicationDeadline: { gt: new Date() }
+      applicationDeadline: { gt: new Date() },
     };
 
     // Add filters
@@ -242,7 +232,7 @@ export const getJobPosts = asyncHandler(async (req, res) => {
       where.OR = [
         { title: { contains: search, mode: 'insensitive' } },
         { description: { contains: search, mode: 'insensitive' } },
-        { company: { companyName: { contains: search, mode: 'insensitive' } } }
+        { company: { companyName: { contains: search, mode: 'insensitive' } } },
       ];
     }
 
@@ -273,20 +263,20 @@ export const getJobPosts = asyncHandler(async (req, res) => {
             address: true,
             companyProfile: {
               select: {
-                logo: true
-              }
-            }
-          }
+                logo: true,
+              },
+            },
+          },
         },
         _count: {
           select: {
-            applications: true
-          }
-        }
+            applications: true,
+          },
+        },
       },
       skip: (parseInt(page) - 1) * parseInt(limit),
       take: parseInt(limit),
-      orderBy: { createdAt: 'desc' }
+      orderBy: { createdAt: 'desc' },
     });
 
     const total = await prisma.jobPost.count({ where });
@@ -298,16 +288,15 @@ export const getJobPosts = asyncHandler(async (req, res) => {
         page: parseInt(page),
         limit: parseInt(limit),
         total,
-        pages: Math.ceil(total / parseInt(limit))
-      }
+        pages: Math.ceil(total / parseInt(limit)),
+      },
     });
-
   } catch (error) {
-    console.error("Job posts error:", error);
+    console.error('Job posts error:', error);
     res.status(500).json({
       success: false,
-      message: "Failed to fetch job posts",
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      message: 'Failed to fetch job posts',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined,
     });
   }
 });
@@ -324,24 +313,24 @@ export const applyToJob = asyncHandler(async (req, res) => {
   if (!userId) {
     return res.status(401).json({
       success: false,
-      message: "Not authenticated"
+      message: 'Not authenticated',
     });
   }
 
   try {
     // Check if job exists and is active
     const jobPost = await prisma.jobPost.findFirst({
-      where: { 
-        id: jobId, 
+      where: {
+        id: jobId,
         isActive: true,
-        applicationDeadline: { gt: new Date() }
-      }
+        applicationDeadline: { gt: new Date() },
+      },
     });
 
     if (!jobPost) {
       return res.status(404).json({
         success: false,
-        message: "Job post not found or expired"
+        message: 'Job post not found or expired',
       });
     }
 
@@ -349,14 +338,14 @@ export const applyToJob = asyncHandler(async (req, res) => {
     const existingApplication = await prisma.jobApplication.findFirst({
       where: {
         jobPostId: jobId,
-        jobSeekerId: userId
-      }
+        jobSeekerId: userId,
+      },
     });
 
     if (existingApplication) {
       return res.status(400).json({
         success: false,
-        message: "You have already applied to this job"
+        message: 'You have already applied to this job',
       });
     }
 
@@ -372,8 +361,8 @@ export const applyToJob = asyncHandler(async (req, res) => {
           experience: customResume.experience,
           education: customResume.education,
           skills: customResume.skills,
-          custom: true
-        }
+          custom: true,
+        },
       });
       resumeToUse = newResume.id;
     }
@@ -381,13 +370,13 @@ export const applyToJob = asyncHandler(async (req, res) => {
     // Validate resume exists
     if (resumeToUse) {
       const resume = await prisma.resume.findFirst({
-        where: { id: resumeToUse, userId }
+        where: { id: resumeToUse, userId },
       });
 
       if (!resume) {
         return res.status(400).json({
           success: false,
-          message: "Resume not found"
+          message: 'Resume not found',
         });
       }
     }
@@ -399,34 +388,34 @@ export const applyToJob = asyncHandler(async (req, res) => {
         jobSeekerId: userId,
         resumeId: resumeToUse,
         coverLetter,
-        status: "NOT_VIEWED"
+        status: 'NOT_VIEWED',
       },
       include: {
         jobPost: {
           include: {
             company: {
               select: {
-                companyName: true
-              }
-            }
-          }
+                companyName: true,
+              },
+            },
+          },
         },
-        resume: true
-      }
+        resume: true,
+      },
     });
 
     // Add to chat area if job has one
     if (jobPost.hasChatArea) {
       const chatArea = await prisma.chatArea.findFirst({
-        where: { jobPostId: jobId }
+        where: { jobPostId: jobId },
       });
 
       if (chatArea) {
         await prisma.chatParticipant.create({
           data: {
             chatAreaId: chatArea.id,
-            userId
-          }
+            userId,
+          },
         });
       }
     }
@@ -435,25 +424,24 @@ export const applyToJob = asyncHandler(async (req, res) => {
     await prisma.notification.create({
       data: {
         userId: jobPost.companyId,
-        title: "New Job Application",
+        title: 'New Job Application',
         message: `New application received for ${jobPost.title}`,
-        type: "APPLICATION",
-        relatedId: application.id
-      }
+        type: 'APPLICATION',
+        relatedId: application.id,
+      },
     });
 
     res.status(201).json({
       success: true,
-      message: "Application submitted successfully",
-      application
+      message: 'Application submitted successfully',
+      application,
     });
-
   } catch (error) {
-    console.error("Apply job error:", error);
+    console.error('Apply job error:', error);
     res.status(500).json({
       success: false,
-      message: "Failed to apply to job",
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      message: 'Failed to apply to job',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined,
     });
   }
 });
@@ -470,39 +458,39 @@ export const subscribeToCompany = asyncHandler(async (req, res) => {
   if (!userId) {
     return res.status(401).json({
       success: false,
-      message: "Not authenticated"
+      message: 'Not authenticated',
     });
   }
 
-  if (!profileType || !["EMPLOYABLE", "VIRTUAL_INTERN"].includes(profileType)) {
+  if (!profileType || !['EMPLOYABLE', 'VIRTUAL_INTERN'].includes(profileType)) {
     return res.status(400).json({
       success: false,
-      message: "Valid profile type is required (EMPLOYABLE or VIRTUAL_INTERN)"
+      message: 'Valid profile type is required (EMPLOYABLE or VIRTUAL_INTERN)',
     });
   }
 
   try {
     // Check if company exists
     const company = await prisma.user.findFirst({
-      where: { id: companyId, userType: "COMPANY" }
+      where: { id: companyId, userType: 'COMPANY' },
     });
 
     if (!company) {
       return res.status(404).json({
         success: false,
-        message: "Company not found"
+        message: 'Company not found',
       });
     }
 
     // Check if profile exists for the type
     const profile = await prisma.jobSeekerProfile.findFirst({
-      where: { userId }
+      where: { userId },
     });
 
     if (!profile) {
       return res.status(400).json({
         success: false,
-        message: "Please create your job seeker profile first"
+        message: 'Please create your job seeker profile first',
       });
     }
 
@@ -511,14 +499,14 @@ export const subscribeToCompany = asyncHandler(async (req, res) => {
       where: {
         companyId,
         jobSeekerId: userId,
-        profileType
-      }
+        profileType,
+      },
     });
 
     if (existingSubscription) {
       return res.status(400).json({
         success: false,
-        message: `You are already subscribed to this company as ${profileType}`
+        message: `You are already subscribed to this company as ${profileType}`,
       });
     }
 
@@ -527,41 +515,40 @@ export const subscribeToCompany = asyncHandler(async (req, res) => {
       data: {
         companyId,
         jobSeekerId: userId,
-        profileType
+        profileType,
       },
       include: {
         company: {
           select: {
             companyName: true,
-            industry: true
-          }
-        }
-      }
+            industry: true,
+          },
+        },
+      },
     });
 
     // Create notification for company
     await prisma.notification.create({
       data: {
         userId: companyId,
-        title: "New Subscription",
+        title: 'New Subscription',
         message: `New ${profileType.toLowerCase()} subscription received`,
-        type: "SUBSCRIPTION",
-        relatedId: subscription.id
-      }
+        type: 'SUBSCRIPTION',
+        relatedId: subscription.id,
+      },
     });
 
     res.status(201).json({
       success: true,
       message: `Successfully subscribed as ${profileType}`,
-      subscription
+      subscription,
     });
-
   } catch (error) {
-    console.error("Subscribe error:", error);
+    console.error('Subscribe error:', error);
     res.status(500).json({
       success: false,
-      message: "Failed to subscribe to company",
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      message: 'Failed to subscribe to company',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined,
     });
   }
 });
@@ -578,37 +565,37 @@ export const respondToInvitation = asyncHandler(async (req, res) => {
   if (!userId) {
     return res.status(401).json({
       success: false,
-      message: "Not authenticated"
+      message: 'Not authenticated',
     });
   }
 
   if (!['accept', 'decline'].includes(action)) {
     return res.status(400).json({
       success: false,
-      message: "Action must be 'accept' or 'decline'"
+      message: "Action must be 'accept' or 'decline'",
     });
   }
 
   try {
     const invitation = await prisma.invitation.findFirst({
-      where: { 
-        id: invitationId, 
+      where: {
+        id: invitationId,
         jobSeekerId: userId,
-        status: "PENDING"
+        status: 'PENDING',
       },
       include: {
         company: {
           select: {
-            companyName: true
-          }
-        }
-      }
+            companyName: true,
+          },
+        },
+      },
     });
 
     if (!invitation) {
       return res.status(404).json({
         success: false,
-        message: "Invitation not found or already responded"
+        message: 'Invitation not found or already responded',
       });
     }
 
@@ -618,40 +605,38 @@ export const respondToInvitation = asyncHandler(async (req, res) => {
         data: {
           companyId: invitation.companyId,
           jobSeekerId: userId,
-          profileType: invitation.profileType
-        }
+          profileType: invitation.profileType,
+        },
       });
 
       // Update invitation status
       await prisma.invitation.update({
         where: { id: invitationId },
-        data: { status: "ACCEPTED" }
+        data: { status: 'ACCEPTED' },
       });
 
       res.json({
         success: true,
-        message: `Invitation accepted. You are now subscribed as ${invitation.profileType}.`
+        message: `Invitation accepted. You are now subscribed as ${invitation.profileType}.`,
       });
-
     } else {
       // Decline invitation
       await prisma.invitation.update({
         where: { id: invitationId },
-        data: { status: "DECLINED" }
+        data: { status: 'DECLINED' },
       });
 
       res.json({
         success: true,
-        message: "Invitation declined."
+        message: 'Invitation declined.',
       });
     }
-
   } catch (error) {
-    console.error("Respond invitation error:", error);
+    console.error('Respond invitation error:', error);
     res.status(500).json({
       success: false,
-      message: "Failed to respond to invitation",
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      message: 'Failed to respond to invitation',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined,
     });
   }
 });
@@ -666,7 +651,7 @@ export const getApplicationTracking = asyncHandler(async (req, res) => {
   if (!userId) {
     return res.status(401).json({
       success: false,
-      message: "Not authenticated"
+      message: 'Not authenticated',
     });
   }
 
@@ -674,13 +659,13 @@ export const getApplicationTracking = asyncHandler(async (req, res) => {
     // Check if user has premium access
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { subscriptionStatus: true }
+      select: { subscriptionStatus: true },
     });
 
-    if (user.subscriptionStatus !== "ACTIVE") {
+    if (user.subscriptionStatus !== 'ACTIVE') {
       return res.status(403).json({
         success: false,
-        message: "Premium feature requires active subscription"
+        message: 'Premium feature requires active subscription',
       });
     }
 
@@ -692,37 +677,36 @@ export const getApplicationTracking = asyncHandler(async (req, res) => {
             company: {
               select: {
                 companyName: true,
-                industry: true
-              }
-            }
-          }
-        }
+                industry: true,
+              },
+            },
+          },
+        },
       },
-      orderBy: { appliedAt: 'desc' }
+      orderBy: { appliedAt: 'desc' },
     });
 
     // Application statistics
     const stats = {
       total: applications.length,
-      viewed: applications.filter(app => app.status === "VIEWED").length,
-      shortlisted: applications.filter(app => app.status === "SHORTLISTED").length,
-      interview: applications.filter(app => app.status === "INTERVIEW_SCHEDULED").length,
-      rejected: applications.filter(app => app.status === "REJECTED").length,
-      accepted: applications.filter(app => app.status === "ACCEPTED").length
+      viewed: applications.filter((app) => app.status === 'VIEWED').length,
+      shortlisted: applications.filter((app) => app.status === 'SHORTLISTED').length,
+      interview: applications.filter((app) => app.status === 'INTERVIEW_SCHEDULED').length,
+      rejected: applications.filter((app) => app.status === 'REJECTED').length,
+      accepted: applications.filter((app) => app.status === 'ACCEPTED').length,
     };
 
     res.json({
       success: true,
       applications,
-      stats
+      stats,
     });
-
   } catch (error) {
-    console.error("Tracking error:", error);
+    console.error('Tracking error:', error);
     res.status(500).json({
       success: false,
-      message: "Failed to fetch application tracking",
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      message: 'Failed to fetch application tracking',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined,
     });
   }
 });
@@ -737,7 +721,7 @@ export const getJobseekerProfile = asyncHandler(async (req, res) => {
   if (!userId) {
     return res.status(401).json({
       success: false,
-      message: "Not authenticated"
+      message: 'Not authenticated',
     });
   }
 
@@ -767,16 +751,16 @@ export const getJobseekerProfile = asyncHandler(async (req, res) => {
                 title: true,
                 company: {
                   select: {
-                    companyName: true
-                  }
-                }
-              }
-            }
+                    companyName: true,
+                  },
+                },
+              },
+            },
           },
           orderBy: {
-            appliedAt: 'desc'
+            appliedAt: 'desc',
           },
-          take: 5
+          take: 5,
         },
         jobSeekerSubscriptions: {
           select: {
@@ -786,37 +770,62 @@ export const getJobseekerProfile = asyncHandler(async (req, res) => {
             company: {
               select: {
                 companyName: true,
-                industry: true
-              }
-            }
+                industry: true,
+              },
+            },
           },
           orderBy: {
-            createdAt: 'desc'
+            createdAt: 'desc',
           },
-          take: 5
-        }
-      }
+          take: 5,
+        },
+      },
     });
 
     if (!userProfile) {
       return res.status(404).json({
         success: false,
-        message: "User profile not found"
+        message: 'User profile not found',
       });
+    }
+
+    // Parse JSON strings in jobSeekerProfile to objects
+    if (userProfile.jobSeekerProfile) {
+      const profile = userProfile.jobSeekerProfile;
+      if (profile.education) {
+        try {
+          profile.education = JSON.parse(profile.education);
+        } catch (e) {
+          /* keep as string */
+        }
+      }
+      if (profile.experience) {
+        try {
+          profile.experience = JSON.parse(profile.experience);
+        } catch (e) {
+          /* keep as string */
+        }
+      }
+      if (profile.certifications) {
+        try {
+          profile.certifications = JSON.parse(profile.certifications);
+        } catch (e) {
+          /* keep as string */
+        }
+      }
     }
 
     res.json({
       success: true,
-      message: "Profile loaded successfully",
-      profile: userProfile
+      message: 'Profile loaded successfully',
+      profile: userProfile,
     });
-
   } catch (error) {
-    console.error("Profile error:", error);
+    console.error('Profile error:', error);
     res.status(500).json({
       success: false,
-      message: "Failed to load profile",
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      message: 'Failed to load profile',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined,
     });
   }
 });

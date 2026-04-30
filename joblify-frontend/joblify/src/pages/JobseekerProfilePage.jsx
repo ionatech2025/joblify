@@ -10,6 +10,55 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Checkbox } from '../components/ui/checkbox';
 import { localStorageUtils } from '../utils/localStorage';
+
+// API service functions
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+
+const apiService = {
+  async request(endpoint, options = {}) {
+    const url = `${API_BASE_URL}${endpoint}`;
+    const config = {
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers,
+      },
+      credentials: 'include',
+      ...options,
+    };
+
+    if (options.body) {
+      config.body = JSON.stringify(options.body);
+    }
+
+    try {
+      const response = await fetch(url, config);
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || `HTTP error! status: ${response.status}`);
+      }
+
+      return data;
+    } catch (error) {
+      console.error('API request failed:', error);
+      throw error;
+    }
+  },
+
+  async saveProfile(profileData) {
+    return this.request('/auth/job-seeker/profile', {
+      method: 'POST',
+      body: profileData,
+    });
+  },
+
+  async getProfile() {
+    return this.request('/jobseeker/profile', {
+      method: 'GET',
+    });
+  },
+};
+
 import {
   User,
   Briefcase,
@@ -181,29 +230,103 @@ export default function JobseekerProfilePage() {
     },
   ];
 
-  // Load user data from localStorage on component mount
+  // Load user data from API on component mount
   useEffect(() => {
-    const userData = localStorageUtils.getUserData();
-    if (userData) {
-      setFormData((prev) => ({
-        ...prev,
-        email: userData.email || '',
-        phone: userData.phone || '',
-        address: userData.address || '',
-        city: userData.city || '',
-        state: userData.state || '',
-        zipCode: userData.zipCode || '',
-        country: userData.country || '',
-        bio: userData.bio || '',
-        profileType: userData.profileType || 'EMPLOYABLE',
-        profileVisibility: userData.profileVisibility || 'PRIVATE',
-        skills: userData.skills || [],
-      }));
+    const loadProfileData = async () => {
+      console.log('Profile page: Loading user data from API');
+      setIsLoading(true);
 
-      if (userData.avatar) {
-        setProfileImagePreview(userData.avatar);
+      try {
+        // First try to fetch from API
+        const response = await apiService.getProfile();
+        console.log('Profile page: API response:', response);
+
+        if (response.success && response.profile) {
+          // Profile data is nested in jobSeekerProfile
+          const userData = response.profile;
+          const profile = userData.jobSeekerProfile || {};
+
+          setFormData((prev) => ({
+            ...prev,
+            email: userData.email || '',
+            phone: profile.phone || userData.phone || '',
+            address: profile.address || '',
+            city: profile.city || '',
+            state: profile.state || '',
+            zipCode: profile.zipCode || '',
+            country: profile.country || '',
+            bio: profile.bio || '',
+            profileType: profile.profileType || 'EMPLOYABLE',
+            profileVisibility: profile.visibility || 'PRIVATE',
+            skills: profile.skills || [],
+            education: profile.education?.length > 0 ? profile.education : prev.education,
+            experience: profile.experience?.length > 0 ? profile.experience : prev.experience,
+            certifications:
+              profile.certifications?.length > 0 ? profile.certifications : prev.certifications,
+          }));
+
+          if (profile.portfolio) {
+            setProfileImagePreview(profile.portfolio);
+          }
+
+          console.log('Profile page: Successfully loaded profile from API');
+        } else {
+          // Fall back to localStorage if API returns no profile
+          console.log('Profile page: No profile from API, falling back to localStorage');
+          const userData = localStorageUtils.getUserData();
+
+          if (userData) {
+            setFormData((prev) => ({
+              ...prev,
+              email: userData.email || '',
+              phone: userData.phone || '',
+              address: userData.address || '',
+              city: userData.city || '',
+              state: userData.state || '',
+              zipCode: userData.zipCode || '',
+              country: userData.country || '',
+              bio: userData.bio || '',
+              profileType: userData.profileType || 'EMPLOYABLE',
+              profileVisibility: userData.profileVisibility || 'PRIVATE',
+              skills: userData.skills || [],
+            }));
+
+            if (userData.avatar) {
+              setProfileImagePreview(userData.avatar);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Profile page: Error loading from API:', error);
+        // Fall back to localStorage on API error
+        const userData = localStorageUtils.getUserData();
+
+        if (userData) {
+          setFormData((prev) => ({
+            ...prev,
+            email: userData.email || '',
+            phone: userData.phone || '',
+            address: userData.address || '',
+            city: userData.city || '',
+            state: userData.state || '',
+            zipCode: userData.zipCode || '',
+            country: userData.country || '',
+            bio: userData.bio || '',
+            profileType: userData.profileType || 'EMPLOYABLE',
+            profileVisibility: userData.profileVisibility || 'PRIVATE',
+            skills: userData.skills || [],
+          }));
+
+          if (userData.avatar) {
+            setProfileImagePreview(userData.avatar);
+          }
+        }
+      } finally {
+        setIsLoading(false);
       }
-    }
+    };
+
+    loadProfileData();
   }, []);
 
   // Toggle section visibility
@@ -429,26 +552,26 @@ export default function JobseekerProfilePage() {
 
   // Handle form submission
   const handleSubmit = async (e) => {
-    console.log('Form submission triggered');
+    console.log('Profile page: Form submission triggered');
     e.preventDefault();
 
     const isValid = validateForm();
-    console.log('Form validation result:', isValid);
+    console.log('Profile page: Form validation result:', isValid);
 
     if (!isValid) {
-      console.log('Validation failed, showing error notification');
+      console.log('Profile page: Validation failed, showing error notification');
       showNotification('error', 'Please fill in all required fields correctly.');
       return;
     }
 
-    console.log('Validation passed, starting save process');
+    console.log('Profile page: Validation passed, starting save process');
     setIsSaving(true);
 
     try {
       // Handle profile image - convert to data URL if needed
       let avatarUrl = null;
       if (profileImage) {
-        console.log('Processing profile image');
+        console.log('Profile page: Processing profile image');
         const reader = new FileReader();
         await new Promise((resolve) => {
           reader.onload = resolve;
@@ -461,9 +584,46 @@ export default function JobseekerProfilePage() {
 
       // Get current user data
       const currentUserData = localStorageUtils.getUserData();
-      console.log('Current user data:', currentUserData);
+      console.log('Profile page: Current user data:', currentUserData);
 
-      // Update user data with profile information
+      if (!currentUserData) {
+        console.error('Profile page: No current user data found, cannot save profile');
+        showNotification('error', 'User session not found. Please log in again.');
+        return;
+      }
+
+      // Prepare profile data for API
+      const profileData = {
+        profileType: formData.profileType,
+        bio: formData.bio,
+        skills: formData.skills,
+        education: formData.education,
+        experience: formData.experience,
+        certifications: formData.certifications,
+        portfolio: avatarUrl,
+        visibility: formData.profileVisibility,
+        // Include contact info in the profile
+        phone: formData.phone,
+        address: formData.address,
+        city: formData.city,
+        state: formData.state,
+        zipCode: formData.zipCode,
+        country: formData.country,
+      };
+
+      console.log('Profile page: Sending profile data to API:', profileData);
+
+      // Save to API first
+      const apiResponse = await apiService.saveProfile(profileData);
+      console.log('Profile page: API save response:', apiResponse);
+
+      if (!apiResponse.success) {
+        console.error('Profile page: API save failed:', apiResponse.message);
+        showNotification('error', apiResponse.message || 'Failed to save profile to server.');
+        return;
+      }
+
+      // Also save to localStorage as backup
       const updatedUserData = {
         ...currentUserData,
         email: formData.email,
@@ -482,30 +642,25 @@ export default function JobseekerProfilePage() {
         certifications: formData.certifications,
         avatar: avatarUrl,
         profileUpdated: new Date().toISOString(),
-        profileComplete: 100, // Mark profile as complete
+        profileComplete: 100,
       };
 
-      console.log('Updated user data:', updatedUserData);
-
-      // Save to localStorage
       localStorageUtils.setUserData(updatedUserData);
       localStorageUtils.storeSignupData(formData.email, updatedUserData);
-      console.log('Data saved to localStorage');
 
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      console.log('Profile page: Profile saved to API and localStorage');
 
       // Show success notification
       showNotification('success', 'Profile saved successfully! Redirecting to dashboard...');
-      console.log('Success notification shown');
+      console.log('Profile page: Success notification shown');
 
       // Show success message and redirect after 3 seconds
       setTimeout(() => {
-        console.log('Redirecting to dashboard');
+        console.log('Profile page: Redirecting to dashboard');
         navigate('/dashboard/jobseeker');
       }, 3000);
     } catch (error) {
-      console.error('Error saving profile:', error);
+      console.error('Profile page: Error saving profile:', error);
       showNotification('error', 'Failed to save profile. Please try again.');
       setErrors({ general: 'An error occurred while saving your profile. Please try again.' });
     } finally {
