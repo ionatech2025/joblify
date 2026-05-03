@@ -5,14 +5,14 @@
       "src": "joblify-frontend/joblify/package.json",
       "use": "@vercel/static-build",
       "config": {
-        "distDir": "joblify-frontend/joblify/dist"
+        "distDir": "dist"
       }
     }
   ],
   "routes": [
     {
       "src": "/(.*)",
-      "dest": "/joblify-frontend/joblify/index.html"
+      "dest": "/index.html"
     }
   ],
   "buildCommand": "cd joblify-frontend/joblify && npm run build",
