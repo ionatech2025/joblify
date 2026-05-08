@@ -7,6 +7,48 @@ import { Badge } from '../components/ui/badge';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { localStorageUtils } from '../utils/localStorage';
+
+// API service functions
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+
+const apiService = {
+  async request(endpoint, options = {}) {
+    const url = `${API_BASE_URL}${endpoint}`;
+    const config = {
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers,
+      },
+      credentials: 'include',
+      ...options,
+    };
+
+    if (options.body) {
+      config.body = JSON.stringify(options.body);
+    }
+
+    try {
+      const response = await fetch(url, config);
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || `HTTP error! status: ${response.status}`);
+      }
+
+      return data;
+    } catch (error) {
+      console.error('API request failed:', error);
+      throw error;
+    }
+  },
+
+  async getProfile() {
+    return this.request('/jobseeker/profile', {
+      method: 'GET',
+    });
+  },
+};
+
 import {
   User,
   Building2,
@@ -66,30 +108,65 @@ export default function JobseekerDashboardPage() {
   const [isSendingReply, setIsSendingReply] = useState(false);
 
   useEffect(() => {
-    // Simulate API call to get user data
+    // Fetch user data from API first, then fall back to localStorage
     const fetchUserData = async () => {
       try {
-        // Try to get current user from localStorage first
-        let userData = localStorageUtils.getUserData();
+        let userData = null;
+        let profileData = null;
 
-        if (userData) {
-          console.log('Using stored user data:', userData);
-        } else {
-          // Fallback to mock data if no stored user
-          userData = {
-            id: 1,
-            firstName: 'John',
-            lastName: 'Doe',
-            email: 'john.doe@example.com',
-            role: 'JOB_SEEKER',
-            profileComplete: 75,
-            lastLogin: '2024-01-15T10:30:00Z',
-            profileUpdated: '2024-01-12T14:20:00Z',
-            savedJobs: 8,
-            appliedJobs: 12,
-            avatar: null,
-          };
-          console.log('Using mock user data as fallback');
+        // Try to fetch from API first
+        try {
+          const response = await apiService.getProfile();
+          console.log('Dashboard: API profile response:', response);
+
+          if (response.success && response.profile) {
+            const apiData = response.profile;
+            profileData = apiData.jobSeekerProfile || {};
+
+            userData = {
+              id: apiData.id,
+              firstName: apiData.firstName,
+              lastName: apiData.lastName,
+              email: apiData.email,
+              role: apiData.userType,
+              phone: profileData.phone || apiData.phone,
+              avatar: profileData.portfolio || null,
+              profileComplete: 100,
+              lastLogin: new Date().toISOString(),
+              profileUpdated: profileData.updatedAt || new Date().toISOString(),
+              savedJobs: 8,
+              appliedJobs: apiData.applications?.length || 12,
+            };
+            console.log('Dashboard: Using API user data');
+          }
+        } catch (apiError) {
+          console.log('Dashboard: API fetch failed, falling back to localStorage:', apiError);
+        }
+
+        // Fall back to localStorage if API failed or returned no data
+        if (!userData) {
+          const storedData = localStorageUtils.getUserData();
+
+          if (storedData) {
+            console.log('Dashboard: Using stored user data:', storedData);
+            userData = storedData;
+          } else {
+            // Fallback to mock data if no stored user
+            userData = {
+              id: 1,
+              firstName: 'John',
+              lastName: 'Doe',
+              email: 'john.doe@example.com',
+              role: 'JOB_SEEKER',
+              profileComplete: 75,
+              lastLogin: '2024-01-15T10:30:00Z',
+              profileUpdated: '2024-01-12T14:20:00Z',
+              savedJobs: 8,
+              appliedJobs: 12,
+              avatar: null,
+            };
+            console.log('Dashboard: Using mock user data as fallback');
+          }
         }
 
         // Add default fields that might be missing
@@ -567,8 +644,16 @@ export default function JobseekerDashboardPage() {
             {/* Enhanced Profile Card */}
             <Card className="group hover:shadow-2xl hover:scale-105 transition-all duration-500 cursor-pointer border-2 border-border/50 hover:border-primary/30">
               <CardHeader className="text-center pb-4">
-                <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300">
-                  <User className="w-8 h-8 text-primary" />
+                <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300 overflow-hidden">
+                  {user?.avatar ? (
+                    <img
+                      src={user.avatar}
+                      alt={`${user.firstName} ${user.lastName}`}
+                      className="w-full h-full object-cover rounded-2xl"
+                    />
+                  ) : (
+                    <User className="w-8 h-8 text-primary" />
+                  )}
                 </div>
                 <CardTitle className="text-xl">My Profile</CardTitle>
                 <CardDescription>Upload picture, edit info & change password</CardDescription>
@@ -579,7 +664,7 @@ export default function JobseekerDashboardPage() {
                   className="w-full bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70"
                 >
                   <Edit3 className="w-4 h-4 mr-2" />
-                  Create/Edit Profile
+                  {user?.avatar ? 'Edit Profile' : 'Create/Edit Profile'}
                 </Button>
               </CardContent>
             </Card>
