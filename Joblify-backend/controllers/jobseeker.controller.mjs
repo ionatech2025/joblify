@@ -374,6 +374,7 @@ export const applyToJob = asyncHandler(async (req, res) => {
       });
 
       if (!resume) {
+        
         return res.status(400).json({
           success: false,
           message: 'Resume not found',

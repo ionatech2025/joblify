@@ -1,23 +1,13 @@
 {
-  "version": 2,
-  "builds": [
-    {
-      "src": "joblify-frontend/joblify/package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": "dist"
-      }
-    }
-  ],
+  "buildCommand": "cd joblify-frontend/joblify && npm install && npm run build",
+  "outputDirectory": "joblify-frontend/joblify/dist",
+  "installCommand": "cd joblify-frontend/joblify && npm install",
+  "devCommand": "cd joblify-frontend/joblify && npm run dev",
+  "framework": "vite",
   "routes": [
     {
       "src": "/(.*)",
       "dest": "/index.html"
     }
-  ],
-  "buildCommand": "cd joblify-frontend/joblify && npm run build",
-  "outputDirectory": "joblify-frontend/joblify/dist",
-  "installCommand": "cd joblify-frontend/joblify && npm install",
-  "devCommand": "cd joblify-frontend/joblify && npm run dev",
-  "framework": "vite"
+  ]
 }
