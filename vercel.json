@@ -1,9 +1,8 @@
 {
+  "framework": "vite",
   "buildCommand": "cd joblify-frontend/joblify && npm install && npm run build",
   "outputDirectory": "joblify-frontend/joblify/dist",
   "installCommand": "cd joblify-frontend/joblify && npm install",
-  "devCommand": "cd joblify-frontend/joblify && npm run dev",
-  "framework": "vite",
   "routes": [
     {
       "src": "/(.*)",
