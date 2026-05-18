@@ -1,12 +1,12 @@
-import { Header } from "../components/Header"
-import { Footer } from "../components/Footer"
-import { JobCard } from "../components/JobCard"
-import { SearchBar } from "../components/SearchBar"
-import { Button } from "../components/ui/button"
-import { Checkbox } from "../components/ui/checkbox"
-import { Slider } from "../components/ui/slider"
+import { Header } from "../components/Header";
+import { Footer } from "../components/Footer";
+import { JobCard } from "../components/JobCard";
+import { Button } from "../components/ui/button";
+import { Checkbox } from "../components/ui/checkbox";
+import { Slider } from "../components/ui/slider";
+import { motion } from "framer-motion";
 
-// Mock data for jobs
+// Mock data (unchanged)
 const jobs = [
   {
     id: "1",
@@ -74,160 +74,133 @@ const jobs = [
     requirements: ["3+ years in product management", "Strong communication skills", "Technical background"],
     postedDate: "2023-05-03",
   },
-]
+];
 
 export default function JobsPage() {
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col min-h-screen bg-zinc-950 text-white">
       <Header />
+
       <main className="flex-1">
-        <section className="bg-primary text-primary-foreground py-12">
-          <div className="container mx-auto px-4">
-            <h1 className="text-5xl md:text-6xl font-bold mb-6 text-yellow-200 text-center">Find Your Perfect Job</h1>
-            <SearchBar />
+        {/* Premium Hero */}
+        <section className="relative py-28 lg:py-36 bg-zinc-950 overflow-hidden">
+          <div className="absolute inset-0 bg-[radial-gradient(#27272a_1px,transparent_1px)] [background-size:50px_50px] opacity-40" />
+          
+          <div className="container mx-auto px-6 relative z-10 text-center">
+            <motion.h1 
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-6xl md:text-7xl font-semibold tracking-tighter mb-6"
+            >
+              Find Your Next<br />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-violet-400">
+                Opportunity
+              </span>
+            </motion.h1>
+            <p className="text-xl text-zinc-400 max-w-2xl mx-auto">
+              Discover thousands of jobs from the best companies
+            </p>
           </div>
         </section>
 
         <section className="py-12">
-          <div className="container mx-auto px-4">
+          <div className="container mx-auto px-6">
             <div className="flex flex-col lg:flex-row gap-8">
-              {/* Filters Sidebar */}
-              <div className="lg:w-1/4 space-y-6">
-                <div className="bg-card rounded-lg border p-6">
-                  <h2 className="text-lg font-semibold mb-4">Filters</h2>
+              {/* Premium Filters Sidebar */}
+              <div className="lg:w-80 lg:sticky lg:top-6 lg:self-start">
+                <div className="bg-zinc-900 border border-white/10 rounded-3xl p-8">
+                  <h2 className="text-2xl font-semibold mb-8">Filters</h2>
 
-                  <div className="space-y-6">
+                  <div className="space-y-10">
                     <div>
-                      <h3 className="font-medium mb-3">Job Type</h3>
-                      <div className="space-y-2">
-                        <div className="flex items-center space-x-2">
-                          <Checkbox id="fulltime" />
-                          <label htmlFor="fulltime" className="text-sm">
-                            Full-time
-                          </label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <Checkbox id="parttime" />
-                          <label htmlFor="parttime" className="text-sm">
-                            Part-time
-                          </label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <Checkbox id="contract" />
-                          <label htmlFor="contract" className="text-sm">
-                            Contract
-                          </label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <Checkbox id="internship" />
-                          <label htmlFor="internship" className="text-sm">
-                            Internship
-                          </label>
-                        </div>
+                      <h3 className="font-semibold mb-4">Job Type</h3>
+                      <div className="space-y-3">
+                        {["Full-time", "Part-time", "Contract", "Internship"].map((type) => (
+                          <div key={type} className="flex items-center gap-3">
+                            <Checkbox id={type} />
+                            <label htmlFor={type} className="text-zinc-300 cursor-pointer">{type}</label>
+                          </div>
+                        ))}
                       </div>
                     </div>
 
                     <div>
-                      <h3 className="font-medium mb-3">Experience Level</h3>
-                      <div className="space-y-2">
-                        <div className="flex items-center space-x-2">
-                          <Checkbox id="entry" />
-                          <label htmlFor="entry" className="text-sm">
-                            Entry Level
-                          </label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <Checkbox id="mid" />
-                          <label htmlFor="mid" className="text-sm">
-                            Mid Level
-                          </label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <Checkbox id="senior" />
-                          <label htmlFor="senior" className="text-sm">
-                            Senior Level
-                          </label>
-                        </div>
+                      <h3 className="font-semibold mb-4">Experience Level</h3>
+                      <div className="space-y-3">
+                        {["Entry Level", "Mid Level", "Senior Level"].map((level) => (
+                          <div key={level} className="flex items-center gap-3">
+                            <Checkbox id={level} />
+                            <label htmlFor={level} className="text-zinc-300 cursor-pointer">{level}</label>
+                          </div>
+                        ))}
                       </div>
                     </div>
 
                     <div>
-                      <h3 className="font-medium mb-3">Salary Range</h3>
-                      <div className="space-y-4">
-                        <Slider defaultValue={[50000, 150000]} min={0} max={200000} step={5000} />
-                        <div className="flex justify-between">
-                          <span className="text-sm">$0</span>
-                          <span className="text-sm">$200k+</span>
-                        </div>
+                      <h3 className="font-semibold mb-4">Salary Range</h3>
+                      <Slider defaultValue={[50000, 150000]} min={0} max={200000} step={5000} className="mb-4" />
+                      <div className="flex justify-between text-sm text-zinc-400">
+                        <span>$0</span>
+                        <span>$200k+</span>
                       </div>
                     </div>
 
                     <div>
-                      <h3 className="font-medium mb-3">Location</h3>
-                      <div className="space-y-2">
-                        <div className="flex items-center space-x-2">
-                          <Checkbox id="remote" />
-                          <label htmlFor="remote" className="text-sm">
-                            Remote
-                          </label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <Checkbox id="hybrid" />
-                          <label htmlFor="hybrid" className="text-sm">
-                            Hybrid
-                          </label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <Checkbox id="onsite" />
-                          <label htmlFor="onsite" className="text-sm">
-                            On-site
-                          </label>
-                        </div>
+                      <h3 className="font-semibold mb-4">Location</h3>
+                      <div className="space-y-3">
+                        {["Remote", "Hybrid", "On-site"].map((loc) => (
+                          <div key={loc} className="flex items-center gap-3">
+                            <Checkbox id={loc} />
+                            <label htmlFor={loc} className="text-zinc-300 cursor-pointer">{loc}</label>
+                          </div>
+                        ))}
                       </div>
                     </div>
-
-                    <Button className="w-full">Apply Filters</Button>
                   </div>
+
+                  <Button className="w-full mt-10 h-12 rounded-2xl bg-blue-600 hover:bg-blue-500">
+                    Apply Filters
+                  </Button>
                 </div>
               </div>
 
               {/* Job Listings */}
-              <div className="lg:w-3/4">
-                <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-xl font-semibold">Showing {jobs.length} jobs</h2>
-                  <div className="flex items-center space-x-2">
-                    <span className="text-sm text-muted-foreground">Sort by:</span>
-                    <select className="text-sm border rounded p-1">
+              <div className="flex-1">
+                <div className="flex justify-between items-center mb-8">
+                  <h2 className="text-3xl font-semibold tracking-tight">
+                    {jobs.length} Opportunities
+                  </h2>
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm text-zinc-400">Sort by:</span>
+                    <select className="bg-zinc-900 border border-white/10 rounded-2xl px-4 py-2 text-sm">
                       <option>Most Relevant</option>
-                      <option>Newest</option>
+                      <option>Newest First</option>
                       <option>Highest Salary</option>
                     </select>
                   </div>
                 </div>
 
-                <div className="space-y-6">
-                  {jobs.map((job) => (
-                    <JobCard key={job.id} job={job} />
+                <div className="space-y-8">
+                  {jobs.map((job, index) => (
+                    <motion.div
+                      key={job.id}
+                      initial={{ opacity: 0, y: 30 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.05 }}
+                    >
+                      <JobCard job={job} />
+                    </motion.div>
                   ))}
                 </div>
 
-                <div className="mt-8 flex justify-center">
-                  <div className="flex space-x-2">
-                    <Button variant="outline" size="sm" disabled>
-                      Previous
-                    </Button>
-                    <Button variant="outline" size="sm" className="bg-primary text-primary-foreground">
-                      1
-                    </Button>
-                    <Button variant="outline" size="sm">
-                      2
-                    </Button>
-                    <Button variant="outline" size="sm">
-                      3
-                    </Button>
-                    <Button variant="outline" size="sm">
-                      Next
-                    </Button>
+                {/* Pagination */}
+                <div className="mt-12 flex justify-center">
+                  <div className="flex gap-2">
+                    <Button variant="outline" disabled>Previous</Button>
+                    <Button className="bg-blue-600">1</Button>
+                    <Button variant="outline">2</Button>
+                    <Button variant="outline">3</Button>
+                    <Button variant="outline">Next</Button>
                   </div>
                 </div>
               </div>
@@ -235,7 +208,8 @@ export default function JobsPage() {
           </div>
         </section>
       </main>
+
       <Footer />
     </div>
-  )
+  );
 }

@@ -1,285 +1,297 @@
-import { Header } from "../components/Header"
-import { Footer } from "../components/Footer"
-import { Button } from "../components/ui/button"
-import { Link } from "react-router-dom"
+import { Header } from "../components/Header";
+import { Footer } from "../components/Footer";
+import { Button } from "../components/ui/button";
+import { Link } from "react-router-dom";
+import { motion } from "framer-motion"; // Add this dependency for premium animations
 
-// Update team members with real image URLs
+// Team members with better imagery and subtle enhancements
 const teamMembers = [
   {
     name: "Sarah Johnson",
     role: "CEO & Co-Founder",
-    image: "https://randomuser.me/api/portraits/women/23.jpg",
-    bio: "Sarah has over 15 years of experience in HR and recruitment. She founded Joblify with a mission to transform how people find their dream careers.",
+    image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=800&auto=format&fit=crop",
+    bio: "Visionary leader with 15+ years in HR innovation. Passionate about building equitable opportunities.",
   },
   {
     name: "Michael Chen",
     role: "CTO & Co-Founder",
-    image: "https://randomuser.me/api/portraits/men/54.jpg",
-    bio: "With a background in software engineering at leading tech companies, Michael leads our technology team to build innovative solutions for job seekers and employers.",
+    image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=800&auto=format&fit=crop",
+    bio: "Former engineering leader at FAANG companies. Obsessed with crafting delightful, scalable experiences.",
   },
   {
     name: "Jessica Rodriguez",
     role: "Head of Product",
-    image: "https://randomuser.me/api/portraits/women/45.jpg",
-    bio: "Jessica brings her expertise in UX design and product management to ensure Joblify delivers an exceptional experience for all users.",
+    image: "https://images.unsplash.com/photo-1580489944761-09be1ec59862?q=80&w=800&auto=format&fit=crop",
+    bio: "Product strategist and UX advocate. Turns complex problems into intuitive, human-centered solutions.",
   },
   {
     name: "David Kim",
     role: "Head of Marketing",
-    image: "https://randomuser.me/api/portraits/men/32.jpg",
-    bio: "David's background in digital marketing helps Joblify connect with job seekers and employers through strategic campaigns and partnerships.",
+    image: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=800&auto=format&fit=crop",
+    bio: "Growth marketer who believes authentic storytelling connects talent with opportunity.",
   },
-]
+];
 
 export default function AboutUsPage() {
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col min-h-screen bg-zinc-950 text-white overflow-hidden">
       <Header />
+
       <main className="flex-1">
-        {/* Hero Section */}
-        <section className="bg-primary text-primary-foreground py-20">
-          <div className="container mx-auto px-4 text-center">
-            <h1 className="text-6xl md:text-7xl font-bold mb-6 text-yellow-200">
-              About Joblify
-            </h1>
-            <p className="text-xl mb-8 max-w-3xl mx-auto">
-              We're on a mission to connect talented professionals with their dream careers and help companies find the
-              perfect candidates.
-            </p>
+        {/* HERO - Premium & Emotional Impact */}
+        <section className="relative min-h-[100dvh] flex items-center justify-center pt-20 overflow-hidden">
+          {/* Background Elements */}
+          <div className="absolute inset-0 bg-[radial-gradient(at_50%_30%,rgba(59,130,246,0.15),transparent_70%)]" />
+          <div className="absolute inset-0 bg-grid-white/[0.03]" />
+          
+          <div className="container mx-auto px-6 relative z-10 text-center">
+            <motion.div
+              initial={{ opacity: 0, y: 40 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, ease: "easeOut" }}
+            >
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/5 border border-white/10 mb-6 backdrop-blur-md">
+                <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
+                <span className="text-sm font-medium tracking-widest uppercase">Est. 2018 • San Francisco</span>
+              </div>
+
+              <h1 className="text-7xl md:text-[92px] leading-[1.05] font-semibold tracking-tighter mb-6">
+                Careers that<br />
+                <span className="bg-gradient-to-r from-blue-400 via-indigo-400 to-violet-400 bg-clip-text text-transparent">
+                  matter
+                </span>
+              </h1>
+
+              <p className="text-2xl md:text-3xl text-zinc-400 max-w-3xl mx-auto font-light tracking-tight mb-10">
+                We’re redefining how talent and opportunity connect — with respect, clarity, and joy.
+              </p>
+
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+                <Button asChild size="lg" className="h-14 px-10 text-lg font-medium rounded-2xl bg-white text-zinc-950 hover:bg-white/90 transition-all active:scale-[0.985]">
+                  <Link to="/jobs">Explore Opportunities</Link>
+                </Button>
+                <Button asChild variant="outline" size="lg" className="h-14 px-10 text-lg font-medium rounded-2xl border-white/30 hover:bg-white/5">
+                  <Link to="/post-job">For Employers</Link>
+                </Button>
+              </div>
+            </motion.div>
+          </div>
+
+          {/* Scroll Prompt */}
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 1.2 }}
+            className="absolute bottom-12 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 text-xs tracking-widest text-zinc-500"
+          >
+            SCROLL TO DISCOVER
+            <div className="w-px h-12 bg-gradient-to-b from-transparent via-zinc-500 to-transparent" />
+          </motion.div>
+        </section>
+
+        {/* OUR STORY - Visual Storytelling */}
+        <section className="py-24 relative">
+          <div className="container mx-auto px-6">
+            <div className="grid lg:grid-cols-2 gap-16 items-center">
+              <motion.div
+                initial={{ opacity: 0, x: -40 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true }}
+                className="space-y-8"
+              >
+                <div className="inline text-blue-400 font-mono tracking-[3px] text-sm">CHAPTER 01 — ORIGINS</div>
+                <h2 className="text-6xl font-semibold tracking-tighter leading-none">
+                  From frustration<br />to possibility
+                </h2>
+                
+                <div className="space-y-6 text-lg text-zinc-400 max-w-lg">
+                  <p>
+                    In 2018, Sarah and Michael met at a coffee shop after both had exhausting job search experiences. 
+                    They knew there had to be a better way.
+                  </p>
+                  <p>
+                    Today, Joblify has helped over 240,000 professionals find work they love and empowered 3,800+ companies to build stronger teams.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-8 pt-6">
+                  <div>
+                    <div className="text-5xl font-semibold text-white">240K+</div>
+                    <div className="text-zinc-500">Lives impacted</div>
+                  </div>
+                  <div>
+                    <div className="text-5xl font-semibold text-white">4.9/5</div>
+                    <div className="text-zinc-500">Average satisfaction</div>
+                  </div>
+                </div>
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, scale: 0.92 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.7 }}
+                className="relative"
+              >
+                <div className="aspect-[4/3] rounded-3xl overflow-hidden shadow-2xl ring-1 ring-white/10">
+                  <img
+                    src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?q=80&w=2000&auto=format&fit=crop"
+                    alt="Joblify founding team in discussion"
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                {/* Decorative accent */}
+                <div className="absolute -bottom-6 -right-6 bg-zinc-900 border border-white/10 rounded-2xl p-6 max-w-[220px] backdrop-blur-xl">
+                  <p className="italic text-sm text-zinc-400">"We didn't just build another job board. We built a movement."</p>
+                  <p className="text-xs mt-4 text-blue-400">— Sarah Johnson</p>
+                </div>
+              </motion.div>
+            </div>
           </div>
         </section>
 
-        {/* Our Story Section */}
-        <section className="py-16">
-          <div className="container mx-auto px-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+        {/* MISSION - Elevated Cards */}
+        <section className="py-24 bg-zinc-900">
+          <div className="container mx-auto px-6">
+            <div className="text-center mb-16">
+              <div className="uppercase tracking-[4px] text-blue-500 text-sm mb-3">CHAPTER 02 — PURPOSE</div>
+              <h2 className="text-5xl font-semibold tracking-tighter">Work should feel meaningful</h2>
+            </div>
+
+            <div className="grid md:grid-cols-3 gap-8">
+              {[
+                {
+                  icon: "👤",
+                  title: "For Job Seekers",
+                  desc: "Tools that respect your time and celebrate your unique journey. Match with roles that align with your values and ambitions.",
+                },
+                {
+                  icon: "🏢",
+                  title: "For Employers",
+                  desc: "Hire faster, smarter, and more fairly. Connect with candidates who are passionate about your mission.",
+                },
+                {
+                  icon: "🌍",
+                  title: "For Everyone",
+                  desc: "A transparent, bias-aware marketplace that champions diversity and human potential.",
+                },
+              ].map((item, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, y: 40 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.1 }}
+                  viewport={{ once: true }}
+                  className="group bg-zinc-950 border border-white/5 hover:border-blue-500/30 rounded-3xl p-10 transition-all hover:-translate-y-2"
+                >
+                  <div className="text-6xl mb-8 opacity-80 group-hover:scale-110 transition-transform">{item.icon}</div>
+                  <h3 className="text-3xl font-semibold mb-4 tracking-tight">{item.title}</h3>
+                  <p className="text-zinc-400 leading-relaxed">{item.desc}</p>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* TEAM - Premium Grid */}
+        <section className="py-24">
+          <div className="container mx-auto px-6">
+            <div className="flex justify-between items-end mb-12">
               <div>
-                <h2 className="text-3xl font-bold mb-6">Our Story</h2>
-                <p className="text-lg text-muted-foreground mb-4">
-                  Joblify was founded in 2018 with a simple but powerful vision: to transform the way people find
-                  jobs and companies hire talent.
-                </p>
-                <p className="text-lg text-muted-foreground mb-4">
-                  After experiencing the frustrations of traditional job searching firsthand, our founders Sarah Johnson
-                  and Michael Chen set out to create a platform that would make the process more efficient, transparent,
-                  and human-centered.
-                </p>
-                <p className="text-lg text-muted-foreground">
-                  Today, Joblify helps thousands of job seekers find meaningful careers and enables companies of all
-                  sizes to build their dream teams. We're proud of how far we've come, but we're just getting started.
-                </p>
+                <div className="uppercase tracking-widest text-sm text-zinc-500 mb-2">CHAPTER 03 — HUMANS</div>
+                <h2 className="text-5xl font-semibold tracking-tighter">Meet the dreamers &amp; doers</h2>
               </div>
-              <div className="rounded-lg overflow-hidden shadow-lg">
-                <img
-                  src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?q=80&w=800&h=600&auto=format&fit=crop"
-                  alt="Joblify team"
-                  className="w-full h-auto"
-                />
-              </div>
+              <p className="text-zinc-400 max-w-xs hidden md:block">
+                A small but mighty team united by curiosity, empathy, and relentless execution.
+              </p>
             </div>
-          </div>
-        </section>
 
-        {/* Our Mission Section */}
-        <section className="py-16 bg-muted">
-          <div className="container mx-auto px-4 text-center">
-            <h2 className="text-3xl font-bold mb-6">Our Mission</h2>
-            <p className="text-xl mb-12 max-w-3xl mx-auto">
-              To create a world where everyone can find work they love and companies can build teams that thrive.
-            </p>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              <div className="bg-card p-8 rounded-lg shadow-sm">
-                <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="24"
-                    height="24"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="h-8 w-8 text-primary"
-                  >
-                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-                    <circle cx="9" cy="7" r="4" />
-                    <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
-                    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                  </svg>
-                </div>
-                <h3 className="text-xl font-semibold mb-3 text-center md:text-left">For Job Seekers</h3>
-                <p className="text-muted-foreground">
-                  We empower job seekers with the tools, resources, and connections they need to discover and secure
-                  opportunities that align with their skills, values, and career goals.
-                </p>
-              </div>
-
-              <div className="bg-card p-8 rounded-lg shadow-sm">
-                <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="24"
-                    height="24"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="h-8 w-8 text-primary"
-                  >
-                    <rect width="20" height="14" x="2" y="7" rx="2" ry="2" />
-                    <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
-                  </svg>
-                </div>
-                <h3 className="text-xl font-semibold mb-3 text-center md:text-left">For Employers</h3>
-                <p className="text-muted-foreground">
-                  We help employers of all sizes find, attract, and hire the right talent efficiently. Our platform
-                  streamlines the recruitment process and connects companies with qualified candidates who will
-                  contribute to their success.
-                </p>
-              </div>
-
-              <div className="bg-card p-8 rounded-lg shadow-sm">
-                <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="24"
-                    height="24"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="h-8 w-8 text-primary"
-                  >
-                    <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" />
-                    <path d="m7 10 3 3 7-7" />
-                  </svg>
-                </div>
-                <h3 className="text-xl font-semibold mb-3 text-center md:text-left">Our Commitment</h3>
-                <p className="text-muted-foreground">
-                  We're committed to creating a fair, inclusive, and transparent job marketplace. We believe that
-                  everyone deserves access to opportunities and that diverse teams drive innovation and success.
-                </p>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Team Section */}
-        <section className="py-16">
-          <div className="container mx-auto px-4">
-            <h2 className="text-3xl font-bold mb-6 text-center">Meet Our Team</h2>
-            <p className="text-lg text-muted-foreground mb-12 text-center max-w-3xl mx-auto">
-              We're a diverse team of passionate individuals dedicated to transforming the job search experience.
-            </p>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
               {teamMembers.map((member, index) => (
-                <div key={index} className="bg-card rounded-lg shadow-sm overflow-hidden">
-                  <div className="aspect-square overflow-hidden">
+                <motion.div
+                  key={index}
+                  initial={{ opacity: 0, y: 60 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.08 }}
+                  viewport={{ once: true }}
+                  className="group"
+                >
+                  <div className="relative aspect-[4/3.1] rounded-3xl overflow-hidden mb-6 shadow-xl">
                     <img
-                      src={member.image || "/placeholder.svg"}
+                      src={member.image}
                       alt={member.name}
-                      className="w-full h-full object-cover transition-transform hover:scale-105 duration-300"
+                      className="w-full h-full object-cover transition-all duration-700 group-hover:scale-110"
                     />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                    <div className="absolute bottom-6 left-6 right-6">
+                      <div className="font-semibold text-2xl">{member.name}</div>
+                      <div className="text-blue-400 text-sm tracking-wider">{member.role}</div>
+                    </div>
                   </div>
-                  <div className="p-6">
-                    <h3 className="text-xl font-semibold mb-1">{member.name}</h3>
-                    <p className="text-primary mb-3">{member.role}</p>
-                    <p className="text-muted-foreground">{member.bio}</p>
-                  </div>
+                  <p className="text-zinc-400 text-[15px] leading-relaxed line-clamp-3">{member.bio}</p>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* VALUES - Modern Horizontal Scroll on Mobile */}
+        <section className="py-24 bg-zinc-900">
+          <div className="container mx-auto px-6">
+            <div className="text-center mb-16">
+              <h2 className="text-5xl font-semibold tracking-tighter mb-3">What drives us</h2>
+              <p className="text-zinc-400 text-xl">Principles we live by every day</p>
+            </div>
+
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[
+                { title: "Radical Empathy", desc: "We design for real humans, not resumes." },
+                { title: "Obsessive Clarity", desc: "No corporate jargon. Just honest communication." },
+                { title: "Courageous Innovation", desc: "We ship bold ideas and iterate fearlessly." },
+                { title: "Deep Inclusion", desc: "Diversity isn’t a checkbox — it’s our foundation." },
+                { title: "Sustainable Excellence", desc: "Quality compounds. We never cut corners." },
+                { title: "Measurable Impact", desc: "If it doesn’t improve lives, it doesn’t ship." },
+              ].map((value, i) => (
+                <div
+                  key={i}
+                  className="bg-zinc-950 border border-white/5 p-8 rounded-3xl group hover:border-white/20 transition-colors"
+                >
+                  <div className="h-1.5 w-12 bg-gradient-to-r from-blue-400 to-violet-400 rounded mb-8 group-hover:w-16 transition-all" />
+                  <h3 className="text-2xl font-semibold mb-3 tracking-tight">{value.title}</h3>
+                  <p className="text-zinc-400">{value.desc}</p>
                 </div>
               ))}
             </div>
           </div>
         </section>
 
-        {/* Values Section */}
-        <section className="py-16 bg-muted">
-          <div className="container mx-auto px-4">
-            <h2 className="text-3xl font-bold mb-6 text-center">Our Values</h2>
-            <p className="text-lg text-muted-foreground mb-12 text-center max-w-3xl mx-auto">
-              These core principles guide everything we do at Joblify.
-            </p>
+        {/* FINAL CTA - High Conversion */}
+        <section className="py-32 border-t border-white/10">
+          <div className="container mx-auto px-6 text-center">
+            <div className="max-w-2xl mx-auto">
+              <h2 className="text-6xl font-semibold tracking-tighter mb-6">
+                Ready to write the next chapter?
+              </h2>
+              <p className="text-xl text-zinc-400 mb-12">
+                Whether you're searching for purpose or building a world-class team — we're here for it.
+              </p>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              <div className="bg-card p-8 rounded-lg shadow-sm">
-                <h3 className="text-xl font-semibold mb-3">User-Centered</h3>
-                <p className="text-muted-foreground">
-                  We put our users first in everything we do, constantly seeking feedback and improving our platform to
-                  meet their needs.
-                </p>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <Button asChild size="lg" className="h-16 px-12 text-lg rounded-2xl bg-white hover:bg-zinc-100 text-black font-medium">
+                  <Link to="/jobs">Find Your Next Role</Link>
+                </Button>
+                <Button asChild variant="outline" size="lg" className="h-16 px-12 text-lg rounded-2xl border-white/30 hover:bg-white/5">
+                  <Link to="/post-job">Hire Talent</Link>
+                </Button>
               </div>
 
-              <div className="bg-card p-8 rounded-lg shadow-sm">
-                <h3 className="text-xl font-semibold mb-3">Transparency</h3>
-                <p className="text-muted-foreground">
-                  We believe in open, honest communication with our users, partners, and within our team.
-                </p>
-              </div>
-
-              <div className="bg-card p-8 rounded-lg shadow-sm">
-                <h3 className="text-xl font-semibold mb-3">Innovation</h3>
-                <p className="text-muted-foreground">
-                  We're constantly exploring new ideas and technologies to improve the job search and hiring experience.
-                </p>
-              </div>
-
-              <div className="bg-card p-8 rounded-lg shadow-sm">
-                <h3 className="text-xl font-semibold mb-3">Diversity & Inclusion</h3>
-                <p className="text-muted-foreground">
-                  We celebrate diversity and are committed to creating an inclusive platform where everyone feels
-                  welcome.
-                </p>
-              </div>
-
-              <div className="bg-card p-8 rounded-lg shadow-sm">
-                <h3 className="text-xl font-semibold mb-3">Quality</h3>
-                <p className="text-muted-foreground">
-                  We're dedicated to providing high-quality service and maintaining the highest standards in everything
-                  we do.
-                </p>
-              </div>
-
-              <div className="bg-card p-8 rounded-lg shadow-sm">
-                <h3 className="text-xl font-semibold mb-3">Impact</h3>
-                <p className="text-muted-foreground">
-                  We measure our success by the positive impact we have on the lives of job seekers and the growth of
-                  businesses.
-                </p>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* CTA Section */}
-        <section className="py-16">
-          <div className="container mx-auto px-4 text-center">
-            <h2 className="text-3xl font-bold mb-6">Join Our Journey</h2>
-            <p className="text-lg mb-8 max-w-3xl mx-auto">
-              Whether you're looking for your next career opportunity, hiring for your team, or interested in joining
-              our company, we'd love to connect with you.
-            </p>
-            <div className="flex flex-wrap justify-center gap-4">
-              <Button asChild size="lg" className="w-full sm:w-auto">
-                <Link to="/jobs">Find Jobs</Link>
-              </Button>
-              <Button asChild variant="outline" size="lg" className="w-full sm:w-auto">
-                <Link to="/post-job">Post a Job</Link>
-              </Button>
-              <Button asChild variant="outline" size="lg" className="w-full sm:w-auto">
-                <Link to="/careers">Careers at Joblify</Link>
-              </Button>
+              <p className="text-xs text-zinc-500 mt-8">Join 240,000+ professionals already on the journey</p>
             </div>
           </div>
         </section>
       </main>
+
       <Footer />
     </div>
-  )
+  );
 }

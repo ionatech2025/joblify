@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from './ui/button';
-import joblifyLogo from '../assets/joblify-logo.jpeg';
+import joblifyLogo from '../assets/joblify-logo.jpeg'; // Maintained for internal asset bindings
 
 export function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -11,195 +11,171 @@ export function Header() {
 
   useEffect(() => {
     const handleScroll = () => {
-      setIsScrolled(window.scrollY > 10);
+      setIsScrolled(window.scrollY > 20);
     };
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const toggleMenu = () => {
-    setIsMenuOpen(!isMenuOpen);
-  };
-
   return (
     <header
-      className={`sticky top-0 z-50 transition-all duration-500 ${
+      className={`fixed top-0 left-0 w-full z-50 transition-all duration-300 ${
         isScrolled
-          ? 'bg-white/95 backdrop-blur-xl border-b border-blue-200/50 shadow-lg shadow-blue-500/10'
-          : 'bg-white/90 backdrop-blur-md border-b border-blue-100/50 shadow-md shadow-blue-500/5'
+          ? 'bg-[#0B0F19]/80 backdrop-blur-xl border-b border-slate-800/80 shadow-[0_4px_30px_rgba(0,0,0,0.3)] py-4'
+          : 'bg-transparent py-6'
       }`}
     >
-      <div className="container mx-auto px-4">
-        <div className="flex h-20 items-center justify-between">
-          <div className="flex items-center">
-            <Link to="/" className="flex items-center space-x-4 group">
-              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-xl group-hover:shadow-2xl group-hover:shadow-blue-500/25 transition-all duration-500 transform group-hover:scale-110 group-hover:rotate-3 overflow-hidden">
-                <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                  <span className="text-2xl font-bold text-white">J</span>
-                </div>
+      <div className="container mx-auto px-6">
+        <div className="flex h-16 items-center justify-between">
+          
+          {/* Logo Identity Unit */}
+          <Link to="/" className="flex items-center space-x-3 group">
+            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-indigo-500 via-indigo-600 to-cyan-500 flex items-center justify-center shadow-lg transition-transform duration-300 group-hover:scale-105 overflow-hidden">
+              <div className="w-8 h-8 rounded-lg bg-white/10 backdrop-blur-sm flex items-center justify-center border border-white/10">
+                <span className="text-lg font-black text-white tracking-tighter">J</span>
               </div>
-              <span
-                className={`text-3xl font-bold bg-gradient-to-r from-blue-600 via-blue-500 to-blue-700 bg-clip-text text-transparent tracking-tight transition-all duration-500 ${
-                  isScrolled ? 'opacity-100' : 'opacity-95'
-                }`}
-              >
+            </div>
+            <div className="flex flex-col">
+              <span className="text-xl font-bold tracking-tight text-white group-hover:text-slate-200 transition-colors">
                 Joblify
               </span>
-              <div className="hidden md:flex items-center space-x-1">
-                <span className="px-2 py-1 bg-gradient-to-r from-green-500 to-emerald-500 text-white text-xs font-bold rounded-full shadow-lg animate-pulse">
-                  NEW
+              <span className="text-[10px] text-cyan-400 font-semibold tracking-widest uppercase -mt-0.5 opacity-80">
+                Talent Matrix
+              </span>
+            </div>
+          </Link>
+
+          {/* Centralized Navigation Arrays (Desktop) */}
+          <nav className="hidden lg:flex items-center space-x-1">
+            {[
+              { to: '/jobs', label: 'Find Jobs', icon: '🔍', badge: '2.5k+' },
+              { to: '/companies', label: 'Companies', icon: '🏢', badge: '500+' },
+              { to: '/resources', label: 'Resources', icon: '📚', badge: null },
+              { to: '/about', label: 'About Us', icon: 'ℹ️', badge: null },
+            ].map((item) => (
+              <Link
+                key={item.to}
+                to={item.to}
+                className="group relative flex items-center space-x-2 px-4 py-2.5 text-sm font-medium text-slate-400 hover:text-white rounded-xl transition-all duration-200 hover:bg-slate-900/60"
+              >
+                <span className="text-base transition-transform duration-300 group-hover:scale-110">
+                  {item.icon}
                 </span>
-                <span className="px-2 py-1 bg-gradient-to-r from-orange-500 to-red-500 text-white text-xs font-bold rounded-full shadow-lg">
-                  HOT
-                </span>
-              </div>
+                <span>{item.label}</span>
+                
+                {item.badge && (
+                  <span className="px-1.5 py-0.5 bg-indigo-500/10 border border-indigo-500/30 text-[10px] font-bold text-indigo-400 rounded-md">
+                    {item.badge}
+                  </span>
+                )}
+                
+                {/* Micro-Interaction Animated Underline */}
+                <div className="absolute inset-x-4 bottom-1 h-0.5 bg-gradient-to-r from-indigo-500 to-cyan-400 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 rounded-full" />
+              </Link>
+            ))}
+          </nav>
+
+          {/* User Auth Action Cluster (Desktop) */}
+          <div className="hidden md:flex items-center space-x-4">
+            <Link 
+              to="/login" 
+              className="text-sm font-medium text-slate-400 hover:text-white transition-colors px-3 py-2"
+            >
+              Sign In
             </Link>
-
-            <nav className="ml-12 hidden lg:flex space-x-2">
-              {[
-                { to: '/jobs', label: 'Find Jobs', icon: '�', badge: '2.5k+' },
-                { to: '/companies', label: 'Companies', icon: '🏢', badge: '500+' },
-                { to: '/resources', label: 'Resources', icon: '📚', badge: null },
-                { to: '/about', label: 'About Us', icon: 'ℹ️', badge: null },
-              ].map((item) => (
-                <Link
-                  key={item.to}
-                  to={item.to}
-                  className={`group relative flex items-center space-x-3 px-5 py-3 rounded-xl transition-all duration-500 hover:bg-gradient-to-r hover:from-blue-500/10 hover:to-blue-600/10 hover:scale-105 hover:shadow-lg hover:shadow-blue-500/10 ${
-                    isScrolled
-                      ? 'text-foreground hover:text-blue-600'
-                      : 'text-foreground hover:text-blue-600'
-                  }`}
-                >
-                  <div className="relative">
-                    <span className="text-xl transition-all duration-500 group-hover:scale-110 group-hover:rotate-12">
-                      {item.icon}
-                    </span>
-                    {item.badge && (
-                      <span className="absolute -top-2 -right-3 px-1.5 py-0.5 bg-gradient-to-r from-red-500 to-pink-500 text-white text-xs font-bold rounded-full shadow-lg animate-bounce">
-                        {item.badge}
-                      </span>
-                    )}
-                  </div>
-                  <span className="font-semibold tracking-wide">{item.label}</span>
-                  <div className="absolute inset-x-0 bottom-0 h-0.5 bg-gradient-to-r from-blue-500 to-blue-600 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 rounded-full"></div>
-                </Link>
-              ))}
-            </nav>
+            <Button
+              asChild
+              className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-5 py-2.5 rounded-xl shadow-lg shadow-indigo-600/20 hover:shadow-indigo-600/30 transition-all duration-200 transform hover:-translate-y-0.5"
+            >
+              <Link to="/signup">Register Account</Link>
+            </Button>
           </div>
 
-          <div className="flex items-center space-x-4">
-            <div className="hidden md:flex items-center space-x-3">
-              <Button
-                variant="outline"
-                asChild
-                size="lg"
-                className={`transition-all duration-500 hover:scale-105 hover:shadow-lg font-semibold ${
-                  isScrolled
-                    ? 'border-blue-300 hover:border-blue-500 hover:bg-blue-50 hover:text-blue-600'
-                    : 'border-blue-300 hover:border-blue-500 hover:bg-blue-50 hover:text-blue-600'
-                }`}
+          {/* Mobile Menu Toggle Button */}
+          <div className="lg:hidden">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+              aria-label="Toggle menu"
+              className="w-11 h-11 transition-all duration-200 hover:bg-slate-900 text-slate-400 hover:text-white rounded-xl border border-transparent hover:border-slate-800"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className={`h-5 w-5 transition-transform duration-300 ${isMenuOpen ? 'rotate-90 text-white' : ''}`}
               >
-                <Link to="/login">Log In</Link>
-              </Button>
-              <Button
-                asChild
-                size="lg"
-                className="bg-gradient-to-r from-blue-600 via-blue-500 to-blue-600 hover:from-blue-700 hover:via-blue-600 hover:to-blue-700 text-white shadow-xl hover:shadow-2xl hover:shadow-blue-500/25 transition-all duration-500 hover:scale-105 font-semibold relative overflow-hidden group"
-              >
-                <Link to="/signup">
-                  <span className="relative z-10">Sign Up</span>
-                  <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                </Link>
-              </Button>
-            </div>
-
-            <div className="lg:hidden">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={toggleMenu}
-                aria-label="Toggle menu"
-                className={`w-12 h-12 transition-all duration-500 hover:scale-110 hover:bg-blue-500/10 rounded-xl ${
-                  isScrolled
-                    ? 'text-foreground hover:text-blue-600'
-                    : 'text-foreground hover:text-blue-600'
-                }`}
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className={`h-7 w-7 transition-all duration-500 ${isMenuOpen ? 'rotate-90 scale-110' : ''}`}
-                >
-                  <line x1="4" x2="20" y1="12" y2="12" />
-                  <line x1="4" x2="20" y1="6" y2="6" />
-                  <line x1="4" x2="20" y1="18" y2="18" />
-                </svg>
-              </Button>
-            </div>
+                {isMenuOpen ? (
+                  <>
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                  </>
+                ) : (
+                  <>
+                    <line x1="4" y1="12" x2="20" y2="12" />
+                    <line x1="4" y1="6" x2="20" y2="6" />
+                    <line x1="4" y1="18" x2="20" y2="18" />
+                  </>
+                )}
+              </svg>
+            </Button>
           </div>
+
         </div>
+      </div>
 
-        {/* Enhanced Mobile Menu */}
-        <div
-          className={`lg:hidden transition-all duration-500 ease-in-out overflow-hidden ${
-            isMenuOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
-          }`}
-        >
-          <div className="py-8 border-t border-blue-200/50 bg-white/95 backdrop-blur-xl">
-            <nav className="flex flex-col space-y-4">
-              {[
-                { to: '/jobs', label: 'Find Jobs', icon: '�', badge: '2.5k+' },
-                { to: '/companies', label: 'Companies', icon: '🏢', badge: '500+' },
-                { to: '/resources', label: 'Resources', icon: '📚', badge: null },
-                { to: '/about', label: 'About Us', icon: 'ℹ️', badge: null },
-              ].map((item) => (
-                <Link
-                  key={item.to}
-                  to={item.to}
-                  className={`flex items-center space-x-4 px-6 py-4 rounded-xl transition-all duration-500 hover:bg-gradient-to-r hover:from-blue-500/10 hover:to-blue-600/10 hover:text-blue-600 hover:scale-105 hover:shadow-lg hover:shadow-blue-500/10 ${
-                    isScrolled ? 'text-foreground' : 'text-foreground'
-                  }`}
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  <div className="relative">
-                    <span className="text-2xl transform transition-transform duration-500 hover:rotate-12">
-                      {item.icon}
-                    </span>
-                    {item.badge && (
-                      <span className="absolute -top-2 -right-3 px-1.5 py-0.5 bg-gradient-to-r from-red-500 to-pink-500 text-white text-xs font-bold rounded-full shadow-lg">
-                        {item.badge}
-                      </span>
-                    )}
-                  </div>
-                  <span className="font-semibold text-lg">{item.label}</span>
-                </Link>
-              ))}
+      {/* Advanced Mobile Menu Dropdown Panel */}
+      <div
+        className={`lg:hidden transition-all duration-300 ease-in-out overflow-hidden bg-[#0B0F19]/95 backdrop-blur-2xl border-b border-slate-800/80 ${
+          isMenuOpen ? 'max-h-[450px] opacity-100' : 'max-h-0 opacity-0 pointer-events-none'
+        }`}
+      >
+        <div className="container mx-auto px-6 py-6 space-y-6">
+          <nav className="flex flex-col space-y-1">
+            {[
+              { to: '/jobs', label: 'Find Jobs', icon: '🔍', badge: '2.5k+' },
+              { to: '/companies', label: 'Companies', icon: '🏢', badge: '500+' },
+              { to: '/resources', label: 'Resources', icon: '📚', badge: null },
+              { to: '/about', label: 'About Us', icon: 'ℹ️', badge: null },
+            ].map((item) => (
+              <Link
+                key={item.to}
+                to={item.to}
+                className="flex items-center justify-between p-3 rounded-xl text-slate-300 hover:text-white hover:bg-slate-900/60 transition-colors"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                <div className="flex items-center space-x-3">
+                  <span className="text-xl">{item.icon}</span>
+                  <span className="font-medium text-sm">{item.label}</span>
+                </div>
+                {item.badge && (
+                  <span className="px-2 py-0.5 bg-indigo-500/10 border border-indigo-500/20 text-[10px] font-bold text-indigo-400 rounded-md">
+                    {item.badge}
+                  </span>
+                )}
+              </Link>
+            ))}
+          </nav>
 
-              <div className="flex flex-col space-y-3 pt-6 border-t border-blue-200/50">
-                <Button variant="outline" asChild size="lg" className="w-full font-semibold">
-                  <Link to="/login" onClick={() => setIsMenuOpen(false)}>
-                    Log In
-                  </Link>
-                </Button>
-                <Button
-                  asChild
-                  size="lg"
-                  className="w-full bg-gradient-to-r from-blue-600 via-blue-500 to-blue-600 hover:from-blue-700 hover:via-blue-600 hover:to-blue-700 text-white shadow-xl hover:shadow-2xl font-semibold"
-                >
-                  <Link to="/signup" onClick={() => setIsMenuOpen(false)}>
-                    Sign Up
-                  </Link>
-                </Button>
-              </div>
-            </nav>
+          {/* User Auth Actions (Mobile) */}
+          <div className="flex flex-col gap-3 pt-4 border-t border-slate-800/60">
+            <Button variant="outline" asChild className="w-full bg-slate-900/40 border-slate-800 text-slate-300 hover:bg-slate-800 hover:text-white py-5 rounded-xl">
+              <Link to="/login" onClick={() => setIsMenuOpen(false)}>
+                Sign In
+              </Link>
+            </Button>
+            <Button asChild className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-5 rounded-xl shadow-lg shadow-indigo-600/20">
+              <Link to="/signup" onClick={() => setIsMenuOpen(false)}>
+                Register Account
+              </Link>
+            </Button>
           </div>
         </div>
       </div>
