@@ -1,1328 +1,304 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { Sidebar } from '../components/Sidebar';
-import { Button } from '../components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
-import { Badge } from '../components/ui/badge';
-import { Input } from '../components/ui/input';
-import { Label } from '../components/ui/label';
-import { localStorageUtils } from '../utils/localStorage';
+"use client"
 
-// API service functions
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+import { useState } from "react"
+import { Link, useParams } from "react-router-dom"
+import { Header } from "../components/Header"
+import { Footer } from "../components/Footer"
+import { Button } from "../components/ui/button"
+import { Input } from "../components/ui/input"
+import { Textarea } from "../components/ui/textarea"
+import { Label } from "../components/ui/label"
+import { Checkbox } from "../components/ui/checkbox"
+import { motion } from "framer-motion"
 
-const apiService = {
-  async request(endpoint, options = {}) {
-    const url = `${API_BASE_URL}${endpoint}`;
-    const config = {
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
-      credentials: 'include',
-      ...options,
-    };
+const job = {
+  id: "1",
+  title: "Frontend Developer",
+  company: "TechCorp",
+  location: "San Francisco, CA",
+}
 
-    if (options.body) {
-      config.body = JSON.stringify(options.body);
+export default function JobApplicationPage() {
+  const { id } = useParams()
+  const [step, setStep] = useState(1)
+  const [resumeFile, setResumeFile] = useState(null)
+  const [coverLetterFile, setCoverLetterFile] = useState(null)
+
+  const handleResumeChange = (e) => {
+    if (e.target.files && e.target.files[0]) {
+      setResumeFile(e.target.files[0])
     }
-
-    try {
-      const response = await fetch(url, config);
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || `HTTP error! status: ${response.status}`);
-      }
-
-      return data;
-    } catch (error) {
-      console.error('API request failed:', error);
-      throw error;
-    }
-  },
-
-  async getProfile() {
-    return this.request('/jobseeker/profile', {
-      method: 'GET',
-    });
-  },
-};
-
-import {
-  User,
-  Building2,
-  Briefcase,
-  Search,
-  Clock,
-  Bookmark,
-  FileText,
-  Settings,
-  LogOut,
-  Home,
-  Bell,
-  TrendingUp,
-  Crown,
-  Camera,
-  Edit3,
-  Save,
-  X,
-  Eye,
-  EyeOff,
-  MessageCircle,
-  Send,
-  Users2,
-} from 'lucide-react';
-
-export default function JobseekerDashboardPage() {
-  const navigate = useNavigate();
-  const [user, setUser] = useState(null);
-  const [recentActivity, setRecentActivity] = useState([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
-
-  // Profile editing state
-  const [isEditingProfile, setIsEditingProfile] = useState(false);
-  const [profileImage, setProfileImage] = useState(null);
-  const [profileImagePreview, setProfileImagePreview] = useState(null);
-  const [showPasswordChange, setShowPasswordChange] = useState(false);
-  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
-  const [showNewPassword, setShowNewPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [profileFormData, setProfileFormData] = useState({
-    firstName: '',
-    lastName: '',
-    email: '',
-    currentPassword: '',
-    newPassword: '',
-    confirmPassword: '',
-  });
-  const [profileErrors, setProfileErrors] = useState({});
-  const [isSavingProfile, setIsSavingProfile] = useState(false);
-
-  // Broadcast messaging state
-  const [broadcastMessages, setBroadcastMessages] = useState([]);
-  const [showBroadcastModal, setShowBroadcastModal] = useState(false);
-  const [selectedBroadcast, setSelectedBroadcast] = useState(null);
-  const [replyMessage, setReplyMessage] = useState('');
-  const [isSendingReply, setIsSendingReply] = useState(false);
-
-  useEffect(() => {
-    // Fetch user data from API first, then fall back to localStorage
-    const fetchUserData = async () => {
-      try {
-        let userData = null;
-        let profileData = null;
-
-        // Try to fetch from API first
-        try {
-          const response = await apiService.getProfile();
-          console.log('Dashboard: API profile response:', response);
-
-          if (response.success && response.profile) {
-            const apiData = response.profile;
-            profileData = apiData.jobSeekerProfile || {};
-
-            userData = {
-              id: apiData.id,
-              firstName: apiData.firstName,
-              lastName: apiData.lastName,
-              email: apiData.email,
-              role: apiData.userType,
-              phone: profileData.phone || apiData.phone,
-              avatar: profileData.portfolio || null,
-              profileComplete: 100,
-              lastLogin: new Date().toISOString(),
-              profileUpdated: profileData.updatedAt || new Date().toISOString(),
-              savedJobs: 8,
-              appliedJobs: apiData.applications?.length || 12,
-            };
-            console.log('Dashboard: Using API user data');
-          }
-        } catch (apiError) {
-          console.log('Dashboard: API fetch failed, falling back to localStorage:', apiError);
-        }
-
-        // Fall back to localStorage if API failed or returned no data
-        if (!userData) {
-          const storedData = localStorageUtils.getUserData();
-
-          if (storedData) {
-            console.log('Dashboard: Using stored user data:', storedData);
-            userData = storedData;
-          } else {
-            // Fallback to mock data if no stored user
-            userData = {
-              id: 1,
-              firstName: 'John',
-              lastName: 'Doe',
-              email: 'john.doe@example.com',
-              role: 'JOB_SEEKER',
-              profileComplete: 75,
-              lastLogin: '2024-01-15T10:30:00Z',
-              profileUpdated: '2024-01-12T14:20:00Z',
-              savedJobs: 8,
-              appliedJobs: 12,
-              avatar: null,
-            };
-            console.log('Dashboard: Using mock user data as fallback');
-          }
-        }
-
-        // Add default fields that might be missing
-        const fullUserData = {
-          ...userData,
-          profileComplete: userData.profileComplete || 75,
-          lastLogin: userData.lastLogin || new Date().toISOString(),
-          profileUpdated: userData.profileUpdated || new Date().toISOString(),
-          savedJobs: userData.savedJobs || 8,
-          appliedJobs: userData.appliedJobs || 12,
-          avatar: userData.avatar || null,
-          subscriptions: userData.subscriptions || [
-            {
-              id: 'sub1',
-              companyName: 'TechCorp Solutions',
-              type: 'EMPLOYABLE',
-              subscribedDate: '2024-01-10T14:30:00Z',
-            },
-            {
-              id: 'sub2',
-              companyName: 'HealthFirst Medical',
-              type: 'VIRTUAL_INTERN',
-              subscribedDate: '2024-01-08T09:15:00Z',
-            },
-          ],
-        };
-
-        // Mock recent activity
-        const mockActivity = [
-          {
-            id: 1,
-            type: 'profile_update',
-            message: 'Updated professional summary',
-            timestamp: '2024-01-12T14:20:00Z',
-            icon: '👤',
-          },
-          {
-            id: 2,
-            type: 'job_application',
-            message: 'Applied to Senior Developer at TechCorp',
-            timestamp: '2024-01-10T09:15:00Z',
-            icon: '📝',
-          },
-          {
-            id: 3,
-            type: 'job_save',
-            message: 'Saved Frontend Developer position',
-            timestamp: '2024-01-08T16:45:00Z',
-            icon: '🔖',
-          },
-        ];
-
-        setUser(fullUserData);
-        setRecentActivity(mockActivity);
-
-        // Mock broadcast messages
-        const mockBroadcasts = [
-          {
-            id: 'broadcast1',
-            companyName: 'TechCorp Solutions',
-            jobTitle: 'Frontend Developer',
-            message:
-              "Thank you for your application! We're currently reviewing all submissions and will schedule interviews next week. Please ensure your portfolio is up to date.",
-            timestamp: '2024-01-15T14:30:00Z',
-            hasReplied: false,
-          },
-          {
-            id: 'broadcast2',
-            companyName: 'DataSystems Inc',
-            jobTitle: 'Backend Engineer',
-            message:
-              "We've received your application and are impressed with your background. We'd like to schedule a technical interview. Please let us know your availability.",
-            timestamp: '2024-01-14T11:15:00Z',
-            hasReplied: true,
-          },
-        ];
-        setBroadcastMessages(mockBroadcasts);
-        setIsLoading(false);
-      } catch (error) {
-        console.error('Error fetching user data:', error);
-        setIsLoading(false);
-      }
-    };
-
-    fetchUserData();
-  }, []);
-
-  // Check if user has JOB_SEEKER role
-  useEffect(() => {
-    if (user && user.role !== 'JOB_SEEKER') {
-      navigate('/login', {
-        state: {
-          message: 'Access denied. Only job seekers can access this dashboard.',
-        },
-      });
-    }
-  }, [user, navigate]);
-
-  const handleLogout = () => {
-    // Clear localStorage and navigate to login
-    localStorageUtils.clearUserSession();
-    navigate('/login', {
-      state: {
-        message: 'You have been logged out successfully.',
-      },
-    });
-  };
-
-  const formatTimeAgo = (timestamp) => {
-    const now = new Date();
-    const time = new Date(timestamp);
-    const diffInHours = Math.floor((now - time) / (1000 * 60 * 60));
-
-    if (diffInHours < 1) return 'Just now';
-    if (diffInHours < 24) return `${diffInHours} hour${diffInHours > 1 ? 's' : ''} ago`;
-
-    const diffInDays = Math.floor(diffInHours / 24);
-    if (diffInDays < 7) return `${diffInDays} day${diffInDays > 1 ? 's' : ''} ago`;
-
-    const diffInWeeks = Math.floor(diffInDays / 7);
-    if (diffInWeeks < 4) return `${diffInWeeks} week${diffInWeeks > 1 ? 's' : ''} ago`;
-
-    return time.toLocaleDateString();
-  };
-
-  const handleSearch = (e) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      navigate(`/jobs?search=${encodeURIComponent(searchQuery.trim())}`);
-    }
-  };
-
-  // Initialize profile form data when user data is loaded
-  useEffect(() => {
-    if (user) {
-      setProfileFormData({
-        firstName: user.firstName || '',
-        lastName: user.lastName || '',
-        email: user.email || '',
-        currentPassword: '',
-        newPassword: '',
-        confirmPassword: '',
-      });
-    }
-  }, [user]);
-
-  // Handle profile image upload
-  const handleImageUpload = (event) => {
-    const file = event.target.files[0];
-    console.log('Image upload attempt:', file);
-
-    if (file) {
-      // Validate file type
-      if (!file.type.match(/image\/(jpeg|jpg|png)/)) {
-        console.log('Invalid file type:', file.type);
-        setProfileErrors((prev) => ({
-          ...prev,
-          profileImage: 'Please upload a valid image file (JPG, PNG)',
-        }));
-        return;
-      }
-
-      // Validate file size (5MB max)
-      if (file.size > 5 * 1024 * 1024) {
-        console.log('File too large:', file.size);
-        setProfileErrors((prev) => ({ ...prev, profileImage: 'File size must be less than 5MB' }));
-        return;
-      }
-
-      console.log('Image validation passed, setting state');
-      setProfileImage(file);
-      setProfileImagePreview(URL.createObjectURL(file));
-      setProfileErrors((prev) => ({ ...prev, profileImage: '' }));
-    } else {
-      console.log('No file selected');
-    }
-  };
-
-  // Remove profile image
-  const removeProfileImage = () => {
-    setProfileImage(null);
-    setProfileImagePreview(null);
-    setProfileErrors((prev) => ({ ...prev, profileImage: '' }));
-  };
-
-  // Handle profile form input changes
-  const handleProfileInputChange = (field, value) => {
-    setProfileFormData((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
-    // Clear error for this field
-    if (profileErrors[field]) {
-      setProfileErrors((prev) => ({
-        ...prev,
-        [field]: '',
-      }));
-    }
-  };
-
-  // Validate profile form
-  const validateProfileForm = () => {
-    const errors = {};
-
-    if (!profileFormData.firstName.trim()) {
-      errors.firstName = 'First name is required';
-    }
-
-    if (!profileFormData.lastName.trim()) {
-      errors.lastName = 'Last name is required';
-    }
-
-    if (!profileFormData.email.trim()) {
-      errors.email = 'Email is required';
-    } else if (!/\S+@\S+\.\S+/.test(profileFormData.email)) {
-      errors.email = 'Please enter a valid email address';
-    }
-
-    // Password validation only if changing password
-    if (showPasswordChange) {
-      if (!profileFormData.currentPassword.trim()) {
-        errors.currentPassword = 'Current password is required';
-      }
-
-      if (!profileFormData.newPassword.trim()) {
-        errors.newPassword = 'New password is required';
-      } else if (profileFormData.newPassword.length < 8) {
-        errors.newPassword = 'Password must be at least 8 characters long';
-      }
-
-      if (!profileFormData.confirmPassword.trim()) {
-        errors.confirmPassword = 'Confirm password is required';
-      } else if (profileFormData.newPassword !== profileFormData.confirmPassword) {
-        errors.confirmPassword = 'Passwords do not match';
-      }
-    }
-
-    setProfileErrors(errors);
-    return Object.keys(errors).length === 0;
-  };
-
-  // Save profile changes
-  const handleSaveProfile = async () => {
-    if (!validateProfileForm()) {
-      return;
-    }
-
-    setIsSavingProfile(true);
-
-    try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      // Handle profile image - in real app, this would be uploaded to a server
-      let avatarUrl = user?.avatar || null;
-      if (profileImage) {
-        // For demo purposes, we'll create a data URL from the image
-        // In production, this would be uploaded to a server and the URL would be returned
-        const reader = new FileReader();
-        await new Promise((resolve) => {
-          reader.onload = resolve;
-          reader.readAsDataURL(profileImage);
-        });
-        avatarUrl = reader.result;
-      }
-
-      // Update user state with new data
-      const updatedUser = {
-        ...user,
-        firstName: profileFormData.firstName,
-        lastName: profileFormData.lastName,
-        email: profileFormData.email,
-        avatar: avatarUrl,
-        profileUpdated: new Date().toISOString(),
-      };
-
-      setUser(updatedUser);
-
-      // Update localStorage with the new user data
-      localStorageUtils.setUserData(updatedUser);
-
-      // Also update the signup data storage for future logins
-      localStorageUtils.storeSignupData(profileFormData.email.trim().toLowerCase(), updatedUser);
-
-      // Reset form and close editing
-      setIsEditingProfile(false);
-      setShowPasswordChange(false);
-      setProfileFormData((prev) => ({
-        ...prev,
-        currentPassword: '',
-        newPassword: '',
-        confirmPassword: '',
-      }));
-      setProfileErrors({});
-
-      // Reset image state
-      setProfileImage(null);
-      setProfileImagePreview(null);
-
-      // Show success message (you can add a toast notification here)
-      console.log('Profile updated successfully!');
-      alert('Profile updated successfully! Your changes have been saved.');
-    } catch (error) {
-      console.error('Error updating profile:', error);
-      setProfileErrors((prev) => ({
-        ...prev,
-        general: 'Failed to update profile. Please try again.',
-      }));
-    } finally {
-      setIsSavingProfile(false);
-    }
-  };
-
-  // Cancel profile editing
-  const handleCancelProfile = () => {
-    setIsEditingProfile(false);
-    setShowPasswordChange(false);
-    setProfileFormData({
-      firstName: user?.firstName || '',
-      lastName: user?.lastName || '',
-      email: user?.email || '',
-      currentPassword: '',
-      newPassword: '',
-      confirmPassword: '',
-    });
-    setProfileErrors({});
-    setProfileImage(null);
-    setProfileImagePreview(null);
-  };
-
-  // Broadcast messaging functions
-  const openBroadcastModal = (broadcast) => {
-    setSelectedBroadcast(broadcast);
-    setShowBroadcastModal(true);
-    setReplyMessage('');
-  };
-
-  const closeBroadcastModal = () => {
-    setShowBroadcastModal(false);
-    setSelectedBroadcast(null);
-    setReplyMessage('');
-  };
-
-  const handleSendReply = async () => {
-    if (!replyMessage.trim()) return;
-
-    setIsSendingReply(true);
-
-    try {
-      // Simulate API call to send reply
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      // Update local state to mark as replied
-      setBroadcastMessages((prev) =>
-        prev.map((msg) => (msg.id === selectedBroadcast.id ? { ...msg, hasReplied: true } : msg))
-      );
-
-      // Close modal and reset
-      setReplyMessage('');
-      setShowBroadcastModal(false);
-      setSelectedBroadcast(null);
-
-      console.log('Reply sent successfully!');
-    } catch (error) {
-      console.error('Error sending reply:', error);
-    } finally {
-      setIsSendingReply(false);
-    }
-  };
-
-  if (isLoading) {
-    return (
-      <div className="flex min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
-        <Sidebar userType="JOB_SEEKER" onLogout={handleLogout} />
-        <main className="flex-1 lg:ml-64 transition-all duration-300 flex items-center justify-center">
-          <div className="text-center">
-            <div className="w-16 h-16 border-4 border-primary/30 border-t-primary rounded-full animate-spin mx-auto mb-4"></div>
-            <p className="text-muted-foreground">Loading your dashboard...</p>
-          </div>
-        </main>
-      </div>
-    );
   }
 
-  if (!user || user.role !== 'JOB_SEEKER') {
-    return (
-      <div className="flex min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
-        <Sidebar userType="JOB_SEEKER" onLogout={handleLogout} />
-        <main className="flex-1 lg:ml-64 transition-all duration-300 flex items-center justify-center">
-          <div className="text-center p-8">
-            <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <span className="text-3xl">🚫</span>
-            </div>
-            <h1 className="text-2xl font-bold text-red-600 mb-2">Access Denied</h1>
-            <p className="text-muted-foreground mb-4">
-              You don't have permission to access this dashboard.
-            </p>
-            <Button onClick={() => navigate('/login')}>Go to Login</Button>
-          </div>
-        </main>
-      </div>
-    );
+  const handleCoverLetterChange = (e) => {
+    if (e.target.files && e.target.files[0]) {
+      setCoverLetterFile(e.target.files[0])
+    }
+  }
+
+  const nextStep = () => {
+    setStep(step + 1)
+    window.scrollTo(0, 0)
+  }
+
+  const prevStep = () => {
+    setStep(step - 1)
+    window.scrollTo(0, 0)
   }
 
   return (
-    <div className="flex min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
-      <Sidebar
-        userType="JOB_SEEKER"
-        onLogout={handleLogout}
-        onOpenProfile={() => setIsEditingProfile(true)}
-      />
+    <div className="flex flex-col min-h-screen bg-zinc-950 text-white">
+      <Header />
 
-      <main className="flex-1 lg:ml-64 ml-0 transition-all duration-300 py-8 px-4 lg:px-8">
-        <div className="container mx-auto">
-          {/* Welcome Header */}
-          <div className="text-center mb-12">
-            <div className="w-24 h-24 bg-gradient-to-br from-primary/20 to-primary/10 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-lg">
-              {user.avatar ? (
-                <img
-                  src={user.avatar}
-                  alt={`${user.firstName} ${user.lastName}`}
-                  className="w-20 h-20 rounded-2xl object-cover"
-                />
-              ) : (
-                <span className="text-4xl">👤</span>
-              )}
+      <main className="flex-1 py-12">
+        <div className="container mx-auto px-6">
+          <div className="max-w-3xl mx-auto">
+            {/* Back Button */}
+            <Link 
+              to={`/jobs/${id}`} 
+              className="inline-flex items-center text-blue-400 hover:text-blue-300 mb-8 transition-colors"
+            >
+              ← Back to Job Details
+            </Link>
+
+            <div className="mb-10">
+              <h1 className="text-4xl font-semibold tracking-tight mb-2">
+                Apply for {job.title}
+              </h1>
+              <p className="text-zinc-400 text-lg">
+                {job.company} • {job.location}
+              </p>
             </div>
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent mb-3">
-              Welcome back, {user.firstName}! 👋
-            </h1>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Ready to take the next step in your career? Update your profile, explore companies,
-              and discover exciting job opportunities.
-            </p>
 
-            {/* Profile Completion Bar */}
-            <div className="mt-6 max-w-md mx-auto">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-muted-foreground">
-                  Profile Completion
-                </span>
-                <span className="text-sm font-semibold text-primary">{user.profileComplete}%</span>
-              </div>
-              <div className="w-full bg-muted rounded-full h-2">
-                <div
-                  className="bg-gradient-to-r from-primary to-primary/80 h-2 rounded-full transition-all duration-500"
-                  style={{ width: `${user.profileComplete}%` }}
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Quick Search */}
-          <div className="max-w-2xl mx-auto mb-12">
-            <form onSubmit={handleSearch} className="relative">
-              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-muted-foreground w-5 h-5" />
-              <Input
-                type="text"
-                placeholder="Search for jobs, companies, or skills..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="h-14 pl-12 pr-4 text-lg rounded-2xl border-2 border-border/50 focus:border-primary/50 focus:ring-primary/20 transition-all duration-300"
-              />
-              <Button
-                type="submit"
-                className="absolute right-2 top-1/2 transform -translate-y-1/2 h-10 px-6 rounded-xl"
-              >
-                Search
-              </Button>
-            </form>
-          </div>
-
-          {/* Primary Action Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-            {/* Enhanced Profile Card */}
-            <Card className="group hover:shadow-2xl hover:scale-105 transition-all duration-500 cursor-pointer border-2 border-border/50 hover:border-primary/30">
-              <CardHeader className="text-center pb-4">
-                <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300 overflow-hidden">
-                  {user?.avatar ? (
-                    <img
-                      src={user.avatar}
-                      alt={`${user.firstName} ${user.lastName}`}
-                      className="w-full h-full object-cover rounded-2xl"
-                    />
-                  ) : (
-                    <User className="w-8 h-8 text-primary" />
-                  )}
-                </div>
-                <CardTitle className="text-xl">My Profile</CardTitle>
-                <CardDescription>Upload picture, edit info & change password</CardDescription>
-              </CardHeader>
-              <CardContent className="text-center">
-                <Button
-                  onClick={() => navigate('/profile')}
-                  className="w-full bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70"
-                >
-                  <Edit3 className="w-4 h-4 mr-2" />
-                  {user?.avatar ? 'Edit Profile' : 'Create/Edit Profile'}
-                </Button>
-              </CardContent>
-            </Card>
-
-            <Card className="group hover:shadow-2xl hover:scale-105 transition-all duration-500 cursor-pointer border-2 border-border/50 hover:border-primary/30">
-              <CardHeader className="text-center pb-4">
-                <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300">
-                  <User className="w-8 h-8 text-primary" />
-                </div>
-                <CardTitle className="text-xl">View Companies</CardTitle>
-                <CardDescription>Explore registered companies</CardDescription>
-              </CardHeader>
-              <CardContent className="text-center">
-                <Button
-                  asChild
-                  className="w-full bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70"
-                >
-                  <Link to="/companies">Browse Companies</Link>
-                </Button>
-              </CardContent>
-            </Card>
-
-            <Card className="group hover:shadow-2xl hover:scale-105 transition-all duration-500 cursor-pointer border-2 border-border/50 hover:border-primary/30">
-              <CardHeader className="text-center pb-4">
-                <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300">
-                  <User className="w-8 h-8 text-primary" />
-                </div>
-                <CardTitle className="text-xl">View Companies</CardTitle>
-                <CardDescription>Explore registered companies</CardDescription>
-              </CardHeader>
-              <CardContent className="text-center">
-                <Button
-                  asChild
-                  className="w-full bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70"
-                >
-                  <Link to="/jobs">Find Jobs</Link>
-                </Button>
-              </CardContent>
-            </Card>
-
-            {/* View Jobs Card */}
-            {/* <Card className="group hover:shadow-2xl hover:scale-105 transition-all duration-500 cursor-pointer border-2 border-border/50 hover:border-accent/30">
-              <CardHeader className="text-center pb-4">
-                <div className="w-16 h-16 bg-gradient-to-br from-accent/20 to-accent/10 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300">
-                  <Briefcase className="w-8 h-8 text-accent" />
-                </div>
-                <CardTitle className="text-xl">View Jobs</CardTitle>
-                <CardDescription>
-                  Discover job opportunities
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="text-center">
-                <Button 
-                  asChild 
-                  variant="outline"
-                  className="w-full border-2 border-accent/50 hover:border-accent/70 hover:bg-accent/10"
-                >
-                  <Link to="/jobs">
-                    Find Jobs
-                  </Link>
-                </Button>
-              </CardContent>
-            </Card> */}
-
-            {/* Application Tracking Card */}
-            <Card className="group hover:shadow-2xl hover:scale-105 transition-all duration-500 cursor-pointer border-2 border-border/50 hover:border-yellow-500/30">
-              <CardHeader className="text-center pb-4">
-                <div className="w-16 h-16 bg-gradient-to-br from-yellow-500/20 to-yellow-500/10 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300">
-                  <TrendingUp className="w-8 h-8 text-yellow-600" />
-                </div>
-                <CardTitle className="text-xl">Application Tracking</CardTitle>
-                <CardDescription>Track your job applications</CardDescription>
-              </CardHeader>
-              <CardContent className="text-center">
-                <Button
-                  asChild
-                  className="w-full bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 text-white"
-                >
-                  <Link to="/my-applications">
-                    <FileText className="w-4 h-4 mr-2" />
-                    My Applications
-                  </Link>
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Profile Editing Modal */}
-          {isEditingProfile && (
-            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-              <div className="bg-background rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-                <div className="p-6">
-                  <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-2xl font-bold text-foreground">Edit Profile</h2>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleCancelProfile}
-                      className="text-muted-foreground hover:text-foreground"
+            {/* Progress Steps */}
+            <div className="mb-12">
+              <div className="flex justify-between relative">
+                {[1, 2, 3].map((s) => (
+                  <div key={s} className="flex flex-col items-center relative z-10">
+                    <div
+                      className={`w-10 h-10 rounded-2xl flex items-center justify-center text-lg font-semibold transition-all ${
+                        step >= s 
+                          ? "bg-blue-600 text-white" 
+                          : "bg-zinc-800 text-zinc-400"
+                      }`}
                     >
-                      <X className="w-5 h-5" />
+                      {s}
+                    </div>
+                    <span className={`text-sm mt-3 ${step >= s ? "text-white" : "text-zinc-500"}`}>
+                      {s === 1 && "Personal Info"}
+                      {s === 2 && "Documents"}
+                      {s === 3 && "Review"}
+                    </span>
+                  </div>
+                ))}
+                <div className="absolute top-5 left-0 right-0 h-[2px] bg-zinc-800 -z-10">
+                  <div 
+                    className="h-full bg-blue-600 transition-all duration-300"
+                    style={{ width: `${((step - 1) / 2) * 100}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Step 1: Personal Information */}
+            {step === 1 && (
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-zinc-900 border border-white/10 rounded-3xl p-10"
+              >
+                <h2 className="text-2xl font-semibold mb-8">Personal Information</h2>
+
+                <form className="space-y-8">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <Label>First Name *</Label>
+                      <Input className="h-14 bg-zinc-950 border-white/10 rounded-2xl" placeholder="John" />
+                    </div>
+                    <div>
+                      <Label>Last Name *</Label>
+                      <Input className="h-14 bg-zinc-950 border-white/10 rounded-2xl" placeholder="Doe" />
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label>Email Address *</Label>
+                    <Input type="email" className="h-14 bg-zinc-950 border-white/10 rounded-2xl" placeholder="john@example.com" />
+                  </div>
+
+                  <div>
+                    <Label>Phone Number *</Label>
+                    <Input type="tel" className="h-14 bg-zinc-950 border-white/10 rounded-2xl" placeholder="1234567890" />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <Label>City *</Label>
+                      <Input className="h-14 bg-zinc-950 border-white/10 rounded-2xl" />
+                    </div>
+                    <div>
+                      <Label>State / Country *</Label>
+                      <Input className="h-14 bg-zinc-950 border-white/10 rounded-2xl" />
+                    </div>
+                  </div>
+
+                  <div className="pt-4">
+                    <Button type="button" onClick={nextStep} className="w-full h-14 rounded-2xl bg-blue-600 hover:bg-blue-500 text-lg">
+                      Continue to Documents
                     </Button>
                   </div>
-
-                  <form
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      handleSaveProfile();
-                    }}
-                  >
-                    {/* Profile Picture Upload */}
-                    <div className="mb-6">
-                      <Label className="text-sm font-semibold mb-3 block">Profile Picture</Label>
-                      <div className="flex items-center space-x-4">
-                        <div className="relative">
-                          <div className="w-20 h-20 bg-gradient-to-br from-primary/20 to-primary/10 rounded-full flex items-center justify-center overflow-hidden">
-                            {profileImagePreview ? (
-                              <img
-                                src={profileImagePreview}
-                                alt="Profile Preview"
-                                className="w-full h-full object-cover"
-                              />
-                            ) : user.avatar ? (
-                              <img
-                                src={user.avatar}
-                                alt={`${user.firstName} ${user.lastName}`}
-                                className="w-full h-full object-cover"
-                              />
-                            ) : (
-                              <span className="text-2xl">👤</span>
-                            )}
-                          </div>
-                          {profileImagePreview && (
-                            <button
-                              type="button"
-                              onClick={removeProfileImage}
-                              className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors"
-                            >
-                              <X className="w-3 h-3" />
-                            </button>
-                          )}
-                        </div>
-                        <div className="flex-1">
-                          <input
-                            type="file"
-                            accept="image/jpeg,image/jpg,image/png"
-                            onChange={handleImageUpload}
-                            className="hidden"
-                            id="profile-image-upload"
-                          />
-                          <Label
-                            htmlFor="profile-image-upload"
-                            className="cursor-pointer inline-flex items-center px-4 py-2 border border-border rounded-lg hover:bg-muted/50 transition-colors"
-                          >
-                            <Camera className="w-4 h-4 mr-2" />
-                            {profileImagePreview ? 'Change Picture' : 'Upload Picture'}
-                          </Label>
-                          {profileErrors.profileImage && (
-                            <p className="text-red-500 text-sm mt-1">
-                              {profileErrors.profileImage}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Personal Information */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                      <div>
-                        <Label htmlFor="firstName" className="text-sm font-semibold">
-                          First Name
-                        </Label>
-                        <Input
-                          id="firstName"
-                          value={profileFormData.firstName}
-                          onChange={(e) => handleProfileInputChange('firstName', e.target.value)}
-                          className="mt-1"
-                          placeholder="Enter first name"
-                        />
-                        {profileErrors.firstName && (
-                          <p className="text-red-500 text-sm mt-1">{profileErrors.firstName}</p>
-                        )}
-                      </div>
-
-                      <div>
-                        <Label htmlFor="lastName" className="text-sm font-semibold">
-                          Last Name
-                        </Label>
-                        <Input
-                          id="lastName"
-                          value={profileFormData.lastName}
-                          onChange={(e) => handleProfileInputChange('lastName', e.target.value)}
-                          className="mt-1"
-                          placeholder="Enter last name"
-                        />
-                        {profileErrors.lastName && (
-                          <p className="text-red-500 text-sm mt-1">{profileErrors.lastName}</p>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="mb-6">
-                      <Label htmlFor="email" className="text-sm font-semibold">
-                        Email
-                      </Label>
-                      <Input
-                        id="email"
-                        type="email"
-                        value={profileFormData.email}
-                        onChange={(e) => handleProfileInputChange('email', e.target.value)}
-                        className="mt-1"
-                        placeholder="Enter email address"
-                      />
-                      {profileErrors.email && (
-                        <p className="text-red-500 text-sm mt-1">{profileErrors.email}</p>
-                      )}
-                    </div>
-
-                    {/* Password Change Section */}
-                    <div className="mb-6">
-                      <div className="flex items-center justify-between mb-3">
-                        <Label className="text-sm font-semibold">Password</Label>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setShowPasswordChange(!showPasswordChange)}
-                          className="text-primary hover:text-primary/80"
-                        >
-                          {showPasswordChange ? 'Cancel' : 'Change Password'}
-                        </Button>
-                      </div>
-
-                      {showPasswordChange && (
-                        <div className="space-y-4 p-4 bg-muted/30 rounded-lg">
-                          <div>
-                            <Label htmlFor="currentPassword" className="text-sm font-semibold">
-                              Current Password
-                            </Label>
-                            <div className="relative mt-1">
-                              <Input
-                                id="currentPassword"
-                                type={showCurrentPassword ? 'text' : 'password'}
-                                value={profileFormData.currentPassword}
-                                onChange={(e) =>
-                                  handleProfileInputChange('currentPassword', e.target.value)
-                                }
-                                placeholder="Enter current password"
-                              />
-                              <button
-                                type="button"
-                                onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                              >
-                                {showCurrentPassword ? (
-                                  <EyeOff className="w-4 h-4" />
-                                ) : (
-                                  <Eye className="w-4 h-4" />
-                                )}
-                              </button>
-                            </div>
-                            {profileErrors.currentPassword && (
-                              <p className="text-red-500 text-sm mt-1">
-                                {profileErrors.currentPassword}
-                              </p>
-                            )}
-                          </div>
-
-                          <div>
-                            <Label htmlFor="newPassword" className="text-sm font-semibold">
-                              New Password
-                            </Label>
-                            <div className="relative mt-1">
-                              <Input
-                                id="newPassword"
-                                type={showNewPassword ? 'text' : 'password'}
-                                value={profileFormData.newPassword}
-                                onChange={(e) =>
-                                  handleProfileInputChange('newPassword', e.target.value)
-                                }
-                                placeholder="Enter new password"
-                              />
-                              <button
-                                type="button"
-                                onClick={() => setShowNewPassword(!showNewPassword)}
-                                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                              >
-                                {showNewPassword ? (
-                                  <EyeOff className="w-4 h-4" />
-                                ) : (
-                                  <Eye className="w-4 h-4" />
-                                )}
-                              </button>
-                            </div>
-                            {profileErrors.newPassword && (
-                              <p className="text-red-500 text-sm mt-1">
-                                {profileErrors.newPassword}
-                              </p>
-                            )}
-                          </div>
-
-                          <div>
-                            <Label htmlFor="confirmPassword" className="text-sm font-semibold">
-                              Confirm New Password
-                            </Label>
-                            <div className="relative mt-1">
-                              <Input
-                                id="confirmPassword"
-                                type={showConfirmPassword ? 'text' : 'password'}
-                                value={profileFormData.confirmPassword}
-                                onChange={(e) =>
-                                  handleProfileInputChange('confirmPassword', e.target.value)
-                                }
-                                placeholder="Confirm new password"
-                              />
-                              <button
-                                type="button"
-                                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                              >
-                                {showConfirmPassword ? (
-                                  <EyeOff className="w-4 h-4" />
-                                ) : (
-                                  <Eye className="w-4 h-4" />
-                                )}
-                              </button>
-                            </div>
-                            {profileErrors.confirmPassword && (
-                              <p className="text-red-500 text-sm mt-1">
-                                {profileErrors.confirmPassword}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* General Error */}
-                    {profileErrors.general && (
-                      <div className="mb-6 p-3 bg-red-50 border border-red-200 rounded-lg">
-                        <p className="text-red-600 text-sm text-center">{profileErrors.general}</p>
-                      </div>
-                    )}
-
-                    {/* Action Buttons */}
-                    <div className="flex flex-col sm:flex-row gap-3">
-                      <Button
-                        type="submit"
-                        disabled={isSavingProfile}
-                        className="flex-1 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70"
-                      >
-                        {isSavingProfile ? (
-                          <div className="flex items-center space-x-2">
-                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                            <span>Saving...</span>
-                          </div>
-                        ) : (
-                          <>
-                            <Save className="w-4 h-4 mr-2" />
-                            Save Changes
-                          </>
-                        )}
-                      </Button>
-
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={handleCancelProfile}
-                        className="flex-1"
-                      >
-                        <X className="w-4 h-4 mr-2" />
-                        Cancel
-                      </Button>
-                    </div>
-                  </form>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Broadcast Messages Section */}
-          {broadcastMessages.length > 0 && (
-            <div className="mb-12">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold">Company Messages</h2>
-                <Badge variant="outline" className="px-3 py-1">
-                  {broadcastMessages.length} message{broadcastMessages.length !== 1 ? 's' : ''}
-                </Badge>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {broadcastMessages.map((broadcast) => (
-                  <Card
-                    key={broadcast.id}
-                    className="hover:shadow-lg transition-shadow duration-300"
-                  >
-                    <CardHeader className="pb-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-10 h-10 bg-primary/20 rounded-full flex items-center justify-center">
-                            <MessageCircle className="w-5 h-5 text-primary" />
-                          </div>
-                          <div>
-                            <h3 className="font-semibold text-foreground">
-                              {broadcast.companyName}
-                            </h3>
-                            <p className="text-sm text-muted-foreground">{broadcast.jobTitle}</p>
-                          </div>
-                        </div>
-                        <Badge
-                          variant={broadcast.hasReplied ? 'default' : 'secondary'}
-                          className="text-xs"
-                        >
-                          {broadcast.hasReplied ? 'Replied' : 'New'}
-                        </Badge>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="pt-0">
-                      <p className="text-muted-foreground text-sm mb-4 line-clamp-3">
-                        {broadcast.message}
-                      </p>
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs text-muted-foreground">
-                          {formatTimeAgo(broadcast.timestamp)}
-                        </span>
-                        <Button
-                          onClick={() => openBroadcastModal(broadcast)}
-                          variant="outline"
-                          size="sm"
-                          className="text-primary hover:text-primary/80"
-                        >
-                          {broadcast.hasReplied ? 'View & Reply' : 'Reply'}
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Quick Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
-            <Card className="text-center p-6 hover:shadow-lg transition-shadow duration-300">
-              <div className="w-12 h-12 bg-primary/20 rounded-xl flex items-center justify-center mx-auto mb-3">
-                <Bookmark className="w-6 h-6 text-primary" />
-              </div>
-              <div className="text-2xl font-bold text-primary">{user.savedJobs}</div>
-              <div className="text-sm text-muted-foreground">Saved Jobs</div>
-            </Card>
-
-            <Card className="text-center p-6 hover:shadow-lg transition-shadow duration-300">
-              <div className="w-12 h-12 bg-primary/20 rounded-xl flex items-center justify-center mx-auto mb-3">
-                <FileText className="w-6 h-6 text-primary" />
-              </div>
-              <div className="text-2xl font-bold text-primary">{user.appliedJobs}</div>
-              <div className="text-sm text-muted-foreground">Applied Jobs</div>
-            </Card>
-
-            <Card className="text-center p-6 hover:shadow-lg transition-shadow duration-300">
-              <div className="w-12 h-12 bg-primary/20 rounded-xl flex items-center justify-center mx-auto mb-3">
-                <TrendingUp className="w-6 h-6 text-primary" />
-              </div>
-              <div className="text-2xl font-bold text-primary">{user.profileComplete}%</div>
-              <div className="text-sm text-muted-foreground">Profile Complete</div>
-            </Card>
-
-            <Card className="text-center p-6 hover:shadow-lg transition-shadow duration-300">
-              <div className="w-12 h-12 bg-primary/50 rounded-xl flex items-center justify-center mx-auto mb-3">
-                <Clock className="w-6 h-6 text-muted-primary" />
-              </div>
-              <div className="text-lg font-bold text-primary">{formatTimeAgo(user.lastLogin)}</div>
-              <div className="text-sm text-muted-foreground">Last Login</div>
-            </Card>
-          </div>
-
-          {/* My Subscriptions */}
-          <div className="max-w-4xl mx-auto mb-12">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold">My Subscriptions</h2>
-              <Button variant="outline" size="sm" asChild>
-                <Link to="/companies">Explore Companies</Link>
-              </Button>
-            </div>
-
-            {user.subscriptions && user.subscriptions.length > 0 ? (
-              <div className="space-y-4">
-                {user.subscriptions.map((subscription) => (
-                  <Card
-                    key={subscription.id}
-                    className="p-4 hover:shadow-md transition-shadow duration-300"
-                  >
-                    <div className="flex items-center space-x-4">
-                      <div className="w-10 h-10 bg-primary/20 rounded-full flex items-center justify-center">
-                        <Building2 className="w-5 h-5 text-primary" />
-                      </div>
-                      <div className="flex-1">
-                        <h3 className="font-semibold">{subscription.companyName}</h3>
-                        <div className="flex items-center space-x-2 mt-1">
-                          <Badge variant="outline" className="text-xs">
-                            {subscription.type === 'EMPLOYABLE' ? 'Job Seeker' : 'Virtual Intern'}
-                          </Badge>
-                          <span className="text-sm text-muted-foreground">
-                            Subscribed {formatTimeAgo(subscription.subscribedDate)}
-                          </span>
-                        </div>
-                      </div>
-                      <Button variant="outline" size="sm">
-                        View Company
-                      </Button>
-                    </div>
-                  </Card>
-                ))}
-              </div>
-            ) : (
-              <Card className="p-8 text-center">
-                <div className="w-16 h-16 bg-muted/30 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Building2 className="w-8 h-8 text-muted-foreground" />
-                </div>
-                <h3 className="text-lg font-semibold mb-2">No Subscriptions Yet</h3>
-                <p className="text-muted-foreground mb-4">
-                  Start exploring companies and subscribe to opportunities that interest you.
-                </p>
-                <Button asChild>
-                  <Link to="/companies">Explore Companies</Link>
-                </Button>
-              </Card>
+                </form>
+              </motion.div>
             )}
-          </div>
 
-          {/* Recent Activity */}
-          <div className="max-w-4xl mx-auto">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold">Recent Activity</h2>
-              <Button variant="outline" size="sm">
-                View All
-              </Button>
-            </div>
+            {/* Step 2: Resume & Cover Letter */}
+            {step === 2 && (
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-zinc-900 border border-white/10 rounded-3xl p-10"
+              >
+                <h2 className="text-2xl font-semibold mb-8">Documents</h2>
 
-            <div className="space-y-4">
-              {recentActivity.map((activity) => (
-                <Card
-                  key={activity.id}
-                  className="p-4 hover:shadow-md transition-shadow duration-300"
-                >
-                  <div className="flex items-center space-x-4">
-                    <div className="w-10 h-10 bg-muted/50 rounded-full flex items-center justify-center text-lg">
-                      {activity.icon}
+                <form className="space-y-10">
+                  {/* Resume Upload */}
+                  <div>
+                    <Label className="text-lg font-medium mb-3 block">Resume (Required)</Label>
+                    <div className="border-2 border-dashed border-white/20 rounded-3xl p-8 text-center hover:border-blue-500/50 transition-colors">
+                      {resumeFile ? (
+                        <div className="flex flex-col items-center">
+                          <p className="font-medium text-green-400">✓ {resumeFile.name}</p>
+                          <Button type="button" variant="ghost" size="sm" onClick={() => setResumeFile(null)} className="mt-4">
+                            Remove
+                          </Button>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="text-4xl mb-4">📄</div>
+                          <p className="text-zinc-400 mb-2">Drag & drop your resume or click to upload</p>
+                          <p className="text-sm text-zinc-500">PDF, DOCX up to 5MB</p>
+                          <Input
+                            type="file"
+                            accept=".pdf,.docx"
+                            className="hidden"
+                            id="resume"
+                            onChange={handleResumeChange}
+                          />
+                          <Button type="button" variant="outline" className="mt-6" onClick={() => document.getElementById('resume').click()}>
+                            Browse Files
+                          </Button>
+                        </>
+                      )}
                     </div>
-                    <div className="flex-1">
-                      <p className="font-medium">{activity.message}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {formatTimeAgo(activity.timestamp)}
-                      </p>
-                    </div>
-                    <Badge variant="outline" className="text-xs">
-                      {activity.type.replace('_', ' ').toUpperCase()}
-                    </Badge>
                   </div>
-                </Card>
-              ))}
-            </div>
+
+                  {/* Cover Letter Upload */}
+                  <div>
+                    <Label className="text-lg font-medium mb-3 block">Cover Letter (Optional)</Label>
+                    <div className="border-2 border-dashed border-white/20 rounded-3xl p-8 text-center hover:border-blue-500/50 transition-colors">
+                      {coverLetterFile ? (
+                        <div className="flex flex-col items-center">
+                          <p className="font-medium text-green-400">✓ {coverLetterFile.name}</p>
+                          <Button type="button" variant="ghost" size="sm" onClick={() => setCoverLetterFile(null)} className="mt-4">
+                            Remove
+                          </Button>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="text-4xl mb-4">✍️</div>
+                          <p className="text-zinc-400 mb-2">Drag & drop your cover letter</p>
+                          <Input
+                            type="file"
+                            accept=".pdf,.docx"
+                            className="hidden"
+                            id="cover"
+                            onChange={handleCoverLetterChange}
+                          />
+                          <Button type="button" variant="outline" className="mt-6" onClick={() => document.getElementById('cover').click()}>
+                            Browse Files
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex justify-between pt-6">
+                    <Button type="button" variant="outline" onClick={prevStep} className="rounded-2xl">
+                      Back
+                    </Button>
+                    <Button type="button" onClick={nextStep} className="rounded-2xl bg-blue-600 hover:bg-blue-500">
+                      Continue to Review
+                    </Button>
+                  </div>
+                </form>
+              </motion.div>
+            )}
+
+            {/* Step 3: Review & Submit */}
+            {step === 3 && (
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-zinc-900 border border-white/10 rounded-3xl p-10"
+              >
+                <h2 className="text-2xl font-semibold mb-8">Review Your Application</h2>
+
+                <div className="space-y-10">
+                  <div>
+                    <h3 className="font-medium mb-4">Job Position</h3>
+                    <div className="bg-zinc-800 p-6 rounded-2xl">
+                      <p className="font-semibold text-lg">{job.title}</p>
+                      <p className="text-zinc-400">{job.company} • {job.location}</p>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h3 className="font-medium mb-4">Documents</h3>
+                    <div className="space-y-4">
+                      {resumeFile && (
+                        <div className="flex items-center gap-4 bg-zinc-800 p-4 rounded-2xl">
+                          <div className="text-3xl">📄</div>
+                          <div>
+                            <p className="font-medium">Resume</p>
+                            <p className="text-sm text-zinc-400">{resumeFile.name}</p>
+                          </div>
+                        </div>
+                      )}
+                      {coverLetterFile && (
+                        <div className="flex items-center gap-4 bg-zinc-800 p-4 rounded-2xl">
+                          <div className="text-3xl">📝</div>
+                          <div>
+                            <p className="font-medium">Cover Letter</p>
+                            <p className="text-sm text-zinc-400">{coverLetterFile.name}</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="pt-6 border-t border-white/10">
+                    <Checkbox id="confirm" className="mt-1" />
+                    <label htmlFor="confirm" className="ml-3 text-sm text-zinc-300">
+                      I confirm that all information provided is accurate and I agree to the terms.
+                    </label>
+                  </div>
+
+                  <div className="flex justify-between pt-6">
+                    <Button type="button" variant="outline" onClick={prevStep} className="rounded-2xl">
+                      Back
+                    </Button>
+                    <Button type="submit" className="rounded-2xl bg-green-600 hover:bg-green-500 px-10">
+                      Submit Application
+                    </Button>
+                  </div>
+                </div>
+              </motion.div>
+            )}
           </div>
         </div>
       </main>
 
-      {/* Broadcast Reply Modal */}
-      {showBroadcastModal && selectedBroadcast && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-background rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-foreground">Company Message</h2>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={closeBroadcastModal}
-                  className="text-muted-foreground hover:text-foreground"
-                >
-                  <X className="w-5 h-5" />
-                </Button>
-              </div>
-
-              {/* Company Message Display */}
-              <div className="mb-6 p-4 bg-muted/30 rounded-lg">
-                <div className="flex items-center space-x-3 mb-3">
-                  <div className="w-12 h-12 bg-primary/20 rounded-full flex items-center justify-center">
-                    <MessageCircle className="w-6 h-6 text-primary" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-foreground">
-                      {selectedBroadcast.companyName}
-                    </h3>
-                    <p className="text-sm text-muted-foreground">{selectedBroadcast.jobTitle}</p>
-                  </div>
-                </div>
-                <p className="text-foreground">{selectedBroadcast.message}</p>
-                <p className="text-xs text-muted-foreground mt-2">
-                  {formatTimeAgo(selectedBroadcast.timestamp)}
-                </p>
-              </div>
-
-              {/* Reply Form */}
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  handleSendReply();
-                }}
-              >
-                <div className="mb-6">
-                  <Label htmlFor="replyMessage" className="text-sm font-semibold mb-3 block">
-                    Your Reply
-                  </Label>
-                  <textarea
-                    id="replyMessage"
-                    value={replyMessage}
-                    onChange={(e) => setReplyMessage(e.target.value)}
-                    placeholder="Type your reply to the company..."
-                    className="w-full p-3 border border-border rounded-lg focus:border-primary focus:ring-primary/20 transition-colors min-h-[120px] resize-y"
-                    required
-                  />
-                </div>
-
-                {/* Action Buttons */}
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <Button
-                    type="submit"
-                    disabled={isSendingReply || !replyMessage.trim()}
-                    className="flex-1 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70"
-                  >
-                    {isSendingReply ? (
-                      <div className="flex items-center space-x-2">
-                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                        <span>Sending...</span>
-                      </div>
-                    ) : (
-                      <>
-                        <Send className="w-4 h-4 mr-2" />
-                        Send Reply
-                      </>
-                    )}
-                  </Button>
-
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={closeBroadcastModal}
-                    className="flex-1"
-                  >
-                    <X className="w-4 h-4 mr-2" />
-                    Close
-                  </Button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-      )}
+      <Footer />
     </div>
-  );
+  )
 }

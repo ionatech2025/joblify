@@ -9,8 +9,8 @@ import { Input } from "../components/ui/input"
 import { Textarea } from "../components/ui/textarea"
 import { Label } from "../components/ui/label"
 import { Checkbox } from "../components/ui/checkbox"
+import { motion } from "framer-motion"
 
-// Mock job data
 const job = {
   id: "1",
   title: "Frontend Developer",
@@ -47,201 +47,144 @@ export default function JobApplicationPage() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col min-h-screen bg-zinc-950 text-white">
       <Header />
+
       <main className="flex-1 py-12">
-        <div className="container mx-auto px-4">
+        <div className="container mx-auto px-6">
           <div className="max-w-3xl mx-auto">
-            <div className="mb-8">
-              <Link to={`/jobs/${id}`} className="inline-flex items-center text-primary hover:underline">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="h-4 w-4 mr-2"
-                >
-                  <path d="m12 19-7-7 7-7" />
-                  <path d="M19 12H5" />
-                </svg>
-                Back to Job Details
-              </Link>
-              <h1 className="text-3xl font-bold mt-4">Apply for {job.title}</h1>
-              <p className="text-muted-foreground">
+            {/* Back Button */}
+            <Link 
+              to={`/jobs/${id}`} 
+              className="inline-flex items-center text-blue-400 hover:text-blue-300 mb-8 transition-colors"
+            >
+              ← Back to Job Details
+            </Link>
+
+            <div className="mb-10">
+              <h1 className="text-4xl font-semibold tracking-tight mb-2">
+                Apply for {job.title}
+              </h1>
+              <p className="text-zinc-400 text-lg">
                 {job.company} • {job.location}
               </p>
             </div>
 
             {/* Progress Steps */}
-            <div className="mb-8">
-              <div className="flex justify-between">
-                <div className={`flex flex-col items-center ${step >= 1 ? "text-primary" : "text-muted-foreground"}`}>
-                  <div
-                    className={`w-8 h-8 rounded-full flex items-center justify-center mb-2 ${step >= 1 ? "bg-primary text-primary-foreground" : "bg-muted"}`}
-                  >
-                    1
+            <div className="mb-12">
+              <div className="flex justify-between relative">
+                {[1, 2, 3].map((s) => (
+                  <div key={s} className="flex flex-col items-center relative z-10">
+                    <div
+                      className={`w-10 h-10 rounded-2xl flex items-center justify-center text-lg font-semibold transition-all ${
+                        step >= s 
+                          ? "bg-blue-600 text-white" 
+                          : "bg-zinc-800 text-zinc-400"
+                      }`}
+                    >
+                      {s}
+                    </div>
+                    <span className={`text-sm mt-3 ${step >= s ? "text-white" : "text-zinc-500"}`}>
+                      {s === 1 && "Personal Info"}
+                      {s === 2 && "Documents"}
+                      {s === 3 && "Review"}
+                    </span>
                   </div>
-                  <span className="text-sm">Personal Info</span>
-                </div>
-                <div className="flex-1 flex items-center mx-2">
-                  <div className={`h-1 w-full ${step >= 2 ? "bg-primary" : "bg-muted"}`}></div>
-                </div>
-                <div className={`flex flex-col items-center ${step >= 2 ? "text-primary" : "text-muted-foreground"}`}>
-                  <div
-                    className={`w-8 h-8 rounded-full flex items-center justify-center mb-2 ${step >= 2 ? "bg-primary text-primary-foreground" : "bg-muted"}`}
-                  >
-                    2
-                  </div>
-                  <span className="text-sm">Resume & Cover Letter</span>
-                </div>
-                <div className="flex-1 flex items-center mx-2">
-                  <div className={`h-1 w-full ${step >= 3 ? "bg-primary" : "bg-muted"}`}></div>
-                </div>
-                <div className={`flex flex-col items-center ${step >= 3 ? "text-primary" : "text-muted-foreground"}`}>
-                  <div
-                    className={`w-8 h-8 rounded-full flex items-center justify-center mb-2 ${step >= 3 ? "bg-primary text-primary-foreground" : "bg-muted"}`}
-                  >
-                    3
-                  </div>
-                  <span className="text-sm">Review & Submit</span>
+                ))}
+                <div className="absolute top-5 left-0 right-0 h-[2px] bg-zinc-800 -z-10">
+                  <div 
+                    className="h-full bg-blue-600 transition-all duration-300"
+                    style={{ width: `${((step - 1) / 2) * 100}%` }}
+                  />
                 </div>
               </div>
             </div>
 
             {/* Step 1: Personal Information */}
             {step === 1 && (
-              <div className="bg-card rounded-lg shadow-sm border p-6">
-                <h2 className="text-xl font-semibold mb-6">Personal Information</h2>
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-zinc-900 border border-white/10 rounded-3xl p-10"
+              >
+                <h2 className="text-2xl font-semibold mb-8">Personal Information</h2>
 
-                <form className="space-y-6">
+                <form className="space-y-8">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                      <Label htmlFor="first-name">First Name</Label>
-                      <Input id="first-name" required />
+                      <Label>First Name *</Label>
+                      <Input className="h-14 bg-zinc-950 border-white/10 rounded-2xl" placeholder="John" />
                     </div>
                     <div>
-                      <Label htmlFor="last-name">Last Name</Label>
-                      <Input id="last-name" required />
+                      <Label>Last Name *</Label>
+                      <Input className="h-14 bg-zinc-950 border-white/10 rounded-2xl" placeholder="Doe" />
                     </div>
                   </div>
 
                   <div>
-                    <Label htmlFor="email">Email</Label>
-                    <Input id="email" type="email" required />
+                    <Label>Email Address *</Label>
+                    <Input type="email" className="h-14 bg-zinc-950 border-white/10 rounded-2xl" placeholder="john@example.com" />
                   </div>
 
                   <div>
-                    <Label htmlFor="phone">Phone Number</Label>
-                    <Input id="phone" type="tel" required />
+                    <Label>Phone Number *</Label>
+                    <Input type="tel" className="h-14 bg-zinc-950 border-white/10 rounded-2xl" placeholder="1234567890" />
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                      <Label htmlFor="city">City</Label>
-                      <Input id="city" required />
+                      <Label>City *</Label>
+                      <Input className="h-14 bg-zinc-950 border-white/10 rounded-2xl" />
                     </div>
                     <div>
-                      <Label htmlFor="state">State</Label>
-                      <Input id="state" required />
+                      <Label>State / Country *</Label>
+                      <Input className="h-14 bg-zinc-950 border-white/10 rounded-2xl" />
                     </div>
-                  </div>
-
-                  <div>
-                    <Label htmlFor="linkedin">LinkedIn Profile (Optional)</Label>
-                    <Input id="linkedin" placeholder="https://linkedin.com/in/yourprofile" />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="portfolio">Portfolio/Website (Optional)</Label>
-                    <Input id="portfolio" placeholder="https://yourwebsite.com" />
                   </div>
 
                   <div className="pt-4">
-                    <Button type="button" onClick={nextStep}>
-                      Continue
+                    <Button type="button" onClick={nextStep} className="w-full h-14 rounded-2xl bg-blue-600 hover:bg-blue-500 text-lg">
+                      Continue to Documents
                     </Button>
                   </div>
                 </form>
-              </div>
+              </motion.div>
             )}
 
             {/* Step 2: Resume & Cover Letter */}
             {step === 2 && (
-              <div className="bg-card rounded-lg shadow-sm border p-6">
-                <h2 className="text-xl font-semibold mb-6">Resume & Cover Letter</h2>
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-zinc-900 border border-white/10 rounded-3xl p-10"
+              >
+                <h2 className="text-2xl font-semibold mb-8">Documents</h2>
 
-                <form className="space-y-6">
+                <form className="space-y-10">
+                  {/* Resume Upload */}
                   <div>
-                    <Label htmlFor="resume" className="mb-2 block">
-                      Resume
-                    </Label>
-                    <div className="border-2 border-dashed rounded-lg p-6 text-center">
+                    <Label className="text-lg font-medium mb-3 block">Resume (Required)</Label>
+                    <div className="border-2 border-dashed border-white/20 rounded-3xl p-8 text-center hover:border-blue-500/50 transition-colors">
                       {resumeFile ? (
-                        <div className="flex items-center justify-center space-x-2">
-                          <div className="bg-primary/10 p-2 rounded-full">
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              width="24"
-                              height="24"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              className="h-5 w-5 text-primary"
-                            >
-                              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                              <polyline points="17 8 12 3 7 8" />
-                              <line x1="12" x2="12" y1="3" y2="15" />
-                            </svg>
-                          </div>
-                          <span>{resumeFile.name}</span>
-                          <Button type="button" variant="ghost" size="sm" onClick={() => setResumeFile(null)}>
+                        <div className="flex flex-col items-center">
+                          <p className="font-medium text-green-400">✓ {resumeFile.name}</p>
+                          <Button type="button" variant="ghost" size="sm" onClick={() => setResumeFile(null)} className="mt-4">
                             Remove
                           </Button>
                         </div>
                       ) : (
                         <>
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="24"
-                            height="24"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            className="h-8 w-8 mx-auto mb-2 text-muted-foreground"
-                          >
-                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                            <polyline points="17 8 12 3 7 8" />
-                            <line x1="12" x2="12" y1="3" y2="15" />
-                          </svg>
-                          <p className="text-sm text-muted-foreground mb-2">
-                            Drag and drop your resume, or click to browse
-                          </p>
-                          <p className="text-xs text-muted-foreground mb-4">
-                            Supported formats: PDF, DOCX, RTF (Max 5MB)
-                          </p>
+                          <div className="text-4xl mb-4">📄</div>
+                          <p className="text-zinc-400 mb-2">Drag & drop your resume or click to upload</p>
+                          <p className="text-sm text-zinc-500">PDF, DOCX up to 5MB</p>
                           <Input
-                            id="resume"
                             type="file"
+                            accept=".pdf,.docx"
                             className="hidden"
-                            accept=".pdf,.docx,.rtf"
+                            id="resume"
                             onChange={handleResumeChange}
                           />
-                          <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => document.getElementById("resume")?.click()}
-                          >
+                          <Button type="button" variant="outline" className="mt-6" onClick={() => document.getElementById('resume').click()}>
                             Browse Files
                           </Button>
                         </>
@@ -249,72 +192,29 @@ export default function JobApplicationPage() {
                     </div>
                   </div>
 
+                  {/* Cover Letter Upload */}
                   <div>
-                    <Label htmlFor="cover-letter" className="mb-2 block">
-                      Cover Letter (Optional)
-                    </Label>
-                    <div className="border-2 border-dashed rounded-lg p-6 text-center">
+                    <Label className="text-lg font-medium mb-3 block">Cover Letter (Optional)</Label>
+                    <div className="border-2 border-dashed border-white/20 rounded-3xl p-8 text-center hover:border-blue-500/50 transition-colors">
                       {coverLetterFile ? (
-                        <div className="flex items-center justify-center space-x-2">
-                          <div className="bg-primary/10 p-2 rounded-full">
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              width="24"
-                              height="24"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              className="h-5 w-5 text-primary"
-                            >
-                              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                              <polyline points="17 8 12 3 7 8" />
-                              <line x1="12" x2="12" y1="3" y2="15" />
-                            </svg>
-                          </div>
-                          <span>{coverLetterFile.name}</span>
-                          <Button type="button" variant="ghost" size="sm" onClick={() => setCoverLetterFile(null)}>
+                        <div className="flex flex-col items-center">
+                          <p className="font-medium text-green-400">✓ {coverLetterFile.name}</p>
+                          <Button type="button" variant="ghost" size="sm" onClick={() => setCoverLetterFile(null)} className="mt-4">
                             Remove
                           </Button>
                         </div>
                       ) : (
                         <>
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="24"
-                            height="24"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            className="h-8 w-8 mx-auto mb-2 text-muted-foreground"
-                          >
-                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                            <polyline points="17 8 12 3 7 8" />
-                            <line x1="12" x2="12" y1="3" y2="15" />
-                          </svg>
-                          <p className="text-sm text-muted-foreground mb-2">
-                            Drag and drop your cover letter, or click to browse
-                          </p>
-                          <p className="text-xs text-muted-foreground mb-4">
-                            Supported formats: PDF, DOCX, RTF (Max 5MB)
-                          </p>
+                          <div className="text-4xl mb-4">✍️</div>
+                          <p className="text-zinc-400 mb-2">Drag & drop your cover letter</p>
                           <Input
-                            id="cover-letter"
                             type="file"
+                            accept=".pdf,.docx"
                             className="hidden"
-                            accept=".pdf,.docx,.rtf"
+                            id="cover"
                             onChange={handleCoverLetterChange}
                           />
-                          <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => document.getElementById("cover-letter")?.click()}
-                          >
+                          <Button type="button" variant="outline" className="mt-6" onClick={() => document.getElementById('cover').click()}>
                             Browse Files
                           </Button>
                         </>
@@ -322,134 +222,83 @@ export default function JobApplicationPage() {
                     </div>
                   </div>
 
-                  <div>
-                    <Label htmlFor="additional-info" className="mb-2 block">
-                      Additional Information (Optional)
-                    </Label>
-                    <Textarea
-                      id="additional-info"
-                      placeholder="Share anything else that might be relevant to your application..."
-                      className="min-h-[150px]"
-                    />
-                  </div>
-
-                  <div className="flex justify-between pt-4">
-                    <Button type="button" variant="outline" onClick={prevStep}>
+                  <div className="flex justify-between pt-6">
+                    <Button type="button" variant="outline" onClick={prevStep} className="rounded-2xl">
                       Back
                     </Button>
-                    <Button type="button" onClick={nextStep}>
-                      Continue
+                    <Button type="button" onClick={nextStep} className="rounded-2xl bg-blue-600 hover:bg-blue-500">
+                      Continue to Review
                     </Button>
                   </div>
                 </form>
-              </div>
+              </motion.div>
             )}
 
             {/* Step 3: Review & Submit */}
             {step === 3 && (
-              <div className="bg-card rounded-lg shadow-sm border p-6">
-                <h2 className="text-xl font-semibold mb-6">Review & Submit</h2>
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-zinc-900 border border-white/10 rounded-3xl p-10"
+              >
+                <h2 className="text-2xl font-semibold mb-8">Review Your Application</h2>
 
-                <div className="space-y-6">
+                <div className="space-y-10">
                   <div>
-                    <h3 className="font-medium mb-3">Job Details</h3>
-                    <div className="bg-muted p-4 rounded-lg">
-                      <p className="font-medium">{job.title}</p>
-                      <p className="text-muted-foreground">
-                        {job.company} • {job.location}
-                      </p>
+                    <h3 className="font-medium mb-4">Job Position</h3>
+                    <div className="bg-zinc-800 p-6 rounded-2xl">
+                      <p className="font-semibold text-lg">{job.title}</p>
+                      <p className="text-zinc-400">{job.company} • {job.location}</p>
                     </div>
                   </div>
 
                   <div>
-                    <h3 className="font-medium mb-3">Attached Documents</h3>
-                    <div className="space-y-2">
+                    <h3 className="font-medium mb-4">Documents</h3>
+                    <div className="space-y-4">
                       {resumeFile && (
-                        <div className="flex items-center p-3 bg-muted rounded-lg">
-                          <div className="bg-primary/10 p-2 rounded-full mr-3">
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              width="24"
-                              height="24"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              className="h-4 w-4 text-primary"
-                            >
-                              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                              <polyline points="17 8 12 3 7 8" />
-                              <line x1="12" x2="12" y1="3" y2="15" />
-                            </svg>
-                          </div>
+                        <div className="flex items-center gap-4 bg-zinc-800 p-4 rounded-2xl">
+                          <div className="text-3xl">📄</div>
                           <div>
                             <p className="font-medium">Resume</p>
-                            <p className="text-xs text-muted-foreground">{resumeFile.name}</p>
+                            <p className="text-sm text-zinc-400">{resumeFile.name}</p>
                           </div>
                         </div>
                       )}
-
                       {coverLetterFile && (
-                        <div className="flex items-center p-3 bg-muted rounded-lg">
-                          <div className="bg-primary/10 p-2 rounded-full mr-3">
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              width="24"
-                              height="24"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              className="h-4 w-4 text-primary"
-                            >
-                              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                              <polyline points="17 8 12 3 7 8" />
-                              <line x1="12" x2="12" y1="3" y2="15" />
-                            </svg>
-                          </div>
+                        <div className="flex items-center gap-4 bg-zinc-800 p-4 rounded-2xl">
+                          <div className="text-3xl">📝</div>
                           <div>
                             <p className="font-medium">Cover Letter</p>
-                            <p className="text-xs text-muted-foreground">{coverLetterFile.name}</p>
+                            <p className="text-sm text-zinc-400">{coverLetterFile.name}</p>
                           </div>
                         </div>
                       )}
                     </div>
                   </div>
 
-                  <div className="flex items-start space-x-2 pt-4">
-                    <Checkbox id="terms" />
-                    <div className="grid gap-1.5 leading-none">
-                      <label
-                        htmlFor="terms"
-                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                      >
-                        I agree to the terms and conditions
-                      </label>
-                      <p className="text-sm text-muted-foreground">
-                        By submitting this application, I certify that the information provided is accurate and
-                        complete.
-                      </p>
-                    </div>
+                  <div className="pt-6 border-t border-white/10">
+                    <Checkbox id="confirm" className="mt-1" />
+                    <label htmlFor="confirm" className="ml-3 text-sm text-zinc-300">
+                      I confirm that all information provided is accurate and I agree to the terms.
+                    </label>
                   </div>
 
-                  <div className="flex justify-between pt-4">
-                    <Button type="button" variant="outline" onClick={prevStep}>
+                  <div className="flex justify-between pt-6">
+                    <Button type="button" variant="outline" onClick={prevStep} className="rounded-2xl">
                       Back
                     </Button>
-                    <Button type="submit">Submit Application</Button>
+                    <Button type="submit" className="rounded-2xl bg-green-600 hover:bg-green-500 px-10">
+                      Submit Application
+                    </Button>
                   </div>
                 </div>
-              </div>
+              </motion.div>
             )}
           </div>
         </div>
       </main>
+
       <Footer />
     </div>
   )
 }
-
