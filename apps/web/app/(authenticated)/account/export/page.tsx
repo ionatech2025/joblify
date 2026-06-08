@@ -7,15 +7,14 @@ export default async function ExportPage() {
   await requireUser();
 
   return (
-    <main style={{ padding: '2rem', maxWidth: 720, margin: '0 auto' }}>
-      <h1>Export my data</h1>
+    <main className="mx-auto max-w-2xl px-4 py-8 sm:px-6">
+      <h1 className="text-2xl font-bold text-neutral-900">Export my data</h1>
       <p>
-        We'll bundle every row tied to your account — profile, applications, resumes, notifications, audit
-        log entries — as a JSON file and email you a signed download link valid for 24 hours.
+        We&apos;ll bundle every row tied to your account — profile, applications, resumes,
+        notifications, audit log entries — as a JSON file and email you a signed download link valid
+        for 24 hours.
       </p>
-      <p style={{ color: '#666', fontSize: '0.9rem' }}>
-        This is your GDPR Article 15 right. You can run it twice per day.
-      </p>
+      <p className="text-sm text-neutral-500">This is your GDPR Article 15 right. You can run it twice per day.</p>
       <ExportButton />
     </main>
   );

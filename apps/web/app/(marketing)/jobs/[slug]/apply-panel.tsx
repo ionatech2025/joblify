@@ -3,6 +3,10 @@ import { currentUser } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { SaveButton } from './save-button';
 
+const primaryLink =
+  'inline-block rounded-lg bg-neutral-900 px-5 py-2.5 font-semibold text-white no-underline transition-colors hover:bg-neutral-700';
+const heading = 'm-0 mb-2 text-lg font-semibold text-neutral-900';
+
 // Dynamic island inside the cached JD page. Reads session, shows the right CTA.
 export async function ApplyPanel({ jobId, slug }: { jobId: string; slug: string }) {
   const user = await currentUser();
@@ -10,12 +14,9 @@ export async function ApplyPanel({ jobId, slug }: { jobId: string; slug: string 
   if (!user) {
     return (
       <>
-        <h3 style={{ margin: '0 0 0.5rem' }}>Apply for this role</h3>
-        <p style={{ margin: '0 0 1rem', color: '#555' }}>Sign in to apply with your saved resume.</p>
-        <Link
-          href={`/sign-in?redirect_url=/jobs/${slug}/apply`}
-          style={{ padding: '0.75rem 1.25rem', background: '#111', color: 'white', borderRadius: 8, textDecoration: 'none', fontWeight: 600 }}
-        >
+        <h3 className={heading}>Apply for this role</h3>
+        <p className="mb-4 text-neutral-600">Sign in to apply with your saved resume.</p>
+        <Link href={`/sign-in?redirect_url=/jobs/${slug}/apply`} className={primaryLink}>
           Sign in to apply
         </Link>
       </>
@@ -23,7 +24,7 @@ export async function ApplyPanel({ jobId, slug }: { jobId: string; slug: string 
   }
 
   if (user.userType !== 'JOB_SEEKER') {
-    return <p style={{ margin: 0, color: '#555' }}>Only jobseekers can apply to job posts.</p>;
+    return <p className="m-0 text-neutral-600">Only jobseekers can apply to job posts.</p>;
   }
 
   const [existing, saved] = await Promise.all([
@@ -41,23 +42,20 @@ export async function ApplyPanel({ jobId, slug }: { jobId: string; slug: string 
     <>
       {existing ? (
         <>
-          <h3 style={{ margin: '0 0 0.5rem' }}>You applied already</h3>
-          <p style={{ margin: 0, color: '#555' }}>
+          <h3 className={heading}>You applied already</h3>
+          <p className="m-0 text-neutral-600">
             Status: <strong>{existing.status}</strong> · applied {existing.appliedAt.toLocaleDateString()}
           </p>
         </>
       ) : (
         <>
-          <h3 style={{ margin: '0 0 0.5rem' }}>Apply for this role</h3>
-          <Link
-            href={`/jobs/${slug}/apply`}
-            style={{ padding: '0.75rem 1.25rem', background: '#111', color: 'white', borderRadius: 8, textDecoration: 'none', fontWeight: 600 }}
-          >
+          <h3 className={heading}>Apply for this role</h3>
+          <Link href={`/jobs/${slug}/apply`} className={primaryLink}>
             Start application
           </Link>
         </>
       )}
-      <div style={{ marginTop: '0.75rem' }}>
+      <div className="mt-3">
         <SaveButton jobId={jobId} initialSaved={!!saved} />
       </div>
     </>

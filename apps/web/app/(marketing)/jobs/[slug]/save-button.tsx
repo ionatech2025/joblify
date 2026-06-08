@@ -26,15 +26,11 @@ export function SaveButton({ jobId, initialSaved }: { jobId: string; initialSave
       onClick={toggle}
       disabled={pending}
       aria-pressed={saved}
-      style={{
-        padding: '0.5rem 1rem',
-        background: saved ? '#eef2ff' : '#fff',
-        color: saved ? '#3344aa' : '#333',
-        border: `1px solid ${saved ? '#c3cdf5' : '#ccc'}`,
-        borderRadius: 8,
-        fontWeight: 600,
-        cursor: pending ? 'wait' : 'pointer',
-      }}
+      className={`rounded-lg border px-4 py-2 font-semibold transition-colors disabled:cursor-wait ${
+        saved
+          ? 'border-indigo-200 bg-indigo-50 text-indigo-700'
+          : 'border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-50'
+      }`}
     >
       {saved ? '★ Saved' : '☆ Save job'}
     </button>

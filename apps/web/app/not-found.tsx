@@ -2,19 +2,19 @@ import Link from 'next/link';
 
 export default function NotFound() {
   return (
-    <main style={{ padding: '4rem 2rem', maxWidth: 560, margin: '0 auto', textAlign: 'center' }}>
-      <h1 style={{ fontSize: '2rem', margin: 0 }}>404</h1>
-      <p style={{ color: '#666' }}>We couldn&apos;t find that page.</p>
-      <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center', marginTop: '1.5rem' }}>
+    <main className="mx-auto max-w-xl px-4 py-16 text-center">
+      <h1 className="m-0 text-5xl font-extrabold text-neutral-900">404</h1>
+      <p className="mt-2 text-neutral-600">We couldn&apos;t find that page.</p>
+      <div className="mt-6 flex justify-center gap-3">
         <Link
           href="/jobs"
-          style={{ padding: '0.6rem 1.1rem', background: '#111', color: '#fff', borderRadius: 8, textDecoration: 'none', fontWeight: 600 }}
+          className="rounded-lg bg-neutral-900 px-5 py-2.5 font-semibold text-white no-underline transition-colors hover:bg-neutral-700"
         >
           Browse jobs
         </Link>
         <Link
           href="/"
-          style={{ padding: '0.6rem 1.1rem', border: '1px solid #ccc', borderRadius: 8, color: '#111', textDecoration: 'none' }}
+          className="rounded-lg border border-neutral-300 px-5 py-2.5 font-semibold text-neutral-900 no-underline transition-colors hover:bg-neutral-50"
         >
           Go home
         </Link>

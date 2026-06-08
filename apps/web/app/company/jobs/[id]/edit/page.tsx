@@ -40,23 +40,23 @@ export default async function EditJobPage({
   };
 
   return (
-    <main style={{ padding: '2rem', maxWidth: 720, margin: '0 auto' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-        <h1 style={{ margin: 0 }}>Edit job</h1>
+    <main className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <h1 className="m-0 text-2xl font-bold text-neutral-900">Edit job</h1>
         {job.status === 'PUBLISHED' && (
-          <Link href={`/jobs/${job.slug}`} style={{ color: '#1856a8' }}>
+          <Link href={`/jobs/${job.slug}`} className="text-blue-700 hover:underline">
             View public page ↗
           </Link>
         )}
       </div>
 
       {sp.just_posted && (
-        <div style={{ padding: '0.75rem 1rem', background: '#e7f6ec', borderRadius: 8, margin: '1rem 0' }}>
+        <div className="my-4 rounded-lg bg-green-50 px-4 py-3 text-sm text-green-800">
           Job posted — it&apos;s live on /jobs and indexed within a minute.
         </div>
       )}
 
-      <p style={{ color: '#666' }}>
+      <p className="mt-2 text-neutral-600">
         Current status: <strong>{job.status}</strong>. Saving re-extracts skills and re-indexes search.
       </p>
 

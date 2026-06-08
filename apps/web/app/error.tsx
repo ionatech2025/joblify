@@ -16,19 +16,19 @@ export default function Error({
   }, [error]);
 
   return (
-    <main style={{ padding: '4rem 2rem', maxWidth: 560, margin: '0 auto', textAlign: 'center' }}>
-      <h1 style={{ fontSize: '1.5rem' }}>Something went wrong</h1>
-      <p style={{ color: '#666' }}>An unexpected error occurred. You can try again, or head back home.</p>
-      <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center', marginTop: '1.5rem' }}>
+    <main className="mx-auto max-w-xl px-4 py-16 text-center">
+      <h1 className="text-2xl font-bold text-neutral-900">Something went wrong</h1>
+      <p className="mt-2 text-neutral-600">An unexpected error occurred. You can try again, or head back home.</p>
+      <div className="mt-6 flex justify-center gap-3">
         <button
           onClick={reset}
-          style={{ padding: '0.6rem 1.1rem', background: '#111', color: '#fff', border: 0, borderRadius: 8, fontWeight: 600, cursor: 'pointer' }}
+          className="rounded-lg bg-neutral-900 px-5 py-2.5 font-semibold text-white transition-colors hover:bg-neutral-700"
         >
           Try again
         </button>
         <Link
           href="/"
-          style={{ padding: '0.6rem 1.1rem', border: '1px solid #ccc', borderRadius: 8, color: '#111', textDecoration: 'none' }}
+          className="rounded-lg border border-neutral-300 px-5 py-2.5 font-semibold text-neutral-900 no-underline transition-colors hover:bg-neutral-50"
         >
           Go home
         </Link>

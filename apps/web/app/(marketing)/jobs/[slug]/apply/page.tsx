@@ -40,11 +40,9 @@ async function ApplyContent({ slug }: { slug: string }) {
   });
 
   return (
-    <main style={{ padding: '3rem 2rem', maxWidth: 720, margin: '0 auto' }}>
-      <h1>Apply: {job.title}</h1>
-      <p style={{ color: '#555', marginBottom: '2rem' }}>
-        {job.company.companyProfile?.companyName ?? 'Company'}
-      </p>
+    <main className="mx-auto max-w-3xl px-4 py-12 sm:px-6">
+      <h1 className="text-2xl font-bold text-neutral-900">Apply: {job.title}</h1>
+      <p className="mt-1 mb-8 text-neutral-600">{job.company.companyProfile?.companyName ?? 'Company'}</p>
       <ApplyForm jobId={job.id} jobSlug={job.slug} resumes={resumes} />
     </main>
   );

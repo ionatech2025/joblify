@@ -11,11 +11,9 @@ export default async function CompanySettingsPage() {
   if (!profile) redirect('/employer-setup');
 
   return (
-    <main style={{ padding: '2rem', maxWidth: 640, margin: '0 auto' }}>
-      <h1>Company settings</h1>
-      <p style={{ color: '#666' }}>
-        This is what jobseekers see on your company page and job posts.
-      </p>
+    <main className="mx-auto max-w-2xl px-4 py-8 sm:px-6">
+      <h1 className="text-2xl font-bold text-neutral-900">Company settings</h1>
+      <p className="mt-1 text-neutral-600">This is what jobseekers see on your company page and job posts.</p>
       <CompanySettingsForm
         userId={user.id}
         logoUrl={profile.logoUrl ?? null}

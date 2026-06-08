@@ -36,14 +36,14 @@ export async function SimilarJobs({
   if (jobs.length === 0) return null;
 
   return (
-    <section style={{ marginTop: '3rem' }}>
-      <h2 style={{ fontSize: '1.25rem' }}>Similar jobs</h2>
-      <ul style={{ listStyle: 'none', padding: 0, display: 'grid', gap: '0.5rem' }}>
+    <section className="mt-12">
+      <h2 className="text-xl font-semibold text-neutral-900">Similar jobs</h2>
+      <ul className="grid list-none grid-cols-1 gap-2 p-0">
         {jobs.map((j) => (
-          <li key={j.id} style={{ border: '1px solid #eee', borderRadius: 8, padding: '0.75rem 1rem' }}>
-            <Link href={`/jobs/${j.slug}`} style={{ color: 'inherit', textDecoration: 'none' }}>
+          <li key={j.id} className="rounded-lg border border-neutral-200 px-4 py-3">
+            <Link href={`/jobs/${j.slug}`} className="text-neutral-900 no-underline">
               <strong>{j.title}</strong>
-              <span style={{ color: '#666' }}>
+              <span className="text-neutral-600">
                 {' — '}
                 {j.company.companyProfile?.companyName ?? 'Company'}
                 {j.location ? ` · ${j.location}` : ''}

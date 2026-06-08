@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import { Button } from '@/app/components/ui/button';
 
 export function ExportButton() {
   const [isPending, startTransition] = useTransition();
@@ -26,16 +27,12 @@ export function ExportButton() {
   }
 
   return (
-    <div style={{ marginTop: '1.5rem' }}>
-      <button
-        onClick={start}
-        disabled={isPending}
-        style={{ padding: '0.75rem 1.25rem', background: '#111', color: 'white', borderRadius: 8, border: 0, fontWeight: 600, cursor: isPending ? 'wait' : 'pointer' }}
-      >
+    <div className="mt-6">
+      <Button onClick={start} disabled={isPending}>
         {isPending ? 'Building export…' : 'Request data export'}
-      </button>
-      {message && <p style={{ color: '#114411', marginTop: '1rem' }}>{message}</p>}
-      {error && <p style={{ color: '#a00', marginTop: '1rem' }}>{error}</p>}
+      </Button>
+      {message && <p className="mt-4 break-all text-green-700">{message}</p>}
+      {error && <p className="mt-4 text-red-700">{error}</p>}
     </div>
   );
 }

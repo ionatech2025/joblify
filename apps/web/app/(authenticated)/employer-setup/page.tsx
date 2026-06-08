@@ -14,9 +14,9 @@ export default async function EmployerSetupPage() {
   if (existing) redirect('/company/jobs');
 
   return (
-    <main style={{ padding: '2rem', maxWidth: 640, margin: '0 auto' }}>
-      <h1>Set up your company</h1>
-      <p style={{ color: '#666' }}>
+    <main className="mx-auto max-w-2xl px-4 py-8 sm:px-6">
+      <h1 className="text-2xl font-bold text-neutral-900">Set up your company</h1>
+      <p className="mt-1 text-neutral-600">
         Create your company profile to start posting jobs and reviewing applicants. You can edit any
         of this later in Company settings.
       </p>

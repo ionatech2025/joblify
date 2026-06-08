@@ -10,9 +10,9 @@ export default async function JobseekerProfilePage() {
   const profile = await db.jobSeekerProfile.findUnique({ where: { userId: user.id } });
 
   return (
-    <main style={{ padding: '2rem', maxWidth: 720, margin: '0 auto' }}>
-      <h1>My profile</h1>
-      <p style={{ color: '#666' }}>
+    <main className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
+      <h1 className="text-2xl font-bold text-neutral-900">My profile</h1>
+      <p className="mt-1 text-neutral-600">
         These fields show up to recruiters when you apply. Keep your headline and skills sharp.
       </p>
       <ProfileForm
@@ -28,7 +28,7 @@ export default async function JobseekerProfilePage() {
         }}
       />
 
-      <div style={{ marginTop: '2rem' }}>
+      <div className="mt-8">
         <BioCoach currentBio={profile?.bio ?? ''} />
       </div>
     </main>
