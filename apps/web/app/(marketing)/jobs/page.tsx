@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import { JobsSearch } from './jobs-search';
 
 export const metadata = {
@@ -9,7 +10,10 @@ export default function JobsPage() {
   return (
     <main style={{ padding: '2rem', maxWidth: 1200, margin: '0 auto' }}>
       <h1 style={{ marginBottom: '1.5rem' }}>Search jobs</h1>
-      <JobsSearch />
+      {/* JobsSearch reads useSearchParams() — must sit inside a Suspense boundary. */}
+      <Suspense fallback={<p>Loading…</p>}>
+        <JobsSearch />
+      </Suspense>
     </main>
   );
 }

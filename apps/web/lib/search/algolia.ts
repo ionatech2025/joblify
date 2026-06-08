@@ -3,6 +3,12 @@ import type { JobPost, CompanyProfile, User } from '@prisma/client';
 
 export const INDEX = {
   jobs: 'jobs',
+  // Replicas for the search sort dropdown. Configure in Algolia with these
+  // rankings (the search route falls back to `jobs` until they exist):
+  //   jobs_recent       → publishedAt desc
+  //   jobs_salary_desc  → salaryMax desc
+  jobsRecent: 'jobs_recent',
+  jobsSalaryDesc: 'jobs_salary_desc',
   companies: 'companies',
   skills: 'skills',
 } as const;

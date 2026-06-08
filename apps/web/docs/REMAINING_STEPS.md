@@ -93,6 +93,10 @@ In Resend:
 
 Create `jobs`, `companies`, `skills` indexes in Algolia. Configure searchable attributes + custom ranking for `jobs` per [SEARCH.md](./SEARCH.md).
 
+Add two `jobs` replicas to back the search sort dropdown (the `/api/v1/jobs/search` route falls back to relevance until they exist):
+- `jobs_recent` — ranking by `publishedAt` desc
+- `jobs_salary_desc` — ranking by `salaryMax` desc
+
 ### Postgres extensions + initial migration
 
 ```bash
