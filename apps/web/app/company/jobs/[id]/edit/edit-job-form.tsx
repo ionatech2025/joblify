@@ -4,13 +4,14 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { postJob } from '@/app/actions/post-job';
+import { updateJob } from '@/app/actions/post-job';
 import { JobFormFields, PostJobFormSchema, type PostJobFormValues } from '@/app/company/jobs/job-form-fields';
 
-export function PostJobForm() {
+export function EditJobForm({ jobId, initial }: { jobId: string; initial: PostJobFormValues }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
 
   const {
     register,
@@ -18,26 +19,19 @@ export function PostJobForm() {
     formState: { errors },
   } = useForm<PostJobFormValues>({
     resolver: zodResolver(PostJobFormSchema),
-    defaultValues: {
-      industry: 'TECHNOLOGY',
-      jobType: 'FULL_TIME',
-      experienceLevel: 'MID',
-      workMode: 'ONSITE',
-      salaryCurrency: 'USD',
-      salaryMin: null,
-      salaryMax: null,
-      publish: true,
-    },
+    defaultValues: initial,
   });
 
   function onSubmit(values: PostJobFormValues) {
     setError(null);
+    setSaved(false);
     startTransition(async () => {
       try {
-        const id = await postJob(values);
-        router.push(`/company/jobs/${id}/edit?just_posted=1`);
+        await updateJob(jobId, values);
+        setSaved(true);
+        router.refresh();
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to post job.');
+        setError(err instanceof Error ? err.message : 'Failed to save changes.');
       }
     });
   }
@@ -50,6 +44,7 @@ export function PostJobForm() {
       <JobFormFields register={register} errors={errors} />
 
       {error && <p style={{ color: '#a00', margin: 0 }}>{error}</p>}
+      {saved && <p style={{ color: '#137333', margin: 0 }}>Saved.</p>}
 
       <button
         type="submit"
@@ -62,9 +57,10 @@ export function PostJobForm() {
           border: 0,
           fontWeight: 600,
           cursor: isPending ? 'wait' : 'pointer',
+          alignSelf: 'flex-start',
         }}
       >
-        {isPending ? 'Saving…' : 'Post job'}
+        {isPending ? 'Saving…' : 'Save changes'}
       </button>
     </form>
   );
