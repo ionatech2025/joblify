@@ -4,9 +4,11 @@ import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
+import { SignedIn } from '@clerk/nextjs';
 import type { JobSearchRecord } from '@/lib/search/algolia';
 import { Badge } from '@/app/components/ui/badge';
 import { Card } from '@/app/components/ui/card';
+import { SaveSearchButton } from './save-search-button';
 
 type SearchResponse = { hits: JobSearchRecord[]; nbHits: number; page: number; nbPages: number };
 
@@ -174,18 +176,25 @@ export function JobsSearch() {
                 ? `${data.nbHits.toLocaleString()} ${data.nbHits === 1 ? 'job' : 'jobs'}`
                 : ''}
           </p>
-          <label className="flex items-center gap-2 text-sm text-neutral-600">
-            Sort
-            <select
-              value={getp('sort')}
-              onChange={(e) => patch({ sort: e.target.value, page: '' })}
-              className="rounded-md border border-neutral-300 bg-white px-2 py-1.5 text-sm"
-            >
-              <option value="">Relevance</option>
-              <option value="recent">Most recent</option>
-              <option value="salary">Highest salary</option>
-            </select>
-          </label>
+          <div className="flex flex-wrap items-center gap-3">
+            {qs.length > 0 && (
+              <SignedIn>
+                <SaveSearchButton key={qs} query={qs} />
+              </SignedIn>
+            )}
+            <label className="flex items-center gap-2 text-sm text-neutral-600">
+              Sort
+              <select
+                value={getp('sort')}
+                onChange={(e) => patch({ sort: e.target.value, page: '' })}
+                className="rounded-md border border-neutral-300 bg-white px-2 py-1.5 text-sm"
+              >
+                <option value="">Relevance</option>
+                <option value="recent">Most recent</option>
+                <option value="salary">Highest salary</option>
+              </select>
+            </label>
+          </div>
         </div>
 
         {isError && <p className="text-red-700">Search is unavailable right now. Try again shortly.</p>}

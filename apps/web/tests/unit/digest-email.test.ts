@@ -1,8 +1,14 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 
-const m = vi.hoisted(() => ({ userFind: vi.fn(), jobFind: vi.fn(), send: vi.fn() }));
+const m = vi.hoisted(() => ({ userFind: vi.fn(), jobFind: vi.fn(), send: vi.fn(), savedFind: vi.fn(), savedUpdate: vi.fn() }));
 
-vi.mock('@/lib/db', () => ({ db: { user: { findMany: m.userFind }, jobPost: { findMany: m.jobFind } } }));
+vi.mock('@/lib/db', () => ({
+  db: {
+    user: { findMany: m.userFind },
+    jobPost: { findMany: m.jobFind },
+    savedSearch: { findMany: m.savedFind, updateMany: m.savedUpdate },
+  },
+}));
 vi.mock('@/lib/email/resend', () => ({ resend: () => ({ emails: { send: m.send } }), EMAIL_FROM: 'no-reply@joblify.test' }));
 vi.mock('@/lib/observability/logger', () => ({ logger: { warn: vi.fn() } }));
 
@@ -14,6 +20,7 @@ describe('runDigest', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     m.send.mockResolvedValue({});
+    m.savedFind.mockResolvedValue([]); // default: no saved searches → generic digest path
   });
 
   it('only targets consented, non-suppressed, non-deleted jobseekers', async () => {

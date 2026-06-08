@@ -177,6 +177,7 @@ model User {
   invitationsRecv  Invitation[]    @relation("InvitationsToJobSeeker")
   auditEvents      AuditEvent[]    @relation("AuditActor")
   savedJobs        SavedJob[]
+  savedSearches    SavedSearch[]
 
   @@index([userType, deletedAt])
   @@index([deletedAt])
@@ -387,6 +388,21 @@ model SavedJob {
   @@unique([userId, jobPostId])
   @@index([userId, createdAt(sort: Desc)])
   @@map("saved_jobs")
+}
+
+model SavedSearch {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId         String    @db.Uuid
+  label          String
+  /// The /jobs URL query string, e.g. "q=engineer&workMode=REMOTE".
+  query          String
+  lastNotifiedAt DateTime?
+  createdAt      DateTime  @default(now())
+
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("saved_searches")
 }
 
 // ============================================================================

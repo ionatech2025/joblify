@@ -16,8 +16,56 @@ import { db } from '@/lib/db';
 import { Prisma } from '@prisma/client';
 import { resend, EMAIL_FROM } from '@/lib/email/resend';
 import { logger } from '@/lib/observability/logger';
+import { savedSearchWhere } from '@/lib/search/saved-search';
 
 const SINCE_HOURS = 24;
+
+const jobInclude = { company: { include: { companyProfile: true } } } satisfies Prisma.JobPostInclude;
+
+// Jobs to surface to one jobseeker: new matches across their saved searches
+// (each since its own watermark), else the generic "new in the last 24h".
+async function digestJobsFor(userId: string, since: Date) {
+  const searches = await db.savedSearch.findMany({
+    where: { userId },
+    select: { query: true, lastNotifiedAt: true },
+  });
+
+  if (searches.length === 0) {
+    return db.jobPost.findMany({
+      where: { status: 'PUBLISHED', publishedAt: { gte: since }, deletedAt: null },
+      orderBy: { publishedAt: 'desc' },
+      take: 5,
+      include: jobInclude,
+    });
+  }
+
+  const lists = await Promise.all(
+    searches.map((s) =>
+      db.jobPost.findMany({
+        where: {
+          AND: [
+            savedSearchWhere(s.query),
+            { status: 'PUBLISHED', deletedAt: null, publishedAt: { gte: s.lastNotifiedAt ?? since } },
+          ],
+        },
+        orderBy: { publishedAt: 'desc' },
+        take: 5,
+        include: jobInclude,
+      }),
+    ),
+  );
+  await db.savedSearch.updateMany({ where: { userId }, data: { lastNotifiedAt: new Date() } });
+
+  const seen = new Set<string>();
+  return lists
+    .flat()
+    .filter((j) => {
+      if (seen.has(j.id)) return false;
+      seen.add(j.id);
+      return true;
+    })
+    .slice(0, 5);
+}
 
 export async function runDigest(): Promise<{ sent: number; skipped: number }> {
   const since = new Date(Date.now() - SINCE_HOURS * 3600 * 1000);
@@ -42,12 +90,7 @@ export async function runDigest(): Promise<{ sent: number; skipped: number }> {
   let skipped = 0;
 
   for (const user of jobseekers) {
-    const newJobs = await db.jobPost.findMany({
-      where: { status: 'PUBLISHED', publishedAt: { gte: since }, deletedAt: null },
-      orderBy: { publishedAt: 'desc' },
-      take: 5,
-      include: { company: { include: { companyProfile: true } } },
-    });
+    const newJobs = await digestJobsFor(user.id, since);
 
     if (newJobs.length === 0) {
       skipped++;
