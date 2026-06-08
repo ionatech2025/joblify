@@ -38,10 +38,9 @@ GitHub repo ─ push ─► CI (.github/workflows/ci.yml)
 | Job | Steps |
 |---|---|
 | `web` | install → prisma validate/generate → lint → typecheck → unit tests → build |
-| `axe` | install → build → start → axe smoke |
 | `gitleaks` | scan for committed secrets |
 
-All three must pass for the PR to merge.
+Both must pass to merge. Accessibility is gated separately on the preview deploy via Lighthouse CI (`.github/workflows/lighthouse.yml`) — its accessibility category is axe-core (`minScore 0.95`) and runs against real URLs + services, which a CI-spun server can't.
 
 CI uses placeholder env so it can build without provisioned services:
 
