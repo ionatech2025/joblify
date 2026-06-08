@@ -50,7 +50,7 @@ export function ApplicationsList({
         <li key={a.id} className="rounded-xl border border-neutral-200 bg-white p-4">
           <div className="flex items-baseline justify-between gap-4">
             <div className="min-w-0">
-              <Link href={`/jobs/${a.jobPostId}`} className="font-semibold text-neutral-900 hover:underline">
+              <Link href={`/jobs/${a.slug}`} className="font-semibold text-neutral-900 hover:underline">
                 {a.jobTitle}
               </Link>
               <p className="mt-1 mb-0 text-neutral-600">{a.companyName}</p>

@@ -21,6 +21,7 @@ export async function GET() {
     rows.map((r) => ({
       id: r.id,
       jobPostId: r.jobPostId,
+      slug: r.jobPost.slug,
       jobTitle: r.jobPost.title,
       companyName: r.jobPost.company.companyProfile?.companyName ?? 'Company',
       status: r.status,

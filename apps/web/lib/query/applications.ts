@@ -7,6 +7,7 @@ import type { ApplicationStatus } from '@prisma/client';
 export type ApplicationListItem = {
   id: string;
   jobPostId: string;
+  slug: string;
   jobTitle: string;
   companyName: string;
   status: ApplicationStatus;

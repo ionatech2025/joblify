@@ -27,6 +27,7 @@ export default async function JobseekerApplicationsPage({
   const initialData: ApplicationListItem[] = rows.map((r) => ({
     id: r.id,
     jobPostId: r.jobPostId,
+    slug: r.jobPost.slug,
     jobTitle: r.jobPost.title,
     companyName: r.jobPost.company.companyProfile?.companyName ?? 'Company',
     status: r.status,
