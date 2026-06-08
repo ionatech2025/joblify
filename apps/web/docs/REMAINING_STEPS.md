@@ -135,7 +135,7 @@ Grep: `git grep "TODO(week-"` to see them all in context.
 |---|---|
 | DB migration in CI | Run `prisma migrate deploy` before Vercel promotes. **Blocked:** no public Postgres image bundles both PostGIS and pgvector — use a custom image or a managed Neon CI branch. |
 | CSP enforce | Flip `Content-Security-Policy-Report-Only` → `Content-Security-Policy` in `next.config.ts` once the violation report is clean. |
-| Full a11y in CI | Run axe against the preview URL (all five pages), not just the static home — pairs with the LHCI preview job. |
+| Lighthouse budgets (enforce) | LHCI runs **report-only** (`warn`) on preview deploys today. After the Week-11 polish, flip `lighthouserc.json` assertions to `error`. Current gaps to close first: accessibility 0.90→0.95, SEO 0.82→0.95. (INP is a field-only metric, omitted from the lab assertions.) This also covers a11y coverage, since Lighthouse's accessibility category is axe-core. |
 | Synthetic check + PagerDuty | Vercel Cron hitting `/api/v1/health` every 5 min, paging on 3 consecutive failures. |
 | Rolling Release auto-rollback | Configure auto-rollback policy in Vercel based on error rate. |
 | AV scan | Cloudmersive integration in `resume-parse.workflow.ts` if resume volume crosses 1k/day. |
