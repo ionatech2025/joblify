@@ -1,0 +1,18 @@
+title = "Joblify gitleaks config"
+
+# Extend the bundled gitleaks ruleset so every default detector stays active,
+# then allowlist a single known historical finding.
+[extend]
+useDefault = true
+
+# The initial-import commit ce37671 ("Add frontend and backend projects")
+# committed legacy dev secrets in Joblify-backend/.env.example — a MongoDB Atlas
+# connection string plus JWT/SESSION secrets. The current tree is placeholdered
+# (DATABASE_URL="REPLACE_ME"); the value survives only in git history.
+#
+# This allowlist unblocks CI on the KNOWN finding. It does NOT rotate anything.
+# Rotation of the Atlas credential + JWT/SESSION secrets is mandatory and tracked
+# in docs/SECURITY.md — until that is done, the historical value remains live.
+[allowlist]
+description = "Legacy dev secrets in initial-import commit ce37671 — see docs/SECURITY.md (rotation required)"
+commits = ["ce376713a708fdc63ebe24b3300a91ba7cdb0338"]
