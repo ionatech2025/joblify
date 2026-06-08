@@ -73,7 +73,7 @@ export async function runMatchScore({ jobPostId, jobSeekerId }: MatchScoreInput)
   return score;
 }
 
-function cosine(a: number[], b: number[]): number {
+export function cosine(a: number[], b: number[]): number {
   if (a.length !== b.length) throw new Error('embedding length mismatch');
   let dot = 0;
   let aMag = 0;
