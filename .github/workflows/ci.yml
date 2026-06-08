@@ -75,7 +75,8 @@ jobs:
       NEXT_PUBLIC_SITE_URL: 'http://localhost:3000'
       # We start `next start` ourselves below; point Playwright at it so its
       # webServer config doesn't also bind :3000 (CI sets reuseExistingServer=false).
-      PLAYWRIGHT_BASE_URL: 'http://localhost:3000'
+      # Use 127.0.0.1, not localhost — Chromium can't resolve "localhost" in the runner.
+      PLAYWRIGHT_BASE_URL: 'http://127.0.0.1:3000'
       # No live DB/Clerk in CI, so scope the smoke to fully-static pages. Full
       # a11y coverage (/, /jobs, /companies, /sign-in, /sign-up) runs against the
       # Vercel preview deploy (see lighthouse.yml) where real services exist.
@@ -92,7 +93,7 @@ jobs:
       - name: Run axe smoke
         run: |
           bun run start &
-          for i in $(seq 1 30); do curl -sf http://localhost:3000/ >/dev/null && break; sleep 2; done
+          for i in $(seq 1 30); do curl -sf http://127.0.0.1:3000/ >/dev/null && break; sleep 2; done
           bunx playwright test tests/e2e/a11y.spec.ts --project=chromium
 
   gitleaks:
