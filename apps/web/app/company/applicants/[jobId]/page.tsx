@@ -24,9 +24,9 @@ export default async function ApplicantsPage({ params }: { params: Promise<{ job
   });
 
   return (
-    <main style={{ padding: '2rem', maxWidth: 1200, margin: '0 auto' }}>
-      <h1>Applicants for {job.title}</h1>
-      <p style={{ color: '#666' }}>{applications.length} application(s)</p>
+    <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+      <h1 className="m-0 text-2xl font-bold text-neutral-900">Applicants for {job.title}</h1>
+      <p className="mt-1 text-neutral-600">{applications.length} application(s)</p>
 
       <ApplicantsBoard
         applications={applications.map((a) => ({

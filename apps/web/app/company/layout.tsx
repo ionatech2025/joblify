@@ -2,6 +2,7 @@ import { Suspense } from 'react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { requireUser } from '@/lib/auth';
+import { Container } from '@/app/components/ui/container';
 
 // The role check is uncached, so under cacheComponents it runs inside Suspense
 // (which also covers every child page's dynamic data access). A signed-in user
@@ -14,30 +15,26 @@ export default function CompanyLayout({ children }: { children: React.ReactNode 
   );
 }
 
+const link = 'text-sm text-neutral-700 transition-colors hover:text-neutral-900';
+
 async function CompanyShell({ children }: { children: React.ReactNode }) {
   const user = await requireUser();
   if (user.userType !== 'COMPANY') redirect('/employer-setup');
 
   return (
     <section>
-      <nav
-        style={{
-          display: 'flex',
-          gap: '1.25rem',
-          padding: '0.75rem 2rem',
-          borderBottom: '1px solid #eee',
-          fontSize: '0.95rem',
-        }}
-      >
-        <Link href="/company/jobs" style={{ color: '#111', textDecoration: 'none' }}>
-          Jobs
-        </Link>
-        <Link href="/company/jobs/new" style={{ color: '#111', textDecoration: 'none' }}>
-          Post a job
-        </Link>
-        <Link href="/company/settings" style={{ color: '#111', textDecoration: 'none' }}>
-          Company settings
-        </Link>
+      <nav className="border-b border-neutral-200">
+        <Container className="flex flex-wrap gap-x-5 gap-y-2 py-3">
+          <Link href="/company/jobs" className={link}>
+            Jobs
+          </Link>
+          <Link href="/company/jobs/new" className={link}>
+            Post a job
+          </Link>
+          <Link href="/company/settings" className={link}>
+            Company settings
+          </Link>
+        </Container>
       </nav>
       {children}
     </section>

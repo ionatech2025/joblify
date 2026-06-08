@@ -33,6 +33,8 @@ const STAGES: { status: ApplicationStatus; label: string }[] = [
 ];
 const CLOSED: ApplicationStatus[] = ['HIRED', 'REJECTED', 'WITHDRAWN'];
 
+const controlClass = 'rounded-md border border-neutral-300 bg-white px-2 py-1.5 text-sm';
+
 export function ApplicantsBoard({ applications }: { applications: Row[] }) {
   const [rows, setRows] = useState(applications);
   const [, startTransition] = useTransition();
@@ -64,37 +66,37 @@ export function ApplicantsBoard({ applications }: { applications: Row[] }) {
     return copy;
   }, [rows, sort]);
 
-  if (rows.length === 0) return <p style={{ color: '#666' }}>No applicants yet.</p>;
+  if (rows.length === 0) return <p className="text-neutral-600">No applicants yet.</p>;
 
   const stages = showClosed ? STAGES : STAGES.filter((s) => !CLOSED.includes(s.status));
 
   return (
     <>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', flexWrap: 'wrap', margin: '1rem 0' }}>
-        <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', color: '#555' }}>
+      <div className="my-4 flex flex-wrap items-center gap-5">
+        <label className="flex items-center gap-2 text-sm text-neutral-600">
           Sort
-          <select value={sort} onChange={(e) => setSort(e.target.value as 'recent' | 'match')} style={ctrl}>
+          <select value={sort} onChange={(e) => setSort(e.target.value as 'recent' | 'match')} className={controlClass}>
             <option value="recent">Most recent</option>
             <option value="match">Highest match</option>
           </select>
         </label>
-        <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.9rem', color: '#555' }}>
+        <label className="flex items-center gap-2 text-sm text-neutral-600">
           <input type="checkbox" checked={showClosed} onChange={(e) => setShowClosed(e.target.checked)} />
           Show closed stages
         </label>
-        {error && <span style={{ color: '#a00' }}>{error}</span>}
+        {error && <span className="text-red-700">{error}</span>}
       </div>
 
-      <div style={{ display: 'flex', gap: '1rem', overflowX: 'auto', paddingBottom: '1rem', alignItems: 'flex-start' }}>
+      <div className="flex items-start gap-4 overflow-x-auto pb-4">
         {stages.map((stage) => {
           const items = sorted.filter((r) => r.status === stage.status);
           return (
-            <div key={stage.status} style={column}>
-              <h3 style={{ margin: '0 0 0.75rem', fontSize: '0.9rem', display: 'flex', justifyContent: 'space-between' }}>
+            <div key={stage.status} className="w-[280px] shrink-0 rounded-xl bg-neutral-50 p-3">
+              <h3 className="mb-3 flex justify-between text-sm font-semibold text-neutral-900">
                 <span>{stage.label}</span>
-                <span style={{ color: '#999' }}>{items.length}</span>
+                <span className="text-neutral-400">{items.length}</span>
               </h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+              <div className="flex flex-col gap-2.5">
                 {items.map((r) => (
                   <ApplicantCard key={r.id} row={r} onStatus={changeStatus} />
                 ))}
@@ -128,37 +130,27 @@ function ApplicantCard({ row, onStatus }: { row: Row; onStatus: (id: string, s: 
   const name = `${row.seeker.firstName ?? ''} ${row.seeker.lastName ?? ''}`.trim() || row.seeker.email;
 
   return (
-    <div style={card}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', alignItems: 'baseline' }}>
-        <strong style={{ fontSize: '0.92rem' }}>{name}</strong>
-        {row.matchScore !== null && <span style={matchPill(row.matchScore)}>{Math.round(row.matchScore * 100)}%</span>}
+    <div className="rounded-lg border border-neutral-200 bg-white p-3">
+      <div className="flex items-baseline justify-between gap-2">
+        <strong className="text-sm">{name}</strong>
+        {row.matchScore !== null && <span className={matchPill(row.matchScore)}>{Math.round(row.matchScore * 100)}%</span>}
       </div>
-      {row.seeker.headline && <p style={muted}>{row.seeker.headline}</p>}
-      <p style={muted}>Applied {new Date(row.appliedAt).toLocaleDateString()}</p>
+      {row.seeker.headline && <p className="mt-0.5 mb-0 text-xs text-neutral-500">{row.seeker.headline}</p>}
+      <p className="mt-0.5 mb-0 text-xs text-neutral-500">Applied {new Date(row.appliedAt).toLocaleDateString()}</p>
 
-      <div style={{ display: 'flex', gap: '0.75rem', fontSize: '0.82rem', marginTop: '0.25rem' }}>
-        <a href={row.resumeUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#1856a8' }}>
+      <div className="mt-1 flex gap-3 text-xs">
+        <a href={row.resumeUrl} target="_blank" rel="noopener noreferrer" className="text-blue-700 hover:underline">
           Résumé ↗
         </a>
         {row.coverLetter && (
-          <button onClick={() => setOpenCover((o) => !o)} style={linkBtn}>
+          <button onClick={() => setOpenCover((o) => !o)} className="text-blue-700 hover:underline">
             {openCover ? 'Hide cover letter' : 'Cover letter'}
           </button>
         )}
       </div>
 
       {openCover && row.coverLetter && (
-        <p
-          style={{
-            ...muted,
-            whiteSpace: 'pre-wrap',
-            background: '#fff',
-            border: '1px solid #eee',
-            borderRadius: 6,
-            padding: '0.5rem',
-            marginTop: '0.4rem',
-          }}
-        >
+        <p className="mt-1 mb-0 whitespace-pre-wrap rounded-md border border-neutral-200 bg-white p-2 text-xs text-neutral-600">
           {row.coverLetter}
         </p>
       )}
@@ -166,7 +158,7 @@ function ApplicantCard({ row, onStatus }: { row: Row; onStatus: (id: string, s: 
       <select
         value={row.status}
         onChange={(e) => onStatus(row.id, e.target.value as ApplicationStatus)}
-        style={{ width: '100%', padding: '0.4rem', borderRadius: 4, marginTop: '0.5rem', fontSize: '0.85rem' }}
+        className="mt-2 w-full rounded border border-neutral-300 px-2 py-1.5 text-sm"
         aria-label={`Change status for ${name}`}
       >
         {STAGES.map((s) => (
@@ -186,29 +178,17 @@ function ApplicantCard({ row, onStatus }: { row: Row; onStatus: (id: string, s: 
         placeholder="Private notes…"
         rows={2}
         aria-label={`Notes for ${name}`}
-        style={{ width: '100%', marginTop: '0.5rem', border: '1px solid #e3e3e3', borderRadius: 4, padding: '0.4rem', fontSize: '0.82rem', resize: 'vertical' }}
+        className="mt-2 w-full resize-y rounded border border-neutral-200 px-2 py-1.5 text-xs"
       />
-      {noteState === 'saving' && <small style={{ color: '#999' }}>Saving…</small>}
-      {noteState === 'saved' && <small style={{ color: '#137333' }}>Saved</small>}
+      {noteState === 'saving' && <small className="text-neutral-400">Saving…</small>}
+      {noteState === 'saved' && <small className="text-green-700">Saved</small>}
     </div>
   );
 }
 
-function matchPill(score: number): React.CSSProperties {
+function matchPill(score: number): string {
   const pct = Math.round(score * 100);
-  return {
-    background: pct >= 70 ? '#cdeacd' : pct >= 50 ? '#fff3cd' : '#f5d9d4',
-    color: pct >= 70 ? '#114411' : pct >= 50 ? '#664400' : '#8a2a1f',
-    borderRadius: 999,
-    padding: '0.05rem 0.45rem',
-    fontSize: '0.72rem',
-    fontWeight: 600,
-    flexShrink: 0,
-  };
+  const tone =
+    pct >= 70 ? 'bg-green-100 text-green-800' : pct >= 50 ? 'bg-amber-100 text-amber-800' : 'bg-red-100 text-red-800';
+  return `shrink-0 rounded-full px-1.5 py-0.5 text-xs font-semibold ${tone}`;
 }
-
-const ctrl: React.CSSProperties = { padding: '0.4rem', border: '1px solid #ddd', borderRadius: 6, fontSize: '0.9rem' };
-const column: React.CSSProperties = { flex: '0 0 280px', minWidth: 280, background: '#f7f8fa', borderRadius: 8, padding: '0.75rem' };
-const card: React.CSSProperties = { background: '#fff', border: '1px solid #e5e5e5', borderRadius: 8, padding: '0.75rem' };
-const muted: React.CSSProperties = { margin: '0.15rem 0 0', color: '#777', fontSize: '0.82rem' };
-const linkBtn: React.CSSProperties = { background: 'transparent', border: 0, color: '#1856a8', cursor: 'pointer', padding: 0, fontSize: '0.82rem' };

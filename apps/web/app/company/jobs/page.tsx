@@ -13,54 +13,67 @@ export default async function CompanyJobsPage() {
   });
 
   return (
-    <main style={{ padding: '2rem', maxWidth: 1080, margin: '0 auto' }}>
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-        <h1>My job posts</h1>
+    <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
+      <header className="mb-6 flex items-center justify-between gap-4">
+        <h1 className="m-0 text-2xl font-bold text-neutral-900">My job posts</h1>
         <Link
           href="/company/jobs/new"
-          style={{ padding: '0.6rem 1rem', background: '#111', color: 'white', borderRadius: 8, textDecoration: 'none', fontWeight: 600 }}
+          className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-neutral-700"
         >
           Post a job
         </Link>
       </header>
 
       {jobs.length === 0 ? (
-        <p style={{ color: '#666' }}>
-          You haven't posted any jobs yet. <Link href="/company/jobs/new">Post your first job</Link>.
+        <p className="text-neutral-600">
+          You haven&apos;t posted any jobs yet.{' '}
+          <Link href="/company/jobs/new" className="text-blue-700 hover:underline">
+            Post your first job
+          </Link>
+          .
         </p>
       ) : (
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr>
-              <th style={th}>Title</th>
-              <th style={th}>Status</th>
-              <th style={th}>Applicants</th>
-              <th style={th}>Posted</th>
-              <th style={th}></th>
-            </tr>
-          </thead>
-          <tbody>
-            {jobs.map((j) => (
-              <tr key={j.id} style={{ borderBottom: '1px solid #eee' }}>
-                <td style={td}>
-                  <Link href={`/jobs/${j.slug}`}>{j.title}</Link>
-                </td>
-                <td style={td}>{j.status}</td>
-                <td style={td}>
-                  <Link href={`/company/applicants/${j.id}`}>{j._count.applications}</Link>
-                </td>
-                <td style={td}>{(j.publishedAt ?? j.createdAt).toLocaleDateString()}</td>
-                <td style={td}>
-                  <Link href={`/company/jobs/${j.id}/edit`}>Edit</Link>
-                </td>
+        <div className="overflow-x-auto rounded-xl border border-neutral-200">
+          <table className="w-full border-collapse text-sm">
+            <thead>
+              <tr className="border-b border-neutral-200 bg-neutral-50 text-left text-neutral-600">
+                <th className="px-4 py-2 font-medium">Title</th>
+                <th className="px-4 py-2 font-medium">Status</th>
+                <th className="px-4 py-2 font-medium">Applicants</th>
+                <th className="px-4 py-2 font-medium">Posted</th>
+                <th className="px-4 py-2 font-medium"></th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {jobs.map((j) => (
+                <tr key={j.id} className="border-b border-neutral-100 last:border-0">
+                  <td className="px-4 py-3">
+                    <Link href={`/jobs/${j.slug}`} className="font-medium text-neutral-900 hover:underline">
+                      {j.title}
+                    </Link>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs font-medium text-neutral-700">
+                      {j.status}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <Link href={`/company/applicants/${j.id}`} className="text-blue-700 hover:underline">
+                      {j._count.applications}
+                    </Link>
+                  </td>
+                  <td className="px-4 py-3 text-neutral-600">{(j.publishedAt ?? j.createdAt).toLocaleDateString()}</td>
+                  <td className="px-4 py-3">
+                    <Link href={`/company/jobs/${j.id}/edit`} className="text-blue-700 hover:underline">
+                      Edit
+                    </Link>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </main>
   );
 }
-
-const th: React.CSSProperties = { textAlign: 'left', padding: '0.5rem', borderBottom: '2px solid #ddd', fontSize: '0.9rem', color: '#555' };
-const td: React.CSSProperties = { padding: '0.6rem 0.5rem' };
