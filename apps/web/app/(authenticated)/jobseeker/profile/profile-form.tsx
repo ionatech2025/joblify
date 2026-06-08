@@ -5,6 +5,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useTransition, useState } from 'react';
 import { saveProfile } from '@/app/actions/profile';
+import { Field, Input, Select, Textarea } from '@/app/components/ui/form';
+import { Button } from '@/app/components/ui/button';
 
 const ProfileFormSchema = z.object({
   headline: z.string().max(140).optional().or(z.literal('')),
@@ -47,94 +49,54 @@ export function ProfileForm({ initial }: { initial: ProfileFormValues }) {
   }
 
   return (
-    <form
-      onSubmit={handleSubmit(onSubmit)}
-      style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1.5rem' }}
-    >
+    <form onSubmit={handleSubmit(onSubmit)} className="mt-6 flex flex-col gap-4">
       <Field label="Headline" error={errors.headline?.message}>
-        <input {...register('headline')} placeholder="Senior Backend Engineer · Berlin" style={input} />
+        <Input {...register('headline')} placeholder="Senior Backend Engineer · Berlin" />
       </Field>
 
       <Field label="Bio" error={errors.bio?.message}>
-        <textarea {...register('bio')} rows={6} placeholder="A short summary of what you do and what you're looking for." style={input} />
+        <Textarea {...register('bio')} rows={6} placeholder="A short summary of what you do and what you're looking for." />
       </Field>
 
       <Field label="Years of professional experience" error={errors.yearsExperience?.message}>
-        <input type="number" {...register('yearsExperience')} min={0} max={70} style={input} />
+        <Input type="number" {...register('yearsExperience')} min={0} max={70} />
       </Field>
 
       <Field label="Location" error={errors.location?.message}>
-        <input {...register('location')} placeholder="Berlin, DE" style={input} />
+        <Input {...register('location')} placeholder="Berlin, DE" />
       </Field>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Field label="Desired min salary (annual)" error={errors.desiredSalaryMin?.message}>
-          <input type="number" {...register('desiredSalaryMin')} style={input} />
+          <Input type="number" {...register('desiredSalaryMin')} />
         </Field>
         <Field label="Desired max salary (annual)" error={errors.desiredSalaryMax?.message}>
-          <input type="number" {...register('desiredSalaryMax')} style={input} />
+          <Input type="number" {...register('desiredSalaryMax')} />
         </Field>
       </div>
 
       <Field label="Preferred work mode" error={errors.desiredWorkMode?.message}>
-        <select {...register('desiredWorkMode')} style={input}>
+        <Select {...register('desiredWorkMode')}>
           <option value="">No preference</option>
           <option value="REMOTE">Remote</option>
           <option value="HYBRID">Hybrid</option>
           <option value="ONSITE">On-site</option>
-        </select>
+        </Select>
       </Field>
 
       <Field label="Profile visibility" error={errors.visibility?.message}>
-        <select {...register('visibility')} style={input}>
+        <Select {...register('visibility')}>
           <option value="PRIVATE">Private — only visible to companies I apply to</option>
           <option value="PUBLIC">Public — discoverable in /jobseekers listings</option>
-        </select>
+        </Select>
       </Field>
 
-      {error && <p style={{ color: '#a00', margin: 0 }}>{error}</p>}
-      {saved && <p style={{ color: '#114411', margin: 0 }}>Saved.</p>}
+      {error && <p className="m-0 text-red-700">{error}</p>}
+      {saved && <p className="m-0 text-green-700">Saved.</p>}
 
-      <button
-        type="submit"
-        disabled={isPending || !isDirty}
-        style={{
-          padding: '0.75rem 1.25rem',
-          background: isDirty ? '#111' : '#ccc',
-          color: 'white',
-          borderRadius: 8,
-          border: 0,
-          fontWeight: 600,
-          cursor: isDirty ? 'pointer' : 'not-allowed',
-        }}
-      >
+      <Button type="submit" disabled={isPending || !isDirty} className="self-start">
         {isPending ? 'Saving…' : 'Save profile'}
-      </button>
+      </Button>
     </form>
   );
 }
-
-function Field({
-  label,
-  error,
-  children,
-}: {
-  label: string;
-  error?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <label style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-      <span style={{ fontSize: '0.9rem', color: '#444' }}>{label}</span>
-      {children}
-      {error && <span style={{ fontSize: '0.85rem', color: '#a00' }}>{error}</span>}
-    </label>
-  );
-}
-
-const input: React.CSSProperties = {
-  padding: '0.6rem',
-  border: '1px solid #ddd',
-  borderRadius: 6,
-  fontSize: '0.95rem',
-};

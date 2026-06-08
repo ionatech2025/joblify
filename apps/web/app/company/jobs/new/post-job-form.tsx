@@ -6,6 +6,7 @@ import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { postJob } from '@/app/actions/post-job';
 import { JobFormFields, PostJobFormSchema, type PostJobFormValues } from '@/app/company/jobs/job-form-fields';
+import { Button } from '@/app/components/ui/button';
 
 export function PostJobForm() {
   const router = useRouter();
@@ -43,29 +44,14 @@ export function PostJobForm() {
   }
 
   return (
-    <form
-      onSubmit={handleSubmit(onSubmit)}
-      style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1.5rem' }}
-    >
+    <form onSubmit={handleSubmit(onSubmit)} className="mt-6 flex flex-col gap-4">
       <JobFormFields register={register} errors={errors} />
 
-      {error && <p style={{ color: '#a00', margin: 0 }}>{error}</p>}
+      {error && <p className="m-0 text-red-700">{error}</p>}
 
-      <button
-        type="submit"
-        disabled={isPending}
-        style={{
-          padding: '0.75rem 1.25rem',
-          background: '#111',
-          color: 'white',
-          borderRadius: 8,
-          border: 0,
-          fontWeight: 600,
-          cursor: isPending ? 'wait' : 'pointer',
-        }}
-      >
+      <Button type="submit" disabled={isPending} className="self-start">
         {isPending ? 'Saving…' : 'Post job'}
-      </button>
+      </Button>
     </form>
   );
 }

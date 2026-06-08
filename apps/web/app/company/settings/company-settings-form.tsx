@@ -14,9 +14,8 @@ import {
 } from '@/app/company/company-profile-schema';
 import { updateCompanyProfile } from '@/app/actions/company';
 import { registerLogo } from '@/app/actions/uploads';
-
-const field: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: '0.35rem' };
-const control: React.CSSProperties = { padding: '0.6rem', border: '1px solid #ccc', borderRadius: 6 };
+import { Field, Input, Select, Textarea } from '@/app/components/ui/form';
+import { Button } from '@/app/components/ui/button';
 
 function titleCase(s: string): string {
   return s.charAt(0) + s.slice(1).toLowerCase();
@@ -85,102 +84,70 @@ export function CompanySettingsForm({
   }
 
   return (
-    <div style={{ marginTop: '1.5rem' }}>
-      <section
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '1rem',
-          marginBottom: '1.5rem',
-          paddingBottom: '1.5rem',
-          borderBottom: '1px solid #eee',
-        }}
-      >
+    <div className="mt-6">
+      <section className="mb-6 flex items-center gap-4 border-b border-neutral-200 pb-6">
         {logo ? (
           // eslint-disable-next-line @next/next/no-img-element -- user-supplied logo, no fixed dims
-          <img src={logo} alt="Company logo" width={64} height={64} style={{ borderRadius: 8, objectFit: 'cover' }} />
+          <img src={logo} alt="Company logo" width={64} height={64} className="size-16 rounded-lg object-cover" />
         ) : (
-          <div style={{ width: 64, height: 64, borderRadius: 8, background: '#f1f1f1', display: 'grid', placeItems: 'center', color: '#aaa' }}>
-            Logo
-          </div>
+          <div className="grid size-16 place-items-center rounded-lg bg-neutral-100 text-sm text-neutral-400">Logo</div>
         )}
-        <input ref={logoInput} type="file" accept="image/png,image/jpeg,image/webp" onChange={onLogo} style={{ display: 'none' }} aria-hidden="true" />
-        <button
-          type="button"
-          onClick={() => logoInput.current?.click()}
-          disabled={logoBusy}
-          style={{ padding: '0.5rem 0.9rem', border: '1px solid #ccc', background: '#fff', borderRadius: 6, cursor: logoBusy ? 'wait' : 'pointer' }}
-        >
+        <input
+          ref={logoInput}
+          type="file"
+          accept="image/png,image/jpeg,image/webp"
+          onChange={onLogo}
+          className="hidden"
+          aria-hidden="true"
+        />
+        <Button type="button" variant="secondary" onClick={() => logoInput.current?.click()} disabled={logoBusy}>
           {logoBusy ? 'Uploading…' : 'Upload logo'}
-        </button>
+        </Button>
       </section>
 
-      <form onSubmit={handleSubmit(onSubmit)} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-        <label style={field}>
-          <span>Company name</span>
-          <input {...register('companyName')} style={control} />
-          {errors.companyName && <small style={{ color: '#a00' }}>{errors.companyName.message}</small>}
-        </label>
+      <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
+        <Field label="Company name" error={errors.companyName?.message}>
+          <Input {...register('companyName')} />
+        </Field>
 
-        <label style={field}>
-          <span>Industry</span>
-          <select {...register('industry')} style={control}>
+        <Field label="Industry">
+          <Select {...register('industry')}>
             {INDUSTRY_OPTIONS.map((i) => (
               <option key={i} value={i}>
                 {titleCase(i)}
               </option>
             ))}
-          </select>
-        </label>
+          </Select>
+        </Field>
 
-        <label style={field}>
-          <span>Company size</span>
-          <select {...register('companySize')} style={control}>
+        <Field label="Company size">
+          <Select {...register('companySize')}>
             {SIZE_VALUES.map((s) => (
               <option key={s} value={s}>
                 {SIZE_LABELS[s]}
               </option>
             ))}
-          </select>
-        </label>
+          </Select>
+        </Field>
 
-        <label style={field}>
-          <span>About the company</span>
-          <textarea {...register('description')} rows={5} style={control} />
-          {errors.description && <small style={{ color: '#a00' }}>{errors.description.message}</small>}
-        </label>
+        <Field label="About the company" error={errors.description?.message}>
+          <Textarea {...register('description')} rows={5} />
+        </Field>
 
-        <label style={field}>
-          <span>Website</span>
-          <input {...register('website')} style={control} placeholder="https://acme.com" />
-          {errors.website && <small style={{ color: '#a00' }}>{errors.website.message}</small>}
-        </label>
+        <Field label="Website" error={errors.website?.message}>
+          <Input {...register('website')} placeholder="https://acme.com" />
+        </Field>
 
-        <label style={field}>
-          <span>LinkedIn</span>
-          <input {...register('linkedin')} style={control} placeholder="https://linkedin.com/company/acme" />
-          {errors.linkedin && <small style={{ color: '#a00' }}>{errors.linkedin.message}</small>}
-        </label>
+        <Field label="LinkedIn" error={errors.linkedin?.message}>
+          <Input {...register('linkedin')} placeholder="https://linkedin.com/company/acme" />
+        </Field>
 
-        {error && <p style={{ color: '#a00', margin: 0 }}>{error}</p>}
-        {saved && <p style={{ color: '#137333', margin: 0 }}>Saved.</p>}
+        {error && <p className="m-0 text-red-700">{error}</p>}
+        {saved && <p className="m-0 text-green-700">Saved.</p>}
 
-        <button
-          type="submit"
-          disabled={pending}
-          style={{
-            padding: '0.75rem 1.25rem',
-            background: '#111',
-            color: '#fff',
-            border: 0,
-            borderRadius: 8,
-            fontWeight: 600,
-            cursor: pending ? 'wait' : 'pointer',
-            alignSelf: 'flex-start',
-          }}
-        >
+        <Button type="submit" disabled={pending} className="self-start">
           {pending ? 'Saving…' : 'Save changes'}
-        </button>
+        </Button>
       </form>
     </div>
   );

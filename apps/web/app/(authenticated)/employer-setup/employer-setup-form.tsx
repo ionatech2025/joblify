@@ -12,9 +12,8 @@ import {
   SIZE_LABELS,
 } from '@/app/company/company-profile-schema';
 import { createCompanyProfile } from '@/app/actions/company';
-
-const field: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: '0.35rem' };
-const control: React.CSSProperties = { padding: '0.6rem', border: '1px solid #ccc', borderRadius: 6 };
+import { Field, Input, Select, Textarea } from '@/app/components/ui/form';
+import { Button } from '@/app/components/ui/button';
 
 function titleCase(s: string): string {
   return s.charAt(0) + s.slice(1).toLowerCase();
@@ -54,72 +53,48 @@ export function EmployerSetupForm() {
   }
 
   return (
-    <form
-      onSubmit={handleSubmit(onSubmit)}
-      style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1.5rem' }}
-    >
-      <label style={field}>
-        <span>Company name</span>
-        <input {...register('companyName')} style={control} placeholder="Acme Inc." />
-        {errors.companyName && <small style={{ color: '#a00' }}>{errors.companyName.message}</small>}
-      </label>
+    <form onSubmit={handleSubmit(onSubmit)} className="mt-6 flex flex-col gap-4">
+      <Field label="Company name" error={errors.companyName?.message}>
+        <Input {...register('companyName')} placeholder="Acme Inc." />
+      </Field>
 
-      <label style={field}>
-        <span>Industry</span>
-        <select {...register('industry')} style={control}>
+      <Field label="Industry">
+        <Select {...register('industry')}>
           {INDUSTRY_OPTIONS.map((i) => (
             <option key={i} value={i}>
               {titleCase(i)}
             </option>
           ))}
-        </select>
-      </label>
+        </Select>
+      </Field>
 
-      <label style={field}>
-        <span>Company size</span>
-        <select {...register('companySize')} style={control}>
+      <Field label="Company size">
+        <Select {...register('companySize')}>
           {SIZE_VALUES.map((s) => (
             <option key={s} value={s}>
               {SIZE_LABELS[s]}
             </option>
           ))}
-        </select>
-      </label>
+        </Select>
+      </Field>
 
-      <label style={field}>
-        <span>About the company</span>
-        <textarea
+      <Field label="About the company" error={errors.description?.message}>
+        <Textarea
           {...register('description')}
           rows={5}
-          style={control}
           placeholder="What you do, your mission, and what it's like to work there."
         />
-        {errors.description && <small style={{ color: '#a00' }}>{errors.description.message}</small>}
-      </label>
+      </Field>
 
-      <label style={field}>
-        <span>Website (optional)</span>
-        <input {...register('website')} style={control} placeholder="https://acme.com" />
-        {errors.website && <small style={{ color: '#a00' }}>{errors.website.message}</small>}
-      </label>
+      <Field label="Website (optional)" error={errors.website?.message}>
+        <Input {...register('website')} placeholder="https://acme.com" />
+      </Field>
 
-      {error && <p style={{ color: '#a00', margin: 0 }}>{error}</p>}
+      {error && <p className="m-0 text-red-700">{error}</p>}
 
-      <button
-        type="submit"
-        disabled={pending}
-        style={{
-          padding: '0.75rem 1.25rem',
-          background: '#111',
-          color: '#fff',
-          border: 0,
-          borderRadius: 8,
-          fontWeight: 600,
-          cursor: pending ? 'wait' : 'pointer',
-        }}
-      >
+      <Button type="submit" disabled={pending} className="self-start">
         {pending ? 'Creating…' : 'Create company & continue'}
-      </button>
+      </Button>
     </form>
   );
 }

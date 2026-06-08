@@ -6,6 +6,7 @@ import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { updateJob } from '@/app/actions/post-job';
 import { JobFormFields, PostJobFormSchema, type PostJobFormValues } from '@/app/company/jobs/job-form-fields';
+import { Button } from '@/app/components/ui/button';
 
 export function EditJobForm({ jobId, initial }: { jobId: string; initial: PostJobFormValues }) {
   const router = useRouter();
@@ -37,31 +38,15 @@ export function EditJobForm({ jobId, initial }: { jobId: string; initial: PostJo
   }
 
   return (
-    <form
-      onSubmit={handleSubmit(onSubmit)}
-      style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1.5rem' }}
-    >
+    <form onSubmit={handleSubmit(onSubmit)} className="mt-6 flex flex-col gap-4">
       <JobFormFields register={register} errors={errors} />
 
-      {error && <p style={{ color: '#a00', margin: 0 }}>{error}</p>}
-      {saved && <p style={{ color: '#137333', margin: 0 }}>Saved.</p>}
+      {error && <p className="m-0 text-red-700">{error}</p>}
+      {saved && <p className="m-0 text-green-700">Saved.</p>}
 
-      <button
-        type="submit"
-        disabled={isPending}
-        style={{
-          padding: '0.75rem 1.25rem',
-          background: '#111',
-          color: 'white',
-          borderRadius: 8,
-          border: 0,
-          fontWeight: 600,
-          cursor: isPending ? 'wait' : 'pointer',
-          alignSelf: 'flex-start',
-        }}
-      >
+      <Button type="submit" disabled={isPending} className="self-start">
         {isPending ? 'Saving…' : 'Save changes'}
-      </button>
+      </Button>
     </form>
   );
 }

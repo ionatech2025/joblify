@@ -6,9 +6,8 @@ import type { Resume } from '@prisma/client';
 import Link from 'next/link';
 import { useApplyDraftStore } from '@/lib/stores/apply-draft';
 import { submitApplication } from '@/app/actions/apply';
-
-// Form scaffold — the Server Action `submitApplication` lands in Week 5,
-// alongside the Blob signed-upload flow for a fresh resume.
+import { Field, Select, Textarea } from '@/app/components/ui/form';
+import { Button } from '@/app/components/ui/button';
 
 export function ApplyForm({
   jobId,
@@ -40,21 +39,20 @@ export function ApplyForm({
   }
 
   return (
-    <form action={onSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+    <form action={onSubmit} className="flex flex-col gap-4">
       <input type="hidden" name="jobId" value={jobId} />
       <input type="hidden" name="jobSlug" value={jobSlug} />
 
-      <label style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-        <span>Resume</span>
+      <Field label="Resume">
         {resumes.length === 0 ? (
-          <p style={{ color: '#a00', margin: 0 }}>
+          <p className="m-0 text-red-700">
             You need a resume first.{' '}
-            <Link href="/jobseeker/resumes" style={{ color: '#1856a8', fontWeight: 600 }}>
+            <Link href="/jobseeker/resumes" className="font-semibold text-blue-700 hover:underline">
               Upload one →
             </Link>
           </p>
         ) : (
-          <select
+          <Select
             name="resumeId"
             required
             value={draft.resumeId ?? ''}
@@ -68,13 +66,12 @@ export function ApplyForm({
                 {r.title}
               </option>
             ))}
-          </select>
+          </Select>
         )}
-      </label>
+      </Field>
 
-      <label style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-        <span>Cover letter (optional)</span>
-        <textarea
+      <Field label="Cover letter (optional)">
+        <Textarea
           name="coverLetter"
           rows={8}
           value={draft.coverLetter}
@@ -82,38 +79,25 @@ export function ApplyForm({
           maxLength={5000}
           placeholder="Tell the team why you'd be a great fit."
         />
-      </label>
+      </Field>
 
-      <label style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
+      <label className="flex items-start gap-2 text-sm text-neutral-600">
         <input
           type="checkbox"
           name="acknowledgedDataUse"
           required
           checked={draft.acknowledgedDataUse}
           onChange={(e) => update(jobId, { acknowledgedDataUse: e.target.checked })}
+          className="mt-1"
         />
-        <span style={{ fontSize: '0.9rem', color: '#555' }}>
-          I agree my application data (resume, cover letter, profile) may be shared with this employer.
-        </span>
+        <span>I agree my application data (resume, cover letter, profile) may be shared with this employer.</span>
       </label>
 
-      {error && <p style={{ color: '#a00', margin: 0 }}>{error}</p>}
+      {error && <p className="m-0 text-red-700">{error}</p>}
 
-      <button
-        type="submit"
-        disabled={isPending || resumes.length === 0}
-        style={{
-          padding: '0.75rem 1.25rem',
-          background: '#111',
-          color: 'white',
-          borderRadius: 8,
-          border: 0,
-          fontWeight: 600,
-          cursor: isPending ? 'wait' : 'pointer',
-        }}
-      >
+      <Button type="submit" disabled={isPending || resumes.length === 0} className="self-start">
         {isPending ? 'Submitting…' : 'Submit application'}
-      </button>
+      </Button>
     </form>
   );
 }
