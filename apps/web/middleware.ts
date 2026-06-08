@@ -7,18 +7,18 @@ const isProtected = createRouteMatcher([
   '/jobseeker(.*)',
   '/company(.*)',
   '/account(.*)',
+  '/employer-setup(.*)',
 ]);
 
-const isCompanyOnly = createRouteMatcher(['/company(.*)']);
 const isAdminOnly = createRouteMatcher(['/admin(.*)']);
 
 export default clerkMiddleware(async (auth, req) => {
   if (isProtected(req)) {
     await auth.protect();
   }
-  if (isCompanyOnly(req)) {
-    await auth.protect((has) => has({ role: 'org:company' }));
-  }
+  // Company authorization is enforced in company/layout.tsx (User.userType) and
+  // each company Server Action (requireRole). Self-serve companies are gated on
+  // userType, not a Clerk org role, for V1 — orgs/MFA can layer on later.
   if (isAdminOnly(req)) {
     await auth.protect((has) => has({ role: 'org:admin' }));
   }

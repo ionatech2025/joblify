@@ -1,7 +1,6 @@
 import { handleUpload, type HandleUploadBody } from '@vercel/blob/client';
-import { NextResponse, after } from 'next/server';
+import { NextResponse } from 'next/server';
 import { currentUser } from '@/lib/auth';
-import { runResumeParse } from '@/workflows/resume-parse.workflow';
 import {
   RESUME_MIME,
   IMAGE_MIME,
@@ -10,7 +9,6 @@ import {
   resumePathPrefix,
   logoPathPrefix,
 } from '@/lib/storage/blob';
-import { db } from '@/lib/db';
 import { logger } from '@/lib/observability/logger';
 
 
@@ -52,37 +50,11 @@ export async function POST(request: Request): Promise<Response> {
           tokenPayload: JSON.stringify({ kind, userId: user.id }),
         };
       },
-      onUploadCompleted: async ({ blob, tokenPayload }) => {
-        const payload = JSON.parse(tokenPayload ?? '{}') as { kind?: Kind; userId?: string };
-        if (!payload.userId) return;
-
-        if (payload.kind === 'resume') {
-          // Magic-byte mime sniff + virus scan happen in resume-parse workflow.
-          const created = await db.resume.create({
-            data: {
-              userId: payload.userId,
-              title: blob.pathname.split('/').pop() ?? 'Resume',
-              fileBlobUrl: blob.url,
-              fileMime: blob.contentType ?? 'application/octet-stream',
-              fileSizeBytes: 0, // not on the upload-completed payload; resume-parse can backfill
-            },
-          });
-          // Parse + embed off the response path. Idempotent — safe to retry.
-          after(async () => {
-            try {
-              await runResumeParse({ resumeId: created.id });
-            } catch (err) {
-              logger.error({ err, resumeId: created.id }, 'resume-parse failed (post-upload)');
-            }
-          });
-        }
-
-        if (payload.kind === 'logo') {
-          await db.companyProfile.updateMany({
-            where: { userId: payload.userId },
-            data: { logoUrl: blob.url },
-          });
-        }
+      onUploadCompleted: async ({ blob }) => {
+        // The DB row (resume) / profile field (logo) is written by the client-
+        // invoked Server Action (app/actions/uploads.ts) once upload() resolves,
+        // so it also works in local dev where this callback never fires.
+        logger.info({ url: blob.url }, 'blob upload completed');
       },
     });
 

@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Resume } from '@prisma/client';
+import Link from 'next/link';
 import { useApplyDraftStore } from '@/lib/stores/apply-draft';
 import { submitApplication } from '@/app/actions/apply';
 
@@ -47,7 +48,10 @@ export function ApplyForm({
         <span>Resume</span>
         {resumes.length === 0 ? (
           <p style={{ color: '#a00', margin: 0 }}>
-            Upload a resume on your profile first.
+            You need a resume first.{' '}
+            <Link href="/jobseeker/resumes" style={{ color: '#1856a8', fontWeight: 600 }}>
+              Upload one →
+            </Link>
           </p>
         ) : (
           <select

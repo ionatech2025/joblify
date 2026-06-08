@@ -8,7 +8,7 @@ export const metadata = { title: 'Post a job' };
 export default async function PostJobPage() {
   const user = await requireRole('COMPANY');
   const profile = await db.companyProfile.findUnique({ where: { userId: user.id } });
-  if (!profile) redirect('/company/setup');
+  if (!profile) redirect('/employer-setup');
 
   return (
     <main style={{ padding: '2rem', maxWidth: 720, margin: '0 auto' }}>

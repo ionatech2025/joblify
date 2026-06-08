@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { ClerkProvider } from '@clerk/nextjs';
 import { Providers } from './providers';
+import { Header } from './components/header';
 import { CookieBanner } from './components/cookie-banner';
 import { AnalyticsGate } from './components/analytics-gate';
 import './globals.css';
@@ -22,6 +23,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <Suspense fallback={null}>
           <ClerkProvider>
+            <Header />
             <Providers>{children}</Providers>
             <CookieBanner />
             <AnalyticsGate />
