@@ -1,6 +1,8 @@
+import { Suspense } from 'react';
 import { db } from '@/lib/db';
 import { requireRole } from '@/lib/auth';
 import { ApplicationsList } from './applications-list';
+import { RecentlyViewed } from '../recently-viewed';
 import type { ApplicationListItem } from '@/lib/query/applications';
 
 export const metadata = { title: 'My applications' };
@@ -40,6 +42,9 @@ export default async function JobseekerApplicationsPage({
           Application submitted — you'll get an email when the team updates the status.
         </div>
       )}
+      <Suspense fallback={null}>
+        <RecentlyViewed userId={user.id} />
+      </Suspense>
       <ApplicationsList userId={user.id} initialData={initialData} />
     </main>
   );

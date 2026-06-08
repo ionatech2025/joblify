@@ -7,6 +7,7 @@ import { jobPostingJsonLd } from '@/lib/seo/job-jsonld';
 import { ApplyPanel } from './apply-panel';
 import { MatchBadge } from './match-badge';
 import { SimilarJobs } from './similar-jobs';
+import { ViewTracker } from './view-tracker';
 
 type Params = Promise<{ slug: string }>;
 
@@ -37,6 +38,7 @@ export default async function JobDetailPage({ params }: { params: Params }) {
 
   return (
     <main style={{ padding: '3rem 2rem', maxWidth: 960, margin: '0 auto' }}>
+      <ViewTracker jobId={job.id} />
       <script
         type="application/ld+json"
          
