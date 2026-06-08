@@ -1,3 +1,20 @@
+/*
+ * Tailwind v4, imported WITHOUT preflight. The app still has many inline-styled
+ * pages from before the design-system pass; pulling in preflight's reset would
+ * shift their default margins/typography. Importing only the theme + utilities
+ * layers lets new/migrated components use utilities + tokens while leaving the
+ * un-migrated pages untouched. Re-enable preflight once migration completes.
+ */
+@layer theme, base, components, utilities;
+
+@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/utilities.css' layer(utilities);
+
+@theme {
+  --color-brand: #4f46e5;
+  --color-brand-fg: #ffffff;
+}
+
 :root {
   color-scheme: light dark;
 }

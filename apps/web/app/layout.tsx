@@ -3,6 +3,7 @@ import { Suspense } from 'react';
 import { ClerkProvider } from '@clerk/nextjs';
 import { Providers } from './providers';
 import { Header } from './components/header';
+import { Footer } from './components/footer';
 import { CookieBanner } from './components/cookie-banner';
 import { AnalyticsGate } from './components/analytics-gate';
 import './globals.css';
@@ -25,6 +26,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <ClerkProvider>
             <Header />
             <Providers>{children}</Providers>
+            <Footer />
             <CookieBanner />
             <AnalyticsGate />
           </ClerkProvider>

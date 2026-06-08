@@ -2,56 +2,46 @@
 
 import Link from 'next/link';
 import { SignedIn, SignedOut, UserButton } from '@clerk/nextjs';
+import { Container } from './ui/container';
 
-const link: React.CSSProperties = { color: '#111', textDecoration: 'none', fontSize: '0.95rem' };
+const navLink = 'text-neutral-700 transition-colors hover:text-neutral-900';
 
 export function Header() {
   return (
-    <header
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: '1rem',
-        padding: '0.75rem 2rem',
-        borderBottom: '1px solid #eee',
-        position: 'sticky',
-        top: 0,
-        background: '#fff',
-        zIndex: 50,
-      }}
-    >
-      <Link href="/" style={{ fontWeight: 800, fontSize: '1.15rem', color: '#111', textDecoration: 'none' }}>
-        Joblify
-      </Link>
-      <nav style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', flexWrap: 'wrap' }}>
-        <Link href="/jobs" style={link}>
-          Find jobs
+    <header className="sticky top-0 z-50 border-b border-neutral-200 bg-white/90 backdrop-blur">
+      <Container className="flex items-center justify-between gap-4 py-3">
+        <Link href="/" className="text-lg font-extrabold tracking-tight text-neutral-900">
+          Joblify
         </Link>
-        <Link href="/companies" style={link}>
-          Companies
-        </Link>
-        <Link href="/employer-setup" style={link}>
-          Post a job
-        </Link>
-        <SignedOut>
-          <Link href="/sign-in" style={link}>
-            Sign in
+        <nav className="flex flex-wrap items-center justify-end gap-x-5 gap-y-2 text-sm">
+          <Link href="/jobs" className={navLink}>
+            Find jobs
           </Link>
-          <Link
-            href="/sign-up"
-            style={{ ...link, background: '#111', color: '#fff', padding: '0.45rem 0.9rem', borderRadius: 6, fontWeight: 600 }}
-          >
-            Sign up
+          <Link href="/companies" className={`hidden sm:inline ${navLink}`}>
+            Companies
           </Link>
-        </SignedOut>
-        <SignedIn>
-          <Link href="/dashboard" style={link}>
-            Dashboard
+          <Link href="/employer-setup" className={navLink}>
+            Post a job
           </Link>
-          <UserButton />
-        </SignedIn>
-      </nav>
+          <SignedOut>
+            <Link href="/sign-in" className={navLink}>
+              Sign in
+            </Link>
+            <Link
+              href="/sign-up"
+              className="rounded-lg bg-neutral-900 px-3 py-1.5 font-semibold text-white transition-colors hover:bg-neutral-700"
+            >
+              Sign up
+            </Link>
+          </SignedOut>
+          <SignedIn>
+            <Link href="/dashboard" className={navLink}>
+              Dashboard
+            </Link>
+            <UserButton />
+          </SignedIn>
+        </nav>
+      </Container>
     </header>
   );
 }
