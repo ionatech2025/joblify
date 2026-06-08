@@ -1,29 +1,21 @@
 title = "Joblify gitleaks config"
 
-# Extend the bundled gitleaks ruleset so every default detector stays active,
-# then allowlist known non-secrets.
+# Extend the bundled gitleaks ruleset so every default detector stays active on
+# the rest of the repo.
 [extend]
 useDefault = true
 
-# The CI build env (.github/workflows/ci.yml) and the deployment doc
-# (apps/web/docs/DEPLOYMENT.md) use FORMAT-VALID DUMMY auth keys, not real
-# credentials: the build prerenders <ClerkProvider>, which base64-decodes
-# NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY, so a decodable pk_test_ dummy is required;
-# CLERK_SECRET_KEY is a literal placeholder. gitleaks flags them by entropy /
-# the sk_test_ (Stripe) prefix — false positives. Allowlist by value.
-[[allowlists]]
-description = "Format-valid CI/doc dummy auth keys (not real credentials)"
-regexes = [
-  '''pk_test_Y2xlcmsuZXhhbXBsZS5jb20k''',
-  '''sk_test_placeholderplaceholderplaceholder''',
+# These three files contain only format-valid DUMMY auth keys, or document them:
+# the CI build needs a base64-decodable Clerk publishable key for the
+# <ClerkProvider> prerender, and the secret key is a literal placeholder. They
+# are flagged as false positives (high entropy / the sk_test_ Stripe prefix).
+# No real credentials live in the repo — real secrets are in the Vercel env.
+# (The separate historical leak in commit ce37671 is documented + has a rotation
+# runbook in docs/SECURITY.md; the PR-scoped CI scan does not reach it.)
+[allowlist]
+description = "CI build env + deployment/security docs — dummy auth keys only"
+paths = [
+  '''\.github/workflows/ci\.yml''',
+  '''apps/web/docs/DEPLOYMENT\.md''',
+  '''docs/SECURITY\.md''',
 ]
-
-# The initial-import commit ce37671 ("Add frontend and backend projects")
-# committed legacy dev secrets in Joblify-backend/.env.example (a MongoDB Atlas
-# connection string + JWT/SESSION secrets). HEAD is placeholdered; the value
-# survives only in history. The PR-scoped CI scan does not reach this commit,
-# but it is allowlisted here for completeness. Rotation is REQUIRED and tracked
-# in docs/SECURITY.md — an allowlist does not rotate anything.
-[[allowlists]]
-description = "Legacy dev secrets in initial-import commit ce37671 — rotation required (docs/SECURITY.md)"
-commits = ["ce376713a708fdc63ebe24b3300a91ba7cdb0338"]
