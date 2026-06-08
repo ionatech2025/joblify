@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { currentUser } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { SaveButton } from './save-button';
 
 // Dynamic island inside the cached JD page. Reads session, shows the right CTA.
 export async function ApplyPanel({ jobId, slug }: { jobId: string; slug: string }) {
@@ -25,31 +26,40 @@ export async function ApplyPanel({ jobId, slug }: { jobId: string; slug: string 
     return <p style={{ margin: 0, color: '#555' }}>Only jobseekers can apply to job posts.</p>;
   }
 
-  const existing = await db.jobApplication.findUnique({
-    where: { jobPostId_jobSeekerId: { jobPostId: jobId, jobSeekerId: user.id } },
-    select: { status: true, appliedAt: true },
-  });
-
-  if (existing) {
-    return (
-      <>
-        <h3 style={{ margin: '0 0 0.5rem' }}>You applied already</h3>
-        <p style={{ margin: 0, color: '#555' }}>
-          Status: <strong>{existing.status}</strong> · applied {existing.appliedAt.toLocaleDateString()}
-        </p>
-      </>
-    );
-  }
+  const [existing, saved] = await Promise.all([
+    db.jobApplication.findUnique({
+      where: { jobPostId_jobSeekerId: { jobPostId: jobId, jobSeekerId: user.id } },
+      select: { status: true, appliedAt: true },
+    }),
+    db.savedJob.findUnique({
+      where: { userId_jobPostId: { userId: user.id, jobPostId: jobId } },
+      select: { id: true },
+    }),
+  ]);
 
   return (
     <>
-      <h3 style={{ margin: '0 0 0.5rem' }}>Apply for this role</h3>
-      <Link
-        href={`/jobs/${slug}/apply`}
-        style={{ padding: '0.75rem 1.25rem', background: '#111', color: 'white', borderRadius: 8, textDecoration: 'none', fontWeight: 600 }}
-      >
-        Start application
-      </Link>
+      {existing ? (
+        <>
+          <h3 style={{ margin: '0 0 0.5rem' }}>You applied already</h3>
+          <p style={{ margin: 0, color: '#555' }}>
+            Status: <strong>{existing.status}</strong> · applied {existing.appliedAt.toLocaleDateString()}
+          </p>
+        </>
+      ) : (
+        <>
+          <h3 style={{ margin: '0 0 0.5rem' }}>Apply for this role</h3>
+          <Link
+            href={`/jobs/${slug}/apply`}
+            style={{ padding: '0.75rem 1.25rem', background: '#111', color: 'white', borderRadius: 8, textDecoration: 'none', fontWeight: 600 }}
+          >
+            Start application
+          </Link>
+        </>
+      )}
+      <div style={{ marginTop: '0.75rem' }}>
+        <SaveButton jobId={jobId} initialSaved={!!saved} />
+      </div>
     </>
   );
 }

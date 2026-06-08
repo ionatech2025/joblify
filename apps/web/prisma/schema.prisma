@@ -176,6 +176,7 @@ model User {
   invitationsSent  Invitation[]    @relation("InvitationsByCompany")
   invitationsRecv  Invitation[]    @relation("InvitationsToJobSeeker")
   auditEvents      AuditEvent[]    @relation("AuditActor")
+  savedJobs        SavedJob[]
 
   @@index([userType, deletedAt])
   @@index([deletedAt])
@@ -326,6 +327,7 @@ model JobPost {
   applications        JobApplication[]
   skills              JobPostSkill[]
   views               JobView[]
+  savedBy             SavedJob[]
 
   @@index([companyId, status, deletedAt])
   @@index([status, publishedAt(sort: Desc)])
@@ -371,6 +373,20 @@ model JobView {
   @@index([jobPostId, createdAt])
   @@index([createdAt])
   @@map("job_views")
+}
+
+model SavedJob {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId     String   @db.Uuid
+  jobPostId  String   @db.Uuid
+  createdAt  DateTime @default(now())
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jobPost    JobPost  @relation(fields: [jobPostId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, jobPostId])
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("saved_jobs")
 }
 
 // ============================================================================

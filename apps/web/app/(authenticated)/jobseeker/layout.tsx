@@ -19,6 +19,9 @@ export default function JobseekerLayout({ children }: { children: React.ReactNod
         <Link href="/jobseeker/applications" style={link}>
           Applications
         </Link>
+        <Link href="/jobseeker/saved" style={link}>
+          Saved
+        </Link>
         <Link href="/jobseeker/resumes" style={link}>
           Resumes
         </Link>
