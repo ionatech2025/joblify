@@ -6,6 +6,7 @@ import { tags } from '@/lib/cache';
 import { jobPostingJsonLd } from '@/lib/seo/job-jsonld';
 import { ApplyPanel } from './apply-panel';
 import { MatchBadge } from './match-badge';
+import { SimilarJobs } from './similar-jobs';
 
 type Params = Promise<{ slug: string }>;
 
@@ -44,15 +45,25 @@ export default async function JobDetailPage({ params }: { params: Params }) {
 
       <header style={{ marginBottom: '2rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-          <h1 style={{ margin: '0 0 0.5rem' }}>{job.title}</h1>
+          {job.company.companyProfile?.logoUrl && (
+            // eslint-disable-next-line @next/next/no-img-element -- remote company logo, fixed size
+            <img
+              src={job.company.companyProfile.logoUrl}
+              alt=""
+              width={48}
+              height={48}
+              style={{ borderRadius: 8, objectFit: 'cover' }}
+            />
+          )}
+          <h1 style={{ margin: 0 }}>{job.title}</h1>
           <Suspense fallback={null}>
             <MatchBadge jobId={job.id} />
           </Suspense>
         </div>
-        <p style={{ margin: 0, color: '#555' }}>
+        <p style={{ margin: '0.5rem 0 0', color: '#555' }}>
           {job.company.companyProfile?.companyName ?? 'Company'}
           {job.location ? ` · ${job.location}` : ''}
-          {job.workMode === 'REMOTE' ? ' · Remote' : ''}
+          {job.workMode === 'REMOTE' ? ' · Remote' : job.workMode === 'HYBRID' ? ' · Hybrid' : ''}
         </p>
         {job.salaryMin && job.salaryMax && (
           <p style={{ margin: '0.25rem 0', color: '#444' }}>
@@ -60,6 +71,28 @@ export default async function JobDetailPage({ params }: { params: Params }) {
           </p>
         )}
       </header>
+
+      {job.skills.length > 0 && (
+        <section
+          style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginBottom: '1.5rem' }}
+          aria-label="Skills"
+        >
+          {job.skills.map((js) => (
+            <span
+              key={js.skillId}
+              style={{
+                fontSize: '0.82rem',
+                background: '#eef2ff',
+                color: '#3344aa',
+                padding: '0.2rem 0.6rem',
+                borderRadius: 999,
+              }}
+            >
+              {js.skill.label}
+            </span>
+          ))}
+        </section>
+      )}
 
       <article style={{ lineHeight: 1.6, color: '#222', whiteSpace: 'pre-wrap' }}>
         {job.description}
@@ -88,6 +121,10 @@ export default async function JobDetailPage({ params }: { params: Params }) {
           <ApplyPanel jobId={job.id} slug={job.slug} />
         </Suspense>
       </section>
+
+      <Suspense fallback={null}>
+        <SimilarJobs jobId={job.id} industry={job.industry} skillIds={job.skills.map((js) => js.skillId)} />
+      </Suspense>
     </main>
   );
 }
@@ -101,7 +138,10 @@ async function getJobBySlug(slug: string) {
 
   const job = await db.jobPost.findUnique({
     where: { slug },
-    include: { company: { include: { companyProfile: true } } },
+    include: {
+      company: { include: { companyProfile: true } },
+      skills: { include: { skill: true } },
+    },
   });
 
   if (!job || job.deletedAt || job.status !== 'PUBLISHED') return null;
