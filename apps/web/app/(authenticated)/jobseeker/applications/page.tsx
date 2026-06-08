@@ -35,11 +35,11 @@ export default async function JobseekerApplicationsPage({
   }));
 
   return (
-    <main style={{ padding: '2rem', maxWidth: 960, margin: '0 auto' }}>
-      <h1>My applications</h1>
+    <main className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
+      <h1 className="mb-4 text-2xl font-bold text-neutral-900">My applications</h1>
       {sp.just_applied && (
-        <div style={{ padding: '0.75rem 1rem', background: '#e7f6ec', borderRadius: 8, marginBottom: '1rem' }}>
-          Application submitted — you'll get an email when the team updates the status.
+        <div className="mb-4 rounded-lg bg-green-50 px-4 py-3 text-sm text-green-800">
+          Application submitted — you&apos;ll get an email when the team updates the status.
         </div>
       )}
       <Suspense fallback={null}>

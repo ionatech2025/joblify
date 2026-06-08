@@ -1,36 +1,30 @@
 import Link from 'next/link';
+import { Container } from '@/app/components/ui/container';
 
-const link: React.CSSProperties = { color: '#111', textDecoration: 'none' };
+const link = 'text-sm text-neutral-700 transition-colors hover:text-neutral-900';
 
 // Jobseeker sub-nav. Auth is already enforced by the (authenticated) layout.
 export default function JobseekerLayout({ children }: { children: React.ReactNode }) {
   return (
     <section>
-      <nav
-        style={{
-          display: 'flex',
-          gap: '1.25rem',
-          padding: '0.75rem 2rem',
-          borderBottom: '1px solid #eee',
-          fontSize: '0.95rem',
-          flexWrap: 'wrap',
-        }}
-      >
-        <Link href="/jobseeker/applications" style={link}>
-          Applications
-        </Link>
-        <Link href="/jobseeker/saved" style={link}>
-          Saved
-        </Link>
-        <Link href="/jobseeker/resumes" style={link}>
-          Resumes
-        </Link>
-        <Link href="/jobseeker/profile" style={link}>
-          Profile
-        </Link>
-        <Link href="/jobseeker/notifications" style={link}>
-          Notifications
-        </Link>
+      <nav className="border-b border-neutral-200">
+        <Container className="flex flex-wrap gap-x-5 gap-y-2 py-3">
+          <Link href="/jobseeker/applications" className={link}>
+            Applications
+          </Link>
+          <Link href="/jobseeker/saved" className={link}>
+            Saved
+          </Link>
+          <Link href="/jobseeker/resumes" className={link}>
+            Resumes
+          </Link>
+          <Link href="/jobseeker/profile" className={link}>
+            Profile
+          </Link>
+          <Link href="/jobseeker/notifications" className={link}>
+            Notifications
+          </Link>
+        </Container>
       </nav>
       {children}
     </section>

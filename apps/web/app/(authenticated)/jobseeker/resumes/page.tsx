@@ -20,9 +20,9 @@ export default async function ResumesPage() {
   }));
 
   return (
-    <main style={{ padding: '2rem', maxWidth: 720, margin: '0 auto' }}>
-      <h1>My resumes</h1>
-      <p style={{ color: '#666' }}>
+    <main className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
+      <h1 className="text-2xl font-bold text-neutral-900">My resumes</h1>
+      <p className="mt-1 text-neutral-600">
         Upload a PDF or Word resume. We parse it to autofill applications and compute your match
         score on every job.
       </p>

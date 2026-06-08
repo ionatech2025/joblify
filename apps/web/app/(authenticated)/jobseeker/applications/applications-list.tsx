@@ -14,6 +14,14 @@ const STATUS_LABEL: Record<string, string> = {
   WITHDRAWN: 'Withdrawn',
 };
 
+const STATUS_CLASS: Record<string, string> = {
+  HIRED: 'bg-green-100 text-green-800',
+  OFFER_EXTENDED: 'bg-green-50 text-green-700',
+  SHORTLISTED: 'bg-blue-50 text-blue-700',
+  INTERVIEW_SCHEDULED: 'bg-blue-50 text-blue-700',
+  REJECTED: 'bg-red-50 text-red-700',
+};
+
 export function ApplicationsList({
   userId,
   initialData,
@@ -26,30 +34,36 @@ export function ApplicationsList({
 
   if (items.length === 0) {
     return (
-      <p style={{ color: '#666' }}>
-        You haven't applied to any jobs yet. <Link href="/jobs">Find a role</Link>.
+      <p className="text-neutral-600">
+        You haven&apos;t applied to any jobs yet.{' '}
+        <Link href="/jobs" className="text-blue-700 hover:underline">
+          Find a role
+        </Link>
+        .
       </p>
     );
   }
 
   return (
-    <ul style={{ listStyle: 'none', padding: 0, display: 'grid', gap: '0.75rem' }}>
+    <ul className="grid list-none grid-cols-1 gap-3 p-0">
       {items.map((a) => (
-        <li key={a.id} style={{ border: '1px solid #e5e5e5', borderRadius: 8, padding: '1rem', background: '#fff' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '1rem' }}>
-            <div>
-              <Link href={`/jobs/${a.jobPostId}`} style={{ fontWeight: 600, color: 'inherit', textDecoration: 'none' }}>
+        <li key={a.id} className="rounded-xl border border-neutral-200 bg-white p-4">
+          <div className="flex items-baseline justify-between gap-4">
+            <div className="min-w-0">
+              <Link href={`/jobs/${a.jobPostId}`} className="font-semibold text-neutral-900 hover:underline">
                 {a.jobTitle}
               </Link>
-              <p style={{ margin: '0.25rem 0 0', color: '#666' }}>{a.companyName}</p>
+              <p className="mt-1 mb-0 text-neutral-600">{a.companyName}</p>
             </div>
-            <div style={{ textAlign: 'right' }}>
-              <span style={statusStyle(a.status)}>{STATUS_LABEL[a.status] ?? a.status}</span>
-              <p style={{ margin: '0.25rem 0 0', color: '#888', fontSize: '0.85rem' }}>
-                {new Date(a.appliedAt).toLocaleDateString()}
-              </p>
+            <div className="shrink-0 text-right">
+              <span
+                className={`inline-block rounded px-2 py-0.5 text-sm font-medium ${STATUS_CLASS[a.status] ?? 'bg-neutral-100 text-neutral-600'}`}
+              >
+                {STATUS_LABEL[a.status] ?? a.status}
+              </span>
+              <p className="mt-1 mb-0 text-sm text-neutral-500">{new Date(a.appliedAt).toLocaleDateString()}</p>
               {a.matchScore !== null && (
-                <p style={{ margin: '0.25rem 0 0', color: '#444', fontSize: '0.85rem' }}>
+                <p className="mt-1 mb-0 text-sm text-neutral-700">
                   Match: <strong>{Math.round(a.matchScore * 100)}%</strong>
                 </p>
               )}
@@ -57,30 +71,7 @@ export function ApplicationsList({
           </div>
         </li>
       ))}
-      {isFetching && <li style={{ color: '#888' }}>Refreshing…</li>}
+      {isFetching && <li className="text-sm text-neutral-500">Refreshing…</li>}
     </ul>
   );
-}
-
-function statusStyle(status: string): React.CSSProperties {
-  const base: React.CSSProperties = {
-    display: 'inline-block',
-    padding: '0.25rem 0.5rem',
-    borderRadius: 4,
-    fontSize: '0.85rem',
-    fontWeight: 500,
-  };
-  switch (status) {
-    case 'HIRED':
-      return { ...base, background: '#cdeacd', color: '#114411' };
-    case 'OFFER_EXTENDED':
-      return { ...base, background: '#dff0d8', color: '#225522' };
-    case 'SHORTLISTED':
-    case 'INTERVIEW_SCHEDULED':
-      return { ...base, background: '#e7f3ff', color: '#1856a8' };
-    case 'REJECTED':
-      return { ...base, background: '#f5d9d4', color: '#8a2a1f' };
-    default:
-      return { ...base, background: '#eee', color: '#555' };
-  }
 }

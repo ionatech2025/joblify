@@ -4,6 +4,7 @@ import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { upload } from '@vercel/blob/client';
 import { registerResume, deleteResume } from '@/app/actions/uploads';
+import { Button } from '@/app/components/ui/button';
 
 type ResumeRow = { id: string; title: string; fileBlobUrl: string; parsed: boolean; createdAt: string };
 
@@ -66,89 +67,45 @@ export function ResumeManager({
   }
 
   return (
-    <div style={{ marginTop: '1.5rem' }}>
-      <input
-        ref={inputRef}
-        type="file"
-        accept={ACCEPT}
-        onChange={onPick}
-        style={{ display: 'none' }}
-        aria-hidden="true"
-      />
-      <button
-        type="button"
-        onClick={() => inputRef.current?.click()}
-        disabled={busy}
-        style={{
-          padding: '0.7rem 1.2rem',
-          background: '#111',
-          color: '#fff',
-          border: 0,
-          borderRadius: 8,
-          fontWeight: 600,
-          cursor: busy ? 'wait' : 'pointer',
-        }}
-      >
+    <div className="mt-6">
+      <input ref={inputRef} type="file" accept={ACCEPT} onChange={onPick} className="hidden" aria-hidden="true" />
+      <Button type="button" onClick={() => inputRef.current?.click()} disabled={busy}>
         {busy ? 'Uploading…' : 'Upload a resume'}
-      </button>
+      </Button>
 
-      {error && <p style={{ color: '#a00', marginTop: '0.75rem' }}>{error}</p>}
+      {error && <p className="mt-3 text-red-700">{error}</p>}
 
       {resumes.length === 0 ? (
-        <p style={{ color: '#888', marginTop: '1.5rem' }}>No resumes yet — upload one to start applying.</p>
+        <p className="mt-6 text-neutral-500">No resumes yet — upload one to start applying.</p>
       ) : (
-        <ul
-          style={{
-            listStyle: 'none',
-            padding: 0,
-            marginTop: '1.5rem',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '0.75rem',
-          }}
-        >
+        <ul className="mt-6 flex list-none flex-col gap-3 p-0">
           {resumes.map((r) => (
             <li
               key={r.id}
-              style={{
-                border: '1px solid #e5e5e5',
-                borderRadius: 8,
-                padding: '0.9rem 1rem',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: '1rem',
-              }}
+              className="flex items-center justify-between gap-4 rounded-xl border border-neutral-200 p-4"
             >
-              <div style={{ minWidth: 0 }}>
+              <div className="min-w-0">
                 <a
                   href={r.fileBlobUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  style={{ fontWeight: 600, color: '#111', textDecoration: 'none' }}
+                  className="font-semibold text-neutral-900 no-underline hover:underline"
                 >
                   {r.title}
                 </a>
-                <p style={{ margin: '0.25rem 0 0', fontSize: '0.85rem', color: '#888' }}>
-                  {r.parsed ? 'Parsed ✓' : 'Processing…'} · added{' '}
-                  {new Date(r.createdAt).toLocaleDateString()}
+                <p className="mt-1 mb-0 text-sm text-neutral-500">
+                  {r.parsed ? 'Parsed ✓' : 'Processing…'} · added {new Date(r.createdAt).toLocaleDateString()}
                 </p>
               </div>
-              <button
+              <Button
+                variant="danger"
+                size="sm"
                 type="button"
                 onClick={() => onDelete(r.id)}
-                style={{
-                  background: 'transparent',
-                  border: '1px solid #ddd',
-                  borderRadius: 6,
-                  padding: '0.4rem 0.7rem',
-                  cursor: 'pointer',
-                  color: '#a00',
-                }}
                 aria-label={`Delete ${r.title}`}
               >
                 Delete
-              </button>
+              </Button>
             </li>
           ))}
         </ul>

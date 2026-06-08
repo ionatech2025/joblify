@@ -36,25 +36,17 @@ export async function RecentlyViewed({ userId }: { userId: string }) {
   if (jobs.length === 0) return null;
 
   return (
-    <section style={{ marginBottom: '2rem' }}>
-      <h2 style={{ fontSize: '1.05rem', marginBottom: '0.75rem' }}>Recently viewed</h2>
-      <div style={{ display: 'flex', gap: '0.75rem', overflowX: 'auto', paddingBottom: '0.5rem' }}>
+    <section className="mb-8">
+      <h2 className="mb-3 text-base font-semibold text-neutral-900">Recently viewed</h2>
+      <div className="flex gap-3 overflow-x-auto pb-2">
         {jobs.map((j) => (
           <Link
             key={j.slug}
             href={`/jobs/${j.slug}`}
-            style={{
-              flex: '0 0 220px',
-              border: '1px solid #e5e5e5',
-              borderRadius: 8,
-              padding: '0.75rem 0.9rem',
-              color: 'inherit',
-              textDecoration: 'none',
-              display: 'block',
-            }}
+            className="block w-56 shrink-0 rounded-xl border border-neutral-200 p-3 no-underline transition-shadow hover:shadow-md"
           >
-            <strong style={{ display: 'block', fontSize: '0.92rem' }}>{j.title}</strong>
-            <span style={{ color: '#666', fontSize: '0.85rem' }}>{j.company}</span>
+            <strong className="block text-sm text-neutral-900">{j.title}</strong>
+            <span className="text-sm text-neutral-600">{j.company}</span>
           </Link>
         ))}
       </div>

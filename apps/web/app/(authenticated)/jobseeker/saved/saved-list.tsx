@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react';
 import Link from 'next/link';
 import { toggleSavedJob } from '@/app/actions/saved-jobs';
+import { Button } from '@/app/components/ui/button';
 
 type SavedRow = { id: string; slug: string; title: string; company: string; location: string | null };
 
@@ -27,45 +28,36 @@ export function SavedList({ initial }: { initial: SavedRow[] }) {
 
   if (jobs.length === 0) {
     return (
-      <p style={{ color: '#888', marginTop: '1.5rem' }}>
-        No saved jobs yet. Tap “Save job” on any listing to keep it here.
-      </p>
+      <p className="mt-6 text-neutral-500">No saved jobs yet. Tap “Save job” on any listing to keep it here.</p>
     );
   }
 
   return (
     <>
-      {error && <p style={{ color: '#a00' }}>{error}</p>}
-      <ul style={{ listStyle: 'none', padding: 0, marginTop: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+      {error && <p className="text-red-700">{error}</p>}
+      <ul className="mt-6 flex list-none flex-col gap-3 p-0">
         {jobs.map((j) => (
           <li
             key={j.id}
-            style={{
-              border: '1px solid #e5e5e5',
-              borderRadius: 8,
-              padding: '0.9rem 1rem',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: '1rem',
-            }}
+            className="flex items-center justify-between gap-4 rounded-xl border border-neutral-200 p-4"
           >
-            <Link href={`/jobs/${j.slug}`} style={{ color: 'inherit', textDecoration: 'none', minWidth: 0 }}>
+            <Link href={`/jobs/${j.slug}`} className="min-w-0 text-neutral-900 no-underline">
               <strong>{j.title}</strong>
-              <span style={{ color: '#666' }}>
+              <span className="text-neutral-600">
                 {' — '}
                 {j.company}
                 {j.location ? ` · ${j.location}` : ''}
               </span>
             </Link>
-            <button
+            <Button
+              variant="danger"
+              size="sm"
               type="button"
               onClick={() => remove(j.id)}
-              style={{ background: 'transparent', border: '1px solid #ddd', borderRadius: 6, padding: '0.4rem 0.7rem', cursor: 'pointer', color: '#a00', flexShrink: 0 }}
               aria-label={`Remove ${j.title} from saved`}
             >
               Remove
-            </button>
+            </Button>
           </li>
         ))}
       </ul>
