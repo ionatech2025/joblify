@@ -1,32 +1,64 @@
 /*
- * Tailwind v4, imported WITHOUT preflight. The app still has many inline-styled
- * pages from before the design-system pass; pulling in preflight's reset would
- * shift their default margins/typography. Importing only the theme + utilities
- * layers lets new/migrated components use utilities + tokens while leaving the
- * un-migrated pages untouched. Re-enable preflight once migration completes.
+ * Tailwind v4 with preflight (the modern reset). Inline style={{}} still wins
+ * over preflight, so any not-yet-migrated component keeps its look; the base
+ * layer below restores sensible typography for raw elements (headings, text,
+ * lists) that previously relied on browser defaults.
  */
-@layer theme, base, components, utilities;
-
-@import 'tailwindcss/theme.css' layer(theme);
-@import 'tailwindcss/utilities.css' layer(utilities);
+@import 'tailwindcss';
 
 @theme {
   --color-brand: #4f46e5;
   --color-brand-fg: #ffffff;
 }
 
-:root {
-  color-scheme: light dark;
-}
+@layer base {
+  html {
+    color-scheme: light;
+  }
+  body {
+    margin: 0;
+    color: #171717;
+    background: #fff;
+    font-family:
+      -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  }
 
-* {
-  box-sizing: border-box;
-}
-
-html,
-body {
-  margin: 0;
-  padding: 0;
-  font-family:
-    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  /* Typographic defaults for raw elements on not-yet-migrated content pages.
+     Tailwind utilities live in a later layer, so migrated components that set
+     e.g. text-2xl / m-0 still override these. */
+  h1 {
+    font-size: 1.875rem;
+    line-height: 1.2;
+    font-weight: 700;
+    margin: 0 0 0.5rem;
+  }
+  h2 {
+    font-size: 1.375rem;
+    line-height: 1.3;
+    font-weight: 600;
+    margin: 1.5rem 0 0.5rem;
+  }
+  h3 {
+    font-size: 1.125rem;
+    font-weight: 600;
+    margin: 1.25rem 0 0.5rem;
+  }
+  p {
+    line-height: 1.65;
+    margin: 0 0 0.75rem;
+  }
+  ul,
+  ol {
+    margin: 0 0 0.75rem;
+    padding-left: 1.5rem;
+  }
+  ul {
+    list-style: disc;
+  }
+  ol {
+    list-style: decimal;
+  }
+  a {
+    color: #1d4ed8;
+  }
 }
