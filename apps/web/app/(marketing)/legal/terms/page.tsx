@@ -1,0 +1,26 @@
+export const metadata = { title: 'Terms of service' };
+
+export default function TermsPage() {
+  return (
+    <main style={{ padding: '3rem 2rem', maxWidth: 720, margin: '0 auto', lineHeight: 1.6 }}>
+      <h1>Terms of service</h1>
+      <p>
+        By using Joblify you agree to use the platform lawfully, not impersonate others, and respect
+        the access controls on the service. Job postings must be genuine and lawful. Applications
+        must be made in good faith.
+      </p>
+      <h2>Acceptable use</h2>
+      <ul>
+        <li>No discrimination in job postings.</li>
+        <li>No scraping or automated harvesting of jobseeker data.</li>
+        <li>No fee-charging on jobseekers; the service is free for them.</li>
+      </ul>
+      <h2>Termination</h2>
+      <p>
+        We can suspend or terminate accounts that violate these terms. Soft-deleted accounts are
+        purged after 30 days as described in the privacy policy.
+      </p>
+      <p style={{ color: '#666' }}>Contact: <a href="mailto:legal@joblify.example">legal@joblify.example</a></p>
+    </main>
+  );
+}

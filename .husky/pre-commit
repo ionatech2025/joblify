@@ -1,0 +1,16 @@
+#!/usr/bin/env sh
+# Run lint-staged in apps/web/ if any staged files touch it.
+# Runs once `bun install` has been done in apps/web/.
+
+set -e
+
+if git diff --cached --name-only | grep -q '^apps/web/'; then
+  cd apps/web
+  if [ -f package.json ]; then
+    if command -v bun >/dev/null 2>&1; then
+      bunx --bun lint-staged || echo "lint-staged not yet installed; run \`bun install\` in apps/web/."
+    else
+      echo "Bun not installed. Install from https://bun.sh and run \`bun install\` in apps/web/."
+    fi
+  fi
+fi

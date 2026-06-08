@@ -1,5 +1,5 @@
 {
-  "name": "delipucash-server",
+  "name": "@joblify/legacy-api",
   "version": "1.0.0",
   "main": "index.js",
   "license": "MIT",

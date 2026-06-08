@@ -1,0 +1,102 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  web:
+    name: web (apps/web)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: apps/web
+    env:
+      # CI uses placeholder env so Prisma + Next.js build can run without real
+      # provisioned services. Real secrets live in Vercel Project Env.
+      DATABASE_URL: 'postgresql://user:pass@localhost:5432/joblify?schema=public'
+      DATABASE_URL_UNPOOLED: 'postgresql://user:pass@localhost:5432/joblify?schema=public'
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: 'pk_test_placeholder'
+      CLERK_SECRET_KEY: 'sk_test_placeholder'
+      NEXT_PUBLIC_SITE_URL: 'http://localhost:3000'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install
+        run: bun install --frozen-lockfile
+
+      - name: Prisma validate
+        run: bunx prisma validate
+
+      - name: Prisma generate
+        run: bunx prisma generate
+
+      - name: Lint
+        run: bun run lint
+
+      - name: Typecheck
+        run: bun run typecheck
+
+      - name: Unit tests
+        run: bun run test
+
+      - name: Build
+        run: bun run build
+
+  axe:
+    name: a11y (axe-core)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [web]
+    defaults:
+      run:
+        working-directory: apps/web
+    env:
+      DATABASE_URL: 'postgresql://user:pass@localhost:5432/joblify?schema=public'
+      DATABASE_URL_UNPOOLED: 'postgresql://user:pass@localhost:5432/joblify?schema=public'
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: 'pk_test_placeholder'
+      CLERK_SECRET_KEY: 'sk_test_placeholder'
+      NEXT_PUBLIC_SITE_URL: 'http://localhost:3000'
+      # No live DB/Clerk in CI, so only the fully static home page renders.
+      # Full a11y coverage of /jobs, /companies, /sign-in, /sign-up runs against
+      # the Vercel preview deploy (see lighthouse.yml) where real services exist.
+      A11Y_PATHS: '/'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - name: Install
+        run: bun install --frozen-lockfile
+      - name: Install Playwright browsers
+        run: bunx playwright install --with-deps chromium
+      - name: Build
+        run: bun run build
+      - name: Run axe smoke
+        run: |
+          bun run start &
+          for i in $(seq 1 30); do curl -sf http://localhost:3000/ >/dev/null && break; sleep 2; done
+          bunx playwright test tests/e2e/a11y.spec.ts --project=chromium
+
+  gitleaks:
+    name: gitleaks
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

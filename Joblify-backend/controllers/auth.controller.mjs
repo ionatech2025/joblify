@@ -7,7 +7,8 @@ import bcrypt from 'bcryptjs';
 // ==========================================
 
 export const signup = asyncHandler(async (req, res) => {
-  console.log('🔍 UNIFIED SIGNUP BODY:', JSON.stringify(req.body, null, 2));
+  // Do not log req.body — it contains password/confirmPassword in plaintext.
+  console.log('signup attempt', { userType: req.body?.userType, hasEmail: !!req.body?.email });
 
   const {
     userType,
@@ -234,14 +235,15 @@ export const signup = asyncHandler(async (req, res) => {
 // ==========================================
 
 export const registerJobseeker = asyncHandler(async (req, res) => {
-  console.log('🔍 JOBSEEKER REGISTRATION BODY:', JSON.stringify(req.body, null, 2));
+  // Do not log req.body — it contains password/confirmPassword in plaintext.
+  console.log('jobseeker registration attempt', { hasEmail: !!req.body?.email });
 
   const { firstName, lastName, email, phoneNumber, password, confirmPassword, agreeToTerms } =
     req.body;
 
   // ✅ Validation - Check all required fields
   if (!firstName || !lastName || !email || !phoneNumber || !password || !confirmPassword) {
-    console.log('❌ Missing fields detected:', {
+    console.log('jobseeker registration missing fields', {
       firstName: !!firstName,
       lastName: !!lastName,
       email: !!email,
@@ -363,7 +365,8 @@ export const registerJobseeker = asyncHandler(async (req, res) => {
 });
 
 export const registerCompany = asyncHandler(async (req, res) => {
-  console.log('🔍 COMPANY REGISTRATION BODY:', JSON.stringify(req.body, null, 2));
+  // Do not log req.body — it contains password/confirmPassword in plaintext.
+  console.log('company registration attempt', { hasEmail: !!req.body?.email });
 
   const {
     companyName,
