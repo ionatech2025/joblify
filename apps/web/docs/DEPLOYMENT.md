@@ -48,8 +48,10 @@ CI uses placeholder env so it can build without provisioned services:
 ```yaml
 env:
   DATABASE_URL: 'postgresql://user:pass@localhost:5432/joblify?schema=public'
-  NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: 'pk_test_placeholder'
-  CLERK_SECRET_KEY: 'sk_test_placeholder'
+  # FORMAT-VALID Clerk key required (pk_test_<base64 of "domain$">): the build
+  # prerenders <ClerkProvider>, which decodes it. A bare placeholder fails.
+  NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: 'pk_test_Y2xlcmsuZXhhbXBsZS5jb20k'
+  CLERK_SECRET_KEY: 'sk_test_placeholderplaceholderplaceholder'
   NEXT_PUBLIC_SITE_URL: 'http://localhost:3000'
 ```
 
@@ -61,7 +63,7 @@ Configured in `vercel.ts`:
 
 ```ts
 framework: 'nextjs',
-buildCommand: 'bun run build',
+buildCommand: 'prisma generate && bun run build',
 installCommand: 'bun install --frozen-lockfile',
 regions: ['fra1', 'dub1', 'iad1'],
 crons: [
@@ -75,7 +77,7 @@ Build steps:
 
 1. Vercel detects Bun via `packageManager` in `package.json`.
 2. `bun install --frozen-lockfile` resolves deps from `bun.lock`.
-3. `bunx prisma generate` runs as a `postinstall` (TODO: wire if not running).
+3. `prisma generate` runs automatically via the `postinstall` hook (and is prepended to `buildCommand` as a safety net for cached installs).
 4. `bun run build` invokes `next build`.
 5. Vercel ships artifacts to the edge + Fluid Compute runtime.
 

@@ -21,10 +21,13 @@ jobs:
     env:
       # CI uses placeholder env so Prisma + Next.js build can run without real
       # provisioned services. Real secrets live in Vercel Project Env.
+      # The Clerk publishable key must be FORMAT-VALID (pk_test_<base64 of
+      # "domain$">) — `next build` prerenders <ClerkProvider>, which decodes it.
+      # A bare "pk_test_placeholder" fails the decoder and breaks the build.
       DATABASE_URL: 'postgresql://user:pass@localhost:5432/joblify?schema=public'
       DATABASE_URL_UNPOOLED: 'postgresql://user:pass@localhost:5432/joblify?schema=public'
-      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: 'pk_test_placeholder'
-      CLERK_SECRET_KEY: 'sk_test_placeholder'
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: 'pk_test_Y2xlcmsuZXhhbXBsZS5jb20k'
+      CLERK_SECRET_KEY: 'sk_test_placeholderplaceholderplaceholder'
       NEXT_PUBLIC_SITE_URL: 'http://localhost:3000'
 
     steps:
@@ -67,8 +70,8 @@ jobs:
     env:
       DATABASE_URL: 'postgresql://user:pass@localhost:5432/joblify?schema=public'
       DATABASE_URL_UNPOOLED: 'postgresql://user:pass@localhost:5432/joblify?schema=public'
-      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: 'pk_test_placeholder'
-      CLERK_SECRET_KEY: 'sk_test_placeholder'
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: 'pk_test_Y2xlcmsuZXhhbXBsZS5jb20k'
+      CLERK_SECRET_KEY: 'sk_test_placeholderplaceholderplaceholder'
       NEXT_PUBLIC_SITE_URL: 'http://localhost:3000'
       # No live DB/Clerk in CI, so only the fully static home page renders.
       # Full a11y coverage of /jobs, /companies, /sign-in, /sign-up runs against

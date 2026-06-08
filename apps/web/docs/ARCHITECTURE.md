@@ -68,7 +68,7 @@ A single Next.js 16 App Router app on Vercel Fluid Compute, fronted by Clerk aut
 | `(marketing)` | Public, SEO-critical, indexed | None | PPR: `'use cache' + cacheTag + cacheLife('hours')` |
 | `(auth)` | Clerk SignIn / SignUp | Public | Dynamic (Clerk widget) |
 | `(authenticated)` | Jobseeker dashboards + account | `auth().protect()` in layout | Dynamic RSC, no cache |
-| `(company)` | Company dashboards | `auth().protect((c) => c.org_role === 'org:company')` | Dynamic RSC, no cache |
+| `company` | Company dashboards (real `company/` segment, not a group) | `auth().protect((has) => has({ role: 'org:company' }))` in layout | Dynamic RSC, no cache |
 | `(admin)` | Admin (not in V1) | — | — |
 
 ## Request lifecycle examples
@@ -91,7 +91,7 @@ A single Next.js 16 App Router app on Vercel Fluid Compute, fronted by Clerk aut
 5. Zod validation of FormData.
 6. Ownership check: resume belongs to user; job is published.
 7. `withAudit` wraps the `jobApplication.create` in a tx that also writes an `AuditEvent`.
-8. `revalidateTag(user:<id>:applications, job:<id>:applicants)`.
+8. `updateTag(user:<id>:applications, job:<id>:applicants)`.
 9. Best-effort: Resend confirmation email.
 10. Best-effort: trigger `resume-parse.workflow.ts` + `match-score.workflow.ts`.
 
@@ -123,7 +123,7 @@ When an authenticated jobseeker views a JD they haven't applied to and both embe
 | Layer | Tool | Use |
 |---|---|---|
 | HTML / RSC | Next 16 `'use cache'` directive | JD shell, company profile shell, marketing pages |
-| Tag invalidation | `cacheTag` + `revalidateTag` | All mutations call `revalidateTag` on the right keys |
+| Tag invalidation | `cacheTag` + `updateTag` | All mutations call `updateTag` on the right keys |
 | Server runtime | Upstash Redis (`@upstash/ratelimit` + ad-hoc K/V) | Rate-limit counters; future runtime cache for hot reads |
 | Client | TanStack Query (`staleTime: 30s`, `gcTime: 5min`) | All client-side fetches |
 | CDN | Vercel edge | Static assets, OG images |
@@ -194,7 +194,7 @@ apps/web/
 │   ├── (marketing)/        # public, indexed, PPR
 │   ├── (auth)/             # Clerk sign-in/sign-up
 │   ├── (authenticated)/    # jobseeker + account
-│   ├── (company)/          # company role-gated
+│   ├── company/          # company role-gated
 │   ├── api/v1/             # stable HTTP surface (Route Handlers)
 │   ├── actions/            # 'use server' mutations
 │   ├── components/         # shared client components (cookie banner, etc.)

@@ -20,7 +20,7 @@ Every Server Action follows this six-step shape:
 ```ts
 'use server';
 
-import { revalidateTag } from 'next/cache';
+import { updateTag } from 'next/cache';
 import { headers } from 'next/headers';
 import { z } from 'zod';
 import { requireRole, AuthError } from '@/lib/auth';
@@ -57,7 +57,7 @@ export async function doThing(input: z.infer<typeof Input>): Promise<R> {
   );
 
   // 6. Invalidate
-  revalidateTag(tags.user(user.id));
+  updateTag(tags.user(user.id));
   return result;
 }
 ```
@@ -71,7 +71,9 @@ Skipping any step is a bug. See `app/actions/apply.ts` for a complete example wi
 ```ts
 import { NextResponse } from 'next/server';
 
-export const dynamic = 'force-dynamic';
+// Route handlers are dynamic by default under cacheComponents — no segment
+// config needed (the legacy `export const dynamic = 'force-dynamic'` is now
+// disallowed and was removed from every route).
 export const maxDuration = 300;
 
 export async function GET(req: Request) {
@@ -193,7 +195,7 @@ Two kinds:
 
 Templates live in `lib/email/templates.ts` as functions returning `{ subject, text, html }`. Plain HTML + text for V1; upgrade to React Email components if the digest gets richer.
 
-Suppression lists from `email.bounced` / `email.complained` webhooks live in V1.5 — until then, just log and move on.
+Hard bounces + complaints are suppressed: the Resend webhook sets `User.emailSuppressedAt`, the daily digest filters those rows out at the query level, and `isEmailSuppressed()` (from `lib/email/resend.ts`) guards transactional sends.
 
 ## File uploads
 

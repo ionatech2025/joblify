@@ -96,7 +96,7 @@ V1 flow (manual, MVP):
 1. User signs up via Clerk as a jobseeker (default).
 2. In the Clerk dashboard, manually create an Org and add the user.
 3. Webhook fires `organizationMembership.created` → handler updates `User.userType = 'COMPANY'`.
-4. User refreshes → middleware now grants `(company)` route access.
+4. User refreshes → middleware now grants `company` route access.
 
 V1.5: build a `/onboard/company` flow that creates the Org via `clerkClient().organizations.createOrganization()` and bootstraps the `CompanyProfile`.
 
@@ -144,7 +144,7 @@ Two paths:
 
 ## Adding a new protected page
 
-1. Pick the right route group: `(authenticated)` for any logged-in user, `(company)` for companies.
+1. Pick the right route group: `(authenticated)` for any logged-in user, `company` for companies.
 2. The layout already enforces auth — your page just calls `requireUser()` (jobseeker) or `requireRole('COMPANY')`.
 3. Use `db.thing.findFirst({ where: { id, ownerId: user.id } })` for any tenancy-bounded read.
 

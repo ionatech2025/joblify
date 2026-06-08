@@ -22,22 +22,18 @@ and the live [REMAINING_STEPS](./docs/REMAINING_STEPS.md) checklist.
 
 ---
 
-## Current status — end of Week 1
+## Current status
+
+The platform compiles and ships green: `bun install` → `prisma validate` → `typecheck` → `lint` → `test` → `build` all pass, and `next build` emits PPR output (static shells + server-streamed dynamic content).
 
 What landed:
 
-- App scaffold: `next.config.ts`, `tsconfig.json`, `eslint.config.mjs`, `vercel.ts`, `bunfig.toml`, `.env.example`, `.gitignore`, `.nvmrc` (Node 24).
-- Route group skeletons: `(marketing)`, `(auth)`, `(authenticated)`, `(company)` with placeholder pages.
-- Postgres Prisma schema (`prisma/schema.prisma`) with the full 12-model graph including `pgvector` + PostGIS columns.
-- Lib scaffolds: `db`, `auth`, `audit`, `ratelimit`, `cache`, `storage/blob`, `search/algolia`, `ai/gateway`, `observability/{logger,sentry}`, `query/client`, `stores/{ui,search}`.
-- State: TanStack Query (server state) + Zustand (client state) wired via `app/providers.tsx`.
-- Route handlers: `/api/v1/health` (live), webhook stubs for Clerk + Resend, upload signer stub, GDPR export stub, three cron stubs.
-- CI: `.github/workflows/ci.yml` runs `bun install`, lint, typecheck, tests, prisma validate, build, gitleaks scan.
-- Tests: Vitest + Playwright configured; one passing unit test, five `.todo` e2e markers for the critical paths.
-- Husky pre-commit hook at repo root.
+- Full app surface: `(marketing)` (PPR), `(auth)` (Clerk), `(authenticated)`, and the `company/` segment; 12-model Postgres schema (`pgvector` + PostGIS).
+- Real Server Actions (apply, post-job, profile, status, account) wrapped in `withAudit`; AI workflows (resume parse, JD skills, match score, bio coach) triggered off the response path via `after()`.
+- Auth (Clerk middleware + `lib/auth`), Algolia search, Blob uploads, Upstash rate limits, Sentry (DSN-gated + client Replay), consent-gated analytics, email bounce/complaint suppression, GDPR export/delete + retention.
+- CI (lint/typecheck/test/build, gitleaks, axe), Playwright + Clerk e2e harness, Lighthouse CI on preview deploys, and `docs/`.
 
-Every TODO is dated to its week (e.g. `TODO(week-5)`) so it's clear what
-unblocks each milestone.
+Runs on Next 16 **Cache Components** — see the conventions in [FRONTEND.md](./docs/FRONTEND.md). Outstanding work (vendor provisioning, history scrub, deferred features) is tracked in [docs/REMAINING_STEPS.md](./docs/REMAINING_STEPS.md).
 
 ---
 

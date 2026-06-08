@@ -5,11 +5,20 @@ How the React / Next.js side is organized and the conventions you should follow 
 ## Rendering decision tree
 
 1. **Does the page need SEO or fast first-paint?** → Server Component, ideally inside `(marketing)` with `'use cache'`.
-2. **Does the page require auth?** → Server Component inside `(authenticated)` or `(company)`. The layout enforces `requireUser` / `requireRole`.
+2. **Does the page require auth?** → Server Component inside `(authenticated)` or `company`. The layout enforces `requireUser` / `requireRole`.
 3. **Does a sub-tree need interactivity (forms, polling, state)?** → split that sub-tree into a Client Component (`'use client'`). Pass server-rendered data as props.
 4. **Is the user data fundamentally per-request?** → fully dynamic RSC. No cache.
 
 The default is "Server Component until you need a client." `'use client'` is the cost; minimize it.
+
+## Cache Components (Next 16) conventions
+
+The app runs with `cacheComponents: true` (PPR). Two rules follow:
+
+1. **Cache with `'use cache'`** on shareable, revalidatable data (the marketing shells). Invalidate from Server Actions with `updateTag(tags.*)` — not the old `revalidateTag`, which now requires a cache-profile arg.
+2. **Uncached request data** (`cookies()`, `headers()`, Clerk `auth()`, per-request DB reads) must be reached **inside a `<Suspense>` boundary** so the static shell can prerender. Concretely: `<ClerkProvider>` sits inside a root `<Suspense>` (it reads headers); the `(authenticated)` and `company/` layouts wrap their `requireUser`/`requireRole` gate in `<Suspense>` (which also covers every child page); and the marketing list pages fetch data in a `connection()`-marked island so the static shell prerenders at build while data streams + caches at runtime — meaning the build needs no database.
+
+Segment configs `export const dynamic`/`revalidate` are **disallowed** under cacheComponents; routes are dynamic by default and opt into caching via `'use cache'`.
 
 ## Component layout
 
@@ -69,7 +78,7 @@ const PostJobFormSchema = z.object({ ... });
 export type PostJobFormValues = z.infer<typeof PostJobFormSchema>;
 
 // post-job.ts (Server Action)
-import { PostJobFormSchema } from '../(company)/jobs/new/post-job-form';
+import { PostJobFormSchema } from '../company/jobs/new/post-job-form';
 const parsed = PostJobFormSchema.parse(input);
 ```
 
@@ -97,7 +106,7 @@ export async function doThing(input: Z): Promise<R> {
     async (tx) => tx.thing.create({ data: ... }),
   );
 
-  revalidateTag(tags.foo(...));
+  updateTag(tags.foo(...));
   return result;
 }
 ```

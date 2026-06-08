@@ -157,10 +157,15 @@ Pattern: tools are typed adapters around `db.*`. The model decides which to call
 
 ## Streaming
 
-Use `streamText` + `toUIMessageStreamResponse()` for chat / streaming UI. Client uses `@ai-sdk/react`'s `useChat`:
+Use `streamText` + `toUIMessageStreamResponse()` for chat / streaming UI. Client uses `@ai-sdk/react`'s `useChat` (AI SDK **v6** — `@ai-sdk/react@^3` paired with `ai@^6`). v6 dropped `input`/`handleInputChange`/`handleSubmit`: you own the input state and call `sendMessage`, and messages carry `parts` (not `content`):
 
 ```ts
-const { messages, input, handleInputChange, handleSubmit, status } = useChat({ api: '/api/v1/ai/bio-coach' });
+const [input, setInput] = useState('');
+const { messages, sendMessage, status } = useChat({
+  transport: new DefaultChatTransport({ api: '/api/v1/ai/bio-coach', body: { currentBio } }),
+});
+// submit:  sendMessage({ text: input })
+// render:  m.parts.map((p) => (p.type === 'text' ? p.text : null))
 ```
 
 See `app/(authenticated)/jobseeker/profile/bio-coach.tsx` for the canonical pattern.
