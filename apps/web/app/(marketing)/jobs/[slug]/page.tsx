@@ -4,6 +4,7 @@ import { Suspense } from 'react';
 import { db } from '@/lib/db';
 import { tags } from '@/lib/cache';
 import { jobPostingJsonLd } from '@/lib/seo/job-jsonld';
+import { Badge } from '@/app/components/ui/badge';
 import { ApplyPanel } from './apply-panel';
 import { MatchBadge } from './match-badge';
 import { SimilarJobs } from './similar-jobs';
@@ -37,16 +38,15 @@ export default async function JobDetailPage({ params }: { params: Params }) {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000';
 
   return (
-    <main style={{ padding: '3rem 2rem', maxWidth: 960, margin: '0 auto' }}>
+    <main className="mx-auto max-w-4xl px-4 py-12 sm:px-6">
       <ViewTracker jobId={job.id} />
       <script
         type="application/ld+json"
-         
         dangerouslySetInnerHTML={{ __html: jobPostingJsonLd({ job, company: job.company, siteUrl }) }}
       />
 
-      <header style={{ marginBottom: '2rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+      <header className="mb-8">
+        <div className="flex flex-wrap items-center gap-4">
           {job.company.companyProfile?.logoUrl && (
             // eslint-disable-next-line @next/next/no-img-element -- remote company logo, fixed size
             <img
@@ -54,63 +54,47 @@ export default async function JobDetailPage({ params }: { params: Params }) {
               alt=""
               width={48}
               height={48}
-              style={{ borderRadius: 8, objectFit: 'cover' }}
+              className="rounded-lg object-cover"
             />
           )}
-          <h1 style={{ margin: 0 }}>{job.title}</h1>
+          <h1 className="m-0 text-2xl font-bold tracking-tight text-neutral-900 sm:text-3xl">{job.title}</h1>
           <Suspense fallback={null}>
             <MatchBadge jobId={job.id} />
           </Suspense>
         </div>
-        <p style={{ margin: '0.5rem 0 0', color: '#555' }}>
+        <p className="mt-2 mb-0 text-neutral-600">
           {job.company.companyProfile?.companyName ?? 'Company'}
           {job.location ? ` · ${job.location}` : ''}
           {job.workMode === 'REMOTE' ? ' · Remote' : job.workMode === 'HYBRID' ? ' · Hybrid' : ''}
         </p>
         {job.salaryMin && job.salaryMax && (
-          <p style={{ margin: '0.25rem 0', color: '#444' }}>
+          <p className="mt-1 mb-0 font-medium text-neutral-700">
             {job.salaryCurrency} {job.salaryMin.toLocaleString()} – {job.salaryMax.toLocaleString()} per year
           </p>
         )}
       </header>
 
       {job.skills.length > 0 && (
-        <section
-          style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginBottom: '1.5rem' }}
-          aria-label="Skills"
-        >
+        <section className="mb-6 flex flex-wrap gap-2" aria-label="Skills">
           {job.skills.map((js) => (
-            <span
-              key={js.skillId}
-              style={{
-                fontSize: '0.82rem',
-                background: '#eef2ff',
-                color: '#3344aa',
-                padding: '0.2rem 0.6rem',
-                borderRadius: 999,
-              }}
-            >
-              {js.skill.label}
-            </span>
+            <Badge key={js.skillId}>{js.skill.label}</Badge>
           ))}
         </section>
       )}
 
-      <article style={{ lineHeight: 1.6, color: '#222', whiteSpace: 'pre-wrap' }}>
-        {job.description}
-      </article>
+      <article className="leading-relaxed whitespace-pre-wrap text-neutral-800">{job.description}</article>
 
       {job.requirements && (
-        <section style={{ marginTop: '2rem' }}>
-          <h2 style={{ fontSize: '1.25rem' }}>Requirements</h2>
-          <p style={{ lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{job.requirements}</p>
+        <section className="mt-8">
+          <h2 className="text-xl font-semibold text-neutral-900">Requirements</h2>
+          <p className="leading-relaxed whitespace-pre-wrap text-neutral-800">{job.requirements}</p>
         </section>
       )}
 
       {job.benefits.length > 0 && (
-        <section style={{ marginTop: '2rem' }}>
-          <h2 style={{ fontSize: '1.25rem' }}>Benefits</h2>
-          <ul>
+        <section className="mt-8">
+          <h2 className="text-xl font-semibold text-neutral-900">Benefits</h2>
+          <ul className="list-disc pl-5 text-neutral-800">
             {job.benefits.map((b) => (
               <li key={b}>{b}</li>
             ))}
@@ -118,7 +102,7 @@ export default async function JobDetailPage({ params }: { params: Params }) {
         </section>
       )}
 
-      <section style={{ marginTop: '3rem', padding: '1.5rem', background: '#fafafa', borderRadius: 8 }}>
+      <section className="mt-12 rounded-xl border border-neutral-200 bg-neutral-50 p-6">
         <Suspense fallback={<p>Loading apply options…</p>}>
           <ApplyPanel jobId={job.id} slug={job.slug} />
         </Suspense>

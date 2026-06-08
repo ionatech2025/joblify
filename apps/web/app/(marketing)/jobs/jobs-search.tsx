@@ -5,6 +5,8 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import type { JobSearchRecord } from '@/lib/search/algolia';
+import { Badge } from '@/app/components/ui/badge';
+import { Card } from '@/app/components/ui/card';
 
 type SearchResponse = { hits: JobSearchRecord[]; nbHits: number; page: number; nbPages: number };
 
@@ -32,6 +34,9 @@ const SELECTS = {
     ['EXECUTIVE', 'Executive'],
   ],
 } as const;
+
+const control =
+  'w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none';
 
 // The URL is the single source of truth for a search, so results are shareable,
 // bookmarkable, and survive refresh / back-forward. Text + salary inputs keep
@@ -102,12 +107,29 @@ export function JobsSearch() {
   });
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 260px) 1fr', gap: '2rem' }}>
-      <aside style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-        <input type="search" placeholder="Title, company, or keyword" value={qText} onChange={(e) => setQText(e.target.value)} style={inputStyle} />
-        <input type="text" placeholder="City or country" value={locText} onChange={(e) => setLocText(e.target.value)} style={inputStyle} />
+    <div className="grid grid-cols-1 gap-8 md:grid-cols-[260px_minmax(0,1fr)]">
+      <aside className="flex flex-col gap-3">
+        <input
+          type="search"
+          placeholder="Title, company, or keyword"
+          value={qText}
+          onChange={(e) => setQText(e.target.value)}
+          className={control}
+        />
+        <input
+          type="text"
+          placeholder="City or country"
+          value={locText}
+          onChange={(e) => setLocText(e.target.value)}
+          className={control}
+        />
         {(['workMode', 'jobType', 'experienceLevel'] as const).map((field) => (
-          <select key={field} value={getp(field)} onChange={(e) => patch({ [field]: e.target.value, page: '' })} style={inputStyle}>
+          <select
+            key={field}
+            value={getp(field)}
+            onChange={(e) => patch({ [field]: e.target.value, page: '' })}
+            className={control}
+          >
             {SELECTS[field].map(([v, label]) => (
               <option key={v} value={v}>
                 {label}
@@ -115,25 +137,50 @@ export function JobsSearch() {
             ))}
           </select>
         ))}
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
-          <input type="number" min={0} placeholder="Min salary" value={salMin} onChange={(e) => setSalMin(e.target.value)} style={{ ...inputStyle, width: '50%' }} />
-          <input type="number" min={0} placeholder="Max salary" value={salMax} onChange={(e) => setSalMax(e.target.value)} style={{ ...inputStyle, width: '50%' }} />
+        <div className="flex gap-2">
+          <input
+            type="number"
+            min={0}
+            placeholder="Min salary"
+            value={salMin}
+            onChange={(e) => setSalMin(e.target.value)}
+            className={control}
+          />
+          <input
+            type="number"
+            min={0}
+            placeholder="Max salary"
+            value={salMax}
+            onChange={(e) => setSalMax(e.target.value)}
+            className={control}
+          />
         </div>
         {qs.length > 0 && (
-          <button onClick={() => router.replace('/jobs', { scroll: false })} style={clearStyle}>
+          <button
+            onClick={() => router.replace('/jobs', { scroll: false })}
+            className="rounded-md bg-neutral-100 px-3 py-2 text-sm font-medium text-neutral-900 transition-colors hover:bg-neutral-200"
+          >
             Clear filters
           </button>
         )}
       </aside>
 
       <section>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
-          <p style={{ color: '#666', margin: 0 }}>
-            {isLoading && !data ? 'Searching…' : data ? `${data.nbHits.toLocaleString()} ${data.nbHits === 1 ? 'job' : 'jobs'}` : ''}
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <p className="m-0 text-sm text-neutral-600">
+            {isLoading && !data
+              ? 'Searching…'
+              : data
+                ? `${data.nbHits.toLocaleString()} ${data.nbHits === 1 ? 'job' : 'jobs'}`
+                : ''}
           </p>
-          <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', color: '#555' }}>
+          <label className="flex items-center gap-2 text-sm text-neutral-600">
             Sort
-            <select value={getp('sort')} onChange={(e) => patch({ sort: e.target.value, page: '' })} style={{ ...inputStyle, padding: '0.4rem' }}>
+            <select
+              value={getp('sort')}
+              onChange={(e) => patch({ sort: e.target.value, page: '' })}
+              className="rounded-md border border-neutral-300 bg-white px-2 py-1.5 text-sm"
+            >
               <option value="">Relevance</option>
               <option value="recent">Most recent</option>
               <option value="salary">Highest salary</option>
@@ -141,27 +188,31 @@ export function JobsSearch() {
           </label>
         </div>
 
-        {isError && <p style={{ color: '#a00' }}>Search is unavailable right now. Try again shortly.</p>}
+        {isError && <p className="text-red-700">Search is unavailable right now. Try again shortly.</p>}
         {data && data.hits.length === 0 && !isLoading && (
-          <p style={{ color: '#888' }}>No jobs match these filters. Try broadening your search.</p>
+          <p className="text-neutral-500">No jobs match these filters. Try broadening your search.</p>
         )}
 
         {data && data.hits.length > 0 && (
           <>
-            <ul style={{ listStyle: 'none', padding: 0, display: 'grid', gap: '0.75rem' }}>
+            <ul className="grid list-none grid-cols-1 gap-3 p-0">
               {data.hits.map((hit) => (
                 <JobCard key={hit.objectID} hit={hit} />
               ))}
             </ul>
             {data.nbPages > 1 && (
-              <nav style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem', marginTop: '1.5rem' }} aria-label="Pagination">
-                <button disabled={page <= 0} onClick={() => patch({ page: page - 1 })} style={pageBtn(page <= 0)}>
+              <nav className="mt-6 flex items-center justify-center gap-4" aria-label="Pagination">
+                <button disabled={page <= 0} onClick={() => patch({ page: page - 1 })} className={pageBtn(page <= 0)}>
                   ← Prev
                 </button>
-                <span style={{ color: '#666', fontSize: '0.9rem' }}>
+                <span className="text-sm text-neutral-600">
                   Page {page + 1} of {data.nbPages}
                 </span>
-                <button disabled={page >= data.nbPages - 1} onClick={() => patch({ page: page + 1 })} style={pageBtn(page >= data.nbPages - 1)}>
+                <button
+                  disabled={page >= data.nbPages - 1}
+                  onClick={() => patch({ page: page + 1 })}
+                  className={pageBtn(page >= data.nbPages - 1)}
+                >
                   Next →
                 </button>
               </nav>
@@ -175,43 +226,43 @@ export function JobsSearch() {
 
 function JobCard({ hit }: { hit: JobSearchRecord }) {
   return (
-    <li style={cardStyle}>
-      <Link href={`/jobs/${hit.slug}`} style={{ color: 'inherit', textDecoration: 'none', display: 'flex', gap: '1rem' }}>
-        {hit.companyLogoUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element -- remote logo, fixed small size
-          <img src={hit.companyLogoUrl} alt="" width={48} height={48} style={{ borderRadius: 8, objectFit: 'cover', flexShrink: 0 }} />
-        ) : (
-          <div style={{ width: 48, height: 48, borderRadius: 8, background: '#f1f1f1', flexShrink: 0 }} aria-hidden="true" />
-        )}
-        <div style={{ minWidth: 0 }}>
-          <h3 style={{ margin: '0 0 0.2rem', fontSize: '1.05rem' }}>{hit.title}</h3>
-          <p style={{ margin: 0, color: '#555', fontSize: '0.92rem' }}>
-            {hit.companyName}
-            {hit.location ? ` · ${hit.location}` : ''}
-            {hit.workMode === 'REMOTE' ? ' · Remote' : hit.workMode === 'HYBRID' ? ' · Hybrid' : ''}
-            {hit.publishedAt ? ` · ${relativeDate(hit.publishedAt)}` : ''}
-          </p>
-          {hit.salaryMin && hit.salaryMax ? (
-            <p style={{ margin: '0.3rem 0 0', color: '#137333', fontSize: '0.9rem', fontWeight: 600 }}>
-              {hit.salaryCurrency} {hit.salaryMin.toLocaleString()}–{hit.salaryMax.toLocaleString()}
+    <li>
+      <Link href={`/jobs/${hit.slug}`} className="block">
+        <Card className="flex gap-4 transition-shadow hover:shadow-md">
+          {hit.companyLogoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element -- remote logo, fixed small size
+            <img src={hit.companyLogoUrl} alt="" width={48} height={48} className="size-12 shrink-0 rounded-lg object-cover" />
+          ) : (
+            <div className="size-12 shrink-0 rounded-lg bg-neutral-100" aria-hidden="true" />
+          )}
+          <div className="min-w-0">
+            <h3 className="m-0 text-base font-semibold text-neutral-900">{hit.title}</h3>
+            <p className="m-0 text-sm text-neutral-600">
+              {hit.companyName}
+              {hit.location ? ` · ${hit.location}` : ''}
+              {hit.workMode === 'REMOTE' ? ' · Remote' : hit.workMode === 'HYBRID' ? ' · Hybrid' : ''}
+              {hit.publishedAt ? ` · ${relativeDate(hit.publishedAt)}` : ''}
             </p>
-          ) : null}
-          {hit.description ? (
-            <p style={{ margin: '0.4rem 0 0', color: '#777', fontSize: '0.88rem', lineHeight: 1.4 }}>
-              {hit.description.slice(0, 150)}
-              {hit.description.length > 150 ? '…' : ''}
-            </p>
-          ) : null}
-          {hit.skills?.length ? (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', marginTop: '0.5rem' }}>
-              {hit.skills.slice(0, 5).map((s) => (
-                <span key={s} style={{ fontSize: '0.78rem', background: '#eef2ff', color: '#3344aa', padding: '0.15rem 0.5rem', borderRadius: 999 }}>
-                  {s}
-                </span>
-              ))}
-            </div>
-          ) : null}
-        </div>
+            {hit.salaryMin && hit.salaryMax ? (
+              <p className="mt-1 mb-0 text-sm font-semibold text-green-700">
+                {hit.salaryCurrency} {hit.salaryMin.toLocaleString()}–{hit.salaryMax.toLocaleString()}
+              </p>
+            ) : null}
+            {hit.description ? (
+              <p className="mt-1.5 mb-0 line-clamp-2 text-sm leading-snug text-neutral-500">
+                {hit.description.slice(0, 150)}
+                {hit.description.length > 150 ? '…' : ''}
+              </p>
+            ) : null}
+            {hit.skills?.length ? (
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {hit.skills.slice(0, 5).map((s) => (
+                  <Badge key={s}>{s}</Badge>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        </Card>
       </Link>
     </li>
   );
@@ -226,37 +277,8 @@ function relativeDate(ms: number): string {
   return months === 1 ? '1 month ago' : `${months} months ago`;
 }
 
-const inputStyle: React.CSSProperties = {
-  padding: '0.6rem',
-  border: '1px solid #ddd',
-  borderRadius: 6,
-  fontSize: '0.95rem',
-};
-
-const cardStyle: React.CSSProperties = {
-  border: '1px solid #e5e5e5',
-  borderRadius: 8,
-  padding: '1rem',
-  background: '#fff',
-};
-
-const clearStyle: React.CSSProperties = {
-  padding: '0.6rem',
-  borderRadius: 6,
-  fontWeight: 500,
-  border: 0,
-  cursor: 'pointer',
-  background: '#f1f1f1',
-  color: '#111',
-};
-
-function pageBtn(disabled: boolean): React.CSSProperties {
-  return {
-    padding: '0.5rem 1rem',
-    borderRadius: 6,
-    border: '1px solid #ddd',
-    background: disabled ? '#f7f7f7' : '#fff',
-    color: disabled ? '#bbb' : '#111',
-    cursor: disabled ? 'default' : 'pointer',
-  };
+function pageBtn(disabled: boolean): string {
+  return `rounded-md border border-neutral-300 px-4 py-2 text-sm ${
+    disabled ? 'cursor-default bg-neutral-50 text-neutral-400' : 'bg-white text-neutral-900 hover:bg-neutral-50'
+  }`;
 }
