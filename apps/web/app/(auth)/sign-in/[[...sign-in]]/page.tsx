@@ -5,7 +5,7 @@ export const metadata = { title: 'Sign in' };
 
 export default function SignInPage() {
   return (
-    <main style={{ display: 'flex', justifyContent: 'center', padding: '4rem 1rem' }}>
+    <main className="grid min-h-[70vh] place-items-center px-4 py-12">
       <Suspense fallback={null}>
         <SignIn path="/sign-in" routing="path" signUpUrl="/sign-up" fallbackRedirectUrl="/dashboard" />
       </Suspense>

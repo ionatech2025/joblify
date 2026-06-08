@@ -28,44 +28,42 @@ export default async function CompanyDetailPage({ params }: { params: Params }) 
   });
 
   return (
-    <main style={{ padding: '3rem 2rem', maxWidth: 960, margin: '0 auto' }}>
-      <header style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
+    <main className="mx-auto max-w-4xl px-4 py-12 sm:px-6">
+      <header className="mb-8 flex items-center gap-4">
         {company.logoUrl && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={company.logoUrl} alt="" width={72} height={72} style={{ borderRadius: 12, objectFit: 'cover' }} />
+          // eslint-disable-next-line @next/next/no-img-element -- remote company logo, fixed size
+          <img src={company.logoUrl} alt="" width={72} height={72} className="size-[72px] rounded-xl object-cover" />
         )}
         <div>
-          <h1 style={{ margin: 0 }}>{company.companyName}</h1>
-          <p style={{ margin: 0, color: '#555' }}>
+          <h1 className="m-0 text-2xl font-bold tracking-tight text-neutral-900 sm:text-3xl">{company.companyName}</h1>
+          <p className="m-0 text-neutral-600">
             {company.industry.replace('_', ' ')} · {company.companySize.replace('_', ' ').toLowerCase()}
           </p>
         </div>
       </header>
 
-      <article style={{ lineHeight: 1.6, color: '#222', whiteSpace: 'pre-wrap', marginBottom: '2rem' }}>
-        {company.description}
-      </article>
+      <article className="mb-8 leading-relaxed whitespace-pre-wrap text-neutral-800">{company.description}</article>
 
       {company.website && (
         <p>
-          <a href={company.website} rel="noopener noreferrer" target="_blank">
+          <a href={company.website} rel="noopener noreferrer" target="_blank" className="text-blue-700 hover:underline">
             {company.website}
           </a>
         </p>
       )}
 
-      <section style={{ marginTop: '3rem' }}>
-        <h2 style={{ fontSize: '1.5rem' }}>Open positions</h2>
+      <section className="mt-12">
+        <h2 className="text-xl font-semibold text-neutral-900">Open positions</h2>
         {openJobs.length === 0 ? (
-          <p style={{ color: '#888' }}>No open positions right now.</p>
+          <p className="text-neutral-500">No open positions right now.</p>
         ) : (
-          <ul style={{ listStyle: 'none', padding: 0 }}>
+          <ul className="list-none p-0">
             {openJobs.map((job) => (
-              <li key={job.id} style={{ padding: '0.75rem 0', borderBottom: '1px solid #eee' }}>
-                <Link href={`/jobs/${job.slug}`}>
-                  <strong>{job.title}</strong>
+              <li key={job.id} className="border-b border-neutral-100 py-3">
+                <Link href={`/jobs/${job.slug}`} className="font-medium text-neutral-900 hover:underline">
+                  {job.title}
                 </Link>
-                {job.location && <span style={{ color: '#666' }}> · {job.location}</span>}
+                {job.location && <span className="text-neutral-600"> · {job.location}</span>}
               </li>
             ))}
           </ul>

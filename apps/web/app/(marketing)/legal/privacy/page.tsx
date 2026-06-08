@@ -2,7 +2,7 @@ export const metadata = { title: 'Privacy policy' };
 
 export default function PrivacyPage() {
   return (
-    <main style={{ padding: '3rem 2rem', maxWidth: 720, margin: '0 auto', lineHeight: 1.6 }}>
+    <main className="mx-auto max-w-3xl px-4 py-12 sm:px-6">
       <h1>Privacy policy</h1>
       <p>
         Joblify processes personal data to operate the job marketplace and only for the purposes
@@ -23,7 +23,7 @@ export default function PrivacyPage() {
       <ul>
         <li>Provide the service (contract).</li>
         <li>Anti-fraud, security, abuse prevention (legitimate interest).</li>
-        <li>Email notifications you've opted into (consent).</li>
+        <li>Email notifications you&apos;ve opted into (consent).</li>
       </ul>
 
       <h2>Your rights</h2>
@@ -37,8 +37,8 @@ export default function PrivacyPage() {
       <h2>Who we share with</h2>
       <p>
         Application data goes to the company you applied to. Operational processors (
-        <a href="/legal/processors">listed here</a>) handle hosting, search, email, and observability;
-        each is bound by a DPA.
+        <a href="/legal/processors">listed here</a>) handle hosting, search, email, and
+        observability; each is bound by a DPA.
       </p>
 
       <h2>Retention</h2>
@@ -49,7 +49,9 @@ export default function PrivacyPage() {
         <li>Job view analytics: 13 months, then purged.</li>
       </ul>
 
-      <p style={{ color: '#666' }}>Contact: <a href="mailto:privacy@joblify.example">privacy@joblify.example</a></p>
+      <p className="text-neutral-500">
+        Contact: <a href="mailto:privacy@joblify.example">privacy@joblify.example</a>
+      </p>
     </main>
   );
 }

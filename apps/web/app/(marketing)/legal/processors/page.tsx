@@ -8,35 +8,41 @@ const PROCESSORS = [
   { name: 'Algolia', purpose: 'Search index', region: 'EU + US' },
   { name: 'Resend', purpose: 'Transactional email', region: 'EU + US' },
   { name: 'Sentry', purpose: 'Error tracking + traces', region: 'EU + US' },
-  { name: 'OpenAI / Anthropic via Vercel AI Gateway', purpose: 'AI features (resume parse, JD skill extraction, bio coach, match score)', region: 'US (ZDR contracts)' },
+  {
+    name: 'OpenAI / Anthropic via Vercel AI Gateway',
+    purpose: 'AI features (resume parse, JD skill extraction, bio coach, match score)',
+    region: 'US (ZDR contracts)',
+  },
 ];
 
 export default function ProcessorsPage() {
   return (
-    <main style={{ padding: '3rem 2rem', maxWidth: 960, margin: '0 auto', lineHeight: 1.6 }}>
+    <main className="mx-auto max-w-5xl px-4 py-12 sm:px-6">
       <h1>Data processors</h1>
       <p>
         Each of the third parties below processes data on our behalf under a Data Processing
         Agreement. We minimize data shared with each.
       </p>
-      <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '2rem' }}>
-        <thead>
-          <tr>
-            <th style={{ textAlign: 'left', padding: '0.5rem', borderBottom: '2px solid #ddd' }}>Processor</th>
-            <th style={{ textAlign: 'left', padding: '0.5rem', borderBottom: '2px solid #ddd' }}>Purpose</th>
-            <th style={{ textAlign: 'left', padding: '0.5rem', borderBottom: '2px solid #ddd' }}>Region</th>
-          </tr>
-        </thead>
-        <tbody>
-          {PROCESSORS.map((p) => (
-            <tr key={p.name} style={{ borderBottom: '1px solid #eee' }}>
-              <td style={{ padding: '0.6rem 0.5rem', fontWeight: 600 }}>{p.name}</td>
-              <td style={{ padding: '0.6rem 0.5rem' }}>{p.purpose}</td>
-              <td style={{ padding: '0.6rem 0.5rem' }}>{p.region}</td>
+      <div className="mt-8 overflow-x-auto rounded-xl border border-neutral-200">
+        <table className="w-full border-collapse text-sm">
+          <thead>
+            <tr className="border-b border-neutral-200 bg-neutral-50 text-left text-neutral-600">
+              <th className="px-4 py-2 font-medium">Processor</th>
+              <th className="px-4 py-2 font-medium">Purpose</th>
+              <th className="px-4 py-2 font-medium">Region</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {PROCESSORS.map((p) => (
+              <tr key={p.name} className="border-b border-neutral-100 last:border-0">
+                <td className="px-4 py-3 font-semibold text-neutral-900">{p.name}</td>
+                <td className="px-4 py-3 text-neutral-700">{p.purpose}</td>
+                <td className="px-4 py-3 text-neutral-700">{p.region}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </main>
   );
 }

@@ -2,7 +2,7 @@ export const metadata = { title: 'Terms of service' };
 
 export default function TermsPage() {
   return (
-    <main style={{ padding: '3rem 2rem', maxWidth: 720, margin: '0 auto', lineHeight: 1.6 }}>
+    <main className="mx-auto max-w-3xl px-4 py-12 sm:px-6">
       <h1>Terms of service</h1>
       <p>
         By using Joblify you agree to use the platform lawfully, not impersonate others, and respect
@@ -20,7 +20,9 @@ export default function TermsPage() {
         We can suspend or terminate accounts that violate these terms. Soft-deleted accounts are
         purged after 30 days as described in the privacy policy.
       </p>
-      <p style={{ color: '#666' }}>Contact: <a href="mailto:legal@joblify.example">legal@joblify.example</a></p>
+      <p className="text-neutral-500">
+        Contact: <a href="mailto:legal@joblify.example">legal@joblify.example</a>
+      </p>
     </main>
   );
 }
