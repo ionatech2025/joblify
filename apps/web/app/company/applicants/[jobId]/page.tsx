@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 import { requireRole } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { ApplicantsTable } from './applicants-table';
+import { ApplicantsBoard } from './applicants-board';
 
 export const metadata = { title: 'Applicants' };
 
@@ -28,13 +28,14 @@ export default async function ApplicantsPage({ params }: { params: Promise<{ job
       <h1>Applicants for {job.title}</h1>
       <p style={{ color: '#666' }}>{applications.length} application(s)</p>
 
-      <ApplicantsTable
+      <ApplicantsBoard
         applications={applications.map((a) => ({
           id: a.id,
           status: a.status,
           appliedAt: a.appliedAt.toISOString(),
           matchScore: a.matchScore,
           coverLetter: a.coverLetter,
+          recruiterNotes: a.recruiterNotes,
           resumeUrl: a.resume.fileBlobUrl,
           seeker: {
             id: a.jobSeekerId,

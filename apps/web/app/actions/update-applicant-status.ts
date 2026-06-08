@@ -97,3 +97,29 @@ async function sendStatusEmail(
     html,
   });
 }
+
+export async function saveApplicantNote(applicationId: string, notes: string): Promise<void> {
+  const user = await requireRole('COMPANY');
+
+  // Tenancy: the application must belong to one of this company's jobs.
+  const application = await db.jobApplication.findFirst({
+    where: { id: applicationId, jobPost: { companyId: user.id } },
+    select: { id: true, jobPostId: true },
+  });
+  if (!application) throw new AuthError('FORBIDDEN');
+
+  const h = await headers();
+  const ip = h.get('x-forwarded-for')?.split(',')[0]?.trim() ?? null;
+  const ua = h.get('user-agent') ?? null;
+
+  const text = notes.slice(0, 5000);
+
+  await withAudit(
+    { actorId: user.id, ip, ua },
+    // Audit the event but not the (sensitive) note text — store only its length.
+    { action: 'APPLICATION_NOTE_SAVED', entity: 'job_application', entityId: applicationId, after: () => ({ length: text.length }) },
+    (tx) => tx.jobApplication.update({ where: { id: application.id }, data: { recruiterNotes: text || null } }),
+  );
+
+  updateTag(tags.jobApplicants(application.jobPostId));
+}

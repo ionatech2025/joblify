@@ -138,6 +138,7 @@ enum AuditAction {
   JOB_DELETED
   APPLICATION_SUBMITTED
   APPLICATION_STATUS_CHANGED
+  APPLICATION_NOTE_SAVED
   RESUME_UPLOADED
   CONSENT_UPDATED
 }
@@ -343,9 +344,10 @@ model JobApplication {
   jobSeeker    User              @relation(fields: [jobSeekerId], references: [id], onDelete: Cascade)
   resume       Resume            @relation(fields: [resumeId], references: [id], onDelete: Restrict)
 
-  status       ApplicationStatus @default(SUBMITTED)
-  coverLetter  String?
-  matchScore   Float?
+  status         ApplicationStatus @default(SUBMITTED)
+  coverLetter    String?
+  recruiterNotes String?
+  matchScore     Float?
 
   appliedAt    DateTime          @default(now())
   updatedAt    DateTime          @updatedAt
