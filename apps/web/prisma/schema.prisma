@@ -405,6 +405,21 @@ model SavedSearch {
   @@map("saved_searches")
 }
 
+// Durable retry queue for Algolia sync. A failed reindexJob() upserts a row
+// (one per job); the algolia-reconcile cron drains it.
+model IndexOutbox {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  entityId  String   @db.Uuid
+  attempts  Int      @default(0)
+  lastError String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([entityId])
+  @@index([createdAt])
+  @@map("index_outbox")
+}
+
 // ============================================================================
 // Resumes
 // ============================================================================

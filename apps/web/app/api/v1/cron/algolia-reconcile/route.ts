@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { reindexJob } from '@/lib/search/index-job';
+import { reindexJob, drainIndexOutbox } from '@/lib/search/index-job';
 import { logger } from '@/lib/observability/logger';
 
 // Every 15min: re-push recently-updated jobs and remove soft-deleted ones.
@@ -33,5 +33,8 @@ export async function GET(req: Request) {
     }
   }
 
-  return NextResponse.json({ ok, fail, scanned: recent.length, at: new Date().toISOString() });
+  // Drain the durable retry queue for syncs that failed outside the scan window.
+  const outbox = await drainIndexOutbox();
+
+  return NextResponse.json({ ok, fail, scanned: recent.length, outbox, at: new Date().toISOString() });
 }
