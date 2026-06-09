@@ -14,11 +14,56 @@ export const metadata = {
 export default function MarketingHomePage() {
   return (
     <main>
-      <section className="border-b border-neutral-200 bg-gradient-to-b from-neutral-50 to-white">
-        <Container className="py-20">
+      <section className="relative overflow-hidden border-b border-neutral-200">
+        {/* Ambient "canvas" backdrop — gradient wash + faded grid + colored
+            starfield, all CSS (no image asset). Inspired by the-drop hero. */}
+        <div aria-hidden="true" className="pointer-events-none absolute inset-0">
+          <div
+            className="absolute inset-0"
+            style={{
+              background:
+                'linear-gradient(135deg, oklch(0.975 0.025 262) 0%, oklch(0.995 0.004 262) 46%, oklch(0.972 0.03 200) 100%)',
+            }}
+          />
+          {/* soft aurora blobs */}
+          <div
+            className="absolute inset-0"
+            style={{
+              backgroundImage:
+                'radial-gradient(42% 55% at 16% 18%, oklch(0.70 0.17 265 / 0.20), transparent 70%), radial-gradient(46% 52% at 88% 26%, oklch(0.78 0.13 205 / 0.18), transparent 72%), radial-gradient(44% 48% at 72% 100%, oklch(0.82 0.13 62 / 0.14), transparent 72%)',
+            }}
+          />
+          {/* grid, masked to fade toward the edges */}
+          <div
+            className="absolute inset-0"
+            style={{
+              backgroundImage:
+                'linear-gradient(oklch(0.45 0.04 262 / 0.07) 1px, transparent 1px), linear-gradient(90deg, oklch(0.45 0.04 262 / 0.07) 1px, transparent 1px)',
+              backgroundSize: '56px 56px',
+              maskImage: 'radial-gradient(ellipse 78% 68% at 50% 28%, #000 32%, transparent 80%)',
+              WebkitMaskImage: 'radial-gradient(ellipse 78% 68% at 50% 28%, #000 32%, transparent 80%)',
+            }}
+          />
+          {/* colored starfield */}
+          <div
+            className="absolute inset-0"
+            style={{
+              backgroundImage:
+                'radial-gradient(1.5px 1.5px at 20% 26%, oklch(0.50 0.12 265 / 0.40), transparent 50%), radial-gradient(1.5px 1.5px at 62% 16%, oklch(0.55 0.11 205 / 0.35), transparent 50%), radial-gradient(2px 2px at 81% 60%, oklch(0.62 0.13 62 / 0.32), transparent 50%), radial-gradient(1.5px 1.5px at 38% 70%, oklch(0.50 0.12 265 / 0.30), transparent 50%), radial-gradient(1.5px 1.5px at 91% 36%, oklch(0.55 0.11 205 / 0.33), transparent 50%), radial-gradient(1.5px 1.5px at 8% 64%, oklch(0.62 0.13 62 / 0.28), transparent 50%)',
+            }}
+          />
+        </div>
+
+        <Container className="relative py-24 sm:py-28 lg:py-32">
+          <span className="inline-flex items-center gap-2 rounded-full border border-neutral-900/10 bg-white/70 px-3.5 py-1.5 text-xs font-medium text-neutral-700 shadow-sm backdrop-blur-md">
+            <span className="size-1.5 rounded-full bg-emerald-500" aria-hidden="true" />
+            AI-matched roles · apply in one click
+          </span>
+
           {/* eslint-disable-next-line @next/next/no-img-element -- static brand mark */}
-          <img src="/logo.png" alt="Joblify" width={56} height={56} className="mb-6 size-14 rounded-xl" />
-          <h1 className="m-0 max-w-2xl text-4xl font-extrabold tracking-tight text-neutral-900 sm:text-5xl">
+          <img src="/logo.png" alt="Joblify" width={56} height={56} className="mt-6 size-14 rounded-xl shadow-sm" />
+
+          <h1 className="mt-5 max-w-2xl text-4xl font-extrabold tracking-tight text-neutral-900 sm:text-5xl lg:text-6xl">
             Find your next role
           </h1>
           <p className="mt-4 max-w-xl text-lg text-neutral-600">
@@ -27,13 +72,13 @@ export default function MarketingHomePage() {
           <div className="mt-8 flex flex-wrap gap-3">
             <Link
               href="/jobs"
-              className="inline-block rounded-lg bg-neutral-900 px-5 py-2.5 font-semibold text-white transition-colors hover:bg-neutral-700"
+              className="inline-block rounded-lg bg-neutral-900 px-5 py-2.5 font-semibold text-white shadow-sm transition-colors hover:bg-neutral-700"
             >
               Browse jobs
             </Link>
             <Link
               href="/employer-setup"
-              className="inline-block rounded-lg border border-neutral-300 bg-white px-5 py-2.5 font-semibold text-neutral-900 transition-colors hover:bg-neutral-50"
+              className="inline-block rounded-lg border border-neutral-300 bg-white/80 px-5 py-2.5 font-semibold text-neutral-900 backdrop-blur-sm transition-colors hover:bg-white"
             >
               Post a job
             </Link>
