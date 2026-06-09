@@ -5,6 +5,7 @@ import { db } from '@/lib/db';
 import { tags } from '@/lib/cache';
 import { Container } from '@/app/components/ui/container';
 import { Card } from '@/app/components/ui/card';
+import { Globe } from '@/app/components/globe';
 
 export const metadata = {
   title: 'Find your next role',
@@ -55,33 +56,42 @@ export default function MarketingHomePage() {
         </div>
 
         <Container className="relative py-24 sm:py-28 lg:py-32">
-          <span className="inline-flex items-center gap-2 rounded-full border border-neutral-900/10 bg-white/70 px-3.5 py-1.5 text-xs font-medium text-neutral-700 shadow-sm backdrop-blur-md">
-            <span className="size-1.5 rounded-full bg-emerald-500" aria-hidden="true" />
-            AI-matched roles · apply in one click
-          </span>
+          <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-12">
+            <div>
+              <span className="inline-flex items-center gap-2 rounded-full border border-neutral-900/10 bg-white/70 px-3.5 py-1.5 text-xs font-medium text-neutral-700 shadow-sm backdrop-blur-md">
+                <span className="size-1.5 rounded-full bg-emerald-500" aria-hidden="true" />
+                AI-matched roles · apply in one click
+              </span>
 
-          {/* eslint-disable-next-line @next/next/no-img-element -- static brand mark */}
-          <img src="/logo.png" alt="Joblify" width={56} height={56} className="mt-6 size-14 rounded-xl shadow-sm" />
+              {/* eslint-disable-next-line @next/next/no-img-element -- static brand mark */}
+              <img src="/logo.png" alt="Joblify" width={56} height={56} className="mt-6 size-14 rounded-xl shadow-sm" />
 
-          <h1 className="mt-5 max-w-2xl text-4xl font-extrabold tracking-tight text-neutral-900 sm:text-5xl lg:text-6xl">
-            Find your next role
-          </h1>
-          <p className="mt-4 max-w-xl text-lg text-neutral-600">
-            Search jobs by skill, location, and salary. Apply in one click with an AI-parsed résumé.
-          </p>
-          <div className="mt-8 flex flex-wrap gap-3">
-            <Link
-              href="/jobs"
-              className="inline-block rounded-lg bg-neutral-900 px-5 py-2.5 font-semibold text-white shadow-sm transition-colors hover:bg-neutral-700"
-            >
-              Browse jobs
-            </Link>
-            <Link
-              href="/employer-setup"
-              className="inline-block rounded-lg border border-neutral-300 bg-white/80 px-5 py-2.5 font-semibold text-neutral-900 backdrop-blur-sm transition-colors hover:bg-white"
-            >
-              Post a job
-            </Link>
+              <h1 className="mt-5 max-w-2xl text-4xl font-extrabold tracking-tight text-neutral-900 sm:text-5xl lg:text-6xl">
+                Find your next role
+              </h1>
+              <p className="mt-4 max-w-xl text-lg text-neutral-600">
+                Search jobs by skill, location, and salary. Apply in one click with an AI-parsed résumé.
+              </p>
+              <div className="mt-8 flex flex-wrap gap-3">
+                <Link
+                  href="/jobs"
+                  className="inline-block rounded-lg bg-neutral-900 px-5 py-2.5 font-semibold text-white shadow-sm transition-colors hover:bg-neutral-700"
+                >
+                  Browse jobs
+                </Link>
+                <Link
+                  href="/employer-setup"
+                  className="inline-block rounded-lg border border-neutral-300 bg-white/80 px-5 py-2.5 font-semibold text-neutral-900 backdrop-blur-sm transition-colors hover:bg-white"
+                >
+                  Post a job
+                </Link>
+              </div>
+            </div>
+
+            {/* Global map simulation — auto-rotating dotted globe */}
+            <div className="relative">
+              <Globe />
+            </div>
           </div>
         </Container>
       </section>
