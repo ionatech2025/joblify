@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Suspense } from 'react';
 import { ClerkProvider } from '@clerk/nextjs';
 import { Providers } from './providers';
@@ -6,12 +6,20 @@ import { Header } from './components/header';
 import { Footer } from './components/footer';
 import { CookieBanner } from './components/cookie-banner';
 import { AnalyticsGate } from './components/analytics-gate';
+import { SwRegister } from './components/sw-register';
 import './globals.css';
 
 export const metadata: Metadata = {
   title: { default: 'Joblify — Find your next role', template: '%s · Joblify' },
   description: 'A job marketplace for jobseekers and companies.',
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'),
+  applicationName: 'Joblify',
+  appleWebApp: { capable: true, title: 'Joblify', statusBarStyle: 'default' },
+  icons: { apple: '/apple-touch-icon.png' },
+};
+
+export const viewport: Viewport = {
+  themeColor: '#0a0a0a',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -22,6 +30,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body>
+        <SwRegister />
         <Suspense fallback={null}>
           <ClerkProvider>
             <Header />

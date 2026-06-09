@@ -1,5 +1,37 @@
 # Changelog
 
+## 2026-06-09 — First Vercel production deploy, JD prerender fix, branding + PWA
+
+First live production deploy of `apps/web` to Vercel (`joblify` project, aliased
+`joblify-virid.vercel.app`), provisioned end-to-end and verified. Typecheck · lint ·
+`next build` green per change.
+
+### Deploy / infra (Vercel)
+
+- Provisioned **Neon Postgres** + **Clerk** via Vercel Marketplace (env auto-injected);
+  set `CRON_SECRET`, `NEXT_PUBLIC_SITE_URL`, and Clerk sign-in/up routing vars.
+- `prisma migrate deploy` runs in the Vercel build → schema + extensions applied to
+  Neon; seeded skills + demo data (`prisma db seed`, `SEED_DEMO=1`).
+- `vercel.ts`: dropped `algolia-reconcile` cron to daily and removed the multi-region
+  pin — both are Pro-only and blocked the Hobby-plan deploy (comments note the Pro
+  values to restore). Algolia + `CLERK_WEBHOOK_SECRET` remain to be set (vendor keys).
+
+### JD / company pages — production prerender fix (the SEO surface)
+
+- `/jobs/[slug]` and `/companies/[slug]` awaited their per-slug DB read at the page
+  top, so the build prerendered a **not-found shell** that the CDN then served (200
+  body = 404) for every slug. Moved the read behind a runtime `connection()` +
+  `<Suspense>` boundary (matching the home page), so the build needs no DB and pages
+  render per-slug. Invisible in dev (dev doesn't prerender); only bit on Vercel.
+
+### Branding + PWA
+
+- Brand mark from the legacy app added to the nav and landing hero; generated
+  192/512/maskable/apple-touch icons + favicon (`app/icon.png`).
+- Installable PWA: `app/manifest.ts` (standalone, theme color, icons), a conservative
+  service worker (`public/sw.js`: API + cross-origin bypassed, hashed assets
+  cache-first, navigations network-first → `/offline` fallback), registered prod-only.
+
 ## 2026-06-08 — Next.js 16 platform: feature completion, money-path tests, design system (PR #19)
 
 Branch `feat/web-nextjs16-replatform` takes the production `apps/web` platform to

@@ -16,6 +16,8 @@ export default function MarketingHomePage() {
     <main>
       <section className="border-b border-neutral-200 bg-gradient-to-b from-neutral-50 to-white">
         <Container className="py-20">
+          {/* eslint-disable-next-line @next/next/no-img-element -- static brand mark */}
+          <img src="/logo.png" alt="Joblify" width={56} height={56} className="mb-6 size-14 rounded-xl" />
           <h1 className="m-0 max-w-2xl text-4xl font-extrabold tracking-tight text-neutral-900 sm:text-5xl">
             Find your next role
           </h1>

@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { connection } from 'next/server';
+import { Suspense } from 'react';
 import { db } from '@/lib/db';
 import { tags } from '@/lib/cache';
 
@@ -18,6 +20,24 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
 
 export default async function CompanyDetailPage({ params }: { params: Params }) {
   const { slug } = await params;
+  // Defer the per-slug DB read to runtime (see jobs/[slug] for the rationale):
+  // a top-level await would prerender a not-found shell at build and the CDN
+  // would serve that stale 404 for every company.
+  return (
+    <Suspense
+      fallback={
+        <main className="mx-auto max-w-4xl px-4 py-12 sm:px-6">
+          <div className="h-8 w-1/2 animate-pulse rounded bg-neutral-200" />
+        </main>
+      }
+    >
+      <CompanyDetailBody slug={slug} />
+    </Suspense>
+  );
+}
+
+async function CompanyDetailBody({ slug }: { slug: string }) {
+  await connection();
   const company = await getCompanyBySlug(slug);
   if (!company) notFound();
 

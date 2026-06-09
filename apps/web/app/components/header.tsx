@@ -14,7 +14,9 @@ export function Header() {
   return (
     <header className="sticky top-0 z-50 border-b border-neutral-200 bg-white/90 backdrop-blur">
       <Container className="flex items-center justify-between gap-4 py-3">
-        <Link href="/" onClick={close} className="text-lg font-extrabold tracking-tight text-neutral-900 no-underline">
+        <Link href="/" onClick={close} className="flex items-center gap-2 text-lg font-extrabold tracking-tight text-neutral-900 no-underline">
+          {/* eslint-disable-next-line @next/next/no-img-element -- small fixed-size brand mark */}
+          <img src="/logo.png" alt="" width={28} height={28} className="size-7 rounded-md" />
           Joblify
         </Link>
 

@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
+import { connection } from 'next/server';
 import { Suspense } from 'react';
 import { db } from '@/lib/db';
 import { tags } from '@/lib/cache';
@@ -32,6 +33,28 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
 
 export default async function JobDetailPage({ params }: { params: Params }) {
   const { slug } = await params;
+  // The JD body depends on a per-slug DB read. Keep it behind a runtime
+  // (Suspense) boundary so the build prerenders only the static shell — a
+  // top-level await here would prerender a not-found shell at build (no slug /
+  // empty DB) and the CDN would then serve that stale 404 for every slug.
+  return (
+    <Suspense fallback={<JobDetailSkeleton />}>
+      <JobDetailBody slug={slug} />
+    </Suspense>
+  );
+}
+
+function JobDetailSkeleton() {
+  return (
+    <main className="mx-auto max-w-4xl px-4 py-12 sm:px-6">
+      <div className="h-8 w-2/3 animate-pulse rounded bg-neutral-200" />
+      <div className="mt-4 h-4 w-1/3 animate-pulse rounded bg-neutral-100" />
+    </main>
+  );
+}
+
+async function JobDetailBody({ slug }: { slug: string }) {
+  await connection();
   const job = await getJobBySlug(slug);
   if (!job) notFound();
 
