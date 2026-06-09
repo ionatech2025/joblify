@@ -13,12 +13,15 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
 
-  const since = new Date(Date.now() - 30 * 60_000); // last 30min
+  // `?all=1` backfills every published job (one-off, e.g. after seeding or first
+  // wiring Algolia). Default scans only the last 30min for the scheduled cron.
+  const all = new URL(req.url).searchParams.get('all') === '1';
+  const since = new Date(Date.now() - 30 * 60_000);
 
   const recent = await db.jobPost.findMany({
-    where: { updatedAt: { gte: since } },
+    where: all ? { status: 'PUBLISHED', deletedAt: null } : { updatedAt: { gte: since } },
     select: { id: true },
-    take: 500,
+    take: 1000,
   });
 
   let ok = 0;
