@@ -205,7 +205,8 @@ apps/web/
 ├── lib/                    # domain libs (auth, db, audit, ratelimit, cache, ai, search, storage, email, query, stores, seo, observability)
 ├── workflows/              # async jobs invoked via after(); DevKit-ready
 ├── prisma/schema.prisma    # Postgres schema (12+ models)
-├── scripts/                # one-shot: migrate-mongo-to-neon, seed-skills
+├── prisma/seed.ts          # reproducible seed (prisma db seed): skills + demo
+├── scripts/                # one-shot: migrate-mongo-to-neon
 ├── tests/                  # vitest unit, playwright e2e + a11y, k6 load
 ├── middleware.ts           # Clerk + BotID + security headers
 ├── instrumentation.ts      # Sentry boot

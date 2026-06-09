@@ -24,8 +24,11 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:deploy": "prisma migrate deploy",
     "prisma:studio": "prisma studio",
-    "seed:skills": "bun run scripts/seed-skills.ts",
+    "db:seed": "prisma db seed",
     "migrate:mongo": "bun run scripts/migrate-mongo-to-neon.ts"
+  },
+  "prisma": {
+    "seed": "bun run prisma/seed.ts"
   },
   "dependencies": {
     "@ai-sdk/gateway": "^1.0.0",

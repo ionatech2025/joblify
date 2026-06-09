@@ -34,8 +34,9 @@ I can't do these for you.
   the Neon dashboard if the deploy errors). A failed migration fails the deploy
   (so a broken schema never ships). To gate prod migrations manually instead,
   drop `prisma migrate deploy` from `buildCommand` and run it as a release step.
-- **[owner]** Seed the skill taxonomy: `bunx tsx scripts/seed-skills.ts`. JD skill
-  extraction matches against it — search/match quality depends on it.
+- **[owner]** Seed the skill taxonomy: `bunx prisma db seed` (reference skills;
+  add `SEED_DEMO=1` to also plant a demo company + jobs). JD skill extraction
+  matches against it — search/match quality depends on it.
 
 ## 3. Data migration (only if importing legacy Mongo data)
 

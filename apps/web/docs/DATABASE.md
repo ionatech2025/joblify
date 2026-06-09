@@ -87,7 +87,7 @@ Plus: `Invitation`, `JobView`.
 
 ## Skills taxonomy
 
-`Skill` is canonical (slug-unique). Seeded by `scripts/seed-skills.ts` with ~30 starter skills; expand to the full ESCO catalogue (~13k entries) when search relevance demands it.
+`Skill` is canonical (slug-unique). Seeded by `prisma db seed` (`prisma/seed.ts`) with ~30 starter skills; expand to the full ESCO catalogue (~13k entries) when search relevance demands it.
 
 `JobPostSkill` and `JobSeekerSkill` are join tables with extra columns:
 - `JobPostSkill.weight` — 1 (nice-to-have) or 2 (required).
