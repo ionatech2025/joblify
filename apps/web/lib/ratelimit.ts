@@ -13,9 +13,16 @@ let _redis: Redis | null = null;
 
 function redis(): Redis | null {
   if (_redis) return _redis;
-  if (!process.env.KV_REST_API_URL || !process.env.KV_REST_API_TOKEN) return null;
-  _redis = Redis.fromEnv();
-  return _redis;
+  const url = process.env.KV_REST_API_URL;
+  // Treat missing OR non-URL (e.g. an un-filled placeholder) as "not configured"
+  // so a bad value can't crash every rate-limited route at module load.
+  if (!url || !process.env.KV_REST_API_TOKEN || !url.startsWith('http')) return null;
+  try {
+    _redis = Redis.fromEnv();
+    return _redis;
+  } catch {
+    return null;
+  }
 }
 
 const allowAll: RateLimitResult = { success: true, remaining: Number.MAX_SAFE_INTEGER, reset: 0 };
@@ -33,8 +40,13 @@ function makeLimit(prefix: string, limit: ReturnType<typeof Ratelimit.slidingWin
     analytics: true,
   });
   return async (identifier) => {
-    const { success, remaining, reset } = await rl.limit(identifier);
-    return { success, remaining, reset };
+    try {
+      const { success, remaining, reset } = await rl.limit(identifier);
+      return { success, remaining, reset };
+    } catch {
+      // Upstash unavailable mid-request — fail open rather than 500 the route.
+      return allowAll;
+    }
   };
 }
 
