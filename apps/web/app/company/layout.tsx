@@ -23,7 +23,7 @@ async function CompanyShell({ children }: { children: React.ReactNode }) {
 
   return (
     <section>
-      <nav className="border-b border-neutral-200">
+      <nav className="border-b border-indigo-100 bg-gradient-to-r from-indigo-50 via-white to-sky-50">
         <Container className="flex flex-wrap gap-x-5 gap-y-2 py-3">
           <Link href="/company/jobs" className={link}>
             Jobs
