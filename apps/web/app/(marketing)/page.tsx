@@ -5,7 +5,7 @@ import { db } from '@/lib/db';
 import { tags } from '@/lib/cache';
 import { Container } from '@/app/components/ui/container';
 import { Card } from '@/app/components/ui/card';
-import { Globe } from '@/app/components/globe';
+import { GlobeLazy } from '@/app/components/globe-lazy';
 
 export const metadata = {
   title: 'Find your next role',
@@ -23,15 +23,15 @@ export default function MarketingHomePage() {
             className="absolute inset-0"
             style={{
               background:
-                'linear-gradient(135deg, oklch(0.975 0.025 262) 0%, oklch(0.995 0.004 262) 46%, oklch(0.972 0.03 200) 100%)',
+                'linear-gradient(135deg, oklch(0.972 0.032 280) 0%, oklch(0.995 0.005 272) 50%, oklch(0.965 0.035 235) 100%)',
             }}
           />
-          {/* soft aurora blobs */}
+          {/* soft aurora blobs — cohesive violet → indigo → sky */}
           <div
             className="absolute inset-0"
             style={{
               backgroundImage:
-                'radial-gradient(42% 55% at 16% 18%, oklch(0.70 0.17 265 / 0.20), transparent 70%), radial-gradient(46% 52% at 88% 26%, oklch(0.78 0.13 205 / 0.18), transparent 72%), radial-gradient(44% 48% at 72% 100%, oklch(0.82 0.13 62 / 0.14), transparent 72%)',
+                'radial-gradient(42% 55% at 16% 18%, oklch(0.70 0.18 288 / 0.20), transparent 70%), radial-gradient(46% 52% at 88% 26%, oklch(0.72 0.16 258 / 0.18), transparent 72%), radial-gradient(44% 48% at 72% 100%, oklch(0.78 0.13 228 / 0.14), transparent 72%)',
             }}
           />
           {/* grid, masked to fade toward the edges */}
@@ -39,18 +39,18 @@ export default function MarketingHomePage() {
             className="absolute inset-0"
             style={{
               backgroundImage:
-                'linear-gradient(oklch(0.45 0.04 262 / 0.07) 1px, transparent 1px), linear-gradient(90deg, oklch(0.45 0.04 262 / 0.07) 1px, transparent 1px)',
+                'linear-gradient(oklch(0.45 0.05 272 / 0.07) 1px, transparent 1px), linear-gradient(90deg, oklch(0.45 0.05 272 / 0.07) 1px, transparent 1px)',
               backgroundSize: '56px 56px',
               maskImage: 'radial-gradient(ellipse 78% 68% at 50% 28%, #000 32%, transparent 80%)',
               WebkitMaskImage: 'radial-gradient(ellipse 78% 68% at 50% 28%, #000 32%, transparent 80%)',
             }}
           />
-          {/* colored starfield */}
+          {/* colored starfield — violet / indigo / sky */}
           <div
             className="absolute inset-0"
             style={{
               backgroundImage:
-                'radial-gradient(1.5px 1.5px at 20% 26%, oklch(0.50 0.12 265 / 0.40), transparent 50%), radial-gradient(1.5px 1.5px at 62% 16%, oklch(0.55 0.11 205 / 0.35), transparent 50%), radial-gradient(2px 2px at 81% 60%, oklch(0.62 0.13 62 / 0.32), transparent 50%), radial-gradient(1.5px 1.5px at 38% 70%, oklch(0.50 0.12 265 / 0.30), transparent 50%), radial-gradient(1.5px 1.5px at 91% 36%, oklch(0.55 0.11 205 / 0.33), transparent 50%), radial-gradient(1.5px 1.5px at 8% 64%, oklch(0.62 0.13 62 / 0.28), transparent 50%)',
+                'radial-gradient(1.5px 1.5px at 20% 26%, oklch(0.52 0.14 288 / 0.40), transparent 50%), radial-gradient(1.5px 1.5px at 62% 16%, oklch(0.55 0.13 258 / 0.35), transparent 50%), radial-gradient(2px 2px at 81% 60%, oklch(0.58 0.12 228 / 0.32), transparent 50%), radial-gradient(1.5px 1.5px at 38% 70%, oklch(0.52 0.14 288 / 0.30), transparent 50%), radial-gradient(1.5px 1.5px at 91% 36%, oklch(0.55 0.13 258 / 0.33), transparent 50%), radial-gradient(1.5px 1.5px at 8% 64%, oklch(0.58 0.12 228 / 0.28), transparent 50%)',
             }}
           />
         </div>
@@ -90,7 +90,7 @@ export default function MarketingHomePage() {
 
             {/* Global map simulation — auto-rotating dotted globe */}
             <div className="relative">
-              <Globe />
+              <GlobeLazy />
             </div>
           </div>
         </Container>

@@ -40,11 +40,11 @@ export function Globe() {
       theta: 0.25,
       dark: 0,
       diffuse: 1.2,
-      mapSamples: 16000,
-      mapBrightness: 5.2,
-      baseColor: [0.82, 0.84, 0.92], // light indigo-grey landmass
-      markerColor: [0.36, 0.42, 0.96], // indigo markers
-      glowColor: [0.92, 0.94, 1],
+      mapSamples: 12000,
+      mapBrightness: 5.4,
+      baseColor: [0.8, 0.82, 0.93], // cool indigo-grey landmass
+      markerColor: [0.45, 0.36, 0.97], // indigo-violet markers
+      glowColor: [0.9, 0.92, 1],
       markers: MARKERS,
     });
 
