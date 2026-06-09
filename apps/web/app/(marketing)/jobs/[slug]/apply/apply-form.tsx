@@ -21,7 +21,10 @@ export function ApplyForm({
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const draft = useApplyDraftStore((s) => s.byJob[jobId] ?? { resumeId: null, coverLetter: '', acknowledgedDataUse: false });
+  // Use the store's stable getter (returns the shared `blank` ref when empty).
+  // An inline `?? {…}` here returns a NEW object every render → Zustand's
+  // snapshot never matches → infinite re-render (React #185).
+  const draft = useApplyDraftStore((s) => s.get(jobId));
   const update = useApplyDraftStore((s) => s.update);
   const clear = useApplyDraftStore((s) => s.clear);
 

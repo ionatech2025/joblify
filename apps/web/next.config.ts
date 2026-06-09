@@ -1,9 +1,9 @@
 import type { NextConfig } from 'next';
 import { withSentryConfig } from '@sentry/nextjs';
 
-// CSP shipped in Report-Only first so we can observe violations from Clerk +
-// Vercel Analytics/Speed Insights + Sentry + Algolia + Blob before enforcing.
-// Flip the header key to 'Content-Security-Policy' once the report is clean.
+// CSP enforced (was Report-Only during staging). Covers Clerk + Vercel
+// Analytics/Speed Insights + Sentry + Algolia + Blob. When moving to a Clerk
+// production instance, add its domain (clerk.<your-domain>) to script/connect/frame-src.
 const csp = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.clerk.accounts.dev https://challenges.cloudflare.com https://va.vercel-scripts.com",
@@ -42,7 +42,7 @@ const nextConfig: NextConfig = {
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
           { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(self)' },
           { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
-          { key: 'Content-Security-Policy-Report-Only', value: csp },
+          { key: 'Content-Security-Policy', value: csp },
         ],
       },
     ];
