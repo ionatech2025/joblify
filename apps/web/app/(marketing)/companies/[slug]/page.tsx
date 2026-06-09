@@ -66,7 +66,7 @@ async function CompanyDetailBody({ slug }: { slug: string }) {
 
       {company.website && (
         <p>
-          <a href={company.website} rel="noopener noreferrer" target="_blank" className="text-blue-700 hover:underline">
+          <a href={company.website} rel="noopener noreferrer" target="_blank" className="text-indigo-700 hover:underline">
             {company.website}
           </a>
         </p>

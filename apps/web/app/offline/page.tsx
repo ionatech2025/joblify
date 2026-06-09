@@ -16,7 +16,7 @@ export default function OfflinePage() {
       </p>
       <Link
         href="/"
-        className="mt-6 rounded-lg bg-neutral-900 px-4 py-2 font-semibold text-white no-underline transition-colors hover:bg-neutral-700"
+        className="mt-6 rounded-lg bg-indigo-600 px-4 py-2 font-semibold text-white no-underline transition-colors hover:bg-indigo-700"
       >
         Go to homepage
       </Link>

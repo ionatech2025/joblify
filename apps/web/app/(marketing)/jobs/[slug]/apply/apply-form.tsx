@@ -47,7 +47,7 @@ export function ApplyForm({
         {resumes.length === 0 ? (
           <p className="m-0 text-red-700">
             You need a resume first.{' '}
-            <Link href="/jobseeker/resumes" className="font-semibold text-blue-700 hover:underline">
+            <Link href="/jobseeker/resumes" className="font-semibold text-indigo-700 hover:underline">
               Upload one →
             </Link>
           </p>

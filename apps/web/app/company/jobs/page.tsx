@@ -18,7 +18,7 @@ export default async function CompanyJobsPage() {
         <h1 className="m-0 text-2xl font-bold text-neutral-900">My job posts</h1>
         <Link
           href="/company/jobs/new"
-          className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-neutral-700"
+          className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-700"
         >
           Post a job
         </Link>
@@ -27,7 +27,7 @@ export default async function CompanyJobsPage() {
       {jobs.length === 0 ? (
         <p className="text-neutral-600">
           You haven&apos;t posted any jobs yet.{' '}
-          <Link href="/company/jobs/new" className="text-blue-700 hover:underline">
+          <Link href="/company/jobs/new" className="text-indigo-700 hover:underline">
             Post your first job
           </Link>
           .
@@ -58,13 +58,13 @@ export default async function CompanyJobsPage() {
                     </span>
                   </td>
                   <td className="px-4 py-3">
-                    <Link href={`/company/applicants/${j.id}`} className="text-blue-700 hover:underline">
+                    <Link href={`/company/applicants/${j.id}`} className="text-indigo-700 hover:underline">
                       {j._count.applications}
                     </Link>
                   </td>
                   <td className="px-4 py-3 text-neutral-600">{(j.publishedAt ?? j.createdAt).toLocaleDateString()}</td>
                   <td className="px-4 py-3">
-                    <Link href={`/company/jobs/${j.id}/edit`} className="text-blue-700 hover:underline">
+                    <Link href={`/company/jobs/${j.id}/edit`} className="text-indigo-700 hover:underline">
                       Edit
                     </Link>
                   </td>

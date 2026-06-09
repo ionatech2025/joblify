@@ -44,7 +44,7 @@ export default async function EditJobPage({
       <div className="flex flex-wrap items-center justify-between gap-4">
         <h1 className="m-0 text-2xl font-bold text-neutral-900">Edit job</h1>
         {job.status === 'PUBLISHED' && (
-          <Link href={`/jobs/${job.slug}`} className="text-blue-700 hover:underline">
+          <Link href={`/jobs/${job.slug}`} className="text-indigo-700 hover:underline">
             View public page ↗
           </Link>
         )}

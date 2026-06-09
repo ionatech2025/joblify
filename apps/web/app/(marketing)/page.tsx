@@ -75,7 +75,7 @@ export default function MarketingHomePage() {
               <div className="mt-8 flex flex-wrap gap-3">
                 <Link
                   href="/jobs"
-                  className="inline-block rounded-lg bg-neutral-900 px-5 py-2.5 font-semibold text-white shadow-sm transition-colors hover:bg-neutral-700"
+                  className="inline-block rounded-lg bg-indigo-600 px-5 py-2.5 font-semibold text-white shadow-sm transition-colors hover:bg-indigo-700"
                 >
                   Browse jobs
                 </Link>

@@ -22,7 +22,7 @@ export default function Error({
       <div className="mt-6 flex justify-center gap-3">
         <button
           onClick={reset}
-          className="rounded-lg bg-neutral-900 px-5 py-2.5 font-semibold text-white transition-colors hover:bg-neutral-700"
+          className="rounded-lg bg-indigo-600 px-5 py-2.5 font-semibold text-white transition-colors hover:bg-indigo-700"
         >
           Try again
         </button>

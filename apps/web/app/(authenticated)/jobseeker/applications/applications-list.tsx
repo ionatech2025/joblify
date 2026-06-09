@@ -36,7 +36,7 @@ export function ApplicationsList({
     return (
       <p className="text-neutral-600">
         You haven&apos;t applied to any jobs yet.{' '}
-        <Link href="/jobs" className="text-blue-700 hover:underline">
+        <Link href="/jobs" className="text-indigo-700 hover:underline">
           Find a role
         </Link>
         .

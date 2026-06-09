@@ -139,11 +139,11 @@ function ApplicantCard({ row, onStatus }: { row: Row; onStatus: (id: string, s: 
       <p className="mt-0.5 mb-0 text-xs text-neutral-500">Applied {new Date(row.appliedAt).toLocaleDateString()}</p>
 
       <div className="mt-1 flex gap-3 text-xs">
-        <a href={row.resumeUrl} target="_blank" rel="noopener noreferrer" className="text-blue-700 hover:underline">
+        <a href={row.resumeUrl} target="_blank" rel="noopener noreferrer" className="text-indigo-700 hover:underline">
           Résumé ↗
         </a>
         {row.coverLetter && (
-          <button onClick={() => setOpenCover((o) => !o)} className="text-blue-700 hover:underline">
+          <button onClick={() => setOpenCover((o) => !o)} className="text-indigo-700 hover:underline">
             {openCover ? 'Hide cover letter' : 'Cover letter'}
           </button>
         )}

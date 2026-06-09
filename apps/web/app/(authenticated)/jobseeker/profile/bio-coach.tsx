@@ -21,7 +21,7 @@ export function BioCoach({ currentBio }: { currentBio: string }) {
     return (
       <button
         onClick={() => setOpen(true)}
-        className="rounded-md bg-blue-700 px-4 py-2 font-semibold text-white transition-colors hover:bg-blue-800"
+        className="rounded-md bg-indigo-600 px-4 py-2 font-semibold text-white transition-colors hover:bg-indigo-700"
       >
         ✨ Improve my bio with AI
       </button>
@@ -69,7 +69,7 @@ export function BioCoach({ currentBio }: { currentBio: string }) {
         <button
           type="submit"
           disabled={status === 'streaming'}
-          className="rounded-md bg-neutral-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+          className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
         >
           Send
         </button>

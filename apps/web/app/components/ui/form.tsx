@@ -9,7 +9,7 @@ import {
 // Shared form-control primitives. forwardRef so React Hook Form's register()
 // can attach its ref; spread props pass name/onChange/onBlur straight through.
 const controlBase =
-  'w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none disabled:bg-neutral-50';
+  'w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 focus:outline-none disabled:bg-neutral-50';
 
 export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(function Input(
   { className = '', ...props },

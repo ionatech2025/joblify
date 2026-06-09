@@ -41,7 +41,7 @@ export function NotificationsList({ initial }: { initial: NotificationItem[] }) 
               <button
                 onClick={() => mark.mutate(n.id)}
                 disabled={mark.isPending}
-                className="self-start text-sm text-blue-700 hover:underline disabled:opacity-50"
+                className="self-start text-sm text-indigo-700 hover:underline disabled:opacity-50"
               >
                 Mark read
               </button>
