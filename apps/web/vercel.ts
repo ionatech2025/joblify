@@ -2,7 +2,10 @@ import { type VercelConfig } from '@vercel/config/v1';
 
 export const config: VercelConfig = {
   framework: 'nextjs',
-  buildCommand: 'prisma generate && bun run build',
+  // migrate deploy uses the schema's directUrl (DATABASE_URL_UNPOOLED) — pooled
+  // PgBouncer connections can't run DDL. This is the Vercel build only; GitHub CI
+  // runs `next build` directly, so it never touches a database.
+  buildCommand: 'prisma generate && prisma migrate deploy && bun run build',
   installCommand: 'bun install --frozen-lockfile',
   regions: ['fra1', 'dub1', 'iad1'],
   crons: [

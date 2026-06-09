@@ -26,7 +26,14 @@ I can't do these for you.
   (extensions, 16 tables, pgvector HNSW indexes, FTS trigger + GIN, PostGIS GiST,
   pg_trgm) — captures the full schema incl. `SavedJob` / `SavedSearch` /
   `recruiterNotes` / `emailSuppressedAt` / `index_outbox`.
-- **[owner]** `DATABASE_URL=<neon-direct> bunx prisma migrate deploy`
+- **[code: done]** `prisma migrate deploy` now runs automatically in the Vercel
+  build (`vercel.ts` `buildCommand`). Ensure `DATABASE_URL_UNPOOLED` (the Neon
+  **direct** connection — pooled PgBouncer can't run DDL) is set in the Vercel
+  env. The first deploy applies the init migration, incl. `CREATE EXTENSION`; the
+  Neon role must be allowed to create `postgis` / `vector` / `pg_trgm` (enable in
+  the Neon dashboard if the deploy errors). A failed migration fails the deploy
+  (so a broken schema never ships). To gate prod migrations manually instead,
+  drop `prisma migrate deploy` from `buildCommand` and run it as a release step.
 - **[owner]** Seed the skill taxonomy: `bunx tsx scripts/seed-skills.ts`. JD skill
   extraction matches against it — search/match quality depends on it.
 

@@ -62,7 +62,7 @@ Configured in `vercel.ts`:
 
 ```ts
 framework: 'nextjs',
-buildCommand: 'prisma generate && bun run build',
+buildCommand: 'prisma generate && prisma migrate deploy && bun run build',
 installCommand: 'bun install --frozen-lockfile',
 regions: ['fra1', 'dub1', 'iad1'],
 crons: [
@@ -77,8 +77,9 @@ Build steps:
 1. Vercel detects Bun via `packageManager` in `package.json`.
 2. `bun install --frozen-lockfile` resolves deps from `bun.lock`.
 3. `prisma generate` runs automatically via the `postinstall` hook (and is prepended to `buildCommand` as a safety net for cached installs).
-4. `bun run build` invokes `next build`.
-5. Vercel ships artifacts to the edge + Fluid Compute runtime.
+4. `prisma migrate deploy` applies pending migrations via the schema's `directUrl` (`DATABASE_URL_UNPOOLED`); a failed migration fails the deploy.
+5. `bun run build` invokes `next build`.
+6. Vercel ships artifacts to the edge + Fluid Compute runtime.
 
 ## Environments
 
@@ -145,24 +146,23 @@ If a database migration was part of the bad deploy, rolling back code alone does
 
 ## Database migrations in CI/CD
 
-Migrations are **not run by Vercel build** today. Run manually before promoting:
+Migrations run automatically in the **Vercel build** — `prisma migrate deploy` is
+part of `vercel.ts` `buildCommand`. It uses the schema's `directUrl`
+(`DATABASE_URL_UNPOOLED`; pooled PgBouncer can't run DDL), and a failed migration
+fails the deploy, so a broken schema never ships. This runs on every deploy,
+including previews (which use Neon DB branches), so each migration is exercised on
+a branch before production.
+
+The first deploy applies the init migration including `CREATE EXTENSION`
+(`citext` / `pgcrypto` / `pg_trgm` / `postgis` / `vector`) — the Neon role must be
+permitted to create them.
+
+To gate production migrations manually instead, remove `prisma migrate deploy`
+from `buildCommand` and run it as a release step against `DATABASE_URL_UNPOOLED`:
 
 ```bash
 bunx prisma migrate deploy
 ```
-
-against the production `DATABASE_URL_UNPOOLED` (pull via `bunx vercel env pull --environment=production .env.prod`, then `DATABASE_URL=$(grep DATABASE_URL_UNPOOLED .env.prod | cut -d= -f2-) bunx prisma migrate deploy`).
-
-For Week 11 / 12 hardening, consider a GitHub Action job that runs migrations on push to `main` *before* Vercel promotes:
-
-```yaml
-- name: Migrate database
-  run: bunx prisma migrate deploy
-  env:
-    DATABASE_URL: ${{ secrets.DATABASE_URL_UNPOOLED }}
-```
-
-(Add this in the cutover PR; not in V1 to keep the surface small.)
 
 ## Domains
 
