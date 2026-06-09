@@ -31,7 +31,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body>
         <SwRegister />
-        <Suspense fallback={null}>
+        {/* Reserve the header height so the Clerk-gated header streaming in
+            doesn't push content down (avoids layout shift). */}
+        <Suspense fallback={<div className="h-14 border-b border-neutral-200 bg-white/90" />}>
           <ClerkProvider>
             <Header />
             <Providers>{children}</Providers>
