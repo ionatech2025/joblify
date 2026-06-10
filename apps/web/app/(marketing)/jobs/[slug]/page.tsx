@@ -134,7 +134,7 @@ async function JobDetailBody({ slug }: { slug: string }) {
         </section>
       )}
 
-      <section className="mt-12 rounded-xl border border-neutral-200 bg-neutral-50 p-6">
+      <section className="mt-12 rounded-xl border border-neutral-200 bg-white/70 p-6 backdrop-blur-sm">
         <Suspense fallback={<p>Loading apply options…</p>}>
           <ApplyPanel jobId={job.id} slug={job.slug} />
         </Suspense>

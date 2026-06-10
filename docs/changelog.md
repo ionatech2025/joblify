@@ -1,5 +1,22 @@
 # Changelog
 
+## 2026-06-10 — Global ambient backdrop: every section on one canvas
+
+Extends the ambient design language from per-section treatments to the whole
+viewport. One faint fixed `page`-variant canvas (wash + masked grid, no
+aurora/starfield) renders behind everything via the root layout (`-z-10`,
+body now transparent over a white `html`); chrome becomes glass over it:
+
+- header `bg-white/70 backdrop-blur` + indigo border (mobile menu + Suspense
+  fallback match), footer `bg-white/60 backdrop-blur` + indigo border,
+  dashboard sub-navs glass, JD apply panel + applicant kanban columns glass.
+- Intensity hierarchy preserved: hero (wash+aurora+grid+stars) > header bands
+  (wash+grid+dots) > page backdrop (faint wash+grid). Cards/tables stay
+  opaque white for dense-content legibility; dark cookie banner unchanged.
+
+Verified: typecheck · lint · build green; served HTML carries the fixed
+backdrop + glass chrome on every page; hero variant unchanged.
+
 ## 2026-06-10 — Money-path test coverage: post-job, applicant pipeline, resume parse
 
 Closed the remaining money-path test gaps (unit suite 50 → 79, all green).
