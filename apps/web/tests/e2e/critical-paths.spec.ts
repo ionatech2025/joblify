@@ -25,8 +25,22 @@ test.describe('Joblify critical paths', () => {
     await expect(page.getByRole('heading', { name: /search jobs/i })).toBeVisible();
   });
 
-  test('JD page 404s on unknown slug', async ({ page }) => {
-    const res = await page.goto('/jobs/this-slug-does-not-exist-zzz');
+  test('unknown JD slug renders the not-found experience (noindex)', async ({ page }) => {
+    // Under PPR the static shell commits HTTP 200 before the streamed body can
+    // call notFound(), so the status for an unknown slug is 200 by design.
+    // The SEO contract is the not-found UI plus the `noindex` robots meta that
+    // Next injects with streamed notFound() — Google drops noindex pages, so
+    // this is not a soft-404 risk. Real JDs carry no robots meta (indexable).
+    await page.goto('/jobs/this-slug-does-not-exist-zzz');
+    await expect(page.getByRole('heading', { name: '404' })).toBeVisible();
+    // Hydration can duplicate the streamed meta — assert presence, not count.
+    expect(
+      await page.locator('meta[name="robots"][content*="noindex"]').count(),
+    ).toBeGreaterThanOrEqual(1);
+  });
+
+  test('unknown routes return a real 404 status', async ({ page }) => {
+    const res = await page.goto('/this-route-does-not-exist-zzz');
     expect(res?.status()).toBe(404);
   });
 
