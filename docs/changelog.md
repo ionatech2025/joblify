@@ -1,5 +1,34 @@
 # Changelog
 
+## 2026-06-10 — Design-consistency sweep: ambient hero style app-wide
+
+Palette audit findings: indigo accents were already consistent (Button/links/
+focus/Badge); the landing hero's ambient canvas existed only there; `/jobs` +
+the two dashboard sub-navs used a flat indigo tint; three off-palette spots —
+the base `a` color in globals.css was blue-700, the Clerk widget rendered its
+default blue, and the bio-coach user bubble was blue-50. Semantic colors
+(green=success, red=error/danger, amber=mid-match, blue status badges, emerald
+"live" dot, dark cookie banner) are intentional and unchanged.
+
+Changes (commit in PR #19):
+- New `app/components/ui/ambient.tsx` — `AmbientCanvas` (`hero`/`band`
+  variants; pure CSS, aria-hidden, CLS-neutral), `AmbientBand`, `PageHeader`
+  (title/subtitle/actions/width). The landing hero now renders the shared
+  `hero` variant (dedupe, visual no-op).
+- Every interior page title now sits in a full-width ambient **header band**
+  (~25 pages: marketing, legal, jobseeker, company, account, apply); the JD and
+  company-profile pages wrap their custom headers in `AmbientBand` (PPR shape
+  untouched — `/jobs/[slug]` still prerenders `◐`).
+- Full hero canvas on sign-in/up, error, 404, and offline pages.
+- Dashboard sub-navs reverted to neutral so the title band is the single
+  tinted element per screen.
+- Palette fixes: base link color → indigo-700 (#4338ca); ClerkProvider
+  `appearance.variables.colorPrimary = #4f46e5` (Clerk widgets on-palette);
+  bio-coach bubble → indigo-50.
+
+Verified: typecheck · lint · build green; band/canvas markup curl-verified on
+11 routes locally (200s, 404 page correct, JD/company content intact).
+
 ## 2026-06-09 — First Vercel production deploy, JD prerender fix, branding + PWA
 
 First live production deploy of `apps/web` to Vercel (`joblify` project, aliased

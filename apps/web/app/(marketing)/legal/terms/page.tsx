@@ -1,9 +1,12 @@
+import { PageHeader } from '@/app/components/ui/ambient';
+
 export const metadata = { title: 'Terms of service' };
 
 export default function TermsPage() {
   return (
-    <main className="mx-auto max-w-3xl px-4 py-12 sm:px-6">
-      <h1>Terms of service</h1>
+    <main>
+      <PageHeader title="Terms of service" width="max-w-3xl" />
+      <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
       <p>
         By using Joblify you agree to use the platform lawfully, not impersonate others, and respect
         the access controls on the service. Job postings must be genuine and lawful. Applications
@@ -23,6 +26,7 @@ export default function TermsPage() {
       <p className="text-neutral-500">
         Contact: <a href="mailto:legal@joblify.example">legal@joblify.example</a>
       </p>
+      </div>
     </main>
   );
 }

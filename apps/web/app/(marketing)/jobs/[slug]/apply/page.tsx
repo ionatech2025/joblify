@@ -3,6 +3,7 @@ import { notFound, redirect } from 'next/navigation';
 import { db } from '@/lib/db';
 import { requireRole } from '@/lib/auth';
 import { ApplyForm } from './apply-form';
+import { PageHeader } from '@/app/components/ui/ambient';
 
 type Params = Promise<{ slug: string }>;
 
@@ -40,10 +41,15 @@ async function ApplyContent({ slug }: { slug: string }) {
   });
 
   return (
-    <main className="mx-auto max-w-3xl px-4 py-12 sm:px-6">
-      <h1 className="text-2xl font-bold text-neutral-900">Apply: {job.title}</h1>
-      <p className="mt-1 mb-8 text-neutral-600">{job.company.companyProfile?.companyName ?? 'Company'}</p>
-      <ApplyForm jobId={job.id} jobSlug={job.slug} resumes={resumes} />
+    <main>
+      <PageHeader
+        title={`Apply: ${job.title}`}
+        subtitle={job.company.companyProfile?.companyName ?? 'Company'}
+        width="max-w-3xl"
+      />
+      <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
+        <ApplyForm jobId={job.id} jobSlug={job.slug} resumes={resumes} />
+      </div>
     </main>
   );
 }

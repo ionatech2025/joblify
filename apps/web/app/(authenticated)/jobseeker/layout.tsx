@@ -7,7 +7,7 @@ const link = 'text-sm text-neutral-700 transition-colors hover:text-neutral-900'
 export default function JobseekerLayout({ children }: { children: React.ReactNode }) {
   return (
     <section>
-      <nav className="border-b border-indigo-100 bg-gradient-to-r from-indigo-50 via-white to-sky-50">
+      <nav className="border-b border-neutral-200 bg-white">
         <Container className="flex flex-wrap gap-x-5 gap-y-2 py-3">
           <Link href="/jobseeker/applications" className={link}>
             Applications

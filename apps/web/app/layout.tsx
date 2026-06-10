@@ -34,7 +34,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* Reserve the header height so the Clerk-gated header streaming in
             doesn't push content down (avoids layout shift). */}
         <Suspense fallback={<div className="h-14 border-b border-neutral-200 bg-white/90" />}>
-          <ClerkProvider>
+          {/* colorPrimary matches the app's indigo accent so Clerk's widgets
+              (sign-in/up card, UserButton) render on-palette. */}
+          <ClerkProvider appearance={{ variables: { colorPrimary: '#4f46e5' } }}>
             <Header />
             <Providers>{children}</Providers>
             <Footer />

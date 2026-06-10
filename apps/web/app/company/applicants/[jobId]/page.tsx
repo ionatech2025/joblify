@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 import { requireRole } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { ApplicantsBoard } from './applicants-board';
+import { PageHeader } from '@/app/components/ui/ambient';
 
 export const metadata = { title: 'Applicants' };
 
@@ -24,10 +25,12 @@ export default async function ApplicantsPage({ params }: { params: Promise<{ job
   });
 
   return (
-    <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
-      <h1 className="m-0 text-2xl font-bold text-neutral-900">Applicants for {job.title}</h1>
-      <p className="mt-1 text-neutral-600">{applications.length} application(s)</p>
-
+    <main>
+      <PageHeader
+        title={`Applicants for ${job.title}`}
+        subtitle={`${applications.length} application(s)`}
+      />
+      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
       <ApplicantsBoard
         applications={applications.map((a) => ({
           id: a.id,
@@ -46,6 +49,7 @@ export default async function ApplicantsPage({ params }: { params: Promise<{ job
           },
         }))}
       />
+      </div>
     </main>
   );
 }

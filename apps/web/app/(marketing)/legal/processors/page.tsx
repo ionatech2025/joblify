@@ -1,3 +1,5 @@
+import { PageHeader } from '@/app/components/ui/ambient';
+
 export const metadata = { title: 'Data processors' };
 
 const PROCESSORS = [
@@ -17,13 +19,14 @@ const PROCESSORS = [
 
 export default function ProcessorsPage() {
   return (
-    <main className="mx-auto max-w-5xl px-4 py-12 sm:px-6">
-      <h1>Data processors</h1>
-      <p>
-        Each of the third parties below processes data on our behalf under a Data Processing
-        Agreement. We minimize data shared with each.
-      </p>
-      <div className="mt-8 overflow-x-auto rounded-xl border border-neutral-200">
+    <main>
+      <PageHeader
+        title="Data processors"
+        subtitle="Each third party below processes data on our behalf under a Data Processing Agreement. We minimize data shared with each."
+        width="max-w-5xl"
+      />
+      <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6">
+      <div className="overflow-x-auto rounded-xl border border-neutral-200">
         <table className="w-full border-collapse text-sm">
           <thead>
             <tr className="border-b border-neutral-200 bg-neutral-50 text-left text-neutral-600">
@@ -42,6 +45,7 @@ export default function ProcessorsPage() {
             ))}
           </tbody>
         </table>
+      </div>
       </div>
     </main>
   );

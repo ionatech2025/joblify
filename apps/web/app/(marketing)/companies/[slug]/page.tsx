@@ -5,6 +5,7 @@ import { connection } from 'next/server';
 import { Suspense } from 'react';
 import { db } from '@/lib/db';
 import { tags } from '@/lib/cache';
+import { AmbientBand } from '@/app/components/ui/ambient';
 
 type Params = Promise<{ slug: string }>;
 
@@ -48,20 +49,23 @@ async function CompanyDetailBody({ slug }: { slug: string }) {
   });
 
   return (
-    <main className="mx-auto max-w-4xl px-4 py-12 sm:px-6">
-      <header className="mb-8 flex items-center gap-4">
-        {company.logoUrl && (
-          // eslint-disable-next-line @next/next/no-img-element -- remote company logo, fixed size
-          <img src={company.logoUrl} alt="" width={72} height={72} className="size-[72px] rounded-xl object-cover" />
-        )}
-        <div>
-          <h1 className="m-0 text-2xl font-bold tracking-tight text-neutral-900 sm:text-3xl">{company.companyName}</h1>
-          <p className="m-0 text-neutral-600">
-            {company.industry.replace('_', ' ')} · {company.companySize.replace('_', ' ').toLowerCase()}
-          </p>
-        </div>
-      </header>
+    <main>
+      <AmbientBand>
+        <header className="mx-auto flex max-w-4xl items-center gap-4 px-4 py-10 sm:px-6">
+          {company.logoUrl && (
+            // eslint-disable-next-line @next/next/no-img-element -- remote company logo, fixed size
+            <img src={company.logoUrl} alt="" width={72} height={72} className="size-[72px] rounded-xl object-cover" />
+          )}
+          <div>
+            <h1 className="m-0 text-2xl font-bold tracking-tight text-neutral-900 sm:text-3xl">{company.companyName}</h1>
+            <p className="m-0 text-neutral-600">
+              {company.industry.replace('_', ' ')} · {company.companySize.replace('_', ' ').toLowerCase()}
+            </p>
+          </div>
+        </header>
+      </AmbientBand>
 
+      <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
       <article className="mb-8 leading-relaxed whitespace-pre-wrap text-neutral-800">{company.description}</article>
 
       {company.website && (
@@ -89,6 +93,7 @@ async function CompanyDetailBody({ slug }: { slug: string }) {
           </ul>
         )}
       </section>
+      </div>
     </main>
   );
 }

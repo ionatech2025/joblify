@@ -1,9 +1,12 @@
+import { PageHeader } from '@/app/components/ui/ambient';
+
 export const metadata = { title: 'Accessibility statement' };
 
 export default function AccessibilityPage() {
   return (
-    <main className="mx-auto max-w-3xl px-4 py-12 sm:px-6">
-      <h1>Accessibility statement</h1>
+    <main>
+      <PageHeader title="Accessibility statement" width="max-w-3xl" />
+      <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
       <p>
         Joblify is committed to making this site usable by everyone. We target compliance with{' '}
         <strong>WCAG 2.2 Level AA</strong> and run automated checks (axe-core) on every deploy. We
@@ -21,6 +24,7 @@ export default function AccessibilityPage() {
         report directly through your account settings.
       </p>
       <p className="text-sm text-neutral-500">Last audited: see /legal/processors for date.</p>
+      </div>
     </main>
   );
 }

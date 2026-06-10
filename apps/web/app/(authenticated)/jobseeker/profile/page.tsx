@@ -2,6 +2,7 @@ import { requireRole } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { ProfileForm } from './profile-form';
 import { BioCoach } from './bio-coach';
+import { PageHeader } from '@/app/components/ui/ambient';
 
 export const metadata = { title: 'My profile' };
 
@@ -10,11 +11,13 @@ export default async function JobseekerProfilePage() {
   const profile = await db.jobSeekerProfile.findUnique({ where: { userId: user.id } });
 
   return (
-    <main className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
-      <h1 className="text-2xl font-bold text-neutral-900">My profile</h1>
-      <p className="mt-1 text-neutral-600">
-        These fields show up to recruiters when you apply. Keep your headline and skills sharp.
-      </p>
+    <main>
+      <PageHeader
+        title="My profile"
+        subtitle="These fields show up to recruiters when you apply. Keep your headline and skills sharp."
+        width="max-w-3xl"
+      />
+      <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
       <ProfileForm
         initial={{
           headline: profile?.headline ?? '',
@@ -30,6 +33,7 @@ export default async function JobseekerProfilePage() {
 
       <div className="mt-8">
         <BioCoach currentBio={profile?.bio ?? ''} />
+      </div>
       </div>
     </main>
   );

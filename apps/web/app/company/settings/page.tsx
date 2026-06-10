@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { requireRole } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { CompanySettingsForm } from './company-settings-form';
+import { PageHeader } from '@/app/components/ui/ambient';
 
 export const metadata = { title: 'Company settings' };
 
@@ -11,9 +12,13 @@ export default async function CompanySettingsPage() {
   if (!profile) redirect('/employer-setup');
 
   return (
-    <main className="mx-auto max-w-2xl px-4 py-8 sm:px-6">
-      <h1 className="text-2xl font-bold text-neutral-900">Company settings</h1>
-      <p className="mt-1 text-neutral-600">This is what jobseekers see on your company page and job posts.</p>
+    <main>
+      <PageHeader
+        title="Company settings"
+        subtitle="This is what jobseekers see on your company page and job posts."
+        width="max-w-2xl"
+      />
+      <div className="mx-auto max-w-2xl px-4 py-8 sm:px-6">
       <CompanySettingsForm
         userId={user.id}
         logoUrl={profile.logoUrl ?? null}
@@ -26,6 +31,7 @@ export default async function CompanySettingsPage() {
           linkedin: profile.linkedin ?? '',
         }}
       />
+      </div>
     </main>
   );
 }

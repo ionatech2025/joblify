@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import Link from 'next/link';
 import * as Sentry from '@sentry/nextjs';
+import { AmbientCanvas } from '@/app/components/ui/ambient';
 
 export default function Error({
   error,
@@ -16,7 +17,9 @@ export default function Error({
   }, [error]);
 
   return (
-    <main className="mx-auto max-w-xl px-4 py-16 text-center">
+    <main className="relative overflow-hidden px-4 py-16">
+      <AmbientCanvas variant="hero" />
+      <div className="relative mx-auto max-w-xl text-center">
       <h1 className="text-2xl font-bold text-neutral-900">Something went wrong</h1>
       <p className="mt-2 text-neutral-600">An unexpected error occurred. You can try again, or head back home.</p>
       <div className="mt-6 flex justify-center gap-3">
@@ -32,6 +35,7 @@ export default function Error({
         >
           Go home
         </Link>
+      </div>
       </div>
     </main>
   );

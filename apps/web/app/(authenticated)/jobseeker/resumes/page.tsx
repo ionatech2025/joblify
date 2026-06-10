@@ -1,6 +1,7 @@
 import { requireRole } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { ResumeManager } from './resume-manager';
+import { PageHeader } from '@/app/components/ui/ambient';
 
 export const metadata = { title: 'My resumes' };
 
@@ -20,13 +21,15 @@ export default async function ResumesPage() {
   }));
 
   return (
-    <main className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
-      <h1 className="text-2xl font-bold text-neutral-900">My resumes</h1>
-      <p className="mt-1 text-neutral-600">
-        Upload a PDF or Word resume. We parse it to autofill applications and compute your match
-        score on every job.
-      </p>
-      <ResumeManager userId={user.id} initialResumes={resumes} />
+    <main>
+      <PageHeader
+        title="My resumes"
+        subtitle="Upload a PDF or Word resume. We parse it to autofill applications and compute your match score on every job."
+        width="max-w-3xl"
+      />
+      <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
+        <ResumeManager userId={user.id} initialResumes={resumes} />
+      </div>
     </main>
   );
 }

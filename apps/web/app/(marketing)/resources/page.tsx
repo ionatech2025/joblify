@@ -1,3 +1,5 @@
+import { PageHeader } from '@/app/components/ui/ambient';
+
 export const metadata = {
   title: 'Resources',
   description: 'Practical guides for jobseekers and employers on Joblify.',
@@ -5,11 +7,14 @@ export const metadata = {
 
 export default function ResourcesPage() {
   return (
-    <main className="mx-auto max-w-3xl px-4 py-16 sm:px-6">
-      <h1 className="text-3xl font-bold text-neutral-900">Resources</h1>
-      <p className="mt-4 text-neutral-600">Short, practical guides for getting the most out of Joblify.</p>
-
-      <section className="mt-8">
+    <main>
+      <PageHeader
+        title="Resources"
+        subtitle="Short, practical guides for getting the most out of Joblify."
+        width="max-w-3xl"
+      />
+      <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
+      <section className="mt-0">
         <h2 className="text-xl font-semibold text-neutral-900">For jobseekers</h2>
         <ul className="mt-2 list-disc pl-5 text-neutral-700">
           <li>Upload a focused résumé — we parse it to autofill applications and score every job for you.</li>
@@ -26,6 +31,7 @@ export default function ResourcesPage() {
           <li>Add a logo and company details so your posts stand out in search.</li>
         </ul>
       </section>
+      </div>
     </main>
   );
 }

@@ -42,7 +42,7 @@ export function BioCoach({ currentBio }: { currentBio: string }) {
           <div
             key={m.id}
             className={`max-w-[85%] whitespace-pre-wrap rounded-md border border-neutral-200 px-3 py-2 ${
-              m.role === 'user' ? 'self-end bg-blue-50' : 'self-start bg-white'
+              m.role === 'user' ? 'self-end bg-indigo-50' : 'self-start bg-white'
             }`}
           >
             {m.parts.map((part, i) => (part.type === 'text' ? <span key={i}>{part.text}</span> : null))}

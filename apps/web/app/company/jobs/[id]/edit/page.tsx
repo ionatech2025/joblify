@@ -4,6 +4,7 @@ import { requireRole } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { EditJobForm } from './edit-job-form';
 import type { PostJobFormValues } from '@/app/company/jobs/job-form-fields';
+import { PageHeader } from '@/app/components/ui/ambient';
 
 export const metadata = { title: 'Edit job' };
 
@@ -40,16 +41,19 @@ export default async function EditJobPage({
   };
 
   return (
-    <main className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <h1 className="m-0 text-2xl font-bold text-neutral-900">Edit job</h1>
-        {job.status === 'PUBLISHED' && (
-          <Link href={`/jobs/${job.slug}`} className="text-indigo-700 hover:underline">
-            View public page ↗
-          </Link>
-        )}
-      </div>
-
+    <main>
+      <PageHeader
+        title="Edit job"
+        width="max-w-3xl"
+        actions={
+          job.status === 'PUBLISHED' ? (
+            <Link href={`/jobs/${job.slug}`} className="text-indigo-700 hover:underline">
+              View public page ↗
+            </Link>
+          ) : undefined
+        }
+      />
+      <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
       {sp.just_posted && (
         <div className="my-4 rounded-lg bg-green-50 px-4 py-3 text-sm text-green-800">
           Job posted — it&apos;s live on /jobs and indexed within a minute.
@@ -61,6 +65,7 @@ export default async function EditJobPage({
       </p>
 
       <EditJobForm jobId={job.id} initial={initial} />
+      </div>
     </main>
   );
 }

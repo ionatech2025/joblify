@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { requireRole } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { PageHeader } from '@/app/components/ui/ambient';
 
 export const metadata = { title: 'My job posts' };
 
@@ -13,17 +14,20 @@ export default async function CompanyJobsPage() {
   });
 
   return (
-    <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
-      <header className="mb-6 flex items-center justify-between gap-4">
-        <h1 className="m-0 text-2xl font-bold text-neutral-900">My job posts</h1>
-        <Link
-          href="/company/jobs/new"
-          className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-700"
-        >
-          Post a job
-        </Link>
-      </header>
-
+    <main>
+      <PageHeader
+        title="My job posts"
+        width="max-w-5xl"
+        actions={
+          <Link
+            href="/company/jobs/new"
+            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-700"
+          >
+            Post a job
+          </Link>
+        }
+      />
+      <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
       {jobs.length === 0 ? (
         <p className="text-neutral-600">
           You haven&apos;t posted any jobs yet.{' '}
@@ -74,6 +78,7 @@ export default async function CompanyJobsPage() {
           </table>
         </div>
       )}
+      </div>
     </main>
   );
 }

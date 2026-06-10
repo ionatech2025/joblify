@@ -4,6 +4,7 @@ import { connection } from 'next/server';
 import { db } from '@/lib/db';
 import { tags } from '@/lib/cache';
 import { Card } from '@/app/components/ui/card';
+import { PageHeader } from '@/app/components/ui/ambient';
 
 export const metadata = {
   title: 'Companies hiring on Joblify',
@@ -12,11 +13,16 @@ export const metadata = {
 
 export default function CompaniesPage() {
   return (
-    <main className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
-      <h1 className="mb-6 text-2xl font-bold text-neutral-900">Companies hiring</h1>
-      <Suspense fallback={<p className="text-neutral-500">Loading companies…</p>}>
-        <CompaniesList />
-      </Suspense>
+    <main>
+      <PageHeader
+        title="Companies hiring"
+        subtitle="Browse verified companies hiring across industries."
+      />
+      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+        <Suspense fallback={<p className="text-neutral-500">Loading companies…</p>}>
+          <CompaniesList />
+        </Suspense>
+      </div>
     </main>
   );
 }

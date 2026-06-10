@@ -1,9 +1,12 @@
+import { PageHeader } from '@/app/components/ui/ambient';
+
 export const metadata = { title: 'Privacy policy' };
 
 export default function PrivacyPage() {
   return (
-    <main className="mx-auto max-w-3xl px-4 py-12 sm:px-6">
-      <h1>Privacy policy</h1>
+    <main>
+      <PageHeader title="Privacy policy" width="max-w-3xl" />
+      <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
       <p>
         Joblify processes personal data to operate the job marketplace and only for the purposes
         listed below. We act as a controller for jobseeker accounts and a processor when companies
@@ -52,6 +55,7 @@ export default function PrivacyPage() {
       <p className="text-neutral-500">
         Contact: <a href="mailto:privacy@joblify.example">privacy@joblify.example</a>
       </p>
+      </div>
     </main>
   );
 }
