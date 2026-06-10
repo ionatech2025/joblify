@@ -1,5 +1,27 @@
 # Changelog
 
+## 2026-06-10 — Money-path test coverage: post-job, applicant pipeline, resume parse
+
+Closed the remaining money-path test gaps (unit suite 50 → 79, all green).
+Existing coverage (apply, match-score, digest, retention, index-outbox,
+saved-search) untouched; the three uncovered money paths now lock in:
+
+- `tests/unit/post-job.test.ts` (12) — `postJob`/`updateJob`: role gate, zod
+  reject-before-write, ownership/slug/publishedAt on publish, draft path,
+  skill links with required=2/nice=1 weights (idempotent re-extraction),
+  Algolia push + `jobs`/`company:*` cache invalidation, AI-extraction and
+  index failures stay non-blocking, edit tenancy (FORBIDDEN on another
+  company's job), publishedAt preserved on re-save / stamped on first publish.
+- `tests/unit/update-applicant-status.test.ts` (10) — tenancy, same-status
+  no-op (no write/notification/email/invalidation), status write + in-app
+  notification payload, three cache tags invalidated, best-effort email to
+  the jobseeker that never fails the transition; recruiter notes (tenancy,
+  5000-char truncation, empty→null, pipeline-cache invalidation).
+- `tests/unit/resume-parse.test.ts` (7) — idempotent skip when parsed,
+  magic-byte mime mismatch → soft-delete + never reaches the model, blob
+  fetch failure, too-short text, happy path persists parsedJson + pgvector
+  embedding + links catalog skills, completes without a profile.
+
 ## 2026-06-10 — Design-consistency sweep: ambient hero style app-wide
 
 Palette audit findings: indigo accents were already consistent (Button/links/
