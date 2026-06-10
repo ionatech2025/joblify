@@ -9,6 +9,9 @@ import type { ReactNode } from 'react';
 //          error/404/offline pages.
 //   band — lighter: wash + grid + a few faint dots, no aurora. Page-title
 //          header bands on interior pages.
+//   page — faintest: wash + masked grid only. The app-wide fixed backdrop in
+//          the root layout; header/footer/cards float over it as glass/white
+//          surfaces. Intensity hierarchy: hero > band > page.
 
 const WASH =
   'linear-gradient(135deg, oklch(0.972 0.032 280) 0%, oklch(0.995 0.005 272) 50%, oklch(0.965 0.035 235) 100%)';
@@ -27,16 +30,18 @@ const STARFIELD_BAND =
 
 const MASK_HERO = 'radial-gradient(ellipse 78% 68% at 50% 28%, #000 32%, transparent 80%)';
 const MASK_BAND = 'radial-gradient(ellipse 90% 150% at 50% 0%, #000 40%, transparent 88%)';
+const MASK_PAGE = 'radial-gradient(ellipse 95% 90% at 50% 12%, #000 25%, transparent 85%)';
 
-export function AmbientCanvas({ variant = 'band' }: { variant?: 'hero' | 'band' }) {
+export function AmbientCanvas({ variant = 'band' }: { variant?: 'hero' | 'band' | 'page' }) {
   const hero = variant === 'hero';
-  const mask = hero ? MASK_HERO : MASK_BAND;
+  const page = variant === 'page';
+  const mask = hero ? MASK_HERO : page ? MASK_PAGE : MASK_BAND;
   return (
     <div aria-hidden="true" className="pointer-events-none absolute inset-0">
-      <div className="absolute inset-0" style={{ background: WASH }} />
+      <div className={`absolute inset-0 ${page ? 'opacity-60' : ''}`} style={{ background: WASH }} />
       {hero && <div className="absolute inset-0" style={{ backgroundImage: AURORA }} />}
       <div
-        className="absolute inset-0"
+        className={`absolute inset-0 ${page ? 'opacity-70' : ''}`}
         style={{
           backgroundImage: GRID_LINES,
           backgroundSize: '56px 56px',
@@ -44,10 +49,12 @@ export function AmbientCanvas({ variant = 'band' }: { variant?: 'hero' | 'band' 
           WebkitMaskImage: mask,
         }}
       />
-      <div
-        className="absolute inset-0"
-        style={{ backgroundImage: hero ? STARFIELD_HERO : STARFIELD_BAND }}
-      />
+      {!page && (
+        <div
+          className="absolute inset-0"
+          style={{ backgroundImage: hero ? STARFIELD_HERO : STARFIELD_BAND }}
+        />
+      )}
     </div>
   );
 }

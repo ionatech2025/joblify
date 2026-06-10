@@ -16,7 +16,7 @@ export const metadata = {
 export default function MarketingHomePage() {
   return (
     <main>
-      <section className="relative overflow-hidden border-b border-neutral-200">
+      <section className="relative overflow-hidden border-b border-indigo-100">
         {/* Shared ambient canvas (see components/ui/ambient.tsx) — the same
             design language interior pages use as their header bands. */}
         <AmbientCanvas variant="hero" />

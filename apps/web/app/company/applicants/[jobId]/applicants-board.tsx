@@ -91,7 +91,7 @@ export function ApplicantsBoard({ applications }: { applications: Row[] }) {
         {stages.map((stage) => {
           const items = sorted.filter((r) => r.status === stage.status);
           return (
-            <div key={stage.status} className="w-[280px] shrink-0 rounded-xl bg-neutral-50 p-3">
+            <div key={stage.status} className="w-[280px] shrink-0 rounded-xl border border-neutral-200/70 bg-white/60 p-3 backdrop-blur-sm">
               <h3 className="mb-3 flex justify-between text-sm font-semibold text-neutral-900">
                 <span>{stage.label}</span>
                 <span className="text-neutral-400">{items.length}</span>

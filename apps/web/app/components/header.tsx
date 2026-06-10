@@ -12,7 +12,7 @@ export function Header() {
   const close = () => setOpen(false);
 
   return (
-    <header className="sticky top-0 z-50 border-b border-neutral-200 bg-white/90 backdrop-blur">
+    <header className="sticky top-0 z-50 border-b border-indigo-100 bg-white/70 backdrop-blur">
       <Container className="flex items-center justify-between gap-4 py-3">
         <Link href="/" onClick={close} className="flex items-center gap-2 text-lg font-extrabold tracking-tight text-neutral-900 no-underline">
           {/* eslint-disable-next-line @next/next/no-img-element -- small fixed-size brand mark */}
@@ -69,7 +69,7 @@ export function Header() {
 
       {/* Mobile menu panel */}
       {open && (
-        <nav className="border-t border-neutral-200 bg-white sm:hidden">
+        <nav className="border-t border-indigo-100 bg-white/90 backdrop-blur sm:hidden">
           <Container className="flex flex-col py-2 text-sm">
             <Link href="/jobs" onClick={close} className="py-2 text-neutral-700 no-underline">
               Find jobs
