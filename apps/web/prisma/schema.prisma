@@ -1,0 +1,514 @@
+// Joblify Postgres schema.
+//
+// Provider: Neon Postgres (Vercel Marketplace).
+// Required extensions: citext, pgcrypto, pg_trgm, postgis, vector.
+//   Run once on a fresh DB:
+//     CREATE EXTENSION IF NOT EXISTS citext;
+//     CREATE EXTENSION IF NOT EXISTS pgcrypto;
+//     CREATE EXTENSION IF NOT EXISTS pg_trgm;
+//     CREATE EXTENSION IF NOT EXISTS postgis;
+//     CREATE EXTENSION IF NOT EXISTS vector;
+//
+// Unsupported() columns (vector, geography, tsvector) are written via raw SQL
+// migrations and consumed via raw Prisma queries in lib/search/* and workflows/.
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions", "fullTextSearchPostgres"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  directUrl  = env("DATABASE_URL_UNPOOLED")
+  extensions = [citext, pgcrypto, pg_trgm, postgis, vector]
+}
+
+// ============================================================================
+// Enums
+// ============================================================================
+
+enum UserType {
+  JOB_SEEKER
+  COMPANY
+  ADMIN
+}
+
+enum IndustryType {
+  TECHNOLOGY
+  HOSPITALITY
+  EDUCATION
+  AGRICULTURE
+  FINANCE
+  MANUFACTURING
+  CONSTRUCTION
+  HEALTHCARE
+  RETAIL
+  TRANSPORTATION
+  ENERGY
+  MEDIA
+  GOVERNMENT
+  NONPROFIT
+  OTHER
+}
+
+enum CompanySize {
+  SIZE_1_10
+  SIZE_11_50
+  SIZE_51_200
+  SIZE_201_500
+  SIZE_501_1000
+  SIZE_1001_PLUS
+}
+
+enum JobType {
+  FULL_TIME
+  PART_TIME
+  CONTRACT
+  INTERNSHIP
+  TEMPORARY
+}
+
+enum ExperienceLevel {
+  ENTRY
+  MID
+  SENIOR
+  STAFF
+  EXECUTIVE
+}
+
+enum WorkMode {
+  REMOTE
+  HYBRID
+  ONSITE
+}
+
+enum JobPostStatus {
+  DRAFT
+  PENDING_REVIEW
+  PUBLISHED
+  CLOSED
+  ARCHIVED
+}
+
+enum ApplicationStatus {
+  SUBMITTED
+  VIEWED
+  SHORTLISTED
+  INTERVIEW_SCHEDULED
+  OFFER_EXTENDED
+  HIRED
+  REJECTED
+  WITHDRAWN
+}
+
+enum VerificationStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum NotificationKind {
+  APPLICATION_SUBMITTED
+  APPLICATION_STATUS_CHANGED
+  NEW_APPLICANT
+  INTERVIEW_SCHEDULED
+  INVITATION_RECEIVED
+  ACCOUNT_UPDATE
+  SYSTEM
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  EXPIRED
+  REVOKED
+}
+
+enum AuditAction {
+  USER_SIGNED_UP
+  USER_SIGNED_IN
+  USER_PROFILE_UPDATED
+  USER_DELETED
+  USER_EXPORTED
+  COMPANY_PROFILE_UPDATED
+  JOB_POSTED
+  JOB_UPDATED
+  JOB_DELETED
+  APPLICATION_SUBMITTED
+  APPLICATION_STATUS_CHANGED
+  APPLICATION_NOTE_SAVED
+  RESUME_UPLOADED
+  CONSENT_UPDATED
+}
+
+// ============================================================================
+// Identity
+// ============================================================================
+
+model User {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clerkUserId   String   @unique
+  email         String   @unique @db.Citext
+  userType      UserType @default(JOB_SEEKER)
+  firstName     String?
+  lastName      String?
+  phone         String?
+  avatarUrl     String?
+  locale        String   @default("en")
+  timezone      String   @default("UTC")
+  consentJson   Json?
+  emailSuppressedAt      DateTime?
+  emailSuppressionReason String?
+  deletedAt     DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  jobSeekerProfile JobSeekerProfile?
+  companyProfile   CompanyProfile?
+
+  jobsPosted       JobPost[]
+  applications     JobApplication[]
+  resumes          Resume[]
+
+  notifications    Notification[]
+  invitationsSent  Invitation[]    @relation("InvitationsByCompany")
+  invitationsRecv  Invitation[]    @relation("InvitationsToJobSeeker")
+  auditEvents      AuditEvent[]    @relation("AuditActor")
+  savedJobs        SavedJob[]
+  savedSearches    SavedSearch[]
+
+  @@index([userType, deletedAt])
+  @@index([deletedAt])
+  @@map("users")
+}
+
+model JobSeekerProfile {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId        String   @unique @db.Uuid
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  bio           String?
+  headline      String?
+  yearsExperience Int?
+  desiredSalaryMin Int?
+  desiredSalaryMax Int?
+  desiredWorkMode  WorkMode?
+  location         String?
+  locationLat      Float?
+  locationLng      Float?
+  visibility       String   @default("PRIVATE")
+
+  skills        JobSeekerSkill[]
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("job_seeker_profiles")
+}
+
+model CompanyProfile {
+  id                    String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId                String   @unique @db.Uuid
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  slug                  String   @unique
+  companyName           String
+  industry              IndustryType
+  companySize           CompanySize
+  establishmentYear     Int?
+  description           String
+  logoUrl               String?
+  website               String?
+  linkedin              String?
+  address               String?
+  contactPersonName     String?
+  contactPersonPosition String?
+
+  verificationStatus    VerificationStatus @default(PENDING)
+
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@index([industry, verificationStatus])
+  @@map("company_profiles")
+}
+
+// ============================================================================
+// Catalog
+// ============================================================================
+
+model Skill {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  slug      String   @unique
+  label     String
+  aliases   String[] @default([])
+  escoUri   String?
+  createdAt DateTime @default(now())
+
+  jobPostSkills   JobPostSkill[]
+  jobSeekerSkills JobSeekerSkill[]
+
+  @@index([label])
+  @@map("skills")
+}
+
+model JobPostSkill {
+  jobPostId  String @db.Uuid
+  skillId    String @db.Uuid
+  weight     Int    @default(1)
+
+  jobPost    JobPost @relation(fields: [jobPostId], references: [id], onDelete: Cascade)
+  skill      Skill   @relation(fields: [skillId], references: [id], onDelete: Restrict)
+
+  @@id([jobPostId, skillId])
+  @@index([skillId])
+  @@map("job_post_skills")
+}
+
+model JobSeekerSkill {
+  jobSeekerProfileId String @db.Uuid
+  skillId            String @db.Uuid
+  proficiency        Int    @default(3)
+  years              Int    @default(0)
+
+  jobSeekerProfile   JobSeekerProfile @relation(fields: [jobSeekerProfileId], references: [id], onDelete: Cascade)
+  skill              Skill            @relation(fields: [skillId], references: [id], onDelete: Restrict)
+
+  @@id([jobSeekerProfileId, skillId])
+  @@index([skillId])
+  @@map("job_seeker_skills")
+}
+
+// ============================================================================
+// Jobs
+// ============================================================================
+
+model JobPost {
+  id                  String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  slug                String          @unique
+  companyId           String          @db.Uuid
+  company             User            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  title               String
+  description         String
+  requirements        String?
+  benefits            String[]        @default([])
+
+  industry            IndustryType
+  jobType             JobType
+  experienceLevel     ExperienceLevel @default(MID)
+  workMode            WorkMode        @default(ONSITE)
+
+  location            String?
+  locationLat         Float?
+  locationLng         Float?
+  /// PostGIS Point(longitude, latitude) — written/read via raw SQL.
+  geo                 Unsupported("geography(Point, 4326)")?
+
+  salaryMin           Int?
+  salaryMax           Int?
+  salaryCurrency      String          @default("USD")
+
+  applicationDeadline DateTime?
+  status              JobPostStatus   @default(DRAFT)
+
+  /// 1536-dim embedding from openai/text-embedding-3-small (resized) or large.
+  embedding           Unsupported("vector(1536)")?
+  /// tsvector built from title + description + requirements for FTS fallback.
+  tsv                 Unsupported("tsvector")?
+
+  viewCount           Int             @default(0)
+  publishedAt         DateTime?
+  deletedAt           DateTime?
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+
+  applications        JobApplication[]
+  skills              JobPostSkill[]
+  views               JobView[]
+  savedBy             SavedJob[]
+
+  @@index([companyId, status, deletedAt])
+  @@index([status, publishedAt(sort: Desc)])
+  @@index([industry, status])
+  @@index([deletedAt])
+  @@map("job_posts")
+}
+
+model JobApplication {
+  id           String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  jobPostId    String            @db.Uuid
+  jobSeekerId  String            @db.Uuid
+  resumeId     String            @db.Uuid
+
+  jobPost      JobPost           @relation(fields: [jobPostId], references: [id], onDelete: Cascade)
+  jobSeeker    User              @relation(fields: [jobSeekerId], references: [id], onDelete: Cascade)
+  resume       Resume            @relation(fields: [resumeId], references: [id], onDelete: Restrict)
+
+  status         ApplicationStatus @default(SUBMITTED)
+  coverLetter    String?
+  recruiterNotes String?
+  matchScore     Float?
+
+  appliedAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  @@unique([jobPostId, jobSeekerId])
+  @@index([jobSeekerId, appliedAt(sort: Desc)])
+  @@index([jobPostId, status])
+  @@map("job_applications")
+}
+
+model JobView {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  jobPostId  String   @db.Uuid
+  userId     String?  @db.Uuid
+  ipHash     String
+  referrer   String?
+  createdAt  DateTime @default(now())
+
+  jobPost    JobPost  @relation(fields: [jobPostId], references: [id], onDelete: Cascade)
+
+  @@index([jobPostId, createdAt])
+  @@index([createdAt])
+  @@map("job_views")
+}
+
+model SavedJob {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId     String   @db.Uuid
+  jobPostId  String   @db.Uuid
+  createdAt  DateTime @default(now())
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jobPost    JobPost  @relation(fields: [jobPostId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, jobPostId])
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("saved_jobs")
+}
+
+model SavedSearch {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId         String    @db.Uuid
+  label          String
+  /// The /jobs URL query string, e.g. "q=engineer&workMode=REMOTE".
+  query          String
+  lastNotifiedAt DateTime?
+  createdAt      DateTime  @default(now())
+
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("saved_searches")
+}
+
+// Durable retry queue for Algolia sync. A failed reindexJob() upserts a row
+// (one per job); the algolia-reconcile cron drains it.
+model IndexOutbox {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  entityId  String   @db.Uuid
+  attempts  Int      @default(0)
+  lastError String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([entityId])
+  @@index([createdAt])
+  @@map("index_outbox")
+}
+
+// ============================================================================
+// Resumes
+// ============================================================================
+
+model Resume {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId        String   @db.Uuid
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  title         String
+  fileBlobUrl   String
+  fileMime      String
+  fileSizeBytes Int
+
+  parsedJson    Json?
+  /// 1536-dim embedding from the parsed resume text.
+  embedding     Unsupported("vector(1536)")?
+
+  isDefault     Boolean  @default(false)
+  deletedAt     DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  applications  JobApplication[]
+
+  @@index([userId, isDefault])
+  @@index([userId, deletedAt])
+  @@map("resumes")
+}
+
+// ============================================================================
+// Notifications + invitations
+// ============================================================================
+
+model Notification {
+  id        String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String           @db.Uuid
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  kind      NotificationKind
+  payload   Json
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+
+  @@index([userId, readAt, createdAt(sort: Desc)])
+  @@map("notifications")
+}
+
+model Invitation {
+  id            String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId     String           @db.Uuid
+  jobSeekerId   String           @db.Uuid
+  jobPostId     String?          @db.Uuid
+
+  company       User             @relation("InvitationsByCompany", fields: [companyId], references: [id], onDelete: Cascade)
+  jobSeeker     User             @relation("InvitationsToJobSeeker", fields: [jobSeekerId], references: [id], onDelete: Cascade)
+
+  message       String?
+  status        InvitationStatus @default(PENDING)
+  expiresAt     DateTime
+  respondedAt   DateTime?
+  createdAt     DateTime         @default(now())
+
+  @@unique([companyId, jobSeekerId, jobPostId])
+  @@index([jobSeekerId, status])
+  @@index([companyId, status])
+  @@map("invitations")
+}
+
+// ============================================================================
+// Audit
+// ============================================================================
+
+model AuditEvent {
+  id        String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  actorId   String?     @db.Uuid
+  actor     User?       @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  action    AuditAction
+  entity    String
+  entityId  String?
+  before    Json?
+  after     Json?
+  ip        String?
+  ua        String?
+  createdAt DateTime    @default(now())
+
+  @@index([actorId, createdAt(sort: Desc)])
+  @@index([entity, entityId])
+  @@index([action, createdAt(sort: Desc)])
+  @@map("audit_events")
+}

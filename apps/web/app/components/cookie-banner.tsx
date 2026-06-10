@@ -1,0 +1,71 @@
+'use client';
+
+import { useEffect } from 'react';
+import { useUiStore } from '@/lib/stores/ui';
+
+// Slim self-hosted consent banner. Two choices — "Necessary only" and
+// "Accept all" (necessary + analytics). The choice is written to localStorage,
+// to a `joblify_consent` cookie (so <AnalyticsGate> and the server can read it),
+// and mirrored to User.consentJson via /api/v1/consent when signed in.
+// <AnalyticsGate> in app/layout.tsx only mounts Analytics/SpeedInsights when the
+// cookie is 'all', so nothing analytics-related loads before consent.
+
+type ConsentChoice = 'all' | 'necessary' | null;
+
+export function CookieBanner() {
+  const isOpen = useUiStore((s) => s.isCookieBannerOpen);
+  const setOpen = useUiStore((s) => s.setCookieBannerOpen);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (localStorage.getItem('joblify.consent')) setOpen(false);
+  }, [setOpen]);
+
+  function decide(choice: ConsentChoice) {
+    const value = choice ?? 'necessary';
+    localStorage.setItem('joblify.consent', value);
+    // Cookie so <AnalyticsGate> and the server can read the choice.
+    document.cookie = `joblify_consent=${value}; path=/; max-age=${60 * 60 * 24 * 365}; samesite=lax`;
+    // Let the analytics gate re-evaluate without a reload.
+    window.dispatchEvent(new Event('joblify:consent'));
+    // Best-effort compliance mirror — no-op when signed out.
+    void fetch('/api/v1/consent', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ analytics: value === 'all' }),
+    }).catch(() => {});
+    setOpen(false);
+  }
+
+  if (!isOpen) return null;
+
+  return (
+    <aside
+      role="dialog"
+      aria-label="Cookie preferences"
+      className="fixed inset-x-4 bottom-4 z-[1000] mx-auto flex max-w-3xl flex-col gap-3 rounded-xl bg-neutral-900 px-5 py-4 text-white shadow-2xl"
+    >
+      <p className="m-0 text-sm">
+        Joblify uses essential cookies to keep you signed in. With your consent, we also use
+        analytics to understand how the site is used.{' '}
+        <a href="/legal/privacy" className="text-sky-300 underline">
+          Privacy policy
+        </a>
+      </p>
+      <div className="flex flex-wrap gap-2">
+        <button
+          onClick={() => decide('all')}
+          className="rounded-md bg-white px-4 py-2 text-sm font-semibold text-neutral-900"
+        >
+          Accept all
+        </button>
+        <button
+          onClick={() => decide('necessary')}
+          className="rounded-md border border-neutral-600 px-4 py-2 text-sm font-semibold text-white"
+        >
+          Necessary only
+        </button>
+      </div>
+    </aside>
+  );
+}

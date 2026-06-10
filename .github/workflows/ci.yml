@@ -1,0 +1,80 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  web:
+    name: web (apps/web)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: apps/web
+    env:
+      # CI uses placeholder env so Prisma + Next.js build can run without real
+      # provisioned services. Real secrets live in Vercel Project Env.
+      # The Clerk publishable key must be FORMAT-VALID (pk_test_<base64 of
+      # "domain$">) — `next build` prerenders <ClerkProvider>, which decodes it.
+      # A bare "pk_test_placeholder" fails the decoder and breaks the build.
+      DATABASE_URL: 'postgresql://user:pass@localhost:5432/joblify?schema=public'
+      DATABASE_URL_UNPOOLED: 'postgresql://user:pass@localhost:5432/joblify?schema=public'
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: 'pk_test_Y2xlcmsuZXhhbXBsZS5jb20k'
+      CLERK_SECRET_KEY: 'sk_test_placeholderplaceholderplaceholder'
+      NEXT_PUBLIC_SITE_URL: 'http://localhost:3000'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install
+        run: bun install --frozen-lockfile
+
+      - name: Prisma validate
+        run: bunx prisma validate
+
+      - name: Prisma generate
+        run: bunx prisma generate
+
+      - name: Lint
+        run: bun run lint
+
+      - name: Typecheck
+        run: bun run typecheck
+
+      - name: Unit tests
+        run: bun run test
+
+      - name: Build
+        run: bun run build
+
+  # Accessibility is gated on the real preview deploy via Lighthouse CI
+  # (Lighthouse's accessibility category is axe-core under the hood; minScore
+  # 0.95 in lighthouserc.json) — see .github/workflows/lighthouse.yml. That runs
+  # against live services and real URLs; a CI-spun server can't reliably reach
+  # Chromium (no proxy/DNS for loopback in the hosted runner) and has no DB/Clerk,
+  # so the a11y gate lives with the preview. `tests/e2e/a11y.spec.ts` still runs
+  # locally / against a preview via `PLAYWRIGHT_BASE_URL=<url> bun run test:e2e`.
+
+  gitleaks:
+    name: gitleaks
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

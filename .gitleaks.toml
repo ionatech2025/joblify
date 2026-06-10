@@ -1,0 +1,21 @@
+title = "Joblify gitleaks config"
+
+# Extend the bundled gitleaks ruleset so every default detector stays active on
+# the rest of the repo.
+[extend]
+useDefault = true
+
+# These three files contain only format-valid DUMMY auth keys, or document them:
+# the CI build needs a base64-decodable Clerk publishable key for the
+# <ClerkProvider> prerender, and the secret key is a literal placeholder. They
+# are flagged as false positives (high entropy / the sk_test_ Stripe prefix).
+# No real credentials live in the repo — real secrets are in the Vercel env.
+# (The separate historical leak in commit ce37671 is documented + has a rotation
+# runbook in docs/SECURITY.md; the PR-scoped CI scan does not reach it.)
+[allowlist]
+description = "CI build env + deployment/security docs — dummy auth keys only"
+paths = [
+  '''\.github/workflows/ci\.yml''',
+  '''apps/web/docs/DEPLOYMENT\.md''',
+  '''docs/SECURITY\.md''',
+]

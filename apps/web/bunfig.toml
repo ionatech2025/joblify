@@ -1,0 +1,19 @@
+# Bun config for @joblify/web.
+# https://bun.sh/docs/runtime/bunfig
+
+[install]
+# Disable noisy postinstall scripts by default; allow Prisma's generate.
+# Run `bun install --trust` once when adding a new package that needs scripts.
+auto = "auto"
+exact = false
+production = false
+
+# Trust postinstall scripts only for packages that need them.
+[install.scopes]
+
+[install.cache]
+disable = false
+
+[run]
+# Use Bun's runtime for npm scripts where possible (`bun run dev` etc).
+shell = "system"
