@@ -19,6 +19,9 @@ I can't do these for you.
   `CRON_SECRET`. The rest each activate their feature when present, no-op otherwise.
 - **[owner]** Configure Clerk providers (Google now; LinkedIn has 2–4wk review),
   MFA, and the user-mirror webhook → `/api/v1/webhooks/clerk`.
+- **[owner]** Before real traffic, switch Clerk from the dev instance to a
+  **production instance** (`pk_live`, custom domain, own OAuth creds) —
+  full runbook: [`docs/CLERK-PRODUCTION.md`](CLERK-PRODUCTION.md).
 
 ## 2. Database
 
