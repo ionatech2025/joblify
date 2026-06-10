@@ -37,8 +37,14 @@ const SELECTS = {
   ],
 } as const;
 
+const FILTER_LABELS: Record<keyof typeof SELECTS, string> = {
+  workMode: 'Work mode',
+  jobType: 'Job type',
+  experienceLevel: 'Experience level',
+};
+
 const control =
-  'w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none';
+  'w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 focus:outline-none';
 
 // The URL is the single source of truth for a search, so results are shareable,
 // bookmarkable, and survive refresh / back-forward. Text + salary inputs keep
@@ -114,6 +120,7 @@ export function JobsSearch() {
         <input
           type="search"
           placeholder="Title, company, or keyword"
+          aria-label="Search jobs by title, company, or keyword"
           value={qText}
           onChange={(e) => setQText(e.target.value)}
           className={control}
@@ -121,6 +128,7 @@ export function JobsSearch() {
         <input
           type="text"
           placeholder="City or country"
+          aria-label="Location"
           value={locText}
           onChange={(e) => setLocText(e.target.value)}
           className={control}
@@ -128,6 +136,7 @@ export function JobsSearch() {
         {(['workMode', 'jobType', 'experienceLevel'] as const).map((field) => (
           <select
             key={field}
+            aria-label={FILTER_LABELS[field]}
             value={getp(field)}
             onChange={(e) => patch({ [field]: e.target.value, page: '' })}
             className={control}
@@ -144,6 +153,7 @@ export function JobsSearch() {
             type="number"
             min={0}
             placeholder="Min salary"
+            aria-label="Minimum salary"
             value={salMin}
             onChange={(e) => setSalMin(e.target.value)}
             className={control}
@@ -152,6 +162,7 @@ export function JobsSearch() {
             type="number"
             min={0}
             placeholder="Max salary"
+            aria-label="Maximum salary"
             value={salMax}
             onChange={(e) => setSalMax(e.target.value)}
             className={control}
@@ -245,7 +256,8 @@ function JobCard({ hit }: { hit: JobSearchRecord }) {
             <div className="size-12 shrink-0 rounded-lg bg-neutral-100" aria-hidden="true" />
           )}
           <div className="min-w-0">
-            <h3 className="m-0 text-base font-semibold text-neutral-900">{hit.title}</h3>
+            {/* h2: the page h1 is "Search jobs"; card titles are the next level */}
+            <h2 className="m-0 text-base font-semibold text-neutral-900">{hit.title}</h2>
             <p className="m-0 text-sm text-neutral-600">
               {hit.companyName}
               {hit.location ? ` · ${hit.location}` : ''}
