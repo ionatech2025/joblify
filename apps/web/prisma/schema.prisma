@@ -34,6 +34,13 @@ enum UserType {
   ADMIN
 }
 
+// How a job seeker presents themselves (flowchart: "Employable or Virtual
+// Intern?"). Chosen at onboarding, editable from the profile page.
+enum ProfileType {
+  EMPLOYABLE
+  VIRTUAL_INTERN
+}
+
 enum IndustryType {
   TECHNOLOGY
   HOSPITALITY
@@ -116,6 +123,21 @@ enum NotificationKind {
   INVITATION_RECEIVED
   ACCOUNT_UPDATE
   SYSTEM
+  JOB_SHARED
+  CHAT_AREA_ADDED
+  NEW_SUBSCRIBER
+  INVITATION_RESPONDED
+}
+
+enum ChatAreaKind {
+  JOB
+  VIRTUAL_INTERN
+}
+
+enum ChatMessageKind {
+  TEXT
+  MATERIAL
+  INTERVIEW_DETAILS
 }
 
 enum InvitationStatus {
@@ -141,6 +163,13 @@ enum AuditAction {
   APPLICATION_NOTE_SAVED
   RESUME_UPLOADED
   CONSENT_UPDATED
+  SUBSCRIPTION_CREATED
+  SUBSCRIPTION_CANCELLED
+  CHAT_AREA_CREATED
+  CHAT_PARTICIPANT_ADDED
+  JOB_SHARED
+  INVITATION_SENT
+  INVITATION_RESPONDED
 }
 
 // ============================================================================
@@ -179,6 +208,12 @@ model User {
   savedJobs        SavedJob[]
   savedSearches    SavedSearch[]
 
+  subscribers      CompanySubscription[] @relation("SubscribersOfCompany")
+  subscriptions    CompanySubscription[] @relation("SubscriptionsByJobSeeker")
+  chatAreasOwned   ChatArea[]            @relation("ChatAreasOwned")
+  chatMemberships  ChatParticipant[]
+  chatMessagesSent ChatMessage[]
+
   @@index([userType, deletedAt])
   @@index([deletedAt])
   @@map("users")
@@ -189,8 +224,14 @@ model JobSeekerProfile {
   userId        String   @unique @db.Uuid
   user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  profileType   ProfileType @default(EMPLOYABLE)
   bio           String?
   headline      String?
+  /// Virtual-intern extras (JOB_UC_05.0/07.0): what they want to learn and
+  /// how much time they can commit. Null for EMPLOYABLE profiles.
+  careerInterest            String?
+  availabilityHoursPerWeek  Int?
+  learningGoal              String?
   yearsExperience Int?
   desiredSalaryMin Int?
   desiredSalaryMax Int?
@@ -205,6 +246,7 @@ model JobSeekerProfile {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
+  @@index([visibility, profileType])
   @@map("job_seeker_profiles")
 }
 
@@ -329,6 +371,7 @@ model JobPost {
   skills              JobPostSkill[]
   views               JobView[]
   savedBy             SavedJob[]
+  chatArea            ChatArea?
 
   @@index([companyId, status, deletedAt])
   @@index([status, publishedAt(sort: Desc)])
@@ -451,6 +494,85 @@ model Resume {
 }
 
 // ============================================================================
+// Subscriptions + chat
+// ============================================================================
+
+// A job seeker following a company (flowchart: "subscribe to company of
+// choice"). profileType snapshots how the seeker subscribed so companies can
+// browse EMPLOYABLE and VIRTUAL_INTERN subscribers separately.
+model CompanySubscription {
+  id          String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId   String      @db.Uuid
+  jobSeekerId String      @db.Uuid
+  profileType ProfileType
+
+  company     User        @relation("SubscribersOfCompany", fields: [companyId], references: [id], onDelete: Cascade)
+  jobSeeker   User        @relation("SubscriptionsByJobSeeker", fields: [jobSeekerId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime    @default(now())
+
+  // Per-type uniqueness (JOB_UC_07.0): the same seeker may subscribe to a
+  // company as EMPLOYABLE and as VIRTUAL_INTERN.
+  @@unique([companyId, jobSeekerId, profileType])
+  @@index([companyId, profileType])
+  @@index([jobSeekerId, createdAt(sort: Desc)])
+  @@map("company_subscriptions")
+}
+
+// A company-owned message space. kind=JOB areas hang off one job post (unique
+// jobPostId); each company also gets at most one kind=VIRTUAL_INTERN area,
+// enforced by a partial unique index in SQL (Prisma can't express the WHERE).
+model ChatArea {
+  id        String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  kind      ChatAreaKind
+  companyId String       @db.Uuid
+  jobPostId String?      @unique @db.Uuid
+  title     String
+
+  company   User         @relation("ChatAreasOwned", fields: [companyId], references: [id], onDelete: Cascade)
+  jobPost   JobPost?     @relation(fields: [jobPostId], references: [id], onDelete: Cascade)
+
+  participants ChatParticipant[]
+  messages     ChatMessage[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([companyId, kind])
+  @@map("chat_areas")
+}
+
+model ChatParticipant {
+  chatAreaId String   @db.Uuid
+  userId     String   @db.Uuid
+  joinedAt   DateTime @default(now())
+
+  chatArea   ChatArea @relation(fields: [chatAreaId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([chatAreaId, userId])
+  @@index([userId])
+  @@map("chat_participants")
+}
+
+model ChatMessage {
+  id            String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  chatAreaId    String          @db.Uuid
+  senderId      String          @db.Uuid
+  kind          ChatMessageKind @default(TEXT)
+  body          String
+  /// Blob URL for shared material (kind = MATERIAL).
+  attachmentUrl String?
+  createdAt     DateTime        @default(now())
+
+  chatArea      ChatArea        @relation(fields: [chatAreaId], references: [id], onDelete: Cascade)
+  sender        User            @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([chatAreaId, createdAt])
+  @@map("chat_messages")
+}
+
+// ============================================================================
 // Notifications + invitations
 // ============================================================================
 
@@ -468,11 +590,14 @@ model Notification {
   @@map("notifications")
 }
 
+// A company asking a seeker to subscribe as EMPLOYABLE or VIRTUAL_INTERN
+// (JOB_UC_10.0/10.1). Accepting creates the matching CompanySubscription.
 model Invitation {
   id            String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   companyId     String           @db.Uuid
   jobSeekerId   String           @db.Uuid
   jobPostId     String?          @db.Uuid
+  profileType   ProfileType      @default(EMPLOYABLE)
 
   company       User             @relation("InvitationsByCompany", fields: [companyId], references: [id], onDelete: Cascade)
   jobSeeker     User             @relation("InvitationsToJobSeeker", fields: [jobSeekerId], references: [id], onDelete: Cascade)
@@ -483,7 +608,9 @@ model Invitation {
   respondedAt   DateTime?
   createdAt     DateTime         @default(now())
 
-  @@unique([companyId, jobSeekerId, jobPostId])
+  // One invitation per company/seeker/type (JOB_UC_10.1: "cannot accept
+  // duplicate invitations from the same company for the same type").
+  @@unique([companyId, jobSeekerId, profileType])
   @@index([jobSeekerId, status])
   @@index([companyId, status])
   @@map("invitations")

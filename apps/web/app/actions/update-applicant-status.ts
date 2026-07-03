@@ -11,6 +11,15 @@ import { resend, EMAIL_FROM } from '@/lib/email/resend';
 import { statusChange } from '@/lib/email/templates';
 import { logger } from '@/lib/observability/logger';
 
+// Statuses that grant access to the job's chat area (flowchart: "interact with
+// accepted (shortlisted) job seekers on the job specific chat area").
+const CHAT_JOIN_STATUSES = new Set<ApplicationStatus>([
+  'SHORTLISTED',
+  'INTERVIEW_SCHEDULED',
+  'OFFER_EXTENDED',
+  'HIRED',
+]);
+
 export async function updateApplicantStatus(
   applicationId: string,
   status: ApplicationStatus,
@@ -61,6 +70,37 @@ export async function updateApplicantStatus(
           },
         },
       });
+
+      // Shortlisted-or-beyond applicants join the job's chat area (if the
+      // company opened one) so the team can orient them and share interview
+      // details there.
+      if (CHAT_JOIN_STATUSES.has(status)) {
+        const area = await tx.chatArea.findUnique({
+          where: { jobPostId: application.jobPostId },
+          select: { id: true, title: true },
+        });
+        if (area) {
+          const member = await tx.chatParticipant.findUnique({
+            where: { chatAreaId_userId: { chatAreaId: area.id, userId: application.jobSeekerId } },
+            select: { chatAreaId: true },
+          });
+          if (!member) {
+            await tx.chatParticipant.create({
+              data: { chatAreaId: area.id, userId: application.jobSeekerId },
+            });
+            await tx.notification.create({
+              data: {
+                userId: application.jobSeekerId,
+                kind: 'CHAT_AREA_ADDED',
+                payload: {
+                  chatAreaId: area.id,
+                  message: `You were added to the chat area “${area.title}”.`,
+                },
+              },
+            });
+          }
+        }
+      }
     },
   );
 

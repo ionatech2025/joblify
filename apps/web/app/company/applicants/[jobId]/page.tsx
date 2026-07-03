@@ -1,8 +1,11 @@
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requireRole } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { openJobChatArea } from '@/app/actions/chat';
 import { ApplicantsBoard } from './applicants-board';
 import { PageHeader } from '@/app/components/ui/ambient';
+import { Button } from '@/app/components/ui/button';
 
 export const metadata = { title: 'Applicants' };
 
@@ -12,6 +15,7 @@ export default async function ApplicantsPage({ params }: { params: Promise<{ job
 
   const job = await db.jobPost.findFirst({
     where: { id: jobId, companyId: user.id, deletedAt: null },
+    include: { chatArea: { select: { id: true } } },
   });
   if (!job) notFound();
 
@@ -28,7 +32,23 @@ export default async function ApplicantsPage({ params }: { params: Promise<{ job
     <main>
       <PageHeader
         title={`Applicants for ${job.title}`}
-        subtitle={`${applications.length} application(s)`}
+        subtitle={`${applications.length} application(s) · shortlisted applicants join the job's chat area automatically`}
+        actions={
+          job.chatArea ? (
+            <Link
+              href={`/company/chats/${job.chatArea.id}`}
+              className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-700"
+            >
+              Open chat area
+            </Link>
+          ) : (
+            <form action={openJobChatArea.bind(null, job.id)}>
+              <Button type="submit" variant="secondary">
+                Create chat area
+              </Button>
+            </form>
+          )
+        }
       />
       <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
       <ApplicantsBoard

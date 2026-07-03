@@ -66,6 +66,20 @@ export async function postJob(input: z.infer<typeof Input>): Promise<string> {
           applicationDeadline: parsed.applicationDeadline ? new Date(parsed.applicationDeadline) : null,
           status: parsed.publish ? 'PUBLISHED' : 'DRAFT',
           publishedAt: parsed.publish ? new Date() : null,
+          // JOB_UC_11.0: optional job-specific chat area at creation; the
+          // company joins immediately, applicants on shortlist.
+          ...(parsed.createChatArea
+            ? {
+                chatArea: {
+                  create: {
+                    kind: 'JOB' as const,
+                    companyId: user.id,
+                    title: parsed.title,
+                    participants: { create: { userId: user.id } },
+                  },
+                },
+              }
+            : {}),
         },
       }),
   );
@@ -93,7 +107,7 @@ export async function updateJob(jobId: string, input: z.infer<typeof Input>): Pr
   // Tenancy: the job must belong to this company.
   const existing = await db.jobPost.findFirst({
     where: { id: jobId, companyId: user.id, deletedAt: null },
-    select: { id: true, publishedAt: true },
+    select: { id: true, publishedAt: true, chatArea: { select: { id: true } } },
   });
   if (!existing) throw new AuthError('FORBIDDEN');
 
@@ -129,6 +143,20 @@ export async function updateJob(jobId: string, input: z.infer<typeof Input>): Pr
           // First publish stamps publishedAt; keep the original on re-saves. The
           // slug is left unchanged to preserve SEO + inbound links.
           publishedAt: parsed.publish ? (existing.publishedAt ?? new Date()) : existing.publishedAt,
+          // Toggling the box on later creates the area; existing areas (and
+          // their messages) are never deleted from here.
+          ...(parsed.createChatArea && !existing.chatArea
+            ? {
+                chatArea: {
+                  create: {
+                    kind: 'JOB' as const,
+                    companyId: user.id,
+                    title: parsed.title,
+                    participants: { create: { userId: user.id } },
+                  },
+                },
+              }
+            : {}),
         },
       }),
   );

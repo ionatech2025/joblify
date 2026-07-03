@@ -55,7 +55,7 @@ Set these via the Vercel dashboard → **Settings → Environment Variables**.
 | Name | Value | Scopes |
 |---|---|---|
 | `NEXT_PUBLIC_SITE_URL` | Production: `https://your-prod-domain` · Preview: leave blank · Development: `http://localhost:3000` | All |
-| `CRON_SECRET` | `openssl rand -base64 48` output | Production, Preview |
+| `CRON_SECRET` | `openssl rand -base64 48` output — generate a **separate** value per scope; never reuse the production secret in Development | All |
 | `RESEND_WEBHOOK_SECRET` | Set after configuring Resend webhook (Step 8) | All |
 | `EMAIL_FROM` | `Joblify <noreply@your-verified-domain>` | All |
 | `AI_GATEWAY_API_KEY` | Auto-injected by Vercel in deploys; for local dev set from the Gateway dashboard | Development |
@@ -67,6 +67,33 @@ bunx vercel env pull .env.local
 ```
 
 `.env.local` is gitignored. Inspect it; never paste contents anywhere.
+Re-pulling **overwrites the whole file** — keep manual local overrides in
+`.env.development.local` instead.
+
+`vercel env pull` downloads the **Development** scope only. As of 2026-07 that
+scope holds just the Neon vars (`DATABASE_URL*` plus the injected
+`POSTGRES_*`/`PG*`/`NEON_*` aliases) and the Clerk publishable/secret keys —
+enough for `bun run dev` against the database with auth. Everything scoped only
+to Production (`NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_CLERK_SIGN_IN_URL`,
+`NEXT_PUBLIC_CLERK_SIGN_UP_URL`, `CRON_SECRET`, `CLERK_WEBHOOK_SECRET`,
+`ALGOLIA_APP_ID`, `ALGOLIA_ADMIN_API_KEY`) is **not** pulled.
+
+To fill the Development scope once (values pass via stdin, never argv):
+
+```bash
+printf 'http://localhost:3000' | vercel env add NEXT_PUBLIC_SITE_URL development
+printf '/sign-in'              | vercel env add NEXT_PUBLIC_CLERK_SIGN_IN_URL development
+printf '/sign-up'              | vercel env add NEXT_PUBLIC_CLERK_SIGN_UP_URL development
+# dev-only secret — do NOT reuse the production value
+openssl rand -base64 48 | tr -d '\n' | vercel env add CRON_SECRET development
+# sensitive vars can't be read back from Vercel; fetch values from the
+# provider dashboards (Clerk → Webhooks, Algolia → API keys) when prompted
+vercel env add CLERK_WEBHOOK_SECRET development
+vercel env add ALGOLIA_APP_ID development
+vercel env add ALGOLIA_ADMIN_API_KEY development
+
+bunx vercel env pull .env.local   # re-pull after adding
+```
 
 ## 6. Enable Postgres extensions + run the initial migration
 

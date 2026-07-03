@@ -18,6 +18,12 @@ export default function JobseekerLayout({ children }: { children: React.ReactNod
           <Link href="/jobseeker/resumes" className={link}>
             Resumes
           </Link>
+          <Link href="/jobseeker/chats" className={link}>
+            Chats
+          </Link>
+          <Link href="/jobseeker/subscriptions" className={link}>
+            Subscriptions
+          </Link>
           <Link href="/jobseeker/profile" className={link}>
             Profile
           </Link>

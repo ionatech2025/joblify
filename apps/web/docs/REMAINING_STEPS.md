@@ -155,11 +155,11 @@ Don't sneak these into V1. They land after Week 12 cutover + 4-week stability pe
 
 | Feature | Why deferred | Notes |
 |---|---|---|
-| Realtime chat | 1.5–2 weeks of work; not on the critical path | Replace with "message via apply" thread routed through Resend webhooks |
+| Realtime chat transport | Chat areas (job-specific + virtual-intern) shipped 2026-07-03 as request/response Server Actions | Only the push transport (SSE/WebSocket) remains deferred; messages currently appear on submit/reload |
 | Recruiter AI screening summaries | Most expensive AI feature | Defer until paying recruiter customers exist |
 | Saved-search alerts with diff | Cron + diff complexity | V1 has a simple daily digest of new jobs |
 | AI vector reranking on search | Marginal gain at 10k MAU | Add when search CTR plateaus |
-| `/jobseekers` listing | Public jobseeker discoverability needs careful UX | Profile `visibility: PUBLIC` flag is in place |
+| Public `/jobseekers` listing | Company-facing directory shipped 2026-07-03 (`/company/jobseekers`: PUBLIC profiles + subscribers, type filters, invite/share actions) | An unauthenticated public listing still needs UX + SEO thought |
 | `(admin)` route group | Moderation volume too low to justify | Use Clerk + Sentry + Neon SQL until ≥10 cases/week |
 | Mobile native client | `/api/v1/*` is ready when this ships | iOS + Android with shared Route Handlers |
 | Personalization ("jobs like ones you applied to") | Needs behavioral data | Collect via `JobView` for V1; mine in V1.5 |
@@ -175,7 +175,7 @@ Don't sneak these into V1. They land after Week 12 cutover + 4-week stability pe
 
 | Feature | Why later |
 |---|---|
-| Stripe billing + company subscriptions | Need sustained user base first; legacy `CompanySubscription` model was dropped intentionally |
+| Stripe billing + premium gating | Need sustained user base first; the free `CompanySubscription` follow model shipped 2026-07-03 (flowchart flows) — premium gating (chat areas, application tracking per usecases_002 PREMIUM tags) layers on it |
 | Interview prep chat (multi-turn) | Requires conversation history + state |
 | Job-board syndication (ATS integrations) | Partner integrations |
 | White-label for enterprise | Multi-tenancy in route group + theming |

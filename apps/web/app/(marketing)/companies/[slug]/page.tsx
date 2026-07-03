@@ -6,6 +6,7 @@ import { Suspense } from 'react';
 import { db } from '@/lib/db';
 import { tags } from '@/lib/cache';
 import { AmbientBand } from '@/app/components/ui/ambient';
+import { SubscribeButton } from './subscribe-button';
 
 type Params = Promise<{ slug: string }>;
 
@@ -61,6 +62,9 @@ async function CompanyDetailBody({ slug }: { slug: string }) {
             <p className="m-0 text-neutral-600">
               {company.industry.replace('_', ' ')} · {company.companySize.replace('_', ' ').toLowerCase()}
             </p>
+          </div>
+          <div className="ml-auto">
+            <SubscribeButton companyUserId={company.userId} />
           </div>
         </header>
       </AmbientBand>
