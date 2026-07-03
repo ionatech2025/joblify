@@ -71,23 +71,18 @@ Re-pulling **overwrites the whole file** — keep manual local overrides in
 `.env.development.local` instead.
 
 `vercel env pull` downloads the **Development** scope only. As of 2026-07 that
-scope holds just the Neon vars (`DATABASE_URL*` plus the injected
-`POSTGRES_*`/`PG*`/`NEON_*` aliases) and the Clerk publishable/secret keys —
-enough for `bun run dev` against the database with auth. Everything scoped only
-to Production (`NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_CLERK_SIGN_IN_URL`,
-`NEXT_PUBLIC_CLERK_SIGN_UP_URL`, `CRON_SECRET`, `CLERK_WEBHOOK_SECRET`,
-`ALGOLIA_APP_ID`, `ALGOLIA_ADMIN_API_KEY`) is **not** pulled.
+scope holds the Neon vars (`DATABASE_URL*` plus the injected
+`POSTGRES_*`/`PG*`/`NEON_*` aliases), the Clerk publishable/secret keys,
+`NEXT_PUBLIC_SITE_URL` (`http://localhost:3000`), the Clerk sign-in/up paths,
+and a dev-only `CRON_SECRET` — enough for `bun run dev` with database, auth,
+and cron routes.
 
-To fill the Development scope once (values pass via stdin, never argv):
+Still Production-only (sensitive type — Vercel can't read the values back;
+fetch them from the provider dashboards): `CLERK_WEBHOOK_SECRET`,
+`ALGOLIA_APP_ID`, `ALGOLIA_ADMIN_API_KEY`. To add them to Development:
 
 ```bash
-printf 'http://localhost:3000' | vercel env add NEXT_PUBLIC_SITE_URL development
-printf '/sign-in'              | vercel env add NEXT_PUBLIC_CLERK_SIGN_IN_URL development
-printf '/sign-up'              | vercel env add NEXT_PUBLIC_CLERK_SIGN_UP_URL development
-# dev-only secret — do NOT reuse the production value
-openssl rand -base64 48 | tr -d '\n' | vercel env add CRON_SECRET development
-# sensitive vars can't be read back from Vercel; fetch values from the
-# provider dashboards (Clerk → Webhooks, Algolia → API keys) when prompted
+# values from Clerk dashboard → Webhooks and Algolia dashboard → API keys
 vercel env add CLERK_WEBHOOK_SECRET development
 vercel env add ALGOLIA_APP_ID development
 vercel env add ALGOLIA_ADMIN_API_KEY development

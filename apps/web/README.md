@@ -103,9 +103,9 @@ bunx vercel env pull .env.local
 ```
 
 Inspect the file — `.env.local` is gitignored. Never paste env values into the
-chat or commit them. The pull covers the **Development** scope only (currently
-Neon + Clerk keys); see `docs/SETUP.md` §5 for adding the remaining
-Development-scope vars (site URL, Clerk paths, dev `CRON_SECRET`, Algolia).
+chat or commit them. The pull covers the **Development** scope only (Neon,
+Clerk keys, site URL, Clerk paths, dev `CRON_SECRET`); Algolia keys and the
+Clerk webhook secret still need manual adds — see `docs/SETUP.md` §5.
 
 ### 6. First Prisma migration
 
