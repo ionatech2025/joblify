@@ -19,6 +19,9 @@ const m = vi.hoisted(() => {
     appFindFirst: vi.fn(),
     appUpdate: vi.fn(),
     notifCreate: vi.fn(),
+    areaFindUnique: vi.fn(),
+    partFindUnique: vi.fn(),
+    partCreate: vi.fn(),
     send: vi.fn(),
     updateTag: vi.fn(),
   };
@@ -28,7 +31,12 @@ vi.mock('@/lib/auth', () => ({ requireRole: m.requireRole, AuthError: m.AuthErro
 vi.mock('@/lib/db', () => ({ db: { jobApplication: { findFirst: m.appFindFirst } } }));
 vi.mock('@/lib/audit', () => ({
   withAudit: (_ctx: unknown, _meta: unknown, fn: (tx: unknown) => unknown) =>
-    fn({ jobApplication: { update: m.appUpdate }, notification: { create: m.notifCreate } }),
+    fn({
+      jobApplication: { update: m.appUpdate },
+      notification: { create: m.notifCreate },
+      chatArea: { findUnique: m.areaFindUnique },
+      chatParticipant: { findUnique: m.partFindUnique, create: m.partCreate },
+    }),
 }));
 vi.mock('@/lib/email/resend', () => ({
   resend: () => ({ emails: { send: m.send } }),
@@ -60,6 +68,9 @@ beforeEach(() => {
   m.appFindFirst.mockResolvedValue({ ...APPLICATION });
   m.appUpdate.mockResolvedValue({});
   m.notifCreate.mockResolvedValue({});
+  m.areaFindUnique.mockResolvedValue(null);
+  m.partFindUnique.mockResolvedValue(null);
+  m.partCreate.mockResolvedValue({});
   m.send.mockResolvedValue({});
 });
 
@@ -112,6 +123,33 @@ describe('updateApplicantStatus', () => {
     m.send.mockRejectedValue(new Error('resend down'));
     await expect(updateApplicantStatus(APP_ID, 'REJECTED')).resolves.toBeUndefined();
     expect(m.appUpdate).toHaveBeenCalledTimes(1);
+  });
+
+  it("adds a shortlisted applicant to the job's chat area and tells them", async () => {
+    m.areaFindUnique.mockResolvedValue({ id: 'area1', title: 'Engineer' });
+    await updateApplicantStatus(APP_ID, 'SHORTLISTED');
+    expect(m.partCreate).toHaveBeenCalledWith({ data: { chatAreaId: 'area1', userId: 'seeker1' } });
+    const chatNotif = m.notifCreate.mock.calls.map((c) => c[0].data).find((d) => d.kind === 'CHAT_AREA_ADDED');
+    expect(chatNotif?.userId).toBe('seeker1');
+    expect(chatNotif?.payload.chatAreaId).toBe('area1');
+  });
+
+  it('skips the chat join when the job has no chat area', async () => {
+    await updateApplicantStatus(APP_ID, 'SHORTLISTED');
+    expect(m.partCreate).not.toHaveBeenCalled();
+  });
+
+  it('does not re-add an existing chat participant', async () => {
+    m.areaFindUnique.mockResolvedValue({ id: 'area1', title: 'Engineer' });
+    m.partFindUnique.mockResolvedValue({ chatAreaId: 'area1' });
+    await updateApplicantStatus(APP_ID, 'HIRED');
+    expect(m.partCreate).not.toHaveBeenCalled();
+  });
+
+  it('does not touch the chat area on rejection', async () => {
+    m.areaFindUnique.mockResolvedValue({ id: 'area1', title: 'Engineer' });
+    await updateApplicantStatus(APP_ID, 'REJECTED');
+    expect(m.partCreate).not.toHaveBeenCalled();
   });
 });
 

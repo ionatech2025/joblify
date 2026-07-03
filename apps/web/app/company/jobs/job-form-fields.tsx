@@ -39,6 +39,7 @@ export const PostJobFormSchema = z.object({
   salaryCurrency: z.string().length(3).default('USD'),
   applicationDeadline: z.string().optional().or(z.literal('')),
   publish: z.boolean().default(true),
+  createChatArea: z.boolean().default(false),
 });
 
 export type PostJobFormValues = z.infer<typeof PostJobFormSchema>;
@@ -127,6 +128,11 @@ export function JobFormFields({
       <label className="flex items-center gap-2 text-sm text-neutral-700">
         <input type="checkbox" {...register('publish')} />
         Published (uncheck to move to draft)
+      </label>
+
+      <label className="flex items-center gap-2 text-sm text-neutral-700">
+        <input type="checkbox" {...register('createChatArea')} />
+        Create a job-specific chat area (shortlisted applicants join it automatically)
       </label>
     </>
   );

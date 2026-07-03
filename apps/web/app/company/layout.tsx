@@ -31,6 +31,12 @@ async function CompanyShell({ children }: { children: React.ReactNode }) {
           <Link href="/company/jobs/new" className={link}>
             Post a job
           </Link>
+          <Link href="/company/jobseekers" className={link}>
+            Job seekers
+          </Link>
+          <Link href="/company/chats" className={link}>
+            Chats
+          </Link>
           <Link href="/company/settings" className={link}>
             Company settings
           </Link>

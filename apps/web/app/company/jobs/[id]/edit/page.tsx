@@ -21,6 +21,7 @@ export default async function EditJobPage({
 
   const job = await db.jobPost.findFirst({
     where: { id, companyId: user.id, deletedAt: null },
+    include: { chatArea: { select: { id: true } } },
   });
   if (!job) notFound();
 
@@ -38,6 +39,7 @@ export default async function EditJobPage({
     salaryCurrency: job.salaryCurrency,
     applicationDeadline: job.applicationDeadline ? job.applicationDeadline.toISOString().slice(0, 10) : '',
     publish: job.status === 'PUBLISHED',
+    createChatArea: !!job.chatArea,
   };
 
   return (

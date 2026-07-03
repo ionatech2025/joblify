@@ -1,5 +1,38 @@
 # Changelog
 
+## 2026-07-03 — Flowchart + use-case flows: onboarding, profile types, subscriptions, invitations, chat areas
+
+Implements the master flowchart and `usecases_002.pdf` (JOB_UC_01–14) in
+`apps/web` rather than resurrecting the legacy Express stack:
+
+- **Onboarding (UC_01/03/04):** `/onboarding` role choice after sign-up
+  ("Company or Job seeker?", then Employable vs Virtual Intern for seekers);
+  `/dashboard` routes brand-new seekers there; middleware gates the route.
+  Fixes the missing employer self-signup path.
+- **Profile types (UC_05):** `JobSeekerProfile.profileType`
+  (`EMPLOYABLE | VIRTUAL_INTERN`) plus VI extras (career interest,
+  availability hrs/week, learning goal) editable on `/jobseeker/profile`.
+- **Subscriptions (UC_07):** `CompanySubscription` unique per
+  company/seeker/type; subscribe button on `/companies/[slug]`; seeker
+  "My subscriptions" page; `NEW_SUBSCRIBER` notification to the company.
+- **Directory + outreach (UC_10/14):** `/company/jobseekers` (PUBLIC profiles
+  + "subscribed to you" tabs, Employable/VI filters) with share-job and
+  invite actions.
+- **Invitations (UC_10.1):** typed `Invitation` (unique per
+  company/seeker/type, 30-day expiry); accept → subscription upsert, decline
+  → company notified; inbox on `/jobseeker/subscriptions`.
+- **Chat areas (UC_11–14):** `ChatArea` (one per job; one VIRTUAL_INTERN area
+  per company via partial unique index), `ChatParticipant`, `ChatMessage`
+  (`TEXT | MATERIAL | INTERVIEW_DETAILS`); optional create-at-job-post
+  toggle; `/company/chats(/[id])` and `/jobseeker/chats(/[id])`; shortlisted+
+  applicants auto-join the job's area with a `CHAT_AREA_ADDED` notification.
+  Request/response only — realtime push transport stays V1.5.
+- **Schema/migration:** `prisma/migrations/20260703000000_flowchart_flows`
+  (new enums, tables, notification kinds, audit actions).
+
+Verified: prisma validate · typecheck · lint (0 errors) · vitest 83/83
+(4 new chat-join tests).
+
 ## 2026-06-10 — Global ambient backdrop: every section on one canvas
 
 Extends the ambient design language from per-section treatments to the whole

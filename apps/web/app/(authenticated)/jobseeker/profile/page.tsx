@@ -20,6 +20,7 @@ export default async function JobseekerProfilePage() {
       <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
       <ProfileForm
         initial={{
+          profileType: profile?.profileType ?? 'EMPLOYABLE',
           headline: profile?.headline ?? '',
           bio: profile?.bio ?? '',
           yearsExperience: profile?.yearsExperience ?? null,
@@ -28,6 +29,9 @@ export default async function JobseekerProfilePage() {
           desiredSalaryMax: profile?.desiredSalaryMax ?? null,
           desiredWorkMode: profile?.desiredWorkMode ?? null,
           visibility: (profile?.visibility as 'PUBLIC' | 'PRIVATE') ?? 'PRIVATE',
+          careerInterest: profile?.careerInterest ?? '',
+          availabilityHoursPerWeek: profile?.availabilityHoursPerWeek ?? null,
+          learningGoal: profile?.learningGoal ?? '',
         }}
       />
 

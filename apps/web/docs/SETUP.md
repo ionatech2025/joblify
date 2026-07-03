@@ -55,7 +55,7 @@ Set these via the Vercel dashboard → **Settings → Environment Variables**.
 | Name | Value | Scopes |
 |---|---|---|
 | `NEXT_PUBLIC_SITE_URL` | Production: `https://your-prod-domain` · Preview: leave blank · Development: `http://localhost:3000` | All |
-| `CRON_SECRET` | `openssl rand -base64 48` output | Production, Preview |
+| `CRON_SECRET` | `openssl rand -base64 48` output — generate a **separate** value per scope; never reuse the production secret in Development | All |
 | `RESEND_WEBHOOK_SECRET` | Set after configuring Resend webhook (Step 8) | All |
 | `EMAIL_FROM` | `Joblify <noreply@your-verified-domain>` | All |
 | `AI_GATEWAY_API_KEY` | Auto-injected by Vercel in deploys; for local dev set from the Gateway dashboard | Development |
@@ -67,6 +67,28 @@ bunx vercel env pull .env.local
 ```
 
 `.env.local` is gitignored. Inspect it; never paste contents anywhere.
+Re-pulling **overwrites the whole file** — keep manual local overrides in
+`.env.development.local` instead.
+
+`vercel env pull` downloads the **Development** scope only. As of 2026-07 that
+scope holds the Neon vars (`DATABASE_URL*` plus the injected
+`POSTGRES_*`/`PG*`/`NEON_*` aliases), the Clerk publishable/secret keys,
+`NEXT_PUBLIC_SITE_URL` (`http://localhost:3000`), the Clerk sign-in/up paths,
+and a dev-only `CRON_SECRET` — enough for `bun run dev` with database, auth,
+and cron routes.
+
+Still Production-only (sensitive type — Vercel can't read the values back;
+fetch them from the provider dashboards): `CLERK_WEBHOOK_SECRET`,
+`ALGOLIA_APP_ID`, `ALGOLIA_ADMIN_API_KEY`. To add them to Development:
+
+```bash
+# values from Clerk dashboard → Webhooks and Algolia dashboard → API keys
+vercel env add CLERK_WEBHOOK_SECRET development
+vercel env add ALGOLIA_APP_ID development
+vercel env add ALGOLIA_ADMIN_API_KEY development
+
+bunx vercel env pull .env.local   # re-pull after adding
+```
 
 ## 6. Enable Postgres extensions + run the initial migration
 

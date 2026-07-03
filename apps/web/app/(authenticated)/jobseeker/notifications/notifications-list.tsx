@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useNotifications, useMarkNotificationRead, type NotificationItem } from '@/lib/query/notifications';
 
 const KIND_LABEL: Record<string, string> = {
@@ -10,6 +11,10 @@ const KIND_LABEL: Record<string, string> = {
   INVITATION_RECEIVED: 'Invitation',
   ACCOUNT_UPDATE: 'Account',
   SYSTEM: 'System',
+  JOB_SHARED: 'Job shared with you',
+  CHAT_AREA_ADDED: 'Added to a chat',
+  NEW_SUBSCRIBER: 'New subscriber',
+  INVITATION_RESPONDED: 'Invitation answered',
 };
 
 export function NotificationsList({ initial }: { initial: NotificationItem[] }) {
@@ -35,6 +40,21 @@ export function NotificationsList({ initial }: { initial: NotificationItem[] }) 
                 {KIND_LABEL[n.kind] ?? n.kind}
               </p>
               <p className="m-0 text-sm text-neutral-600">{summarize(n.payload)}</p>
+              {typeof n.payload.jobSlug === 'string' && (
+                <Link href={`/jobs/${n.payload.jobSlug}`} className="text-sm text-indigo-700 hover:underline">
+                  View job →
+                </Link>
+              )}
+              {typeof n.payload.chatAreaId === 'string' && (
+                <Link href={`/jobseeker/chats/${n.payload.chatAreaId}`} className="text-sm text-indigo-700 hover:underline">
+                  Open chat →
+                </Link>
+              )}
+              {typeof n.payload.invitationId === 'string' && n.kind === 'INVITATION_RECEIVED' && (
+                <Link href="/jobseeker/subscriptions" className="text-sm text-indigo-700 hover:underline">
+                  View invitation →
+                </Link>
+              )}
               <p className="mt-1 mb-0 text-xs text-neutral-500">{new Date(n.createdAt).toLocaleString()}</p>
             </div>
             {!isRead && (

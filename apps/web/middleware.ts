@@ -8,6 +8,7 @@ const isProtected = createRouteMatcher([
   '/company(.*)',
   '/account(.*)',
   '/employer-setup(.*)',
+  '/onboarding(.*)',
 ]);
 
 const isAdminOnly = createRouteMatcher(['/admin(.*)']);

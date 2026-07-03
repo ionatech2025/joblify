@@ -174,10 +174,10 @@ Browser ──> /jobseeker/applications ──> middleware.ts (auth.protect)
 ## What's intentionally simple
 
 - **No outbox table for Algolia.** Server Actions call `algolia.partialUpdateObject` directly; failure path falls back to a 15-min reconcile cron that re-scans recently-updated jobs. Add a real outbox in V1.5 if drift becomes a problem.
-- **No realtime chat.** `/chat` is deferred to V1.5; the V1 substitute is "message via apply" + email thread routed through Resend webhooks.
+- **Chat without a realtime transport.** Job-specific + virtual-intern chat areas shipped 2026-07-03 (flowchart / JOB_UC_11–14: `ChatArea`/`ChatParticipant`/`ChatMessage`, `/company/chats`, `/jobseeker/chats`) as plain request/response Server Actions — new messages appear on submit or reload. A push transport (SSE/WebSocket) is the part still deferred to V1.5.
 - **No personalized search ranking yet.** Pure Algolia + the composite signal in `lib/search/ranking.ts`. AI vector reranking is V1.5.
 - **No screening summaries.** The most expensive AI feature is deferred until paying recruiter customers exist.
-- **No company subscriptions / billing.** Stripe + subscriptions are V2.
+- **No billing.** Stripe is V2. The free `CompanySubscription` follow model (seeker subscribes to a company as EMPLOYABLE or VIRTUAL_INTERN, JOB_UC_07) shipped 2026-07-03; paid/premium gating would layer on top of it.
 
 ## What's intentionally cautious
 

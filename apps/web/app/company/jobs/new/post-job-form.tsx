@@ -28,6 +28,7 @@ export function PostJobForm() {
       salaryMin: null,
       salaryMax: null,
       publish: true,
+      createChatArea: false,
     },
   });
 
