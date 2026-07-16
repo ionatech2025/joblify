@@ -12,7 +12,7 @@ import { gateway, MODELS } from '@/lib/ai/gateway';
 import { JdSkillsSchema, JD_SKILLS_SYSTEM } from '@/lib/ai/prompts/jd-skills';
 import { reindexJob } from '@/lib/search/index-job';
 import { logger } from '@/lib/observability/logger';
-import { PostJobFormSchema } from '../company/jobs/job-form-fields';
+import { PostJobFormSchema } from '../company/jobs/job-form-schema';
 
 function slugify(title: string): string {
   return title

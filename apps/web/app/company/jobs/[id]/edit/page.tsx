@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { requireRole } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { EditJobForm } from './edit-job-form';
-import type { PostJobFormValues } from '@/app/company/jobs/job-form-fields';
+import type { PostJobFormValues } from '@/app/company/jobs/job-form-schema';
 import { PageHeader } from '@/app/components/ui/ambient';
 
 export const metadata = { title: 'Edit job' };

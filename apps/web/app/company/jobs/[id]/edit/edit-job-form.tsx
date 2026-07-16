@@ -5,7 +5,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { updateJob } from '@/app/actions/post-job';
-import { JobFormFields, PostJobFormSchema, type PostJobFormValues } from '@/app/company/jobs/job-form-fields';
+import { JobFormFields } from '@/app/company/jobs/job-form-fields';
+import { PostJobFormSchema, type PostJobFormValues } from '@/app/company/jobs/job-form-schema';
 import { Button } from '@/app/components/ui/button';
 
 export function EditJobForm({ jobId, initial }: { jobId: string; initial: PostJobFormValues }) {
