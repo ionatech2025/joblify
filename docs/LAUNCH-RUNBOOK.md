@@ -38,8 +38,10 @@ I can't do these for you.
   (so a broken schema never ships). To gate prod migrations manually instead,
   drop `prisma migrate deploy` from `buildCommand` and run it as a release step.
 - **[owner]** Seed the skill taxonomy: `bunx prisma db seed` (reference skills;
-  add `SEED_DEMO=1` to also plant a demo company + jobs). JD skill extraction
-  matches against it — search/match quality depends on it.
+  add `SEED_DEMO=1` to also plant the flowchart demo — a company + jobs, two
+  directory-visible seekers, subscriptions, a pending typed invitation, and job
+  + virtual-intern chat areas with messages). JD skill extraction matches
+  against the skills — search/match quality depends on it.
 
 ## 3. Data migration (only if importing legacy Mongo data)
 
