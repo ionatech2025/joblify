@@ -75,7 +75,9 @@ beforeEach(() => {
   m.requireRole.mockResolvedValue({ id: 'company1' });
   m.jobCreate.mockResolvedValue({ id: JOB_ID, status: 'PUBLISHED', title: 'Senior Rust Engineer' });
   m.jobUpdate.mockResolvedValue({ id: JOB_ID, status: 'PUBLISHED', title: 'Senior Rust Engineer' });
-  m.generateObject.mockResolvedValue({ object: { requiredSkills: ['Rust'], niceToHave: ['Docker'] } });
+  m.generateObject.mockResolvedValue({
+    object: { requiredSkills: ['Rust'], niceToHave: ['Docker'] },
+  });
   m.skillFindMany.mockResolvedValue([
     { id: 's-rust', slug: 'rust' },
     { id: 's-docker', slug: 'docker' },
@@ -141,6 +143,19 @@ describe('postJob', () => {
     m.reindexJob.mockRejectedValue(new Error('algolia down'));
     await expect(postJob(input())).resolves.toBe(JOB_ID);
   });
+
+  it('attaches a company-joined chat area when createChatArea is set (JOB_UC_11)', async () => {
+    await postJob(input({ createChatArea: true }));
+    const area = m.jobCreate.mock.calls[0]![0].data.chatArea;
+    expect(area.create.kind).toBe('JOB');
+    expect(area.create.companyId).toBe('company1');
+    expect(area.create.participants.create).toEqual({ userId: 'company1' });
+  });
+
+  it('creates no chat area by default', async () => {
+    await postJob(input());
+    expect(m.jobCreate.mock.calls[0]![0].data.chatArea).toBeUndefined();
+  });
 });
 
 describe('updateJob', () => {
@@ -170,5 +185,21 @@ describe('updateJob', () => {
     expect(m.updateTag).toHaveBeenCalledWith(`job:${JOB_ID}`);
     expect(m.updateTag).toHaveBeenCalledWith('jobs');
     expect(m.updateTag).toHaveBeenCalledWith('company:company1');
+  });
+
+  it('creates a chat area when the box is toggled on and none exists', async () => {
+    m.jobFindFirst.mockResolvedValue({ id: JOB_ID, publishedAt: new Date(), chatArea: null });
+    await updateJob(JOB_ID, input({ createChatArea: true }));
+    expect(m.jobUpdate.mock.calls[0]![0].data.chatArea.create.kind).toBe('JOB');
+  });
+
+  it('never recreates an existing chat area', async () => {
+    m.jobFindFirst.mockResolvedValue({
+      id: JOB_ID,
+      publishedAt: new Date(),
+      chatArea: { id: 'area1' },
+    });
+    await updateJob(JOB_ID, input({ createChatArea: true }));
+    expect(m.jobUpdate.mock.calls[0]![0].data.chatArea).toBeUndefined();
   });
 });
