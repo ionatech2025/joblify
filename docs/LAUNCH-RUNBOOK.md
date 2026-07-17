@@ -39,9 +39,10 @@ I can't do these for you.
   drop `prisma migrate deploy` from `buildCommand` and run it as a release step.
 - **[owner]** Seed the skill taxonomy: `bunx prisma db seed` (reference skills;
   add `SEED_DEMO=1` to also plant the flowchart demo — a company + jobs, two
-  directory-visible seekers, subscriptions, a pending typed invitation, and job
-  + virtual-intern chat areas with messages). JD skill extraction matches
-  against the skills — search/match quality depends on it.
+  directory-visible seekers, subscriptions, a pending typed invitation, job +
+  virtual-intern chat areas with messages, resumes, job applications, saved
+  jobs/searches, and the notifications those flows produce). JD skill
+  extraction matches against the skills — search/match quality depends on it.
 
 ## 3. Data migration (only if importing legacy Mongo data)
 
