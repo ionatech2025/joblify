@@ -34,6 +34,18 @@ enum UserType {
   ADMIN
 }
 
+// Entitlement tier. The use-case spec gates several shipped features (chat
+// area creation, the auto-join-on-shortlist, application tracking, and
+// company outreach actions — invite/share/add-to-chat) behind "premium",
+// but no billing integration exists yet. Defaults every account to PRO so
+// today's behavior is unchanged; the gates are real and load-bearing, so
+// switching new signups to FREE (once pricing/checkout exists) actually
+// restricts them without touching the gated code paths themselves.
+enum PlanTier {
+  FREE
+  PRO
+}
+
 // How a job seeker presents themselves (flowchart: "Employable or Virtual
 // Intern?"). Chosen at onboarding, editable from the profile page.
 enum ProfileType {
@@ -181,6 +193,7 @@ model User {
   clerkUserId   String   @unique
   email         String   @unique @db.Citext
   userType      UserType @default(JOB_SEEKER)
+  plan          PlanTier @default(PRO)
   firstName     String?
   lastName      String?
   phone         String?

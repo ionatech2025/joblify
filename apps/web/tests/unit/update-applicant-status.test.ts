@@ -64,7 +64,7 @@ const APPLICATION = {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  m.requireRole.mockResolvedValue({ id: 'company1' });
+  m.requireRole.mockResolvedValue({ id: 'company1', plan: 'PRO' });
   m.appFindFirst.mockResolvedValue({ ...APPLICATION });
   m.appUpdate.mockResolvedValue({});
   m.notifCreate.mockResolvedValue({});
@@ -136,6 +136,14 @@ describe('updateApplicantStatus', () => {
 
   it('skips the chat join when the job has no chat area', async () => {
     await updateApplicantStatus(APP_ID, 'SHORTLISTED');
+    expect(m.partCreate).not.toHaveBeenCalled();
+  });
+
+  it('skips the chat auto-join for a FREE-plan company but still updates the status', async () => {
+    m.requireRole.mockResolvedValue({ id: 'company1', plan: 'FREE' });
+    m.areaFindUnique.mockResolvedValue({ id: 'area1', title: 'Engineer' });
+    await updateApplicantStatus(APP_ID, 'SHORTLISTED');
+    expect(m.appUpdate).toHaveBeenCalledTimes(1);
     expect(m.partCreate).not.toHaveBeenCalled();
   });
 

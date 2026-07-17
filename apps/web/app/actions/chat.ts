@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation';
 import { updateTag } from 'next/cache';
 import { z } from 'zod';
 import { Prisma } from '@prisma/client';
-import { requireUser, requireRole, AuthError } from '@/lib/auth';
+import { requireUser, requireRole, assertPlan, AuthError } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { withAudit } from '@/lib/audit';
 import { tags } from '@/lib/cache';
@@ -110,8 +110,12 @@ async function ensureVirtualInternChatArea(companyUserId: string): Promise<{ id:
 
 // Add a job seeker to one of the company's chat areas (flowchart: "add seeker
 // of choice to job specific chat area" / "add virtual interns of interest").
+// JOB_UC_14.0: both add-to-job-chat and add-to-VI-chat are premium outreach
+// actions (addVirtualInternToChat below delegates here, so gating once here
+// covers both entry points).
 export async function addChatParticipant(chatAreaId: string, jobSeekerUserId: string): Promise<void> {
   const user = await requireRole('COMPANY');
+  assertPlan(user, 'PRO');
 
   const area = await db.chatArea.findFirst({
     where: { id: chatAreaId, companyId: user.id },

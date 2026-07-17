@@ -1,4 +1,5 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest';
+import type * as AuthModule from '@/lib/auth';
 
 // Money path (supply side): company posts/edits a job — auth → zod → audit'd
 // write → best-effort AI skill extraction + Algolia index → cache invalidation.
@@ -28,7 +29,10 @@ const m = vi.hoisted(() => {
   };
 });
 
-vi.mock('@/lib/auth', () => ({ requireRole: m.requireRole, AuthError: m.AuthError }));
+vi.mock('@/lib/auth', async (importOriginal) => {
+  const actual = await importOriginal<typeof AuthModule>();
+  return { ...actual, requireRole: m.requireRole, AuthError: m.AuthError };
+});
 vi.mock('@/lib/ratelimit', () => ({ postJobLimit: m.postJobLimit }));
 vi.mock('@/lib/db', () => ({
   db: {
@@ -74,7 +78,7 @@ function input(over: Record<string, unknown> = {}) {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  m.requireRole.mockResolvedValue({ id: 'company1' });
+  m.requireRole.mockResolvedValue({ id: 'company1', plan: 'PRO' });
   m.postJobLimit.mockResolvedValue({ success: true });
   m.jobFindFirst.mockResolvedValue(null); // no duplicate title by default
   m.jobCreate.mockResolvedValue({ id: JOB_ID, status: 'PUBLISHED', title: 'Senior Rust Engineer' });
@@ -168,6 +172,12 @@ describe('postJob', () => {
     expect(area.create.participants.create).toEqual({ userId: 'company1' });
   });
 
+  it('requires a Pro plan to create a job-specific chat area', async () => {
+    m.requireRole.mockResolvedValue({ id: 'company1', plan: 'FREE' });
+    await expect(postJob(input({ createChatArea: true }))).rejects.toThrow('UPGRADE_REQUIRED');
+    expect(m.jobCreate).not.toHaveBeenCalled();
+  });
+
   it('creates no chat area by default', async () => {
     await postJob(input());
     expect(m.jobCreate.mock.calls[0]![0].data.chatArea).toBeUndefined();
@@ -220,6 +230,13 @@ describe('updateJob', () => {
     expect(m.jobUpdate.mock.calls[0]![0].data.chatArea.create.kind).toBe('JOB');
   });
 
+  it('requires a Pro plan to create a chat area that does not yet exist', async () => {
+    m.requireRole.mockResolvedValue({ id: 'company1', plan: 'FREE' });
+    m.jobFindFirst.mockResolvedValueOnce({ id: JOB_ID, publishedAt: new Date(), chatArea: null });
+    await expect(updateJob(JOB_ID, input({ createChatArea: true }))).rejects.toThrow('UPGRADE_REQUIRED');
+    expect(m.jobUpdate).not.toHaveBeenCalled();
+  });
+
   it('never recreates an existing chat area', async () => {
     m.jobFindFirst
       .mockResolvedValueOnce({
@@ -230,6 +247,15 @@ describe('updateJob', () => {
       .mockResolvedValueOnce(null);
     await updateJob(JOB_ID, input({ createChatArea: true }));
     expect(m.jobUpdate.mock.calls[0]![0].data.chatArea).toBeUndefined();
+  });
+
+  it('does not require Pro when the box is toggled on but an area already exists', async () => {
+    // Not actually creating anything new — should succeed even on FREE.
+    m.requireRole.mockResolvedValue({ id: 'company1', plan: 'FREE' });
+    m.jobFindFirst
+      .mockResolvedValueOnce({ id: JOB_ID, publishedAt: new Date(), chatArea: { id: 'area1' } })
+      .mockResolvedValueOnce(null);
+    await expect(updateJob(JOB_ID, input({ createChatArea: true }))).resolves.toBeUndefined();
   });
 });
 

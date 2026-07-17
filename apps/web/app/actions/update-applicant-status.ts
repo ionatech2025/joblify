@@ -73,8 +73,10 @@ export async function updateApplicantStatus(
 
       // Shortlisted-or-beyond applicants join the job's chat area (if the
       // company opened one) so the team can orient them and share interview
-      // details there.
-      if (CHAT_JOIN_STATUSES.has(status)) {
+      // details there. JOB_UC_12.0: this auto-join is premium — the status
+      // change itself isn't, so skip the join rather than block the status
+      // update for a non-PRO company.
+      if (CHAT_JOIN_STATUSES.has(status) && user.plan === 'PRO') {
         const area = await tx.chatArea.findUnique({
           where: { jobPostId: application.jobPostId },
           select: { id: true, title: true },

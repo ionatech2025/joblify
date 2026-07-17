@@ -1,4 +1,5 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest';
+import type * as AuthModule from '@/lib/auth';
 
 // Company shares a published job with a seeker in the directory (flowchart:
 // "share job post link to job seekers of interest"): tenancy + published check,
@@ -24,7 +25,10 @@ const m = vi.hoisted(() => {
   };
 });
 
-vi.mock('@/lib/auth', () => ({ requireRole: m.requireRole, AuthError: m.AuthError }));
+vi.mock('@/lib/auth', async (importOriginal) => {
+  const actual = await importOriginal<typeof AuthModule>();
+  return { ...actual, requireRole: m.requireRole, AuthError: m.AuthError };
+});
 vi.mock('@/lib/db', () => ({
   db: {
     jobPost: { findFirst: m.jobFindFirst },
@@ -45,7 +49,7 @@ const JOB_ID = '11111111-1111-1111-1111-111111111111';
 
 beforeEach(() => {
   vi.clearAllMocks();
-  m.requireRole.mockResolvedValue({ id: 'company1' });
+  m.requireRole.mockResolvedValue({ id: 'company1', plan: 'PRO' });
   m.jobFindFirst.mockResolvedValue({
     id: JOB_ID,
     slug: 'senior-rust-engineer',
@@ -60,6 +64,12 @@ describe('shareJobWithJobseeker', () => {
   it('propagates the auth error for non-companies', async () => {
     m.requireRole.mockRejectedValue(new m.AuthError('FORBIDDEN'));
     await expect(shareJobWithJobseeker(JOB_ID, 'seeker1')).rejects.toThrow();
+    expect(m.notifCreate).not.toHaveBeenCalled();
+  });
+
+  it('requires a Pro plan to share a job', async () => {
+    m.requireRole.mockResolvedValue({ id: 'company1', plan: 'FREE' });
+    await expect(shareJobWithJobseeker(JOB_ID, 'seeker1')).rejects.toThrow('UPGRADE_REQUIRED');
     expect(m.notifCreate).not.toHaveBeenCalled();
   });
 

@@ -3,7 +3,7 @@
 import { headers } from 'next/headers';
 import { updateTag } from 'next/cache';
 import { z } from 'zod';
-import { requireRole, AuthError } from '@/lib/auth';
+import { requireRole, assertPlan, AuthError } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { withAudit } from '@/lib/audit';
 import { tags } from '@/lib/cache';
@@ -17,8 +17,10 @@ export async function shareJobFromForm(jobSeekerUserId: string, formData: FormDa
 
 // Flowchart: "share job post link to job seekers of interest". Sends the
 // seeker an in-app notification that links to the public job page.
+// JOB_UC_14.0: sharing a job post is a premium outreach action.
 export async function shareJobWithJobseeker(jobPostId: string, jobSeekerUserId: string): Promise<void> {
   const user = await requireRole('COMPANY');
+  assertPlan(user, 'PRO');
 
   const job = await db.jobPost.findFirst({
     where: { id: jobPostId, companyId: user.id, status: 'PUBLISHED', deletedAt: null },
