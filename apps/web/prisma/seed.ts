@@ -418,6 +418,8 @@ async function seedJobseekerActivity(
   ]);
   if (!reactJob || !rustJob) return;
 
+  await seedJobViews(ada, grace, reactJob.id, rustJob.id);
+
   const adaResume = await prisma.resume.upsert({
     where: { id: 'c3c3c3c3-0000-4000-8000-000000000001' },
     create: {
@@ -530,6 +532,47 @@ async function seedJobseekerActivity(
       },
       update: {},
     });
+  }
+}
+
+// Jobseeker view history (drives the "Recently viewed" panel on
+// /jobseeker/applications, which reads JobView directly — see
+// app/(authenticated)/jobseeker/recently-viewed.tsx). Fixed ids keep the
+// upserts idempotent; ipHash mirrors the real /api/v1/jobs/[id]/view route's
+// shape (a hash, never a real IP) with an obviously-fake placeholder.
+// viewCount is set (not incremented) from the actual JobView row count for
+// each job so re-running the seed never inflates it.
+async function seedJobViews(
+  ada: { id: string },
+  grace: { id: string },
+  reactJobId: string,
+  rustJobId: string,
+): Promise<void> {
+  const day = 24 * 60 * 60 * 1000;
+  const now = Date.now();
+  const SEED_IP_HASH = 'seed0000000000000000000000000000';
+  const views = [
+    { id: 'e5e5e5e5-0000-4000-8000-000000000001', userId: ada.id, jobPostId: reactJobId, daysAgo: 4 },
+    { id: 'e5e5e5e5-0000-4000-8000-000000000002', userId: ada.id, jobPostId: rustJobId, daysAgo: 3 },
+    { id: 'e5e5e5e5-0000-4000-8000-000000000003', userId: ada.id, jobPostId: reactJobId, daysAgo: 1 },
+    { id: 'e5e5e5e5-0000-4000-8000-000000000004', userId: grace.id, jobPostId: reactJobId, daysAgo: 2 },
+  ];
+  for (const v of views) {
+    await prisma.jobView.upsert({
+      where: { id: v.id },
+      create: {
+        id: v.id,
+        jobPostId: v.jobPostId,
+        userId: v.userId,
+        ipHash: SEED_IP_HASH,
+        createdAt: new Date(now - v.daysAgo * day),
+      },
+      update: {},
+    });
+  }
+  for (const jobPostId of [reactJobId, rustJobId]) {
+    const viewCount = await prisma.jobView.count({ where: { jobPostId } });
+    await prisma.jobPost.update({ where: { id: jobPostId }, data: { viewCount } });
   }
 }
 
