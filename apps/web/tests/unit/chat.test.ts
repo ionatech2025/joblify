@@ -25,6 +25,7 @@ const m = vi.hoisted(() => {
     RedirectError,
     requireRole: vi.fn(),
     requireUser: vi.fn(),
+    chatMessageLimit: vi.fn(),
     jobFindFirst: vi.fn(),
     areaFindUnique: vi.fn(),
     areaFindFirst: vi.fn(),
@@ -49,6 +50,8 @@ vi.mock('@/lib/auth', () => ({
   requireUser: m.requireUser,
   AuthError: m.AuthError,
 }));
+vi.mock('@/lib/ratelimit', () => ({ chatMessageLimit: m.chatMessageLimit }));
+vi.mock('@/lib/observability/logger', () => ({ logger: { info: vi.fn(), warn: vi.fn() } }));
 vi.mock('@/lib/db', () => ({
   db: {
     jobPost: { findFirst: m.jobFindFirst },
@@ -83,6 +86,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   m.requireRole.mockResolvedValue({ id: 'company1' });
   m.requireUser.mockResolvedValue({ id: 'seeker1' });
+  m.chatMessageLimit.mockResolvedValue({ success: true });
   m.jobFindFirst.mockResolvedValue({ id: 'job1', title: 'Engineer' });
   m.areaFindUnique.mockResolvedValue(null);
   m.areaFindFirst.mockResolvedValue(null);
@@ -204,6 +208,14 @@ describe('sendChatMessage', () => {
     const fd = new FormData();
     fd.set('body', 'hello');
     await expect(sendChatMessage('area1', fd)).rejects.toThrow();
+    expect(m.msgCreate).not.toHaveBeenCalled();
+  });
+
+  it('enforces the per-user send-rate limit', async () => {
+    m.chatMessageLimit.mockResolvedValue({ success: false });
+    const fd = new FormData();
+    fd.set('body', 'spam');
+    await expect(sendChatMessage('area1', fd)).rejects.toThrow(/too quickly/i);
     expect(m.msgCreate).not.toHaveBeenCalled();
   });
 

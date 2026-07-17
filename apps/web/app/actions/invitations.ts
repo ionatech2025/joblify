@@ -8,6 +8,8 @@ import { requireRole, AuthError } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { withAudit } from '@/lib/audit';
 import { tags } from '@/lib/cache';
+import { inviteLimit } from '@/lib/ratelimit';
+import { logger } from '@/lib/observability/logger';
 
 const INVITATION_TTL_DAYS = 30;
 
@@ -24,6 +26,9 @@ async function auditCtx(actorId: string) {
 // (JOB_UC_10.0). One pending invitation per company/seeker/type.
 export async function inviteJobseeker(jobSeekerUserId: string, profileType: ProfileType): Promise<void> {
   const user = await requireRole('COMPANY');
+
+  const rl = await inviteLimit(user.id);
+  if (!rl.success) throw new Error('Daily invitation limit reached. Try again tomorrow.');
 
   const seeker = await db.user.findFirst({
     where: { id: jobSeekerUserId, userType: 'JOB_SEEKER', deletedAt: null },
@@ -93,6 +98,8 @@ export async function inviteJobseeker(jobSeekerUserId: string, profileType: Prof
   }
 
   updateTag(tags.notifications(seeker.id));
+
+  logger.info({ companyId: user.id, jobSeekerId: seeker.id, profileType }, 'invitation sent');
 }
 
 // Seeker accepts or declines a pending invitation (JOB_UC_10.1). Accepting
@@ -170,4 +177,6 @@ export async function respondToInvitation(invitationId: string, response: 'ACCEP
   );
 
   updateTag(tags.notifications(invitation.companyId));
+
+  logger.info({ invitationId: invitation.id, jobSeekerId: user.id, status }, 'invitation responded to');
 }

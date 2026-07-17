@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { updateJob } from '@/app/actions/post-job';
+import { updateJob, archiveJob } from '@/app/actions/post-job';
 import { JobFormFields } from '@/app/company/jobs/job-form-fields';
 import { PostJobFormSchema, type PostJobFormValues } from '@/app/company/jobs/job-form-schema';
 import { Button } from '@/app/components/ui/button';
@@ -12,8 +12,24 @@ import { Button } from '@/app/components/ui/button';
 export function EditJobForm({ jobId, initial }: { jobId: string; initial: PostJobFormValues }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const [isDeleting, startDelete] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+
+  function onDelete() {
+    if (!window.confirm('Delete this job post? Existing applications and chat history are kept, but the listing is removed from search and your active posts.')) {
+      return;
+    }
+    setError(null);
+    startDelete(async () => {
+      try {
+        await archiveJob(jobId);
+        router.push('/company/jobs');
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to delete job post.');
+      }
+    });
+  }
 
   const {
     register,
@@ -45,9 +61,20 @@ export function EditJobForm({ jobId, initial }: { jobId: string; initial: PostJo
       {error && <p className="m-0 text-red-700">{error}</p>}
       {saved && <p className="m-0 text-green-700">Saved.</p>}
 
-      <Button type="submit" disabled={isPending} className="self-start">
-        {isPending ? 'Saving…' : 'Save changes'}
-      </Button>
+      <div className="flex items-center gap-3">
+        <Button type="submit" disabled={isPending} className="self-start">
+          {isPending ? 'Saving…' : 'Save changes'}
+        </Button>
+        <Button
+          type="button"
+          variant="danger"
+          disabled={isDeleting}
+          onClick={onDelete}
+          className="self-start"
+        >
+          {isDeleting ? 'Deleting…' : 'Delete job post'}
+        </Button>
+      </div>
     </form>
   );
 }

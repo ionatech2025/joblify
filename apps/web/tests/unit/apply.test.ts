@@ -16,6 +16,7 @@ const m = vi.hoisted(() => {
     applyLimit: vi.fn(),
     resumeFindFirst: vi.fn(),
     jobFindFirst: vi.fn(),
+    appFindUnique: vi.fn(),
     appCreate: vi.fn(),
     isEmailSuppressed: vi.fn(),
     send: vi.fn(),
@@ -28,7 +29,11 @@ vi.mock('botid/server', () => ({ checkBotId: m.checkBotId }));
 vi.mock('@/lib/auth', () => ({ requireRole: m.requireRole, AuthError: m.AuthError }));
 vi.mock('@/lib/ratelimit', () => ({ applyLimit: m.applyLimit }));
 vi.mock('@/lib/db', () => ({
-  db: { resume: { findFirst: m.resumeFindFirst }, jobPost: { findFirst: m.jobFindFirst } },
+  db: {
+    resume: { findFirst: m.resumeFindFirst },
+    jobPost: { findFirst: m.jobFindFirst },
+    jobApplication: { findUnique: m.appFindUnique },
+  },
 }));
 vi.mock('@/lib/audit', () => ({
   withAudit: (_ctx: unknown, _meta: unknown, fn: (tx: unknown) => unknown) =>
@@ -78,6 +83,7 @@ describe('submitApplication', () => {
       title: 'Engineer',
       company: { companyProfile: { companyName: 'Acme' } },
     });
+    m.appFindUnique.mockResolvedValue(null);
     m.appCreate.mockResolvedValue({ id: 'app1', status: 'SUBMITTED' });
     m.isEmailSuppressed.mockResolvedValue(false);
     m.send.mockResolvedValue({});
@@ -119,6 +125,34 @@ describe('submitApplication', () => {
   it('rejects a job that is not live', async () => {
     m.jobFindFirst.mockResolvedValue(null);
     await expect(submitApplication(fd())).rejects.toThrow(/not available/i);
+    expect(m.appCreate).not.toHaveBeenCalled();
+  });
+
+  it('rejects applying after the application deadline has passed', async () => {
+    m.jobFindFirst.mockResolvedValue({
+      id: JOB_ID,
+      title: 'Engineer',
+      applicationDeadline: new Date('2020-01-01T00:00:00Z'),
+      company: { companyProfile: { companyName: 'Acme' } },
+    });
+    await expect(submitApplication(fd())).rejects.toThrow(/deadline/i);
+    expect(m.appCreate).not.toHaveBeenCalled();
+  });
+
+  it('allows applying when the deadline is still in the future', async () => {
+    m.jobFindFirst.mockResolvedValue({
+      id: JOB_ID,
+      title: 'Engineer',
+      applicationDeadline: new Date('2099-01-01T00:00:00Z'),
+      company: { companyProfile: { companyName: 'Acme' } },
+    });
+    await expect(submitApplication(fd())).resolves.toBeUndefined();
+    expect(m.appCreate).toHaveBeenCalledTimes(1);
+  });
+
+  it('rejects a second application to the same job', async () => {
+    m.appFindUnique.mockResolvedValue({ id: 'existing-app' });
+    await expect(submitApplication(fd())).rejects.toThrow(/already applied/i);
     expect(m.appCreate).not.toHaveBeenCalled();
   });
 

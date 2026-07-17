@@ -53,12 +53,23 @@ export async function submitApplication(formData: FormData): Promise<void> {
   });
   if (!resume) throw new AuthError('FORBIDDEN');
 
-  // 6. Job must be live.
+  // 6. Job must be live and, if it has a deadline, still open.
   const job = await db.jobPost.findFirst({
     where: { id: parsed.data.jobId, status: 'PUBLISHED', deletedAt: null },
     include: { company: { include: { companyProfile: true } } },
   });
   if (!job) throw new Error('Job not available for application.');
+  if (job.applicationDeadline && job.applicationDeadline < new Date()) {
+    throw new Error('The application deadline for this job has passed.');
+  }
+
+  // The UI already blocks re-applying, but check here too — the compound
+  // unique constraint is the backstop, not the primary UX.
+  const existing = await db.jobApplication.findUnique({
+    where: { jobPostId_jobSeekerId: { jobPostId: job.id, jobSeekerId: user.id } },
+    select: { id: true },
+  });
+  if (existing) throw new Error('You already applied to this job.');
 
   // 7. Capture audit context.
   const h = await headers();
