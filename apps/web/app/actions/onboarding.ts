@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { requireUser, AuthError } from '@/lib/auth';
 import { withAudit } from '@/lib/audit';
+import { logger } from '@/lib/observability/logger';
 
 const ProfileTypeSchema = z.enum(['EMPLOYABLE', 'VIRTUAL_INTERN']);
 
@@ -36,6 +37,8 @@ export async function completeJobSeekerOnboarding(formData: FormData): Promise<v
         update: { profileType },
       }),
   );
+
+  logger.info({ userId: user.id, profileType }, 'job seeker onboarding completed');
 
   redirect('/jobseeker/profile');
 }

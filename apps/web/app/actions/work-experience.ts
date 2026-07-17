@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { requireRole } from '@/lib/auth';
 import { withAudit } from '@/lib/audit';
 import { tags } from '@/lib/cache';
+import { logger } from '@/lib/observability/logger';
 
 const WorkExperienceEntry = z.object({
   company: z.string().trim().min(1).max(200),
@@ -65,4 +66,6 @@ export async function saveWorkExperiences(entries: WorkExperienceInput[]): Promi
   );
 
   updateTag(tags.user(user.id));
+
+  logger.info({ userId: user.id, count: parsed.entries.length }, 'work experiences saved');
 }

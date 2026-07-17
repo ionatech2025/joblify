@@ -45,6 +45,10 @@ curl -H "Authorization: Bearer ${CRON_SECRET}" "${URL}/api/v1/cron/<name>"
 
 **Mongo legacy still receiving writes.** Should not happen post-cutover. If it does: legacy `Joblify-backend` is still deployed somewhere — confirm Render project is paused.
 
+**Need to restore the database.** Don't improvise — follow the production restore procedure in [DATABASE.md](./DATABASE.md#backups--dr), not the quarterly drill steps (those intentionally tear the restored branch down). Target RTO is < 4h.
+
+**Retention cron looks wrong (0 deletes for days, or a sudden spike).** Confirm it actually ran: Vercel Observability → Functions → `/api/v1/cron/retention` → check invocation history and response body counts. Manually trigger with the curl command above to see fresh counts. Cross-check against the policy table in [COMPLIANCE.md](./COMPLIANCE.md#retention-policy) — a spike usually means a backlog from a prior failed run (harmless, it'll catch up), a silence usually means the cron stopped firing (check `vercel.ts` crons config didn't get dropped in a deploy) or `CRON_SECRET` rotated without updating Vercel env.
+
 ## Secrets rotation cadence
 
 - Clerk webhook secret: rotate on any suspicion of leak.

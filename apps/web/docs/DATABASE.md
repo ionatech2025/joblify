@@ -228,6 +228,15 @@ Neon takes daily snapshots automatically; Point-in-Time Recovery (PITR) is inclu
 
 Target: full restore in < 4 h.
 
+**Production restore (real incident, not a drill).** The drill above validates the mechanism against a throwaway staging preview; an actual production restore promotes the recovered branch instead of tearing it down:
+
+1. Identify the target recovery point (Neon console → Branches → your production branch → "Restore" gives a timestamp picker, backed by PITR).
+2. Create the restored branch — Neon does this as a new branch, it does **not** overwrite the live one. Confirm row counts / spot-check recent rows look right before going further.
+3. In Vercel → Project → Settings → Environment Variables, point `DATABASE_URL` and `DATABASE_URL_UNPOOLED` at the restored branch's connection strings (Neon Marketplace integration usually does this for you if you promote the branch to primary from the Neon side instead — prefer that path when available, it's one click instead of four env vars).
+4. Redeploy production so functions pick up the new connection strings.
+5. Hit `/api/v1/health` and run the Playwright smoke suite before announcing recovery.
+6. Keep the pre-incident branch around (don't delete) until the postmortem is filed — it's your forensic copy of the bad state.
+
 ## Tenancy invariants
 
 These are the contracts that protect against IDOR. Code reviews must enforce them.
