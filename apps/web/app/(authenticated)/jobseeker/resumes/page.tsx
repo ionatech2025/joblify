@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { requireRole } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { ResumeManager } from './resume-manager';
@@ -28,6 +29,13 @@ export default async function ResumesPage() {
         width="max-w-3xl"
       />
       <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
+        <p className="m-0 text-sm text-neutral-600">
+          Don't have a resume file handy?{' '}
+          <Link href="/jobseeker/resumes/builder" className="text-indigo-600 hover:underline">
+            Build one from your profile
+          </Link>
+          .
+        </p>
         <ResumeManager userId={user.id} initialResumes={resumes} />
       </div>
     </main>
