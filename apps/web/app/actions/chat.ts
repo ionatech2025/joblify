@@ -9,6 +9,8 @@ import { requireUser, requireRole, AuthError } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { withAudit } from '@/lib/audit';
 import { tags } from '@/lib/cache';
+import { chatMessageLimit } from '@/lib/ratelimit';
+import { logger } from '@/lib/observability/logger';
 
 async function auditCtx(actorId: string) {
   const h = await headers();
@@ -180,6 +182,9 @@ const MessageSchema = z.object({
 export async function sendChatMessage(chatAreaId: string, formData: FormData): Promise<void> {
   const user = await requireUser();
 
+  const rl = await chatMessageLimit(user.id);
+  if (!rl.success) throw new Error('You are sending messages too quickly. Please slow down.');
+
   const membership = await db.chatParticipant.findUnique({
     where: { chatAreaId_userId: { chatAreaId, userId: user.id } },
     select: { chatAreaId: true },
@@ -205,4 +210,8 @@ export async function sendChatMessage(chatAreaId: string, formData: FormData): P
     // Bump so chat lists sort by latest activity.
     db.chatArea.update({ where: { id: chatAreaId }, data: { updatedAt: new Date() } }),
   ]);
+
+  // Metadata only — message content is sensitive and high-volume, same
+  // reasoning as the audit-trail exemption noted above.
+  logger.info({ chatAreaId, senderId: user.id, kind: parsed.kind }, 'chat message sent');
 }

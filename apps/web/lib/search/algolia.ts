@@ -47,6 +47,18 @@ export function adminClient() {
   return _adminClient;
 }
 
+// Cheap connectivity check for /api/v1/health — search already degrades
+// gracefully without Algolia, so this reports status rather than throwing.
+export async function pingAlgolia(): Promise<'ok' | 'not_configured' | 'error'> {
+  if (!process.env.ALGOLIA_APP_ID || !process.env.ALGOLIA_ADMIN_API_KEY) return 'not_configured';
+  try {
+    await adminClient().getSettings({ indexName: INDEX.jobs });
+    return 'ok';
+  } catch {
+    return 'error';
+  }
+}
+
 export function toJobRecord(
   job: JobPost & { company: { companyProfile: CompanyProfile | null } & Pick<User, 'id'> },
   skillLabels: string[],

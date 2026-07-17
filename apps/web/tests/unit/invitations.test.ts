@@ -23,6 +23,7 @@ const m = vi.hoisted(() => {
     AuthError,
     RedirectError,
     requireRole: vi.fn(),
+    inviteLimit: vi.fn(),
     userFindFirst: vi.fn(),
     companyFindUnique: vi.fn(),
     invFindUnique: vi.fn(),
@@ -41,6 +42,7 @@ const m = vi.hoisted(() => {
 });
 
 vi.mock('@/lib/auth', () => ({ requireRole: m.requireRole, AuthError: m.AuthError }));
+vi.mock('@/lib/ratelimit', () => ({ inviteLimit: m.inviteLimit }));
 vi.mock('@/lib/db', () => ({
   db: {
     user: { findFirst: m.userFindFirst },
@@ -64,6 +66,7 @@ vi.mock('@/lib/audit', () => ({
 vi.mock('next/cache', () => ({ updateTag: m.updateTag }));
 vi.mock('next/headers', () => ({ headers: async () => new Map() }));
 vi.mock('next/navigation', () => ({ redirect: m.redirect }));
+vi.mock('@/lib/observability/logger', () => ({ logger: { info: vi.fn(), warn: vi.fn() } }));
 
 import { inviteJobseeker, respondToInvitation } from '@/app/actions/invitations';
 
@@ -73,6 +76,7 @@ const past = () => new Date(Date.now() - 24 * 60 * 60 * 1000);
 beforeEach(() => {
   vi.clearAllMocks();
   m.requireRole.mockResolvedValue({ id: 'company1', firstName: 'Sam', lastName: 'Lee' });
+  m.inviteLimit.mockResolvedValue({ success: true });
   m.userFindFirst.mockResolvedValue({ id: 'seeker1' });
   m.companyFindUnique.mockResolvedValue({ companyName: 'Acme' });
   m.invFindUnique.mockResolvedValue(null);
@@ -92,6 +96,12 @@ describe('inviteJobseeker', () => {
   it('rejects when the target is not a job seeker', async () => {
     m.userFindFirst.mockResolvedValue(null);
     await expect(inviteJobseeker('seeker1', 'EMPLOYABLE')).rejects.toThrow('Job seeker not found');
+    expect(m.invCreate).not.toHaveBeenCalled();
+  });
+
+  it('enforces the daily invitation rate limit', async () => {
+    m.inviteLimit.mockResolvedValue({ success: false });
+    await expect(inviteJobseeker('seeker1', 'EMPLOYABLE')).rejects.toThrow(/limit/i);
     expect(m.invCreate).not.toHaveBeenCalled();
   });
 

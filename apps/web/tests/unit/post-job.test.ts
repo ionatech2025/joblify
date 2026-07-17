@@ -15,6 +15,7 @@ const m = vi.hoisted(() => {
   return {
     AuthError,
     requireRole: vi.fn(),
+    postJobLimit: vi.fn(),
     jobCreate: vi.fn(),
     jobUpdate: vi.fn(),
     jobFindFirst: vi.fn(),
@@ -28,6 +29,7 @@ const m = vi.hoisted(() => {
 });
 
 vi.mock('@/lib/auth', () => ({ requireRole: m.requireRole, AuthError: m.AuthError }));
+vi.mock('@/lib/ratelimit', () => ({ postJobLimit: m.postJobLimit }));
 vi.mock('@/lib/db', () => ({
   db: {
     jobPost: { findFirst: m.jobFindFirst },
@@ -46,7 +48,7 @@ vi.mock('@/lib/observability/logger', () => ({ logger: { info: vi.fn(), warn: vi
 vi.mock('next/cache', () => ({ updateTag: m.updateTag }));
 vi.mock('next/headers', () => ({ headers: async () => new Map() }));
 
-import { postJob, updateJob } from '@/app/actions/post-job';
+import { postJob, updateJob, archiveJob } from '@/app/actions/post-job';
 
 const JOB_ID = '11111111-1111-1111-1111-111111111111';
 
@@ -73,6 +75,8 @@ function input(over: Record<string, unknown> = {}) {
 beforeEach(() => {
   vi.clearAllMocks();
   m.requireRole.mockResolvedValue({ id: 'company1' });
+  m.postJobLimit.mockResolvedValue({ success: true });
+  m.jobFindFirst.mockResolvedValue(null); // no duplicate title by default
   m.jobCreate.mockResolvedValue({ id: JOB_ID, status: 'PUBLISHED', title: 'Senior Rust Engineer' });
   m.jobUpdate.mockResolvedValue({ id: JOB_ID, status: 'PUBLISHED', title: 'Senior Rust Engineer' });
   m.generateObject.mockResolvedValue({
@@ -96,6 +100,18 @@ describe('postJob', () => {
 
   it('rejects invalid input (short description) before writing', async () => {
     await expect(postJob(input({ description: 'too short' }))).rejects.toThrow();
+    expect(m.jobCreate).not.toHaveBeenCalled();
+  });
+
+  it('enforces the daily posting rate limit', async () => {
+    m.postJobLimit.mockResolvedValue({ success: false });
+    await expect(postJob(input())).rejects.toThrow(/limit/i);
+    expect(m.jobCreate).not.toHaveBeenCalled();
+  });
+
+  it("rejects a duplicate title among the company's other live posts", async () => {
+    m.jobFindFirst.mockResolvedValue({ id: 'other-job' });
+    await expect(postJob(input())).rejects.toThrow(/already have a job post/i);
     expect(m.jobCreate).not.toHaveBeenCalled();
   });
 
@@ -167,19 +183,20 @@ describe('updateJob', () => {
 
   it('keeps the original publishedAt on re-saves of a published job', async () => {
     const first = new Date('2026-01-01T00:00:00Z');
-    m.jobFindFirst.mockResolvedValue({ id: JOB_ID, publishedAt: first });
+    // Calls in order: tenancy check, then the title-uniqueness check (no dup).
+    m.jobFindFirst.mockResolvedValueOnce({ id: JOB_ID, publishedAt: first }).mockResolvedValueOnce(null);
     await updateJob(JOB_ID, input({ publish: true }));
     expect(m.jobUpdate.mock.calls[0]![0].data.publishedAt).toBe(first);
   });
 
   it('stamps publishedAt on first publish of a draft', async () => {
-    m.jobFindFirst.mockResolvedValue({ id: JOB_ID, publishedAt: null });
+    m.jobFindFirst.mockResolvedValueOnce({ id: JOB_ID, publishedAt: null }).mockResolvedValueOnce(null);
     await updateJob(JOB_ID, input({ publish: true }));
     expect(m.jobUpdate.mock.calls[0]![0].data.publishedAt).toBeInstanceOf(Date);
   });
 
   it('reindexes and invalidates the JD, list, and company caches', async () => {
-    m.jobFindFirst.mockResolvedValue({ id: JOB_ID, publishedAt: new Date() });
+    m.jobFindFirst.mockResolvedValueOnce({ id: JOB_ID, publishedAt: new Date() }).mockResolvedValueOnce(null);
     await updateJob(JOB_ID, input());
     await vi.waitFor(() => expect(m.reindexJob).toHaveBeenCalledWith(JOB_ID));
     expect(m.updateTag).toHaveBeenCalledWith(`job:${JOB_ID}`);
@@ -187,19 +204,53 @@ describe('updateJob', () => {
     expect(m.updateTag).toHaveBeenCalledWith('company:company1');
   });
 
+  it('rejects a duplicate title among the company\'s other live posts', async () => {
+    m.jobFindFirst
+      .mockResolvedValueOnce({ id: JOB_ID, publishedAt: new Date() })
+      .mockResolvedValueOnce({ id: 'other-job' });
+    await expect(updateJob(JOB_ID, input())).rejects.toThrow('already have a job post');
+    expect(m.jobUpdate).not.toHaveBeenCalled();
+  });
+
   it('creates a chat area when the box is toggled on and none exists', async () => {
-    m.jobFindFirst.mockResolvedValue({ id: JOB_ID, publishedAt: new Date(), chatArea: null });
+    m.jobFindFirst
+      .mockResolvedValueOnce({ id: JOB_ID, publishedAt: new Date(), chatArea: null })
+      .mockResolvedValueOnce(null);
     await updateJob(JOB_ID, input({ createChatArea: true }));
     expect(m.jobUpdate.mock.calls[0]![0].data.chatArea.create.kind).toBe('JOB');
   });
 
   it('never recreates an existing chat area', async () => {
-    m.jobFindFirst.mockResolvedValue({
-      id: JOB_ID,
-      publishedAt: new Date(),
-      chatArea: { id: 'area1' },
-    });
+    m.jobFindFirst
+      .mockResolvedValueOnce({
+        id: JOB_ID,
+        publishedAt: new Date(),
+        chatArea: { id: 'area1' },
+      })
+      .mockResolvedValueOnce(null);
     await updateJob(JOB_ID, input({ createChatArea: true }));
     expect(m.jobUpdate.mock.calls[0]![0].data.chatArea).toBeUndefined();
+  });
+});
+
+describe('archiveJob', () => {
+  it("rejects archiving another company's job (tenancy)", async () => {
+    m.jobFindFirst.mockResolvedValue(null);
+    await expect(archiveJob(JOB_ID)).rejects.toThrow();
+    expect(m.jobUpdate).not.toHaveBeenCalled();
+  });
+
+  it('soft-deletes and marks the job ARCHIVED on the happy path', async () => {
+    m.jobFindFirst.mockResolvedValue({ id: JOB_ID });
+    await archiveJob(JOB_ID);
+    const data = m.jobUpdate.mock.calls[0]![0].data;
+    expect(data.status).toBe('ARCHIVED');
+    expect(data.deletedAt).toBeInstanceOf(Date);
+  });
+
+  it('de-indexes from Algolia after archiving', async () => {
+    m.jobFindFirst.mockResolvedValue({ id: JOB_ID });
+    await archiveJob(JOB_ID);
+    await vi.waitFor(() => expect(m.reindexJob).toHaveBeenCalledWith(JOB_ID));
   });
 });

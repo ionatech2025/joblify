@@ -12,6 +12,7 @@ import { gateway, MODELS } from '@/lib/ai/gateway';
 import { JdSkillsSchema, JD_SKILLS_SYSTEM } from '@/lib/ai/prompts/jd-skills';
 import { reindexJob } from '@/lib/search/index-job';
 import { logger } from '@/lib/observability/logger';
+import { postJobLimit } from '@/lib/ratelimit';
 import { PostJobFormSchema } from '../company/jobs/job-form-schema';
 
 function slugify(title: string): string {
@@ -30,7 +31,20 @@ const Input = PostJobFormSchema;
 
 export async function postJob(input: z.infer<typeof Input>): Promise<string> {
   const user = await requireRole('COMPANY');
+
+  // Each post triggers a paid AI skill-extraction call + an Algolia reindex —
+  // throttle before doing any other work.
+  const rl = await postJobLimit(user.id);
+  if (!rl.success) throw new Error('Daily job-posting limit reached. Try again tomorrow.');
+
   const parsed = Input.parse(input);
+
+  // No duplicate titles for the same company among its live postings.
+  const duplicate = await db.jobPost.findFirst({
+    where: { companyId: user.id, deletedAt: null, title: { equals: parsed.title, mode: 'insensitive' } },
+    select: { id: true },
+  });
+  if (duplicate) throw new Error('You already have a job post with this title.');
 
   const h = await headers();
   const ip = h.get('x-forwarded-for')?.split(',')[0]?.trim() ?? null;
@@ -97,11 +111,17 @@ export async function postJob(input: z.infer<typeof Input>): Promise<string> {
   updateTag(tags.jobs());
   updateTag(tags.company(user.id));
 
+  logger.info({ jobId: job.id, companyId: user.id, status: job.status }, 'job posted');
+
   return job.id;
 }
 
 export async function updateJob(jobId: string, input: z.infer<typeof Input>): Promise<void> {
   const user = await requireRole('COMPANY');
+
+  const rl = await postJobLimit(user.id);
+  if (!rl.success) throw new Error('Daily job-posting limit reached. Try again tomorrow.');
+
   const parsed = Input.parse(input);
 
   // Tenancy: the job must belong to this company.
@@ -110,6 +130,17 @@ export async function updateJob(jobId: string, input: z.infer<typeof Input>): Pr
     select: { id: true, publishedAt: true, chatArea: { select: { id: true } } },
   });
   if (!existing) throw new AuthError('FORBIDDEN');
+
+  const duplicate = await db.jobPost.findFirst({
+    where: {
+      companyId: user.id,
+      deletedAt: null,
+      title: { equals: parsed.title, mode: 'insensitive' },
+      id: { not: jobId },
+    },
+    select: { id: true },
+  });
+  if (duplicate) throw new Error('You already have a job post with this title.');
 
   const h = await headers();
   const ip = h.get('x-forwarded-for')?.split(',')[0]?.trim() ?? null;
@@ -170,6 +201,40 @@ export async function updateJob(jobId: string, input: z.infer<typeof Input>): Pr
   updateTag(tags.job(jobId));
   updateTag(tags.jobs());
   updateTag(tags.company(user.id));
+
+  logger.info({ jobId, companyId: user.id }, 'job updated');
+}
+
+// JOB_UC_11.1: remove a job post the company no longer needs. Soft-delete
+// (deletedAt + ARCHIVED), matching the pattern used everywhere else in this
+// app — applications, chat history, and audit trail are preserved, just
+// hidden from listings and search.
+export async function archiveJob(jobId: string): Promise<void> {
+  const user = await requireRole('COMPANY');
+
+  const existing = await db.jobPost.findFirst({
+    where: { id: jobId, companyId: user.id, deletedAt: null },
+    select: { id: true },
+  });
+  if (!existing) throw new AuthError('FORBIDDEN');
+
+  const h = await headers();
+  const ip = h.get('x-forwarded-for')?.split(',')[0]?.trim() ?? null;
+  const ua = h.get('user-agent') ?? null;
+
+  await withAudit(
+    { actorId: user.id, ip, ua },
+    { action: 'JOB_DELETED', entity: 'job_post', entityId: jobId, after: () => ({ status: 'ARCHIVED' }) },
+    (tx) => tx.jobPost.update({ where: { id: jobId }, data: { status: 'ARCHIVED', deletedAt: new Date() } }),
+  );
+
+  reindexJob(jobId).catch((err) => logger.warn({ err, jobId }, 'Algolia deindex failed (non-blocking)'));
+
+  updateTag(tags.job(jobId));
+  updateTag(tags.jobs());
+  updateTag(tags.company(user.id));
+
+  logger.info({ jobId, companyId: user.id }, 'job archived');
 }
 
 async function extractAndLinkSkills(

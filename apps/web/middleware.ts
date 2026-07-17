@@ -9,9 +9,13 @@ const isProtected = createRouteMatcher([
   '/account(.*)',
   '/employer-setup(.*)',
   '/onboarding(.*)',
+  // Admin authorization is enforced in app/admin/page.tsx (User.userType),
+  // same as company — gated on userType, not a Clerk org role, for V1 (see
+  // the company note below). The previous org:admin check required Clerk
+  // Organizations, which nothing in this app ever provisions, making /admin
+  // unreachable by any account.
+  '/admin(.*)',
 ]);
-
-const isAdminOnly = createRouteMatcher(['/admin(.*)']);
 
 export default clerkMiddleware(async (auth, req) => {
   if (isProtected(req)) {
@@ -20,9 +24,6 @@ export default clerkMiddleware(async (auth, req) => {
   // Company authorization is enforced in company/layout.tsx (User.userType) and
   // each company Server Action (requireRole). Self-serve companies are gated on
   // userType, not a Clerk org role, for V1 — orgs/MFA can layer on later.
-  if (isAdminOnly(req)) {
-    await auth.protect((has) => has({ role: 'org:admin' }));
-  }
 
   const response = NextResponse.next();
   // No-index API + dashboards; default-index everything else.
