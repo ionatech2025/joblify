@@ -21,6 +21,12 @@ const ProfileSchema = z.object({
   careerInterest: z.string().max(140).optional().or(z.literal('')),
   availabilityHoursPerWeek: z.coerce.number().int().min(1).max(80).nullable(),
   learningGoal: z.string().max(500).optional().or(z.literal('')),
+  // JOB_UC_05.0 profile-completeness: academic background, certifications, a
+  // portfolio link, and skills picked from the canonical Skill catalog.
+  education: z.string().max(1000).optional().or(z.literal('')),
+  certifications: z.string().max(1000).optional().or(z.literal('')),
+  portfolioUrl: z.string().trim().url().max(300).optional().or(z.literal('')),
+  skillSlugs: z.array(z.string()).max(30).default([]),
 });
 
 export type ProfileInput = z.infer<typeof ProfileSchema>;
@@ -54,8 +60,8 @@ export async function saveProfile(input: ProfileInput): Promise<void> {
       entityId: user.id,
       after: () => parsed,
     },
-    async (tx) =>
-      tx.jobSeekerProfile.upsert({
+    async (tx) => {
+      const profile = await tx.jobSeekerProfile.upsert({
         where: { userId: user.id },
         create: {
           userId: user.id,
@@ -68,6 +74,9 @@ export async function saveProfile(input: ProfileInput): Promise<void> {
           desiredSalaryMax: parsed.desiredSalaryMax,
           desiredWorkMode: parsed.desiredWorkMode,
           visibility: parsed.visibility,
+          education: parsed.education || null,
+          certifications: parsed.certifications || null,
+          portfolioUrl: parsed.portfolioUrl || null,
           ...viFields(parsed),
         },
         update: {
@@ -80,9 +89,30 @@ export async function saveProfile(input: ProfileInput): Promise<void> {
           desiredSalaryMax: parsed.desiredSalaryMax,
           desiredWorkMode: parsed.desiredWorkMode,
           visibility: parsed.visibility,
+          education: parsed.education || null,
+          certifications: parsed.certifications || null,
+          portfolioUrl: parsed.portfolioUrl || null,
           ...viFields(parsed),
         },
-      }),
+        select: { id: true },
+      });
+
+      // Reset + relink against the canonical catalog — idempotent, same
+      // "clear then recreate" shape as the JD skill-extraction writer.
+      // Unknown slugs (stale client state) are silently dropped.
+      await tx.jobSeekerSkill.deleteMany({ where: { jobSeekerProfileId: profile.id } });
+      if (parsed.skillSlugs.length > 0) {
+        const skills = await tx.skill.findMany({ where: { slug: { in: parsed.skillSlugs } } });
+        if (skills.length > 0) {
+          await tx.jobSeekerSkill.createMany({
+            data: skills.map((skill) => ({ jobSeekerProfileId: profile.id, skillId: skill.id })),
+            skipDuplicates: true,
+          });
+        }
+      }
+
+      return profile;
+    },
   );
 
   updateTag(tags.user(user.id));

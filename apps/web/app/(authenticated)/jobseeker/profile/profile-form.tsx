@@ -21,11 +21,21 @@ const ProfileFormSchema = z.object({
   careerInterest: z.string().max(140).optional().or(z.literal('')),
   availabilityHoursPerWeek: z.coerce.number().int().min(1).max(80).nullable(),
   learningGoal: z.string().max(500).optional().or(z.literal('')),
+  education: z.string().max(1000).optional().or(z.literal('')),
+  certifications: z.string().max(1000).optional().or(z.literal('')),
+  portfolioUrl: z.string().trim().url().max(300).optional().or(z.literal('')),
+  skillSlugs: z.array(z.string()).max(30).default([]),
 });
 
 export type ProfileFormValues = z.infer<typeof ProfileFormSchema>;
 
-export function ProfileForm({ initial }: { initial: ProfileFormValues }) {
+export function ProfileForm({
+  initial,
+  allSkills,
+}: {
+  initial: ProfileFormValues;
+  allSkills: Array<{ slug: string; label: string }>;
+}) {
   const [isPending, startTransition] = useTransition();
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -90,8 +100,33 @@ export function ProfileForm({ initial }: { initial: ProfileFormValues }) {
         <Textarea {...register('bio')} rows={6} placeholder="A short summary of what you do and what you're looking for." />
       </Field>
 
+      <fieldset className="flex flex-col gap-1">
+        <legend className="text-sm font-medium text-neutral-700">Skills</legend>
+        <div className="grid grid-cols-2 gap-x-4 gap-y-2 rounded-md border border-neutral-300 p-3 sm:grid-cols-3">
+          {allSkills.map((skill) => (
+            <label key={skill.slug} className="flex items-center gap-2 text-sm text-neutral-700">
+              <input type="checkbox" value={skill.slug} {...register('skillSlugs')} />
+              {skill.label}
+            </label>
+          ))}
+        </div>
+        {errors.skillSlugs?.message && <span className="text-sm text-red-600">{errors.skillSlugs.message}</span>}
+      </fieldset>
+
       <Field label="Years of professional experience" error={errors.yearsExperience?.message}>
         <Input type="number" {...register('yearsExperience')} min={0} max={70} />
+      </Field>
+
+      <Field label="Education" error={errors.education?.message}>
+        <Textarea {...register('education')} rows={3} placeholder="B.Sc. Computer Science, University of Nairobi (2018–2022)" />
+      </Field>
+
+      <Field label="Certifications" error={errors.certifications?.message}>
+        <Textarea {...register('certifications')} rows={3} placeholder="AWS Certified Solutions Architect (2024)" />
+      </Field>
+
+      <Field label="Portfolio / GitHub link" error={errors.portfolioUrl?.message}>
+        <Input {...register('portfolioUrl')} placeholder="https://github.com/yourname" />
       </Field>
 
       <Field label="Location" error={errors.location?.message}>

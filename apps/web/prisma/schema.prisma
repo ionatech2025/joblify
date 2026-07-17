@@ -254,6 +254,12 @@ model JobSeekerProfile {
   locationLng      Float?
   visibility       String   @default("PRIVATE")
 
+  /// JOB_UC_05.0 profile-completeness fields: free-text academic background,
+  /// free-text certifications, and a single portfolio/GitHub/behance link.
+  education        String?
+  certifications   String?
+  portfolioUrl     String?
+
   skills        JobSeekerSkill[]
 
   createdAt     DateTime @default(now())
