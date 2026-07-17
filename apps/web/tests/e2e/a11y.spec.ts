@@ -5,6 +5,13 @@ import AxeBuilder from '@axe-core/playwright';
 // covers the automation-detectable subset (~30-40% of WCAG); manual SR
 // testing closes the rest.
 
+// The app's service worker (public/sw.js) intercepts fetches for its
+// network-first/cache-first strategy, which hangs axe-core's page analysis
+// indefinitely — axe never resolves, so `.analyze()` just times out. Block
+// service worker registration for this spec only; nothing here exercises
+// offline/PWA behavior.
+test.use({ serviceWorkers: 'block' });
+
 const DEFAULT_PAGES = [
   { path: '/', label: 'home' },
   { path: '/jobs', label: 'jobs search' },

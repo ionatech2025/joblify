@@ -2,7 +2,7 @@
 
 Single source of truth for what's NOT done. Cross-references every `TODO(week-N)` in code, every manual provisioning item, and every deferred V1.5 / V2 scope item.
 
-Updated 2026-05-12.
+Updated 2026-07-18.
 
 ---
 
@@ -160,14 +160,12 @@ Don't sneak these into V1. They land after Week 12 cutover + 4-week stability pe
 | Saved-search alerts with diff | Cron + diff complexity | V1 has a simple daily digest of new jobs |
 | AI vector reranking on search | Marginal gain at 10k MAU | Add when search CTR plateaus |
 | Public `/jobseekers` listing | Company-facing directory shipped 2026-07-03 (`/company/jobseekers`: PUBLIC profiles + subscribers, type filters, invite/share actions) | An unauthenticated public listing still needs UX + SEO thought |
-| `(admin)` route group | Moderation volume too low to justify | Use Clerk + Sentry + Neon SQL until ≥10 cases/week |
 | Mobile native client | `/api/v1/*` is ready when this ships | iOS + Android with shared Route Handlers |
-| Personalization ("jobs like ones you applied to") | Needs behavioral data | Collect via `JobView` for V1; mine in V1.5 |
-| A/B test framework | Need traffic first | Use Algolia A/B for search ranking; build app-side later |
+| Personalization ("jobs like ones you applied to" — behavioral) | Needs behavioral data | Collect via `JobView` for V1; mine in V1.5. Note: a *content*-based variant (resume↔job embedding similarity) shipped as `/jobseeker/matches` — this line is specifically about interaction/behavioral signals, which is a separate, still-open gap |
+| Feature flags / A/B test framework | Need traffic first | Use Algolia A/B for search ranking; build app-side later |
 | Per-user TZ for daily digest | Single 08:00 UTC is good enough at beta scale | V1 sends all at the same time |
-| Service-worker / PWA | Adds complexity, marginal Web Vitals win | Defer until measured benefit |
 | i18n (es, fr, pt, ar with RTL) | English-only for beta | When markets demand it, see [FRONTEND.md](./FRONTEND.md) §i18n |
-| Tailwind design system | Inline styles work for V1 skeleton | Bring Tailwind 4 + Radix in a single PR when a designer joins |
+| Radix (accessible primitives) | The hand-rolled primitives in `app/components/ui/` cover current needs | Tailwind 4 is already adopted; add Radix only if a future component (combobox, accessible modal) outgrows the hand-rolled version |
 
 ---
 
@@ -175,8 +173,8 @@ Don't sneak these into V1. They land after Week 12 cutover + 4-week stability pe
 
 | Feature | Why later |
 |---|---|
-| Stripe billing + premium gating | Need sustained user base first; the free `CompanySubscription` follow model shipped 2026-07-03 (flowchart flows) — premium gating (chat areas, application tracking per usecases_002 PREMIUM tags) layers on it |
-| Interview prep chat (multi-turn) | Requires conversation history + state |
+| Stripe billing | The `PlanTier` model + real gates (chat area creation, chat/share outreach, application tracking) shipped — everyone defaults to `PRO` since there's no checkout yet. Actual payment collection needs a sustained user base first |
+| Agentic multi-tool AI features (interview prep coach, application-quality reviewer, multi-turn chat) | Every AI feature today (resume parse, JD skill extraction, bio coach, match scoring) is single-shot — no tool-calling/looping. A real agentic feature needs conversation history + state + a new UI surface, which is more scope than a point fix |
 | Job-board syndication (ATS integrations) | Partner integrations |
 | White-label for enterprise | Multi-tenancy in route group + theming |
 | Talent pool / sourcing | New product surface |
