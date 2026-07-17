@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
+import { z } from 'zod';
 import { adminClient, INDEX, type JobSearchRecord } from '@/lib/search/algolia';
 import { searchLimit } from '@/lib/ratelimit';
 
@@ -9,30 +10,42 @@ const SORT_INDEX: Record<string, string> = {
   salary: INDEX.jobsSalaryDesc,
 };
 
+// Bounds + whitelists every param before it reaches the Algolia query builder —
+// previously `q` had no length cap and salary/page/radius went through bare
+// Number() coercion, so a malformed value silently produced a broken filter
+// string (or NaN) instead of a clear 400.
+const SearchQuery = z.object({
+  q: z.string().trim().max(300).optional().default(''),
+  location: z.string().trim().max(200).optional().default(''),
+  workMode: z.enum(['REMOTE', 'HYBRID', 'ONSITE']).optional(),
+  jobType: z.enum(['FULL_TIME', 'PART_TIME', 'CONTRACT', 'INTERNSHIP', 'TEMPORARY']).optional(),
+  experienceLevel: z.enum(['ENTRY', 'MID', 'SENIOR', 'STAFF', 'EXECUTIVE']).optional(),
+  salaryMin: z.coerce.number().int().min(0).max(10_000_000).optional(),
+  salaryMax: z.coerce.number().int().min(0).max(10_000_000).optional(),
+  radiusKm: z.coerce.number().positive().max(20_000).optional(),
+  sort: z.enum(['recent', 'salary']).optional(),
+  page: z.coerce.number().int().min(0).max(1000).default(0),
+});
+
 export async function GET(req: NextRequest) {
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown';
   const { success } = await searchLimit(ip);
   if (!success) return NextResponse.json({ error: 'rate-limited' }, { status: 429 });
 
   const url = new URL(req.url);
-  const q = url.searchParams.get('q') ?? '';
-  const location = url.searchParams.get('location');
-  const workMode = url.searchParams.get('workMode');
-  const jobType = url.searchParams.get('jobType');
-  const experienceLevel = url.searchParams.get('experienceLevel');
-  const salaryMin = url.searchParams.get('salaryMin');
-  const salaryMax = url.searchParams.get('salaryMax');
-  const radiusKm = url.searchParams.get('radiusKm');
-  const sort = url.searchParams.get('sort') ?? '';
-  const page = Number(url.searchParams.get('page') ?? '0') || 0;
+  const parsed = SearchQuery.safeParse(Object.fromEntries(url.searchParams));
+  if (!parsed.success) {
+    return NextResponse.json({ error: 'invalid search parameters' }, { status: 400 });
+  }
+  const { q, location, workMode, jobType, experienceLevel, salaryMin, salaryMax, radiusKm, sort, page } = parsed.data;
 
   const filters: string[] = [];
   if (workMode) filters.push(`workMode:${workMode}`);
   if (jobType) filters.push(`jobType:${jobType}`);
   if (experienceLevel) filters.push(`experienceLevel:${experienceLevel}`);
   // Bracket overlapping salary bands: the job's range must intersect the user's.
-  if (salaryMin) filters.push(`salaryMax >= ${Number(salaryMin)}`);
-  if (salaryMax) filters.push(`salaryMin <= ${Number(salaryMax)}`);
+  if (salaryMin != null) filters.push(`salaryMax >= ${salaryMin}`);
+  if (salaryMax != null) filters.push(`salaryMin <= ${salaryMax}`);
 
   const buildRequest = (indexName: string) => ({
     indexName,
@@ -41,7 +54,7 @@ export async function GET(req: NextRequest) {
     page,
     hitsPerPage: 20,
     aroundLatLngViaIP: !!location,
-    aroundRadius: radiusKm ? Number(radiusKm) * 1000 : undefined,
+    aroundRadius: radiusKm ? radiusKm * 1000 : undefined,
   });
 
   async function run(indexName: string): Promise<AlgoliaPage> {
@@ -49,15 +62,15 @@ export async function GET(req: NextRequest) {
     return res.results[0] as AlgoliaPage;
   }
 
-  const chosen = SORT_INDEX[sort] ?? INDEX.jobs;
+  const chosen = sort ? SORT_INDEX[sort] : undefined;
 
   try {
     let r: AlgoliaPage;
     try {
-      r = await run(chosen);
+      r = await run(chosen ?? INDEX.jobs);
     } catch (replicaErr) {
       // The sort replica may not be configured yet — degrade to relevance.
-      if (chosen !== INDEX.jobs) r = await run(INDEX.jobs);
+      if (chosen && chosen !== INDEX.jobs) r = await run(INDEX.jobs);
       else throw replicaErr;
     }
     return NextResponse.json({ hits: r.hits, nbHits: r.nbHits, page: r.page, nbPages: r.nbPages });

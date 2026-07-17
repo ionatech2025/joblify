@@ -174,6 +174,7 @@ enum AuditAction {
   APPLICATION_STATUS_CHANGED
   APPLICATION_NOTE_SAVED
   RESUME_UPLOADED
+  RESUME_GENERATED
   CONSENT_UPDATED
   SUBSCRIPTION_CREATED
   SUBSCRIPTION_CANCELLED
@@ -260,13 +261,34 @@ model JobSeekerProfile {
   certifications   String?
   portfolioUrl     String?
 
-  skills        JobSeekerSkill[]
+  skills           JobSeekerSkill[]
+  workExperiences  WorkExperience[]
 
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
   @@index([visibility, profileType])
   @@map("job_seeker_profiles")
+}
+
+// JOB_UC_05.0: structured work history that feeds the in-platform resume
+// builder. Dates are free text (like the AI resume parser's output) since
+// résumé date formats are inherently inconsistent ("2022", "Jan 2022 – Present").
+model WorkExperience {
+  id                 String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  jobSeekerProfileId String @db.Uuid
+  jobSeekerProfile   JobSeekerProfile @relation(fields: [jobSeekerProfileId], references: [id], onDelete: Cascade)
+
+  company     String
+  title       String
+  startDate   String?
+  endDate     String?
+  description String?
+
+  createdAt DateTime @default(now())
+
+  @@index([jobSeekerProfileId])
+  @@map("work_experiences")
 }
 
 model CompanyProfile {
