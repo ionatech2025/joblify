@@ -1,6 +1,7 @@
 import { clerkSetup, setupClerkTestingToken } from '@clerk/testing/playwright';
 import { test as setup } from '@playwright/test';
 import { STORAGE } from './storage-paths';
+import { ensureE2eFixtures } from './fixtures';
 
 // Produces signed-in storage states for authenticated.spec.ts. This file runs
 // only when the `setup` project is enabled — i.e. Clerk dev creds are present
@@ -52,6 +53,13 @@ setup('authenticate test users', async ({ browser }) => {
     await page.goto(role.landing);
     await page.context().storageState({ path: role.file });
     await page.close();
+  }
+
+  // Both accounts now have a mirrored User row (the landing-page nav above
+  // triggered lazy Clerk->Postgres provisioning) — safe to provision the
+  // cross-account fixtures workflows.spec.ts depends on.
+  if (process.env.E2E_TEST_EMAIL_JOBSEEKER && process.env.E2E_TEST_EMAIL_COMPANY) {
+    await ensureE2eFixtures(process.env.E2E_TEST_EMAIL_JOBSEEKER, process.env.E2E_TEST_EMAIL_COMPANY);
   }
 });
 
