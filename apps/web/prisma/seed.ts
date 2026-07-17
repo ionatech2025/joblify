@@ -281,7 +281,7 @@ async function seedWorkflows(companyId: string): Promise<void> {
 
   // A pending typed invitation (JOB_UC_10): Ada invited to also join as a
   // virtual intern; unanswered so the seeker's inbox shows the accept/decline UI.
-  await prisma.invitation.upsert({
+  const invitation = await prisma.invitation.upsert({
     where: {
       companyId_jobSeekerId_profileType: {
         companyId,
@@ -298,6 +298,7 @@ async function seedWorkflows(companyId: string): Promise<void> {
       expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
     },
     update: {},
+    select: { id: true },
   });
 
   // Job-specific chat area (JOB_UC_11) on the React role; company + Ada joined.
@@ -387,12 +388,149 @@ async function seedWorkflows(companyId: string): Promise<void> {
       userId: ada.id,
       kind: 'INVITATION_RECEIVED',
       payload: {
+        invitationId: invitation.id,
         profileType: 'VIRTUAL_INTERN',
         message: `${companyName} invited you to subscribe as a virtual intern.`,
       },
     },
     update: {},
   });
+
+  await seedJobseekerActivity(ada, grace, companyName);
+}
+
+// Demo data for the remaining features (applications, resumes, saved jobs/
+// searches): Ada applied for the React role (shortlisted, so her application
+// list and the company's applicant view both have something to show) and
+// bookmarked the Rust role; Grace bookmarked the React role. Notification
+// kinds here are restricted to ones a real Server Action actually produces
+// (update-applicant-status.ts / chat.ts) — APPLICATION_SUBMITTED and
+// NEW_APPLICANT exist in the enum and in notifications-list.tsx's label map,
+// but no action creates them yet, so seeding them would misrepresent behavior.
+async function seedJobseekerActivity(
+  ada: { id: string },
+  grace: { id: string },
+  companyName: string,
+): Promise<void> {
+  const [reactJob, rustJob] = await Promise.all([
+    prisma.jobPost.findUnique({ where: { slug: 'frontend-engineer-react' }, select: { id: true, title: true } }),
+    prisma.jobPost.findUnique({ where: { slug: 'senior-rust-engineer' }, select: { id: true, title: true } }),
+  ]);
+  if (!reactJob || !rustJob) return;
+
+  const adaResume = await prisma.resume.upsert({
+    where: { id: 'c3c3c3c3-0000-4000-8000-000000000001' },
+    create: {
+      id: 'c3c3c3c3-0000-4000-8000-000000000001',
+      userId: ada.id,
+      title: 'Ada Lovelace — Resume.pdf',
+      fileBlobUrl: 'https://demo-blob.public.blob.vercel-storage.com/resumes/ada-lovelace-resume.pdf',
+      fileMime: 'application/pdf',
+      fileSizeBytes: 214_300,
+      isDefault: true,
+    },
+    update: {},
+  });
+  await prisma.resume.upsert({
+    where: { id: 'c3c3c3c3-0000-4000-8000-000000000002' },
+    create: {
+      id: 'c3c3c3c3-0000-4000-8000-000000000002',
+      userId: grace.id,
+      title: 'Grace Hopper — Resume.pdf',
+      fileBlobUrl: 'https://demo-blob.public.blob.vercel-storage.com/resumes/grace-hopper-resume.pdf',
+      fileMime: 'application/pdf',
+      fileSizeBytes: 198_700,
+      isDefault: true,
+    },
+    update: {},
+  });
+
+  // Ada: shortlisted for the React role (drives the applicant-status +
+  // applications-list demos) and a fresh application to the Rust role.
+  await prisma.jobApplication.upsert({
+    where: { jobPostId_jobSeekerId: { jobPostId: reactJob.id, jobSeekerId: ada.id } },
+    create: {
+      jobPostId: reactJob.id,
+      jobSeekerId: ada.id,
+      resumeId: adaResume.id,
+      status: 'SHORTLISTED',
+      coverLetter: "I've shipped production React/TypeScript UIs for six years and would love to help here.",
+      recruiterNotes: 'Strong portfolio; scheduling a call.',
+      matchScore: 0.82,
+    },
+    update: { status: 'SHORTLISTED' },
+  });
+  await prisma.jobApplication.upsert({
+    where: { jobPostId_jobSeekerId: { jobPostId: rustJob.id, jobSeekerId: ada.id } },
+    create: {
+      jobPostId: rustJob.id,
+      jobSeekerId: ada.id,
+      resumeId: adaResume.id,
+      status: 'SUBMITTED',
+      matchScore: 0.41,
+    },
+    update: {},
+  });
+
+  // Saved jobs (Ada bookmarks the Rust role; Grace bookmarks the React role).
+  await prisma.savedJob.upsert({
+    where: { userId_jobPostId: { userId: ada.id, jobPostId: rustJob.id } },
+    create: { userId: ada.id, jobPostId: rustJob.id },
+    update: {},
+  });
+  await prisma.savedJob.upsert({
+    where: { userId_jobPostId: { userId: grace.id, jobPostId: reactJob.id } },
+    create: { userId: grace.id, jobPostId: reactJob.id },
+    update: {},
+  });
+
+  // Saved search (no natural unique key on the model — upsert on a fixed id).
+  await prisma.savedSearch.upsert({
+    where: { id: 'd4d4d4d4-0000-4000-8000-000000000001' },
+    create: {
+      id: 'd4d4d4d4-0000-4000-8000-000000000001',
+      userId: ada.id,
+      label: 'Remote React roles',
+      query: 'q=react&workMode=REMOTE',
+    },
+    update: {},
+  });
+
+  // Notifications matching the shapes real actions produce (see the
+  // function-level comment for why APPLICATION_SUBMITTED/NEW_APPLICANT are
+  // deliberately not seeded).
+  await prisma.notification.upsert({
+    where: { id: 'b2b2b2b2-0000-4000-8000-000000000003' },
+    create: {
+      id: 'b2b2b2b2-0000-4000-8000-000000000003',
+      userId: ada.id,
+      kind: 'APPLICATION_STATUS_CHANGED',
+      payload: {
+        applicationId: (await prisma.jobApplication.findUniqueOrThrow({
+          where: { jobPostId_jobSeekerId: { jobPostId: reactJob.id, jobSeekerId: ada.id } },
+          select: { id: true },
+        })).id,
+        jobTitle: reactJob.title,
+        companyName,
+        status: 'SHORTLISTED',
+        message: 'Your application status changed to SHORTLISTED.',
+      },
+    },
+    update: {},
+  });
+  const jobArea = await prisma.chatArea.findUnique({ where: { jobPostId: reactJob.id }, select: { id: true, title: true } });
+  if (jobArea) {
+    await prisma.notification.upsert({
+      where: { id: 'b2b2b2b2-0000-4000-8000-000000000004' },
+      create: {
+        id: 'b2b2b2b2-0000-4000-8000-000000000004',
+        userId: ada.id,
+        kind: 'CHAT_AREA_ADDED',
+        payload: { chatAreaId: jobArea.id, message: `You were added to the chat area "${jobArea.title}".` },
+      },
+      update: {},
+    });
+  }
 }
 
 async function main() {
