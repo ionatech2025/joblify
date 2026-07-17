@@ -12,6 +12,9 @@ export default function JobseekerLayout({ children }: { children: React.ReactNod
           <Link href="/jobseeker/applications" className={link}>
             Applications
           </Link>
+          <Link href="/jobseeker/matches" className={link}>
+            Matches
+          </Link>
           <Link href="/jobseeker/saved" className={link}>
             Saved
           </Link>

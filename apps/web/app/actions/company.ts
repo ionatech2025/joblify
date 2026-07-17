@@ -6,6 +6,7 @@ import { requireUser, requireRole, AuthError } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { withAudit } from '@/lib/audit';
 import { tags } from '@/lib/cache';
+import { logger } from '@/lib/observability/logger';
 import { CompanyProfileSchema, type CompanyProfileInput } from '@/app/company/company-profile-schema';
 
 function slugify(name: string): string {
@@ -39,7 +40,7 @@ export async function createCompanyProfile(input: CompanyProfileInput): Promise<
 
   const ctx = { ...(await auditCtx()), actorId: user.id };
 
-  await withAudit(
+  const created = await withAudit(
     ctx,
     { action: 'COMPANY_PROFILE_UPDATED', entity: 'company_profile', after: (r) => ({ id: r.id }) },
     async (tx) => {
@@ -59,6 +60,8 @@ export async function createCompanyProfile(input: CompanyProfileInput): Promise<
       });
     },
   );
+
+  logger.info({ userId: user.id, companyProfileId: created.id }, 'company profile created');
 }
 
 export async function updateCompanyProfile(input: CompanyProfileInput): Promise<void> {
@@ -88,4 +91,6 @@ export async function updateCompanyProfile(input: CompanyProfileInput): Promise<
   );
 
   updateTag(tags.company(user.id));
+
+  logger.info({ userId: user.id, companyProfileId: profile.id }, 'company profile updated');
 }

@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { requireRole } from '@/lib/auth';
 import { withAudit } from '@/lib/audit';
 import { tags } from '@/lib/cache';
+import { logger } from '@/lib/observability/logger';
 
 const ProfileSchema = z.object({
   profileType: z.enum(['EMPLOYABLE', 'VIRTUAL_INTERN']),
@@ -116,4 +117,9 @@ export async function saveProfile(input: ProfileInput): Promise<void> {
   );
 
   updateTag(tags.user(user.id));
+
+  logger.info(
+    { userId: user.id, profileType: parsed.profileType, skillCount: parsed.skillSlugs.length },
+    'job seeker profile saved',
+  );
 }

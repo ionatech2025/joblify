@@ -35,6 +35,7 @@ vi.mock('@/lib/audit', () => ({
 }));
 vi.mock('next/cache', () => ({ updateTag: m.updateTag }));
 vi.mock('next/headers', () => ({ headers: async () => new Map() }));
+vi.mock('@/lib/observability/logger', () => ({ logger: { info: vi.fn(), warn: vi.fn() } }));
 
 import { verifyCompany } from '@/app/actions/admin';
 

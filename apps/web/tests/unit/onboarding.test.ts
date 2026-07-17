@@ -36,6 +36,7 @@ vi.mock('@/lib/audit', () => ({
 }));
 vi.mock('next/headers', () => ({ headers: async () => new Map() }));
 vi.mock('next/navigation', () => ({ redirect: m.redirect }));
+vi.mock('@/lib/observability/logger', () => ({ logger: { info: vi.fn(), warn: vi.fn() } }));
 
 import { completeJobSeekerOnboarding } from '@/app/actions/onboarding';
 

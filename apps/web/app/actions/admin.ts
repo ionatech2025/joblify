@@ -6,6 +6,7 @@ import { requireRole } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { withAudit } from '@/lib/audit';
 import { tags } from '@/lib/cache';
+import { logger } from '@/lib/observability/logger';
 
 // Trust & safety: an ADMIN reviews a company's self-submitted profile and
 // either verifies it (unlocks full visibility — see JOB_UC_06.0's "unverified
@@ -63,4 +64,6 @@ export async function verifyCompany(
   updateTag(tags.company(profile.userId));
   updateTag(tags.companies());
   updateTag(tags.notifications(profile.userId));
+
+  logger.info({ companyProfileId: profile.id, adminId: admin.id, status }, 'company verification status changed');
 }
