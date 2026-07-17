@@ -4,7 +4,7 @@ import { headers } from 'next/headers';
 import { updateTag } from 'next/cache';
 import type { z } from 'zod';
 import { generateObject } from 'ai';
-import { requireRole, AuthError } from '@/lib/auth';
+import { requireRole, assertPlan, AuthError } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { withAudit } from '@/lib/audit';
 import { tags } from '@/lib/cache';
@@ -38,6 +38,9 @@ export async function postJob(input: z.infer<typeof Input>): Promise<string> {
   if (!rl.success) throw new Error('Daily job-posting limit reached. Try again tomorrow.');
 
   const parsed = Input.parse(input);
+
+  // JOB_UC_11.0: creating a job-specific chat area is a premium feature.
+  if (parsed.createChatArea) assertPlan(user, 'PRO');
 
   // No duplicate titles for the same company among its live postings.
   const duplicate = await db.jobPost.findFirst({
@@ -130,6 +133,9 @@ export async function updateJob(jobId: string, input: z.infer<typeof Input>): Pr
     select: { id: true, publishedAt: true, chatArea: { select: { id: true } } },
   });
   if (!existing) throw new AuthError('FORBIDDEN');
+
+  // JOB_UC_11.0: only gate when this update would actually create the area.
+  if (parsed.createChatArea && !existing.chatArea) assertPlan(user, 'PRO');
 
   const duplicate = await db.jobPost.findFirst({
     where: {

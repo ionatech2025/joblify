@@ -1,6 +1,6 @@
 import { auth as clerkAuth, currentUser as clerkCurrentUser } from '@clerk/nextjs/server';
 import { redirect } from 'next/navigation';
-import type { User, UserType } from '@prisma/client';
+import type { User, UserType, PlanTier } from '@prisma/client';
 import { db } from './db';
 
 // Auth helpers. `currentUser()` is the canonical way to fetch the local user
@@ -69,5 +69,25 @@ export class AuthError extends Error {
   constructor(public code: 'UNAUTHENTICATED' | 'FORBIDDEN') {
     super(code);
     this.name = 'AuthError';
+  }
+}
+
+// Entitlement gate. Takes an already-fetched user (from requireUser/
+// requireRole) instead of re-querying — every gated action already has one.
+// Every account defaults to PRO (see PlanTier in schema.prisma), so this is
+// currently a no-op everywhere it's called; it exists so the use-case spec's
+// premium boundaries (chat creation, the shortlist auto-join, application
+// tracking, company outreach actions) have one real, load-bearing check
+// point ready for whenever a FREE tier and billing exist.
+export function assertPlan(user: AuthContext, minPlan: PlanTier): void {
+  if (minPlan === 'PRO' && user.plan !== 'PRO') {
+    throw new PlanError('UPGRADE_REQUIRED');
+  }
+}
+
+export class PlanError extends Error {
+  constructor(public code: 'UPGRADE_REQUIRED') {
+    super(code);
+    this.name = 'PlanError';
   }
 }

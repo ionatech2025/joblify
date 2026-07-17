@@ -1,4 +1,5 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest';
+import type * as AuthModule from '@/lib/auth';
 
 // Chat areas (JOB_UC_11-14 / flowchart chat flows): companies open a
 // job-specific or virtual-intern chat area, add seekers, and everyone in an
@@ -45,11 +46,10 @@ const m = vi.hoisted(() => {
   };
 });
 
-vi.mock('@/lib/auth', () => ({
-  requireRole: m.requireRole,
-  requireUser: m.requireUser,
-  AuthError: m.AuthError,
-}));
+vi.mock('@/lib/auth', async (importOriginal) => {
+  const actual = await importOriginal<typeof AuthModule>();
+  return { ...actual, requireRole: m.requireRole, requireUser: m.requireUser, AuthError: m.AuthError };
+});
 vi.mock('@/lib/ratelimit', () => ({ chatMessageLimit: m.chatMessageLimit }));
 vi.mock('@/lib/observability/logger', () => ({ logger: { info: vi.fn(), warn: vi.fn() } }));
 vi.mock('@/lib/db', () => ({
@@ -84,7 +84,7 @@ import {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  m.requireRole.mockResolvedValue({ id: 'company1' });
+  m.requireRole.mockResolvedValue({ id: 'company1', plan: 'PRO' });
   m.requireUser.mockResolvedValue({ id: 'seeker1' });
   m.chatMessageLimit.mockResolvedValue({ success: true });
   m.jobFindFirst.mockResolvedValue({ id: 'job1', title: 'Engineer' });
@@ -160,6 +160,12 @@ describe('addChatParticipant', () => {
   it('propagates the auth error for non-companies', async () => {
     m.requireRole.mockRejectedValue(new m.AuthError('FORBIDDEN'));
     await expect(addChatParticipant('area1', 'seeker1')).rejects.toThrow();
+    expect(m.partCreate).not.toHaveBeenCalled();
+  });
+
+  it('requires a Pro plan (JOB_UC_14.0 outreach action)', async () => {
+    m.requireRole.mockResolvedValue({ id: 'company1', plan: 'FREE' });
+    await expect(addChatParticipant('area1', 'seeker1')).rejects.toThrow('UPGRADE_REQUIRED');
     expect(m.partCreate).not.toHaveBeenCalled();
   });
 
