@@ -10,6 +10,8 @@
 // re-run.
 
 import { PrismaClient } from '@prisma/client';
+import { embed } from 'ai';
+import { gateway, MODELS } from '@/lib/ai/gateway';
 
 const prisma = new PrismaClient();
 
@@ -160,6 +162,53 @@ async function seedDemo(): Promise<void> {
   });
 
   await seedWorkflows(company.id);
+  await seedAdminAndPendingCompany();
+}
+
+// JOB_UC_06.0 / admin capability: an ADMIN user (so the /admin verification
+// queue has a reviewer to attribute audit events to) and a second company on
+// the FREE plan with verificationStatus PENDING — Acme Inc is already
+// VERIFIED, so without this there's nothing for the queue to review and no
+// FREE-plan company to demo the premium-outreach gates against. No jobs are
+// seeded for this company: an unverified company's jobs aren't meant to be
+// publicly visible, so a lean profile-only row keeps the demo honest.
+async function seedAdminAndPendingCompany(): Promise<void> {
+  await prisma.user.upsert({
+    where: { clerkUserId: 'demo_admin' },
+    create: {
+      clerkUserId: 'demo_admin',
+      email: 'demo-admin@joblify.example',
+      userType: 'ADMIN',
+      firstName: 'Admin',
+      lastName: 'Reviewer',
+    },
+    update: {},
+  });
+
+  const pendingCompany = await prisma.user.upsert({
+    where: { clerkUserId: 'demo_company_pending' },
+    create: {
+      clerkUserId: 'demo_company_pending',
+      email: 'demo-company-pending@joblify.example',
+      userType: 'COMPANY',
+      plan: 'FREE',
+    },
+    update: { plan: 'FREE' },
+  });
+
+  await prisma.companyProfile.upsert({
+    where: { userId: pendingCompany.id },
+    create: {
+      userId: pendingCompany.id,
+      slug: 'nimbus-labs',
+      companyName: 'Nimbus Labs',
+      industry: 'TECHNOLOGY',
+      companySize: 'SIZE_1_10',
+      description: 'A newly registered company awaiting verification.',
+      verificationStatus: 'PENDING',
+    },
+    update: { verificationStatus: 'PENDING' },
+  });
 }
 
 // Demo data for the flowchart / use-case flows (JOB_UC_05/07/10/11): a couple
@@ -174,6 +223,7 @@ async function upsertSeeker(opts: {
   email: string;
   firstName: string;
   lastName: string;
+  plan?: 'FREE' | 'PRO';
   profile: {
     profileType: 'EMPLOYABLE' | 'VIRTUAL_INTERN';
     headline?: string;
@@ -184,6 +234,9 @@ async function upsertSeeker(opts: {
     careerInterest?: string | null;
     availabilityHoursPerWeek?: number | null;
     learningGoal?: string | null;
+    education?: string | null;
+    certifications?: string | null;
+    portfolioUrl?: string | null;
   };
 }): Promise<{ id: string }> {
   const user = await prisma.user.upsert({
@@ -194,8 +247,13 @@ async function upsertSeeker(opts: {
       userType: 'JOB_SEEKER',
       firstName: opts.firstName,
       lastName: opts.lastName,
+      ...(opts.plan ? { plan: opts.plan } : {}),
     },
-    update: { firstName: opts.firstName, lastName: opts.lastName },
+    update: {
+      firstName: opts.firstName,
+      lastName: opts.lastName,
+      ...(opts.plan ? { plan: opts.plan } : {}),
+    },
     select: { id: true },
   });
 
@@ -215,11 +273,51 @@ async function upsertSeeker(opts: {
       careerInterest: p.careerInterest ?? null,
       availabilityHoursPerWeek: p.availabilityHoursPerWeek ?? null,
       learningGoal: p.learningGoal ?? null,
+      education: p.education ?? null,
+      certifications: p.certifications ?? null,
+      portfolioUrl: p.portfolioUrl ?? null,
     },
-    update: { profileType: p.profileType, visibility: 'PUBLIC' },
+    update: {
+      profileType: p.profileType,
+      visibility: 'PUBLIC',
+      education: p.education ?? null,
+      certifications: p.certifications ?? null,
+      portfolioUrl: p.portfolioUrl ?? null,
+    },
   });
 
   return user;
+}
+
+// JOB_UC_05.0: link a jobseeker to a few catalog skills (proficiency/years
+// default to the schema defaults), and give them WorkExperience rows (the
+// resume-builder's source data). Reset-and-recreate, matching the idempotent
+// shape the real Server Actions use (saveProfile / saveWorkExperiences).
+async function seedSkillsAndExperience(
+  jobSeekerUserId: string,
+  skillSlugs: string[],
+  experience: Array<{ company: string; title: string; startDate: string; endDate: string; description: string }>,
+): Promise<void> {
+  const profile = await prisma.jobSeekerProfile.findUniqueOrThrow({
+    where: { userId: jobSeekerUserId },
+    select: { id: true },
+  });
+
+  const skills = await prisma.skill.findMany({ where: { slug: { in: skillSlugs } } });
+  await prisma.jobSeekerSkill.deleteMany({ where: { jobSeekerProfileId: profile.id } });
+  if (skills.length > 0) {
+    await prisma.jobSeekerSkill.createMany({
+      data: skills.map((s) => ({ jobSeekerProfileId: profile.id, skillId: s.id })),
+      skipDuplicates: true,
+    });
+  }
+
+  await prisma.workExperience.deleteMany({ where: { jobSeekerProfileId: profile.id } });
+  if (experience.length > 0) {
+    await prisma.workExperience.createMany({
+      data: experience.map((e) => ({ jobSeekerProfileId: profile.id, ...e })),
+    });
+  }
 }
 
 async function joinChat(chatAreaId: string, userId: string): Promise<void> {
@@ -242,6 +340,7 @@ async function seedWorkflows(companyId: string): Promise<void> {
     email: 'demo-seeker-employable@joblify.example',
     firstName: 'Ada',
     lastName: 'Lovelace',
+    plan: 'PRO',
     profile: {
       profileType: 'EMPLOYABLE',
       headline: 'Full-stack engineer — TypeScript & React',
@@ -249,14 +348,43 @@ async function seedWorkflows(companyId: string): Promise<void> {
       yearsExperience: 6,
       location: 'Berlin, DE',
       desiredWorkMode: 'HYBRID',
+      education: 'B.Sc. Computer Science, Humboldt University of Berlin',
+      certifications: 'AWS Certified Solutions Architect – Associate',
+      portfolioUrl: 'https://github.com/ada-lovelace-demo',
     },
   });
+  await seedSkillsAndExperience(
+    ada.id,
+    ['typescript', 'react', 'nextjs', 'node', 'postgres'],
+    [
+      {
+        company: 'Byte Foundry',
+        title: 'Senior Full-Stack Engineer',
+        startDate: 'Jan 2022',
+        endDate: 'Present',
+        description:
+          'Lead a small team building the core product in React, Next.js and TypeScript; introduced CI-driven end-to-end testing.',
+      },
+      {
+        company: 'Nimbus Cloud',
+        title: 'Full-Stack Engineer',
+        startDate: 'Jun 2018',
+        endDate: 'Dec 2021',
+        description: 'Built and scaled a Node.js/PostgreSQL API serving millions of monthly requests.',
+      },
+    ],
+  );
 
+  // Grace is deliberately on the FREE plan — the only seeded account that is,
+  // so the upgrade banner on /jobseeker/applications and the company-side
+  // premium gates have a real FREE account to demo against (every other
+  // seeded account defaults to PRO).
   const grace = await upsertSeeker({
     clerkUserId: 'demo_seeker_intern',
     email: 'demo-seeker-intern@joblify.example',
     firstName: 'Grace',
     lastName: 'Hopper',
+    plan: 'FREE',
     profile: {
       profileType: 'VIRTUAL_INTERN',
       headline: 'Aspiring data engineer',
@@ -264,8 +392,23 @@ async function seedWorkflows(companyId: string): Promise<void> {
       careerInterest: 'Data engineering',
       availabilityHoursPerWeek: 15,
       learningGoal: 'Ship a production data pipeline with SQL and Python.',
+      education: 'B.Sc. Data Science (in progress), Open University',
+      portfolioUrl: 'https://github.com/grace-hopper-demo',
     },
   });
+  await seedSkillsAndExperience(
+    grace.id,
+    ['python', 'sql', 'data-analysis'],
+    [
+      {
+        company: 'Freelance',
+        title: 'Data Analysis Projects (self-directed)',
+        startDate: '2025',
+        endDate: 'Present',
+        description: 'Built small ETL pipelines and dashboards using Python and SQL as self-directed learning projects.',
+      },
+    ],
+  );
 
   // Subscriptions (JOB_UC_07): one per type, matching each seeker's profile.
   for (const [jobSeekerId, profileType] of [
@@ -447,6 +590,11 @@ async function seedJobseekerActivity(
     update: {},
   });
 
+  // Real embeddings (not fake vectors) so /jobseeker/matches has something
+  // genuine to rank for the demo account — best-effort, since it needs a
+  // live AI Gateway call (see seedEmbeddings' own doc comment).
+  await seedEmbeddings(adaResume.id, reactJob.id);
+
   // Ada: shortlisted for the React role (drives the applicant-status +
   // applications-list demos) and a fresh application to the Rust role.
   await prisma.jobApplication.upsert({
@@ -576,6 +724,83 @@ async function seedJobViews(
   }
 }
 
+// Real (not fabricated) embeddings for one demo resume + job post, so
+// /jobseeker/matches has a genuine result to show instead of always
+// rendering its empty state. Mirrors the exact write shape
+// resume-parse.workflow.ts / match-score.workflow.ts use in production —
+// same model, same `[v1,v2,...]::vector` literal — just triggered from the
+// seed script instead of a real upload/publish event.
+//
+// Best-effort: skip (with a warning, not a failure) if AI_GATEWAY_API_KEY
+// isn't configured, and skip re-computing if an embedding is already set —
+// this is an idempotent seed re-run, not a workflow that should hit a paid
+// API on every invocation.
+const ADA_RESUME_TEXT = `Ada Lovelace — Full-Stack Engineer
+
+SUMMARY
+Full-stack engineer with six years shipping production web applications end
+to end. Deep expertise in TypeScript, React, and Next.js on the frontend;
+Node.js and PostgreSQL on the backend. Comfortable owning a feature from
+design through deployment and observability.
+
+EXPERIENCE
+Senior Full-Stack Engineer — Byte Foundry (2022 – Present)
+Lead a small team building the core product in React, Next.js, and
+TypeScript. Introduced CI-driven end-to-end testing and cut deploy-related
+incidents significantly.
+
+Full-Stack Engineer — Nimbus Cloud (2018 – 2021)
+Built and scaled a Node.js/PostgreSQL API serving millions of monthly
+requests. Owned the migration from a monolith to a service-oriented backend.
+
+EDUCATION
+B.Sc. Computer Science, Humboldt University of Berlin
+
+SKILLS
+TypeScript, React, Next.js, Node.js, PostgreSQL, Docker, AWS`;
+
+async function seedEmbeddings(resumeId: string, jobPostId: string): Promise<void> {
+  if (!process.env.AI_GATEWAY_API_KEY) {
+    console.warn('Skipping demo embeddings: AI_GATEWAY_API_KEY not set.');
+    return;
+  }
+
+  try {
+    const [resumeRow] = await prisma.$queryRaw<Array<{ hasEmbedding: boolean }>>`
+      SELECT (embedding IS NOT NULL) AS "hasEmbedding" FROM resumes WHERE id = ${resumeId}::uuid
+    `;
+    if (!resumeRow?.hasEmbedding) {
+      const { embedding } = await embed({
+        model: gateway.textEmbeddingModel(MODELS.embeddingLarge),
+        value: ADA_RESUME_TEXT,
+      });
+      await prisma.$executeRaw`
+        UPDATE resumes SET embedding = ${`[${embedding.join(',')}]`}::vector WHERE id = ${resumeId}::uuid
+      `;
+    }
+
+    const [jobRow] = await prisma.$queryRaw<Array<{ hasEmbedding: boolean }>>`
+      SELECT (embedding IS NOT NULL) AS "hasEmbedding" FROM job_posts WHERE id = ${jobPostId}::uuid
+    `;
+    if (!jobRow?.hasEmbedding) {
+      const job = await prisma.jobPost.findUniqueOrThrow({
+        where: { id: jobPostId },
+        select: { title: true, description: true, requirements: true },
+      });
+      const text = `${job.title}\n\n${job.description}\n\n${job.requirements ?? ''}`.slice(0, 30_000);
+      const { embedding } = await embed({
+        model: gateway.textEmbeddingModel(MODELS.embeddingLarge),
+        value: text,
+      });
+      await prisma.$executeRaw`
+        UPDATE job_posts SET embedding = ${`[${embedding.join(',')}]`}::vector WHERE id = ${jobPostId}::uuid
+      `;
+    }
+  } catch (err) {
+    console.warn('Skipping demo embeddings — AI Gateway call failed:', err);
+  }
+}
+
 async function main() {
   const n = await seedSkills();
   console.log(`Seeded ${n} skills.`);
@@ -583,7 +808,8 @@ async function main() {
   if (process.env.SEED_DEMO === '1' || process.env.SEED_DEMO === 'true') {
     await seedDemo();
     console.log(
-      'Seeded demo data (1 company, 2 jobs, 2 seekers, subscriptions, 1 pending invitation, 2 chat areas + messages, notifications).',
+      'Seeded demo data (2 companies [1 verified/PRO, 1 pending/FREE], 1 admin, 2 jobs, 2 seekers [1 PRO, 1 FREE] ' +
+        'with skills + work experience, subscriptions, 1 pending invitation, 2 chat areas + messages, notifications).',
     );
   } else {
     console.log('Skipped demo data (set SEED_DEMO=1 to include it).');
