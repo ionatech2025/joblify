@@ -5,6 +5,7 @@ import { db } from '@/lib/db';
 import { addChatParticipant } from '@/app/actions/chat';
 import { ChatThread } from '@/app/components/chat/chat-thread';
 import { ChatComposer } from '@/app/components/chat/chat-composer';
+import { LATEST_MESSAGES_TAKE, toThreadDisplay } from '@/app/components/chat/latest-messages';
 import { PageHeader } from '@/app/components/ui/ambient';
 import { Button } from '@/app/components/ui/button';
 
@@ -36,9 +37,11 @@ export default async function CompanyChatAreaPage({ params }: { params: Params }
         },
         orderBy: { joinedAt: 'asc' },
       },
+      // Newest window of the thread; toThreadDisplay flips it back to
+      // chronological order below.
       messages: {
-        orderBy: { createdAt: 'asc' },
-        take: 100,
+        orderBy: { createdAt: 'desc' },
+        take: LATEST_MESSAGES_TAKE,
         include: { sender: { select: { firstName: true, lastName: true, email: true } } },
       },
     },
@@ -47,6 +50,7 @@ export default async function CompanyChatAreaPage({ params }: { params: Params }
 
   const participantIds = new Set(area.participants.map((p) => p.userId));
   const candidates = await getAddableSeekers(area, user.id, participantIds);
+  const { messages, truncated } = toThreadDisplay(area.messages);
 
   return (
     <main>
@@ -66,9 +70,12 @@ export default async function CompanyChatAreaPage({ params }: { params: Params }
       />
       <div className="mx-auto grid max-w-4xl grid-cols-1 gap-8 px-4 py-8 sm:px-6 lg:grid-cols-[1fr_260px]">
         <section>
+          {truncated && (
+            <p className="mt-0 mb-3 text-xs text-neutral-500">Showing the latest {LATEST_MESSAGES_TAKE} messages.</p>
+          )}
           <ChatThread
             currentUserId={user.id}
-            messages={area.messages.map((m) => ({
+            messages={messages.map((m) => ({
               id: m.id,
               senderId: m.senderId,
               senderName:

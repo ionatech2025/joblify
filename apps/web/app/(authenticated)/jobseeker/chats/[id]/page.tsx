@@ -4,6 +4,7 @@ import { requireRole } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { ChatThread } from '@/app/components/chat/chat-thread';
 import { ChatComposer } from '@/app/components/chat/chat-composer';
+import { LATEST_MESSAGES_TAKE, toThreadDisplay } from '@/app/components/chat/latest-messages';
 import { PageHeader } from '@/app/components/ui/ambient';
 
 export const metadata = { title: 'Chat' };
@@ -23,9 +24,11 @@ export default async function JobseekerChatAreaPage({ params }: { params: Params
         include: {
           company: { select: { companyProfile: { select: { companyName: true } } } },
           jobPost: { select: { title: true, slug: true } },
+          // Newest window of the thread; toThreadDisplay flips it back to
+          // chronological order below.
           messages: {
-            orderBy: { createdAt: 'asc' },
-            take: 100,
+            orderBy: { createdAt: 'desc' },
+            take: LATEST_MESSAGES_TAKE,
             include: { sender: { select: { firstName: true, lastName: true, email: true } } },
           },
         },
@@ -36,6 +39,7 @@ export default async function JobseekerChatAreaPage({ params }: { params: Params
 
   const area = membership.chatArea;
   const companyName = area.company.companyProfile?.companyName ?? 'Company';
+  const { messages, truncated } = toThreadDisplay(area.messages);
 
   return (
     <main>
@@ -62,9 +66,12 @@ export default async function JobseekerChatAreaPage({ params }: { params: Params
             </Link>
           </p>
         )}
+        {truncated && (
+          <p className="mt-0 mb-3 text-xs text-neutral-500">Showing the latest {LATEST_MESSAGES_TAKE} messages.</p>
+        )}
         <ChatThread
           currentUserId={user.id}
-          messages={area.messages.map((m) => ({
+          messages={messages.map((m) => ({
             id: m.id,
             senderId: m.senderId,
             senderName: [m.sender.firstName, m.sender.lastName].filter(Boolean).join(' ') || companyName,

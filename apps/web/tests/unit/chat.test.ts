@@ -213,31 +213,40 @@ describe('sendChatMessage', () => {
     m.partFindUnique.mockResolvedValue(null);
     const fd = new FormData();
     fd.set('body', 'hello');
-    await expect(sendChatMessage('area1', fd)).rejects.toThrow();
+    await expect(sendChatMessage('area1', null, fd)).rejects.toThrow();
     expect(m.msgCreate).not.toHaveBeenCalled();
   });
 
-  it('enforces the per-user send-rate limit', async () => {
+  it('returns { ok: false } instead of throwing when the send-rate limit trips', async () => {
     m.chatMessageLimit.mockResolvedValue({ success: false });
     const fd = new FormData();
     fd.set('body', 'spam');
-    await expect(sendChatMessage('area1', fd)).rejects.toThrow(/too quickly/i);
+    // Expected failure: the composer shows this inline and keeps the draft —
+    // a throw here would swap the whole page for the error boundary.
+    await expect(sendChatMessage('area1', null, fd)).resolves.toEqual({
+      ok: false,
+      error: expect.stringMatching(/too quickly/i),
+    });
     expect(m.msgCreate).not.toHaveBeenCalled();
+    expect(m.transaction).not.toHaveBeenCalled();
   });
 
-  it('rejects an empty message body', async () => {
+  it('returns { ok: false } for an empty message body', async () => {
     m.partFindUnique.mockResolvedValue({ chatAreaId: 'area1' });
     const fd = new FormData();
     fd.set('body', '   ');
-    await expect(sendChatMessage('area1', fd)).rejects.toThrow();
+    await expect(sendChatMessage('area1', null, fd)).resolves.toEqual({
+      ok: false,
+      error: expect.stringMatching(/empty/i),
+    });
     expect(m.msgCreate).not.toHaveBeenCalled();
   });
 
-  it('posts a TEXT message and bumps the area for recency', async () => {
+  it('posts a TEXT message, bumps the area for recency, and returns { ok: true }', async () => {
     m.partFindUnique.mockResolvedValue({ chatAreaId: 'area1' });
     const fd = new FormData();
     fd.set('body', 'Welcome to the team');
-    await sendChatMessage('area1', fd);
+    await expect(sendChatMessage('area1', null, fd)).resolves.toEqual({ ok: true });
     const data = m.msgCreate.mock.calls[0]![0].data;
     expect(data).toMatchObject({
       chatAreaId: 'area1',
@@ -259,7 +268,7 @@ describe('sendChatMessage', () => {
     fd.set('body', 'Prep material');
     fd.set('kind', 'MATERIAL');
     fd.set('attachmentUrl', 'https://files.example.com/prep.pdf');
-    await sendChatMessage('area1', fd);
+    await expect(sendChatMessage('area1', null, fd)).resolves.toEqual({ ok: true });
     const data = m.msgCreate.mock.calls[0]![0].data;
     expect(data.kind).toBe('MATERIAL');
     expect(data.attachmentUrl).toBe('https://files.example.com/prep.pdf');
