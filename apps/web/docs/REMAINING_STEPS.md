@@ -137,12 +137,14 @@ Grep: `git grep "TODO(week-"` to see them all in context.
 |---|---|
 | DB migration in CI | Run `prisma migrate deploy` before Vercel promotes. **Blocked:** no public Postgres image bundles both PostGIS and pgvector — use a custom image or a managed Neon CI branch. |
 | CSP enforce | Flip `Content-Security-Policy-Report-Only` → `Content-Security-Policy` in `next.config.ts` once the violation report is clean. |
-| Lighthouse budgets (enforce) | LHCI runs **report-only** (`warn`) on preview deploys today. After the Week-11 polish, flip `lighthouserc.json` assertions to `error`. Current gaps to close first: accessibility 0.90→0.95, SEO 0.82→0.95. (INP is a field-only metric, omitted from the lab assertions.) This also covers a11y coverage, since Lighthouse's accessibility category is axe-core. |
+| Lighthouse budgets (enforce) | Accessibility now asserts `error` at a 0.90 floor and the blocking `axe` job runs the Playwright axe spec on every preview (2026-07-24, #42). Remaining: raise the a11y floor to 0.95 and flip performance/best-practices/SEO to `error` once their gaps close (SEO 0.82→0.95). (INP is a field-only metric, omitted from the lab assertions.) |
+| A11y on authenticated surfaces | The axe gate covers public pages only. Extend `tests/e2e/a11y.spec.ts` with authed fixtures — the Playwright `setup` project + `storageState` via the existing `E2E_TEST_EMAIL_JOBSEEKER`/`E2E_TEST_PASSWORD` creds — to scan `/jobseeker/*`, `/company/*`, the resume builder, and the applicants board. Refs #42. |
 | Synthetic check + PagerDuty | Vercel Cron hitting `/api/v1/health` every 5 min, paging on 3 consecutive failures. |
 | Rolling Release auto-rollback | Configure auto-rollback policy in Vercel based on error rate. |
 | AV scan | Cloudmersive integration in `resume-parse.workflow.ts` if resume volume crosses 1k/day. |
 | Re-index script | `scripts/reindex-all.ts` to rebuild Algolia from scratch. |
 | `middleware.ts` → `proxy.ts` | Next 16 deprecated the `middleware` file convention in favour of `proxy` (build prints a warning). Rename + adjust the export when convenient. |
+| Clerk v7 upgrade | `app/components/clerk-provider.tsx` exists only because @clerk/nextjs v6's provider reads `usePathname()` during render, which under cacheComponents forced the entire tree dynamic (#38). v7 dropped that read — upgrade `@clerk/nextjs`, delete the wrapper (and the now-direct `@clerk/clerk-react` dep), and restore the library's own provider. |
 
 ---
 
