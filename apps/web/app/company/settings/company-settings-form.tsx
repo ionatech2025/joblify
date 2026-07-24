@@ -88,9 +88,9 @@ export function CompanySettingsForm({
       <section className="mb-6 flex items-center gap-4 border-b border-neutral-200 pb-6">
         {logo ? (
           // eslint-disable-next-line @next/next/no-img-element -- user-supplied logo, no fixed dims
-          <img src={logo} alt="Company logo" width={64} height={64} className="size-16 rounded-lg object-cover" />
+          <img src={logo} alt="Company logo" width={64} height={64} className="size-16 rounded-xl object-cover" />
         ) : (
-          <div className="grid size-16 place-items-center rounded-lg bg-neutral-100 text-sm text-neutral-400">Logo</div>
+          <div className="grid size-16 place-items-center rounded-xl bg-neutral-100 text-sm text-neutral-400">Logo</div>
         )}
         <input
           ref={logoInput}

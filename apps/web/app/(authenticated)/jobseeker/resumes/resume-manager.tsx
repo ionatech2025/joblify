@@ -82,7 +82,7 @@ export function ResumeManager({
           {resumes.map((r) => (
             <li
               key={r.id}
-              className="flex items-center justify-between gap-4 rounded-xl border border-neutral-200 p-4"
+              className="flex items-center justify-between gap-4 rounded-2xl border border-neutral-200/80 bg-white p-4 shadow-soft"
             >
               <div className="min-w-0">
                 <a

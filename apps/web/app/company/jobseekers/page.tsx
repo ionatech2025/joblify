@@ -5,6 +5,7 @@ import { shareJobFromForm } from '@/app/actions/share-job';
 import { addVirtualInternToChat } from '@/app/actions/chat';
 import { inviteJobseeker } from '@/app/actions/invitations';
 import { PageHeader } from '@/app/components/ui/ambient';
+import { Badge } from '@/app/components/ui/badge';
 import { Button } from '@/app/components/ui/button';
 import { Select } from '@/app/components/ui/form';
 
@@ -45,8 +46,8 @@ export default async function CompanyJobseekersPage({ searchParams }: { searchPa
   const tab = (href: string, label: string, active: boolean) => (
     <Link
       href={href}
-      className={`rounded-full px-3 py-1 text-sm font-medium transition-colors ${
-        active ? 'bg-indigo-600 text-white' : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
+      className={`rounded-full px-3.5 py-1.5 text-sm font-medium no-underline transition-colors ${
+        active ? 'bg-neutral-900 text-white hover:bg-neutral-700' : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
       }`}
     >
       {label}
@@ -82,18 +83,18 @@ export default async function CompanyJobseekersPage({ searchParams }: { searchPa
         ) : (
           <ul className="grid list-none grid-cols-1 gap-3 p-0">
             {seekers.map((s) => (
-              <li key={s.userId} className="rounded-xl border border-neutral-200 bg-white p-4">
+              <li key={s.userId} className="rounded-2xl border border-neutral-200/80 bg-white p-4 shadow-soft">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <p className="m-0 font-semibold text-neutral-900">
                       {s.name}
-                      <span className="ml-2 rounded-full bg-neutral-100 px-2 py-0.5 text-xs font-medium text-neutral-700">
+                      <Badge tone="neutral" className="ml-2">
                         {s.profileType === 'VIRTUAL_INTERN' ? 'Virtual intern' : 'Employable'}
-                      </span>
+                      </Badge>
                       {s.subscribed && (
-                        <span className="ml-2 rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-700">
+                        <Badge tone="brand" className="ml-2">
                           Subscriber
-                        </span>
+                        </Badge>
                       )}
                     </p>
                     {s.headline && <p className="mt-1 mb-0 text-sm text-neutral-700">{s.headline}</p>}

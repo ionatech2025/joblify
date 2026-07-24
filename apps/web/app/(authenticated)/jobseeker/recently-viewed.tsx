@@ -43,7 +43,7 @@ export async function RecentlyViewed({ userId }: { userId: string }) {
           <Link
             key={j.slug}
             href={`/jobs/${j.slug}`}
-            className="block w-56 shrink-0 rounded-xl border border-neutral-200 p-3 no-underline transition-shadow hover:shadow-md"
+            className="block w-56 shrink-0 rounded-2xl border border-neutral-200/80 bg-white p-3 no-underline shadow-soft transition-shadow hover:shadow-md"
           >
             <strong className="block text-sm text-neutral-900">{j.title}</strong>
             <span className="text-sm text-neutral-600">{j.company}</span>

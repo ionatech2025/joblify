@@ -4,6 +4,7 @@ import { requireRole } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { EditJobForm } from './edit-job-form';
 import type { PostJobFormValues } from '@/app/company/jobs/job-form-schema';
+import { JOB_STATUS_LABEL } from '@/app/company/jobs/job-status';
 import { PageHeader } from '@/app/components/ui/ambient';
 
 export const metadata = { title: 'Edit job' };
@@ -57,13 +58,14 @@ export default async function EditJobPage({
       />
       <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
       {sp.just_posted && (
-        <div className="my-4 rounded-lg bg-green-50 px-4 py-3 text-sm text-green-800">
+        <div className="my-4 rounded-2xl bg-green-50 px-4 py-3 text-sm text-green-800">
           Job posted — it&apos;s live on /jobs and indexed within a minute.
         </div>
       )}
 
       <p className="mt-2 text-neutral-600">
-        Current status: <strong>{job.status}</strong>. Saving re-extracts skills and re-indexes search.
+        Current status: <strong>{JOB_STATUS_LABEL[job.status]}</strong>. Saving re-extracts skills and re-indexes
+        search.
       </p>
 
       <EditJobForm jobId={job.id} initial={initial} />

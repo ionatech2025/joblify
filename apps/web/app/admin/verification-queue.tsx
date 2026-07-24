@@ -46,7 +46,7 @@ export function VerificationQueue({ initial }: { initial: PendingCompany[] }) {
       {error && <p className="mb-4 text-red-700">{error}</p>}
       <ul className="grid list-none grid-cols-1 gap-3 p-0">
         {rows.map((c) => (
-          <li key={c.id} className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-neutral-200 bg-white p-4">
+          <li key={c.id} className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-neutral-200/80 bg-white p-4 shadow-soft">
             <div>
               <p className="m-0 font-semibold text-neutral-900">{c.companyName}</p>
               <p className="mt-1 mb-0 text-sm text-neutral-500">
