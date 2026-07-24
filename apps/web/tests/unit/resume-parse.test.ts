@@ -10,6 +10,7 @@ const m = vi.hoisted(() => ({
   profileFindUnique: vi.fn(),
   skillUpsert: vi.fn(),
   executeRaw: vi.fn(),
+  queryRaw: vi.fn(),
   generateObject: vi.fn(),
   embed: vi.fn(),
   fileTypeFromBuffer: vi.fn(),
@@ -24,6 +25,7 @@ vi.mock('@/lib/db', () => ({
     jobSeekerProfile: { findUnique: m.profileFindUnique },
     jobSeekerSkill: { upsert: m.skillUpsert },
     $executeRaw: m.executeRaw,
+    $queryRaw: m.queryRaw,
   },
 }));
 vi.mock('ai', () => ({ generateObject: m.generateObject, embed: m.embed }));
@@ -70,6 +72,7 @@ beforeEach(() => {
   m.embed.mockResolvedValue({ embedding: [0.1, 0.2, 0.3] });
   m.resumeUpdate.mockResolvedValue({});
   m.executeRaw.mockResolvedValue(1);
+  m.queryRaw.mockResolvedValue([{ hasEmbedding: true }]);
   m.skillFindMany.mockResolvedValue([{ id: 's-rust', slug: 'rust' }]);
   m.profileFindUnique.mockResolvedValue({ id: 'profile1' });
   m.skillUpsert.mockResolvedValue({});
@@ -81,11 +84,25 @@ describe('runResumeParse', () => {
     await expect(runResumeParse({ resumeId: RESUME_ID })).rejects.toThrow(/not found/);
   });
 
-  it('is idempotent — skips entirely when already parsed', async () => {
+  it('is idempotent — skips entirely when already parsed and embedded', async () => {
     m.resumeFindUnique.mockResolvedValue({ ...RESUME, parsedJson: { summary: 'done' } });
+    m.queryRaw.mockResolvedValue([{ hasEmbedding: true }]);
     await runResumeParse({ resumeId: RESUME_ID });
     expect(m.fetch).not.toHaveBeenCalled();
     expect(m.generateObject).not.toHaveBeenCalled();
+    expect(m.embed).not.toHaveBeenCalled();
+  });
+
+  it('repairs only the embedding when parsed but the embedding write failed (sweep path)', async () => {
+    m.resumeFindUnique.mockResolvedValue({ ...RESUME, parsedJson: { summary: 'stored summary' } });
+    m.queryRaw.mockResolvedValue([{ hasEmbedding: false }]);
+    await runResumeParse({ resumeId: RESUME_ID });
+    // no re-download, no second Haiku call — embed straight from the stored parse
+    expect(m.fetch).not.toHaveBeenCalled();
+    expect(m.generateObject).not.toHaveBeenCalled();
+    expect(m.embed).toHaveBeenCalledWith(expect.objectContaining({ value: 'stored summary' }));
+    expect(m.executeRaw).toHaveBeenCalledTimes(1); // pgvector write
+    expect(m.resumeUpdate).not.toHaveBeenCalled(); // parsedJson untouched
   });
 
   it('rejects + soft-deletes the resume on a magic-byte mime mismatch', async () => {

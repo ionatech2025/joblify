@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/nextjs';
 import { db } from '@/lib/db';
 import { upsertJob, deleteJob, toJobRecord } from './algolia';
 import { logger } from '@/lib/observability/logger';
@@ -43,6 +44,7 @@ export async function syncJobToAlgolia(jobId: string): Promise<void> {
 async function enqueueRetry(jobId: string, err: unknown): Promise<void> {
   const message = err instanceof Error ? err.message : String(err);
   logger.error({ jobId, err }, 'Algolia sync failed; queued in index_outbox for the reconcile cron');
+  Sentry.captureException(err, { tags: { jobId } });
   try {
     await db.indexOutbox.upsert({
       where: { entityId: jobId },
@@ -50,7 +52,10 @@ async function enqueueRetry(jobId: string, err: unknown): Promise<void> {
       update: { attempts: { increment: 1 }, lastError: message.slice(0, 500) },
     });
   } catch (dbErr) {
+    // The retry queue itself failed — without Sentry this job silently falls
+    // out of both Algolia and the reconcile loop.
     logger.error({ jobId, dbErr }, 'failed to write index_outbox row');
+    Sentry.captureException(dbErr, { tags: { jobId } });
   }
 }
 

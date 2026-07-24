@@ -11,6 +11,7 @@ import { tags } from '@/lib/cache';
 import { resend, EMAIL_FROM, isEmailSuppressed } from '@/lib/email/resend';
 import { applicationConfirm } from '@/lib/email/templates';
 import { logger } from '@/lib/observability/logger';
+import * as Sentry from '@sentry/nextjs';
 import { checkBotId } from 'botid/server';
 import { after } from 'next/server';
 import { runResumeParse } from '@/workflows/resume-parse.workflow';
@@ -126,11 +127,13 @@ export async function submitApplication(formData: FormData): Promise<void> {
       await runResumeParse({ resumeId: resume.id });
     } catch (err) {
       logger.warn({ err, resumeId: resume.id }, 'resume-parse failed (post-apply)');
+      Sentry.captureException(err, { tags: { resumeId: resume.id, userId: user.id } });
     }
     try {
       await runMatchScore({ jobPostId: job.id, jobSeekerId: user.id });
     } catch (err) {
       logger.warn({ err, jobId: job.id, userId: user.id }, 'match-score failed (post-apply)');
+      Sentry.captureException(err, { tags: { jobId: job.id, userId: user.id } });
     }
   });
 
@@ -138,5 +141,8 @@ export async function submitApplication(formData: FormData): Promise<void> {
 }
 
 function resendSafe(fn: () => Promise<unknown>): void {
-  fn().catch((err) => logger.warn({ err }, 'email send failed (non-blocking)'));
+  fn().catch((err) => {
+    logger.warn({ err }, 'email send failed (non-blocking)');
+    Sentry.captureException(err);
+  });
 }
