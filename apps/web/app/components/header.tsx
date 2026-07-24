@@ -1,13 +1,18 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { SignedIn, SignedOut, UserButton } from '@clerk/nextjs';
 import { Container } from './ui/container';
 
 const navLink = 'text-neutral-700 transition-colors hover:text-neutral-900';
 
-export function Header() {
+// `auth` is the server-rendered auth island (<HeaderAuth> in the root layout):
+// the only session-dependent slice of the header, streamed inside its own
+// Suspense boundary so the rest of the header stays in the static shell. The
+// mobile controls/menu keep Clerk's client control components — they resolve
+// after hydration, behind a user interaction, exactly as before.
+export function Header({ auth }: { auth?: ReactNode }) {
   const [open, setOpen] = useState(false);
   const close = () => setOpen(false);
 
@@ -31,23 +36,7 @@ export function Header() {
           <Link href="/employer-setup" className={navLink}>
             Post a job
           </Link>
-          <SignedOut>
-            <Link href="/sign-in" className={navLink}>
-              Sign in
-            </Link>
-            <Link
-              href="/sign-up"
-              className="rounded-lg bg-indigo-600 px-3 py-1.5 font-semibold text-white no-underline transition-colors hover:bg-indigo-700"
-            >
-              Sign up
-            </Link>
-          </SignedOut>
-          <SignedIn>
-            <Link href="/dashboard" className={navLink}>
-              Dashboard
-            </Link>
-            <UserButton />
-          </SignedIn>
+          {auth}
         </nav>
 
         {/* Mobile controls */}

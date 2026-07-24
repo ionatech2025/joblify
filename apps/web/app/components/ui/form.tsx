@@ -1,5 +1,10 @@
+'use client';
+
 import {
+  cloneElement,
   forwardRef,
+  isValidElement,
+  useId,
   type InputHTMLAttributes,
   type ReactNode,
   type SelectHTMLAttributes,
@@ -36,6 +41,12 @@ export const Select = forwardRef<HTMLSelectElement, SelectHTMLAttributes<HTMLSel
   );
 });
 
+// Aria props Field injects into its (single-element) control child.
+type FieldControlProps = {
+  'aria-invalid'?: boolean;
+  'aria-describedby'?: string;
+};
+
 export function Field({
   label,
   error,
@@ -45,11 +56,28 @@ export function Field({
   error?: string;
   children: ReactNode;
 }) {
+  // Programmatically associate the control with its error: the error line gets
+  // a stable id + role="alert" (announced on appearance), and the control gets
+  // aria-invalid plus an aria-describedby pointing at it — appended after any
+  // describedby the call site already set (e.g. a hint), which is preserved.
+  const errorId = `${useId()}-error`;
+  const control = isValidElement<FieldControlProps>(children)
+    ? cloneElement(children, {
+        'aria-invalid': error ? true : undefined,
+        'aria-describedby':
+          [children.props['aria-describedby'], error ? errorId : undefined].filter(Boolean).join(' ') || undefined,
+      })
+    : children;
+
   return (
     <label className="flex flex-col gap-1">
       <span className="text-sm font-medium text-neutral-700">{label}</span>
-      {children}
-      {error && <span className="text-sm text-red-600">{error}</span>}
+      {control}
+      {error && (
+        <span id={errorId} role="alert" className="text-sm text-red-600">
+          {error}
+        </span>
+      )}
     </label>
   );
 }
