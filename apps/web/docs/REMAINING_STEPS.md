@@ -10,26 +10,24 @@ Updated 2026-07-18.
 
 ### 1. Rotate the leaked credentials and scrub git history
 
-The Mongo Atlas URI + JWT secret from the legacy `Joblify-backend/.env.example` are still recoverable from git history. The Mongo URI shared earlier in our conversation is also in the chat transcript.
+The Mongo Atlas URI + JWT secret from the legacy `Joblify-backend/.env.example` are still recoverable from git history (the directory itself has been removed from the working tree, but history retains every prior revision). The Mongo URI shared earlier in our conversation is also in the chat transcript.
 
 Steps:
 
 ```bash
 # 1. Rotate the Atlas password in MongoDB Atlas dashboard
 #    Database Access → user `joblify` → Edit Password → generate new
-#    Update Joblify-backend/.env (gitignored) with the new password
 #    Also rotate any prior Atlas user (`allan`) that may still exist.
 
-# 2. Rotate the JWT secret
+# 2. Rotate the JWT secret (if the legacy Render deployment is still live)
 openssl rand -base64 48
-# Replace JWT_SECRET in Joblify-backend/.env and Vercel envs
 
 # 3. Scrub history
 #    Populate /tmp/replacements.txt with the OLD values you want removed,
 #    one per line in this shape (do NOT commit this file):
 #       <old-secret-value>==>REDACTED
-#    The old values to scrub live in your local Joblify-backend/.env and in
-#    prior git revisions of Joblify-backend/.env.example.
+#    The old values to scrub live in prior git revisions of
+#    Joblify-backend/.env.example (view with: git log --all -p -- 'Joblify-backend/.env.example').
 pipx install git-filter-repo
 git filter-repo --replace-text /tmp/replacements.txt --force
 git push --force-with-lease origin main

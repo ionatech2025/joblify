@@ -1,8 +1,9 @@
 # @joblify/web
 
 The new Joblify production app — Next.js 16 App Router on Vercel Fluid Compute.
-Lives alongside the legacy `Joblify-backend/` and `joblify-frontend/joblify/`
-during the 12-week strangler-fig migration.
+The legacy Express API (`Joblify-backend/`) has been removed from the repo now
+that the strangler-fig migration is complete; the legacy `joblify-frontend/joblify/`
+tree remains only as a reference until final decommission.
 
 > Reference plan: `/home/distantlife/.claude/plans/analyse-codebase-and-close-tranquil-penguin.md`
 
