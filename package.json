@@ -2,9 +2,10 @@
   "name": "joblify",
   "version": "1.0.0",
   "description": "Job seeking platform",
+  "private": true,
   "scripts": {
-    "build": "cd joblify-frontend/joblify && npm run build",
-    "dev": "cd joblify-frontend/joblify && npm run dev",
-    "install:frontend": "cd joblify-frontend/joblify && npm install"
+    "build": "cd apps/web && bun run build",
+    "dev": "cd apps/web && bun run dev",
+    "test": "cd apps/web && bun run test"
   }
 }
