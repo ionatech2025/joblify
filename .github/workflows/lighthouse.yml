@@ -27,3 +27,37 @@ jobs:
             ${{ github.event.deployment_status.target_url }}/sign-up
           configPath: ./apps/web/lighthouserc.json
           temporaryPublicStorage: true
+
+  # Blocking axe gate: runs the Playwright axe spec against the preview URL
+  # across the full public page set (DEFAULT_PAGES in a11y.spec.ts).
+  # Critical/serious violations fail the check. Authenticated surfaces are a
+  # tracked follow-up (Clerk E2E fixtures) — see REMAINING_STEPS.md.
+  axe:
+    name: Axe a11y gate (preview)
+    if: >
+      github.event.deployment_status.state == 'success' &&
+      github.event.deployment_status.environment != 'Production'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: apps/web
+    env:
+      # Placeholders so `bun install`'s prisma-generate postinstall runs; the
+      # spec itself only talks to the remote preview URL.
+      DATABASE_URL: 'postgresql://user:pass@localhost:5432/joblify?schema=public'
+      DATABASE_URL_UNPOOLED: 'postgresql://user:pass@localhost:5432/joblify?schema=public'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - name: Install
+        run: bun install --frozen-lockfile
+      - name: Install Playwright Chromium
+        run: bunx playwright install --with-deps chromium
+      - name: Axe scan (public pages; critical/serious violations block)
+        run: bunx playwright test tests/e2e/a11y.spec.ts --project=chromium
+        env:
+          PLAYWRIGHT_BASE_URL: ${{ github.event.deployment_status.target_url }}
