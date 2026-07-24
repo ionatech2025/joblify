@@ -178,16 +178,31 @@ const MessageSchema = z.object({
   attachmentUrl: z.string().url().max(2000).optional().or(z.literal('')),
 });
 
+// Discriminated result for sendChatMessage so the composer can surface
+// expected failures inline instead of losing the draft to an error boundary.
+export type SendMessageResult = { ok: true } | { ok: false; error: string };
+
 // Post a message into a chat area the caller belongs to. MATERIAL carries an
 // attachment link; INTERVIEW_DETAILS flags interview logistics (flowchart:
 // "share material, orient & communicate interview details"). Individual
 // messages are not audited — like recruiter notes, the content is sensitive
 // and the volume is high.
-export async function sendChatMessage(chatAreaId: string, formData: FormData): Promise<void> {
+//
+// Expected failures (rate limit, validation) return { ok: false } rather than
+// throwing; unexpected ones (auth, DB) still throw. The prevState parameter
+// exists so the composer can bind chatAreaId and hand the rest straight to
+// useActionState.
+export async function sendChatMessage(
+  chatAreaId: string,
+  _prevState: SendMessageResult | null,
+  formData: FormData,
+): Promise<SendMessageResult> {
   const user = await requireUser();
 
   const rl = await chatMessageLimit(user.id);
-  if (!rl.success) throw new Error('You are sending messages too quickly. Please slow down.');
+  if (!rl.success) {
+    return { ok: false, error: 'You are sending messages too quickly. Please slow down.' };
+  }
 
   const membership = await db.chatParticipant.findUnique({
     where: { chatAreaId_userId: { chatAreaId, userId: user.id } },
@@ -195,20 +210,23 @@ export async function sendChatMessage(chatAreaId: string, formData: FormData): P
   });
   if (!membership) throw new AuthError('FORBIDDEN');
 
-  const parsed = MessageSchema.parse({
+  const parsed = MessageSchema.safeParse({
     body: formData.get('body'),
     kind: formData.get('kind') ?? 'TEXT',
     attachmentUrl: formData.get('attachmentUrl') ?? '',
   });
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? 'That message cannot be sent.' };
+  }
 
   await db.$transaction([
     db.chatMessage.create({
       data: {
         chatAreaId,
         senderId: user.id,
-        kind: parsed.kind,
-        body: parsed.body,
-        attachmentUrl: parsed.attachmentUrl || null,
+        kind: parsed.data.kind,
+        body: parsed.data.body,
+        attachmentUrl: parsed.data.attachmentUrl || null,
       },
     }),
     // Bump so chat lists sort by latest activity.
@@ -217,5 +235,6 @@ export async function sendChatMessage(chatAreaId: string, formData: FormData): P
 
   // Metadata only — message content is sensitive and high-volume, same
   // reasoning as the audit-trail exemption noted above.
-  logger.info({ chatAreaId, senderId: user.id, kind: parsed.kind }, 'chat message sent');
+  logger.info({ chatAreaId, senderId: user.id, kind: parsed.data.kind }, 'chat message sent');
+  return { ok: true };
 }
