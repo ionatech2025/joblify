@@ -41,9 +41,9 @@ export function ClerkClientProvider({ children }: { children: ReactNode }) {
       signUpUrl={process.env.NEXT_PUBLIC_CLERK_SIGN_UP_URL}
       routerPush={(to: string) => router.push(to)}
       routerReplace={(to: string) => router.replace(to)}
-      // colorPrimary matches the app's indigo accent so Clerk's widgets
-      // (sign-in/up card, UserButton) render on-palette.
-      appearance={{ variables: { colorPrimary: '#4f46e5' } }}
+      // colorPrimary matches the app's indigo accent; borderRadius matches the
+      // rounded-xl controls so Clerk's widgets sit in the design system.
+      appearance={{ variables: { colorPrimary: '#4f46e5', borderRadius: '0.75rem' } }}
     >
       {children}
     </ClerkProvider>

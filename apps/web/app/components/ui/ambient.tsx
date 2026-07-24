@@ -74,11 +74,13 @@ export function AmbientBand({ children, className = '' }: { children: ReactNode;
 export function PageHeader({
   title,
   subtitle,
+  eyebrow,
   actions,
   width = 'max-w-6xl',
 }: {
   title: ReactNode;
   subtitle?: ReactNode;
+  eyebrow?: string;
   actions?: ReactNode;
   width?: string;
 }) {
@@ -86,7 +88,8 @@ export function PageHeader({
     <AmbientBand>
       <div className={`mx-auto ${width} flex flex-wrap items-end justify-between gap-4 px-4 py-10 sm:px-6`}>
         <div>
-          <h1 className="m-0 text-2xl font-bold tracking-tight text-neutral-900 sm:text-3xl">{title}</h1>
+          {eyebrow && <p className="eyebrow m-0 mb-2">{eyebrow}</p>}
+          <h1 className="display m-0 text-2xl text-neutral-900 sm:text-3xl">{title}</h1>
           {subtitle && <p className="mt-1 mb-0 text-neutral-600">{subtitle}</p>}
         </div>
         {actions}
