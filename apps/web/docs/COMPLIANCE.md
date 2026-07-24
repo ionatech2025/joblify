@@ -21,8 +21,8 @@ Self-service export at **`/account/export`**. The endpoint:
 1. Verifies session.
 2. Rate-limited to 2/day per user (`accountExportLimit`).
 3. Calls `runGdprExport({ userId })` workflow.
-4. Workflow collects every row owned by the user (User, JobSeekerProfile, CompanyProfile, JobPost, JobApplication, Resume, Notification, Invitation, AuditEvent where actorId=user), bundles to JSON, uploads to Vercel Blob with random suffix, returns the public URL.
-5. Workflow emails the user the link (24-hour expiry on Blob URL).
+4. Workflow collects every row owned by the user (User, JobSeekerProfile, CompanyProfile, JobPost, JobApplication, Resume, Notification, Invitation, AuditEvent where actorId=user), bundles to JSON, uploads to Vercel Blob under the `exports/` prefix as an unguessable capability URL (random suffix).
+5. Workflow emails the user the link. The 24-hour expiry stated in that email is **enforced by the nightly retention sweep** (`workflows/retention.workflow.ts` step 5), which deletes `exports/` blobs older than 24h — so an export link is live for at most 24h + one cron interval.
 6. `AuditEvent: USER_EXPORTED` written.
 
 SLA: < 30 days per GDPR; ours runs in seconds.
