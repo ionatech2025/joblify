@@ -5,6 +5,9 @@ import { db } from '@/lib/db';
 import { tags } from '@/lib/cache';
 import { Container } from '@/app/components/ui/container';
 import { Card } from '@/app/components/ui/card';
+import { Badge } from '@/app/components/ui/badge';
+import { Stat, StatRow } from '@/app/components/ui/stat';
+import { buttonClasses } from '@/app/components/ui/button';
 import { AmbientCanvas } from '@/app/components/ui/ambient';
 import { GlobeLazy } from '@/app/components/globe-lazy';
 
@@ -16,54 +19,57 @@ export const metadata = {
 export default function MarketingHomePage() {
   return (
     <main>
-      <section className="relative overflow-hidden border-b border-indigo-100">
-        {/* Shared ambient canvas (see components/ui/ambient.tsx) — the same
-            design language interior pages use as their header bands. */}
-        <AmbientCanvas variant="hero" />
+      <section className="pt-6 sm:pt-8">
+        <Container>
+          {/* Rounded inset hero canvas: the shared ambient language wrapped in a
+              large radius panel, with paired pill CTAs and floating glass stats. */}
+          <div className="relative overflow-hidden rounded-[2rem] border border-indigo-100/80 shadow-soft">
+            <AmbientCanvas variant="hero" />
 
-        <Container className="relative py-24 sm:py-28 lg:py-32">
-          <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-12">
-            <div>
-              <span className="inline-flex items-center gap-2 rounded-full border border-neutral-900/10 bg-white/70 px-3.5 py-1.5 text-xs font-medium text-neutral-700 shadow-sm backdrop-blur-md">
-                <span className="size-1.5 rounded-full bg-emerald-500" aria-hidden="true" />
-                AI-matched roles · apply in one click
-              </span>
+            <div className="relative grid items-center gap-10 px-6 py-16 sm:px-10 sm:py-20 lg:grid-cols-2 lg:gap-12 lg:px-14 lg:py-24">
+              <div>
+                <p className="eyebrow m-0">AI-powered job search</p>
 
-              {/* eslint-disable-next-line @next/next/no-img-element -- static brand mark */}
-              <img src="/logo.png" alt="Joblify" width={56} height={56} className="mt-6 size-14 rounded-xl shadow-sm" />
+                <h1 className="display m-0 mt-4 max-w-2xl text-4xl text-neutral-900 uppercase sm:text-6xl lg:text-7xl">
+                  Find your next role
+                </h1>
+                <p className="mt-5 mb-0 max-w-xl text-lg text-neutral-600">
+                  Search jobs by skill, location, and salary. Apply in one click with an AI-parsed résumé.
+                </p>
+                <div className="mt-8 flex flex-wrap gap-3">
+                  <Link href="/jobs" className={`${buttonClasses('primary', 'lg')} no-underline`}>
+                    Browse jobs
+                  </Link>
+                  <Link href="/employer-setup" className={`${buttonClasses('secondary', 'lg')} no-underline`}>
+                    Post a job
+                  </Link>
+                </div>
+                <span className="mt-8 inline-flex items-center gap-2 rounded-full border border-neutral-900/10 bg-white/70 px-3.5 py-1.5 text-xs font-medium text-neutral-700 shadow-sm backdrop-blur-md">
+                  <span className="size-1.5 rounded-full bg-emerald-500" aria-hidden="true" />
+                  AI-matched roles · apply in one click
+                </span>
+              </div>
 
-              <h1 className="mt-5 max-w-2xl text-4xl font-extrabold tracking-tight text-neutral-900 sm:text-5xl lg:text-6xl">
-                Find your next role
-              </h1>
-              <p className="mt-4 max-w-xl text-lg text-neutral-600">
-                Search jobs by skill, location, and salary. Apply in one click with an AI-parsed résumé.
-              </p>
-              <div className="mt-8 flex flex-wrap gap-3">
-                <Link
-                  href="/jobs"
-                  className="inline-block rounded-lg bg-indigo-600 px-5 py-2.5 font-semibold text-white shadow-sm transition-colors hover:bg-indigo-700"
-                >
-                  Browse jobs
-                </Link>
-                <Link
-                  href="/employer-setup"
-                  className="inline-block rounded-lg border border-neutral-300 bg-white/80 px-5 py-2.5 font-semibold text-neutral-900 backdrop-blur-sm transition-colors hover:bg-white"
-                >
-                  Post a job
-                </Link>
+              {/* Global map simulation — auto-rotating dotted globe, with
+                  floating glass stat cards over it on large screens. */}
+              <div className="relative">
+                <GlobeLazy />
+                <Suspense fallback={null}>
+                  <HeroStatCards />
+                </Suspense>
               </div>
             </div>
-
-            {/* Global map simulation — auto-rotating dotted globe */}
-            <div className="relative">
-              <GlobeLazy />
-            </div>
           </div>
+
+          <Suspense fallback={<HeroStatRowSkeleton />}>
+            <HeroStatRow />
+          </Suspense>
         </Container>
       </section>
 
-      <Container className="py-12">
-        <h2 className="mb-4 text-2xl font-bold text-neutral-900">Featured jobs</h2>
+      <Container className="pt-2 pb-16 sm:pb-20">
+        <p className="eyebrow m-0">Fresh on Joblify</p>
+        <h2 className="display m-0 mt-2 mb-6 text-2xl text-neutral-900 sm:text-3xl">Featured jobs</h2>
         <Suspense fallback={<p className="text-neutral-500">Loading featured jobs…</p>}>
           <FeaturedJobs />
         </Suspense>
@@ -84,8 +90,79 @@ async function getFeaturedJobs() {
     where: { status: 'PUBLISHED', deletedAt: null },
     orderBy: { publishedAt: 'desc' },
     take: 6,
-    include: { company: { include: { companyProfile: true } } },
+    include: {
+      company: { include: { companyProfile: true } },
+      skills: { include: { skill: true }, take: 4 },
+    },
   });
+}
+
+// Marketplace counts for the hero stat cards + stat row. Same caching contract
+// as getFeaturedJobs: 'use cache' + cacheLife('hours'), invalidated via the
+// jobs/companies tag namespaces when posts publish or companies verify.
+async function getMarketplaceStats() {
+  'use cache';
+  const { cacheTag, cacheLife } = await import('next/cache');
+  cacheTag(tags.jobs(), tags.companies());
+  cacheLife('hours');
+
+  const [openRoles, companiesHiring, skillsTracked] = await Promise.all([
+    db.jobPost.count({ where: { status: 'PUBLISHED', deletedAt: null } }),
+    db.companyProfile.count({ where: { verificationStatus: 'VERIFIED' } }),
+    db.skill.count(),
+  ]);
+  return { openRoles, companiesHiring, skillsTracked };
+}
+
+// Floating glass stat cards over the globe column (lg+ only). Decorative
+// duplicates of the stat row below, so hidden from assistive tech.
+async function HeroStatCards() {
+  // Dynamic boundary: defers to runtime (streamed via the Suspense above) so
+  // the build needs no database; getMarketplaceStats() caches at runtime.
+  await connection();
+  const stats = await getMarketplaceStats();
+
+  return (
+    <div aria-hidden="true" className="pointer-events-none absolute inset-0 hidden lg:block">
+      <Card tone="glass" className="absolute top-2 -right-2 px-5 py-4">
+        <p className="display m-0 text-2xl text-neutral-900">{stats.openRoles.toLocaleString('en-US')}</p>
+        <p className="m-0 mt-1 text-xs font-semibold tracking-[0.14em] text-neutral-700 uppercase">Open roles</p>
+      </Card>
+      <Card tone="glass" className="absolute bottom-6 -left-2 px-5 py-4">
+        <p className="display m-0 text-2xl text-neutral-900">{stats.companiesHiring.toLocaleString('en-US')}</p>
+        <p className="m-0 mt-1 text-xs font-semibold tracking-[0.14em] text-neutral-700 uppercase">
+          Companies hiring
+        </p>
+      </Card>
+    </div>
+  );
+}
+
+// Social-proof stat row beneath the hero panel — real cached counts.
+async function HeroStatRow() {
+  await connection();
+  const stats = await getMarketplaceStats();
+
+  return (
+    <StatRow className="px-2 py-10 sm:py-12">
+      <Stat value={stats.openRoles.toLocaleString('en-US')} label="Open roles" />
+      <Stat value={stats.companiesHiring.toLocaleString('en-US')} label="Companies hiring" />
+      <Stat value={stats.skillsTracked.toLocaleString('en-US')} label="Skills tracked" />
+    </StatRow>
+  );
+}
+
+function HeroStatRowSkeleton() {
+  return (
+    <div aria-hidden="true" className="grid grid-cols-2 gap-6 px-2 py-10 sm:grid-cols-3 sm:gap-10 sm:py-12">
+      {[0, 1, 2].map((i) => (
+        <div key={i} className={i === 2 ? 'hidden sm:block' : ''}>
+          <div className="h-8 w-24 animate-pulse rounded-full bg-neutral-200" />
+          <div className="mt-2 h-3 w-28 animate-pulse rounded-full bg-neutral-100" />
+        </div>
+      ))}
+    </div>
+  );
 }
 
 async function FeaturedJobs() {
@@ -102,13 +179,30 @@ async function FeaturedJobs() {
     <ul className="grid list-none grid-cols-1 gap-4 p-0 sm:grid-cols-2 lg:grid-cols-3">
       {jobs.map((job) => (
         <li key={job.id}>
-          <Link href={`/jobs/${job.slug}`} className="block">
-            <Card className="h-full transition-shadow hover:shadow-md">
-              <h3 className="m-0 font-semibold text-neutral-900">{job.title}</h3>
-              <p className="mt-1 mb-0 text-sm text-neutral-600">
-                {job.company.companyProfile?.companyName ?? 'Company'}
-                {job.location ? ` · ${job.location}` : ''}
-              </p>
+          <Link href={`/jobs/${job.slug}`} className="block h-full no-underline">
+            <Card className="flex h-full flex-col gap-3 transition-shadow hover:shadow-md">
+              <div>
+                <h3 className="m-0 text-base font-semibold text-neutral-900">{job.title}</h3>
+                <p className="mt-1 mb-0 text-sm text-neutral-600">
+                  {job.company.companyProfile?.companyName ?? 'Company'}
+                  {job.location ? ` · ${job.location}` : ''}
+                </p>
+              </div>
+              {job.salaryMin && job.salaryMax ? (
+                <Badge tone="dark" className="self-start">
+                  {job.salaryCurrency} {job.salaryMin.toLocaleString('en-US')}–
+                  {job.salaryMax.toLocaleString('en-US')}
+                </Badge>
+              ) : null}
+              {job.skills.length > 0 && (
+                <div className="mt-auto flex flex-wrap gap-1.5">
+                  {job.skills.map((js) => (
+                    <Badge key={js.skillId} tone="neutral">
+                      {js.skill.label}
+                    </Badge>
+                  ))}
+                </div>
+              )}
             </Card>
           </Link>
         </li>

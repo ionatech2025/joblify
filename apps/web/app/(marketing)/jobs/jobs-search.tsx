@@ -8,6 +8,8 @@ import { SignedIn } from '@clerk/nextjs';
 import type { JobSearchRecord } from '@/lib/search/algolia';
 import { Badge } from '@/app/components/ui/badge';
 import { Card } from '@/app/components/ui/card';
+import { Button } from '@/app/components/ui/button';
+import { Input, Select } from '@/app/components/ui/form';
 import { SaveSearchButton } from './save-search-button';
 
 type SearchResponse = { hits: JobSearchRecord[]; nbHits: number; page: number; nbPages: number };
@@ -42,9 +44,6 @@ const FILTER_LABELS: Record<keyof typeof SELECTS, string> = {
   jobType: 'Job type',
   experienceLevel: 'Experience level',
 };
-
-const control =
-  'w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 focus:outline-none';
 
 // The URL is the single source of truth for a search, so results are shareable,
 // bookmarkable, and survive refresh / back-forward. Text + salary inputs keep
@@ -117,64 +116,56 @@ export function JobsSearch() {
   return (
     <div className="grid grid-cols-1 gap-8 md:grid-cols-[260px_minmax(0,1fr)]">
       <aside className="flex flex-col gap-3">
-        <input
+        <Input
           type="search"
           placeholder="Title, company, or keyword"
           aria-label="Search jobs by title, company, or keyword"
           value={qText}
           onChange={(e) => setQText(e.target.value)}
-          className={control}
         />
-        <input
+        <Input
           type="text"
           placeholder="City or country"
           aria-label="Location"
           value={locText}
           onChange={(e) => setLocText(e.target.value)}
-          className={control}
         />
         {(['workMode', 'jobType', 'experienceLevel'] as const).map((field) => (
-          <select
+          <Select
             key={field}
             aria-label={FILTER_LABELS[field]}
             value={getp(field)}
             onChange={(e) => patch({ [field]: e.target.value, page: '' })}
-            className={control}
           >
             {SELECTS[field].map(([v, label]) => (
               <option key={v} value={v}>
                 {label}
               </option>
             ))}
-          </select>
+          </Select>
         ))}
         <div className="flex gap-2">
-          <input
+          <Input
             type="number"
             min={0}
             placeholder="Min salary"
             aria-label="Minimum salary"
             value={salMin}
             onChange={(e) => setSalMin(e.target.value)}
-            className={control}
           />
-          <input
+          <Input
             type="number"
             min={0}
             placeholder="Max salary"
             aria-label="Maximum salary"
             value={salMax}
             onChange={(e) => setSalMax(e.target.value)}
-            className={control}
           />
         </div>
         {qs.length > 0 && (
-          <button
-            onClick={() => router.replace('/jobs', { scroll: false })}
-            className="rounded-md bg-neutral-100 px-3 py-2 text-sm font-medium text-neutral-900 transition-colors hover:bg-neutral-200"
-          >
+          <Button variant="ghost" size="sm" onClick={() => router.replace('/jobs', { scroll: false })}>
             Clear filters
-          </button>
+          </Button>
         )}
       </aside>
 
@@ -200,22 +191,26 @@ export function JobsSearch() {
             )}
             <label className="flex items-center gap-2 text-sm text-neutral-600">
               Sort
-              <select
-                value={getp('sort')}
-                onChange={(e) => patch({ sort: e.target.value, page: '' })}
-                className="rounded-md border border-neutral-300 bg-white px-2 py-1.5 text-sm"
-              >
-                <option value="">Relevance</option>
-                <option value="recent">Most recent</option>
-                <option value="salary">Highest salary</option>
-              </select>
+              <span className="w-40">
+                <Select value={getp('sort')} onChange={(e) => patch({ sort: e.target.value, page: '' })}>
+                  <option value="">Relevance</option>
+                  <option value="recent">Most recent</option>
+                  <option value="salary">Highest salary</option>
+                </Select>
+              </span>
             </label>
           </div>
         </div>
 
-        {isError && <p className="text-red-700">Search is unavailable right now. Try again shortly.</p>}
+        {isError && (
+          <p className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-red-700">
+            Search is unavailable right now. Try again shortly.
+          </p>
+        )}
         {data && data.hits.length === 0 && !isLoading && (
-          <p className="text-neutral-500">No jobs match these filters. Try broadening your search.</p>
+          <p className="rounded-2xl border border-dashed border-neutral-300 bg-white/60 px-6 py-10 text-center text-neutral-500">
+            No jobs match these filters. Try broadening your search.
+          </p>
         )}
 
         {data && data.hits.length > 0 && (
@@ -226,20 +221,21 @@ export function JobsSearch() {
               ))}
             </ul>
             {data.nbPages > 1 && (
-              <nav className="mt-6 flex items-center justify-center gap-4" aria-label="Pagination">
-                <button disabled={page <= 0} onClick={() => patch({ page: page - 1 })} className={pageBtn(page <= 0)}>
+              <nav className="mt-8 flex items-center justify-center gap-4" aria-label="Pagination">
+                <Button variant="secondary" size="sm" disabled={page <= 0} onClick={() => patch({ page: page - 1 })}>
                   ← Prev
-                </button>
+                </Button>
                 <span className="text-sm text-neutral-600">
                   Page {page + 1} of {data.nbPages}
                 </span>
-                <button
+                <Button
+                  variant="secondary"
+                  size="sm"
                   disabled={page >= data.nbPages - 1}
                   onClick={() => patch({ page: page + 1 })}
-                  className={pageBtn(page >= data.nbPages - 1)}
                 >
                   Next →
-                </button>
+                </Button>
               </nav>
             )}
           </>
@@ -252,13 +248,13 @@ export function JobsSearch() {
 function JobCard({ hit }: { hit: JobSearchRecord }) {
   return (
     <li>
-      <Link href={`/jobs/${hit.slug}`} className="block">
-        <Card className="flex gap-4 transition-shadow hover:shadow-md">
+      <Link href={`/jobs/${hit.slug}`} className="block no-underline">
+        <Card className="flex gap-4 p-5 transition-shadow hover:shadow-md">
           {hit.companyLogoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element -- remote logo, fixed small size
-            <img src={hit.companyLogoUrl} alt="" width={48} height={48} className="size-12 shrink-0 rounded-lg object-cover" />
+            <img src={hit.companyLogoUrl} alt="" width={48} height={48} className="size-12 shrink-0 rounded-xl object-cover" />
           ) : (
-            <div className="size-12 shrink-0 rounded-lg bg-neutral-100" aria-hidden="true" />
+            <div className="size-12 shrink-0 rounded-xl bg-neutral-100" aria-hidden="true" />
           )}
           <div className="min-w-0">
             {/* h2: the page h1 is "Search jobs"; card titles are the next level */}
@@ -270,9 +266,9 @@ function JobCard({ hit }: { hit: JobSearchRecord }) {
               {hit.publishedAt ? ` · ${relativeDate(hit.publishedAt)}` : ''}
             </p>
             {hit.salaryMin && hit.salaryMax ? (
-              <p className="mt-1 mb-0 text-sm font-semibold text-green-700">
+              <Badge tone="dark" className="mt-2">
                 {hit.salaryCurrency} {hit.salaryMin.toLocaleString()}–{hit.salaryMax.toLocaleString()}
-              </p>
+              </Badge>
             ) : null}
             {hit.description ? (
               <p className="mt-1.5 mb-0 line-clamp-2 text-sm leading-snug text-neutral-500">
@@ -283,7 +279,9 @@ function JobCard({ hit }: { hit: JobSearchRecord }) {
             {hit.skills?.length ? (
               <div className="mt-2 flex flex-wrap gap-1.5">
                 {hit.skills.slice(0, 5).map((s) => (
-                  <Badge key={s}>{s}</Badge>
+                  <Badge key={s} tone="neutral">
+                    {s}
+                  </Badge>
                 ))}
               </div>
             ) : null}
@@ -301,10 +299,4 @@ function relativeDate(ms: number): string {
   if (days < 30) return `${days} days ago`;
   const months = Math.floor(days / 30);
   return months === 1 ? '1 month ago' : `${months} months ago`;
-}
-
-function pageBtn(disabled: boolean): string {
-  return `rounded-md border border-neutral-300 px-4 py-2 text-sm ${
-    disabled ? 'cursor-default bg-neutral-50 text-neutral-400' : 'bg-white text-neutral-900 hover:bg-neutral-50'
-  }`;
 }

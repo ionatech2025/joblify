@@ -26,7 +26,7 @@ export function SaveButton({ jobId, initialSaved }: { jobId: string; initialSave
       onClick={toggle}
       disabled={pending}
       aria-pressed={saved}
-      className={`rounded-lg border px-4 py-2 font-semibold transition-colors disabled:cursor-wait ${
+      className={`inline-flex items-center justify-center gap-2 rounded-full border px-4 py-2 font-semibold transition-colors disabled:cursor-wait ${
         saved
           ? 'border-indigo-200 bg-indigo-50 text-indigo-700'
           : 'border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-50'

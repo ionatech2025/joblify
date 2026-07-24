@@ -5,7 +5,7 @@ export const metadata = { title: 'Privacy policy' };
 export default function PrivacyPage() {
   return (
     <main>
-      <PageHeader title="Privacy policy" width="max-w-3xl" />
+      <PageHeader eyebrow="Legal" title="Privacy policy" width="max-w-3xl" />
       <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
       <p>
         Joblify processes personal data to operate the job marketplace and only for the purposes

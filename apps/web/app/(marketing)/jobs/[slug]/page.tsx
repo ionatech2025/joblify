@@ -2,10 +2,12 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { connection } from 'next/server';
 import { Suspense } from 'react';
+import type { JobType } from '@prisma/client';
 import { db } from '@/lib/db';
 import { tags } from '@/lib/cache';
 import { jobPostingJsonLd } from '@/lib/seo/job-jsonld';
 import { Badge } from '@/app/components/ui/badge';
+import { Card } from '@/app/components/ui/card';
 import { AmbientBand } from '@/app/components/ui/ambient';
 import { ApplyPanel } from './apply-panel';
 import { MatchBadge } from './match-badge';
@@ -13,6 +15,20 @@ import { SimilarJobs } from './similar-jobs';
 import { ViewTracker } from './view-tracker';
 
 type Params = Promise<{ slug: string }>;
+
+const JOB_TYPE_LABELS: Record<JobType, string> = {
+  FULL_TIME: 'Full-time',
+  PART_TIME: 'Part-time',
+  CONTRACT: 'Contract',
+  INTERNSHIP: 'Internship',
+  TEMPORARY: 'Temporary',
+};
+
+// Deterministic formatting for the deadline (no locale drift between servers).
+const deadlineFormat = new Intl.DateTimeFormat('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+
+// Glassy chip that reads well over the ambient band wash.
+const metaChip = 'bg-white/70 backdrop-blur-sm';
 
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const { slug } = await params;
@@ -50,8 +66,13 @@ function JobDetailSkeleton() {
     <main>
       <AmbientBand>
         <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
-          <div className="h-8 w-2/3 animate-pulse rounded bg-neutral-200" />
-          <div className="mt-4 h-4 w-1/3 animate-pulse rounded bg-neutral-100" />
+          <div className="h-3 w-28 animate-pulse rounded-full bg-indigo-200/70" />
+          <div className="mt-4 h-10 w-2/3 animate-pulse rounded-2xl bg-neutral-200" />
+          <div className="mt-5 flex flex-wrap gap-2">
+            <div className="h-6 w-24 animate-pulse rounded-full bg-neutral-200" />
+            <div className="h-6 w-20 animate-pulse rounded-full bg-neutral-200" />
+            <div className="h-6 w-36 animate-pulse rounded-full bg-neutral-300" />
+          </div>
         </div>
       </AmbientBand>
     </main>
@@ -75,6 +96,7 @@ async function JobDetailBody({ slug }: { slug: string }) {
 
       <AmbientBand>
         <header className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
+          <p className="eyebrow m-0 mb-3">{job.company.companyProfile?.companyName ?? 'Open role'}</p>
           <div className="flex flex-wrap items-center gap-4">
             {job.company.companyProfile?.logoUrl && (
               // eslint-disable-next-line @next/next/no-img-element -- remote company logo, fixed size
@@ -83,28 +105,44 @@ async function JobDetailBody({ slug }: { slug: string }) {
                 alt=""
                 width={48}
                 height={48}
-                className="rounded-lg object-cover"
+                className="rounded-xl object-cover"
               />
             )}
-            <h1 className="m-0 text-2xl font-bold tracking-tight text-neutral-900 sm:text-3xl">{job.title}</h1>
+            <h1 className="display m-0 text-3xl text-neutral-900 sm:text-4xl">{job.title}</h1>
             <Suspense fallback={null}>
               <MatchBadge jobId={job.id} />
             </Suspense>
           </div>
-          <p className="mt-2 mb-0 text-neutral-600">
-            {job.company.companyProfile?.companyName ?? 'Company'}
-            {job.location ? ` · ${job.location}` : ''}
-            {job.workMode === 'REMOTE' ? ' · Remote' : job.workMode === 'HYBRID' ? ' · Hybrid' : ''}
-          </p>
-          {job.salaryMin && job.salaryMax && (
-            <p className="mt-1 mb-0 font-medium text-neutral-700">
-              {job.salaryCurrency} {job.salaryMin.toLocaleString()} – {job.salaryMax.toLocaleString()} per year
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            {job.location && (
+              <Badge tone="neutral" className={metaChip}>
+                {job.location}
+              </Badge>
+            )}
+            <Badge tone="neutral" className={metaChip}>
+              {JOB_TYPE_LABELS[job.jobType]}
+            </Badge>
+            {(job.workMode === 'REMOTE' || job.workMode === 'HYBRID') && (
+              <Badge tone="neutral" className={metaChip}>
+                {job.workMode === 'REMOTE' ? 'Remote' : 'Hybrid'}
+              </Badge>
+            )}
+            {job.salaryMin && job.salaryMax && (
+              <Badge tone="dark">
+                {job.salaryCurrency} {job.salaryMin.toLocaleString('en-US')} –{' '}
+                {job.salaryMax.toLocaleString('en-US')} per year
+              </Badge>
+            )}
+          </div>
+          {job.applicationDeadline && (
+            <p className="mt-4 mb-0 text-sm font-semibold text-neutral-900">
+              Apply by {deadlineFormat.format(job.applicationDeadline)}
             </p>
           )}
           {job.skills.length > 0 && (
             <section className="mt-4 flex flex-wrap gap-2" aria-label="Skills">
               {job.skills.map((js) => (
-                <Badge key={js.skillId} className="bg-white/70 backdrop-blur-sm">
+                <Badge key={js.skillId} className={metaChip}>
                   {js.skill.label}
                 </Badge>
               ))}
@@ -134,10 +172,12 @@ async function JobDetailBody({ slug }: { slug: string }) {
         </section>
       )}
 
-      <section className="mt-12 rounded-xl border border-neutral-200 bg-white/70 p-6 backdrop-blur-sm">
-        <Suspense fallback={<p>Loading apply options…</p>}>
-          <ApplyPanel jobId={job.id} slug={job.slug} />
-        </Suspense>
+      <section className="mt-12">
+        <Card tone="glass" className="p-6 sm:p-8">
+          <Suspense fallback={<p className="m-0 text-neutral-700">Loading apply options…</p>}>
+            <ApplyPanel jobId={job.id} slug={job.slug} />
+          </Suspense>
+        </Card>
       </section>
 
       <Suspense fallback={null}>

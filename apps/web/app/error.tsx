@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import Link from 'next/link';
 import * as Sentry from '@sentry/nextjs';
 import { AmbientCanvas } from '@/app/components/ui/ambient';
+import { buttonClasses } from '@/app/components/ui/button';
 
 export default function Error({
   error,
@@ -17,25 +18,20 @@ export default function Error({
   }, [error]);
 
   return (
-    <main className="relative overflow-hidden px-4 py-16">
+    <main className="relative overflow-hidden px-4 py-20 sm:py-24">
       <AmbientCanvas variant="hero" />
       <div className="relative mx-auto max-w-xl text-center">
-      <h1 className="text-2xl font-bold text-neutral-900">Something went wrong</h1>
-      <p className="mt-2 text-neutral-600">An unexpected error occurred. You can try again, or head back home.</p>
-      <div className="mt-6 flex justify-center gap-3">
-        <button
-          onClick={reset}
-          className="rounded-lg bg-indigo-600 px-5 py-2.5 font-semibold text-white transition-colors hover:bg-indigo-700"
-        >
-          Try again
-        </button>
-        <Link
-          href="/"
-          className="rounded-lg border border-neutral-300 px-5 py-2.5 font-semibold text-neutral-900 no-underline transition-colors hover:bg-neutral-50"
-        >
-          Go home
-        </Link>
-      </div>
+        <p className="eyebrow m-0">Error</p>
+        <h1 className="display m-0 mt-3 text-3xl text-neutral-900 sm:text-4xl">Something went wrong</h1>
+        <p className="mt-3 text-neutral-600">An unexpected error occurred. You can try again, or head back home.</p>
+        <div className="mt-8 flex flex-wrap justify-center gap-3">
+          <button onClick={reset} className={buttonClasses('primary', 'lg')}>
+            Try again
+          </button>
+          <Link href="/" className={`${buttonClasses('secondary', 'lg')} no-underline`}>
+            Go home
+          </Link>
+        </div>
       </div>
     </main>
   );
