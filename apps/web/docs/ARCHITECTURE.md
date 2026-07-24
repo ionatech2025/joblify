@@ -165,9 +165,9 @@ Browser ──> /jobseeker/applications ──> middleware.ts (auth.protect)
 
 | Workflow | Triggered by | Duration p95 | Idempotent? |
 |---|---|---|---|
-| `resume-parse` | apply Server Action | 8–20s | yes (skips if parsedJson exists) |
-| `match-score` | apply Server Action, JD publish | 1–5s | yes (writes to existing application row) |
-| `digest-email` | daily cron | 30–120s | no (no watermark in V1) |
+| `resume-parse` | apply Server Action; algolia-reconcile cron re-runs stranded rows (parseAttempts-capped) | 8–20s | yes (skips completed work; repairs a missing embedding from the stored parse) |
+| `match-score` | apply Server Action; its `embedJobPost` step also runs on JD publish/edit (post-job Server Action, in `after()`) and from the algolia-reconcile sweep | 1–5s | yes (writes to existing application row) |
+| `digest-email` | daily cron | 30–120s | yes (per-user `lastDigestAt` watermark, stamped per chunk — a re-run resumes instead of double-sending) |
 | `gdpr-export` | account export endpoint | 5–30s | yes (signed URL, can run twice) |
 | `retention` | daily cron | 5–60s | yes (deleteMany is idempotent) |
 

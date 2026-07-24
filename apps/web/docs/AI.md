@@ -32,7 +32,7 @@ Aliases live in `lib/ai/gateway.ts` `MODELS` so we can swap a model in one place
 
 ### 1. Resume parse (workflow)
 
-`workflows/resume-parse.workflow.ts`. Triggered by the apply Server Action after a fresh resume upload.
+`workflows/resume-parse.workflow.ts`. Triggered by the apply Server Action after a fresh resume upload; the algolia-reconcile cron's sweep re-runs resumes stranded half-processed (`parsedJson`/`embedding` NULL), capped at 5 attempts per resume.
 
 - Input: a `Resume` row pointing at a Blob URL.
 - Steps: download → `file-type` magic-byte check → text extract (pdf-parse / mammoth) → `generateObject` with `ResumeSchema` via Haiku → write `parsedJson` + `embedding`.
@@ -54,7 +54,7 @@ Best-effort. If Haiku fails, the job is still posted; skills can be linked later
 
 ### 3. Match score (workflow)
 
-`workflows/match-score.workflow.ts`. Triggered on apply and on JD publish.
+`workflows/match-score.workflow.ts`. `runMatchScore` is triggered on apply; its JD-embedding step is the exported `embedJobPost`, which also runs on JD publish and on edits that change the JD text (post-job Server Action, inside `after()`) and from the algolia-reconcile sweep over published jobs with a NULL embedding — so never-applied jobs still surface in `/jobseeker/matches`.
 
 - Input: `{ jobPostId, jobSeekerId }`.
 - Steps:
