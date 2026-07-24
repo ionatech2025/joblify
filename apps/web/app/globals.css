@@ -9,6 +9,10 @@
 @theme {
   --color-brand: #4f46e5;
   --color-brand-fg: #ffffff;
+  /* Near-black "ink" — primary CTAs and dark bands (footer, dark cards). */
+  --color-ink: #0a0a0a;
+  /* Soft elevation for floating cards: a hairline plus a long, low shadow. */
+  --shadow-soft: 0 1px 2px rgb(0 0 0 / 0.04), 0 12px 32px -16px rgb(0 0 0 / 0.14);
 }
 
 @layer base {
@@ -64,5 +68,36 @@
   }
   a {
     color: #4338ca;
+  }
+}
+
+@layer components {
+  /* Editorial display headline (marketing heroes, page titles that want
+     weight): heavy, tight, balanced. Pair with a size utility at the call
+     site (text-4xl…text-7xl). System font stack — no webfont cost. */
+  .display {
+    font-weight: 900;
+    letter-spacing: -0.03em;
+    text-wrap: balance;
+  }
+
+  /* Small-caps eyebrow label above headlines ("FOR JOB SEEKERS"). */
+  .eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--color-brand);
+  }
+
+  /* Frosted glass surface (header, floating hero cards). Pair with a border
+     class at the call site when a hairline is wanted. */
+  .glass {
+    background: rgb(255 255 255 / 0.7);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
   }
 }
