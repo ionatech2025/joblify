@@ -5,7 +5,7 @@ import { db } from '@/lib/db';
 import { openJobChatArea } from '@/app/actions/chat';
 import { ApplicantsBoard } from './applicants-board';
 import { PageHeader } from '@/app/components/ui/ambient';
-import { Button } from '@/app/components/ui/button';
+import { Button, buttonClasses } from '@/app/components/ui/button';
 
 export const metadata = { title: 'Applicants' };
 
@@ -37,7 +37,7 @@ export default async function ApplicantsPage({ params }: { params: Promise<{ job
           job.chatArea ? (
             <Link
               href={`/company/chats/${job.chatArea.id}`}
-              className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-700"
+              className={`${buttonClasses('primary')} no-underline`}
             >
               Open chat area
             </Link>

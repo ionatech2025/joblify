@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react';
 import Link from 'next/link';
 import { deleteSavedSearch } from '@/app/actions/saved-searches';
+import { Button } from '@/app/components/ui/button';
 
 type Row = { id: string; label: string; query: string };
 
@@ -29,7 +30,7 @@ export function SavedSearchList({ initial }: { initial: Row[] }) {
       {rows.map((s) => (
         <li
           key={s.id}
-          className="flex items-center justify-between gap-4 rounded-xl border border-neutral-200 p-3"
+          className="flex items-center justify-between gap-4 rounded-2xl border border-neutral-200/80 bg-white p-3 shadow-soft"
         >
           <Link
             href={`/jobs?${s.query}`}
@@ -37,14 +38,16 @@ export function SavedSearchList({ initial }: { initial: Row[] }) {
           >
             {s.label}
           </Link>
-          <button
+          <Button
             type="button"
+            variant="danger"
+            size="sm"
+            className="shrink-0"
             onClick={() => remove(s.id)}
-            className="shrink-0 rounded-md border border-neutral-300 px-2.5 py-1 text-sm text-red-700 transition-colors hover:bg-red-50"
             aria-label={`Delete saved search ${s.label}`}
           >
             Delete
-          </button>
+          </Button>
         </li>
       ))}
     </ul>

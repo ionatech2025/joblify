@@ -40,7 +40,7 @@ export default async function JobseekerChatsPage() {
         ) : (
           <ul className="grid list-none grid-cols-1 gap-3 p-0">
             {memberships.map(({ chatArea: a }) => (
-              <li key={a.id} className="rounded-xl border border-neutral-200 bg-white p-4">
+              <li key={a.id} className="rounded-2xl border border-neutral-200/80 bg-white p-4 shadow-soft">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <Link href={`/jobseeker/chats/${a.id}`} className="font-semibold text-neutral-900 hover:underline">

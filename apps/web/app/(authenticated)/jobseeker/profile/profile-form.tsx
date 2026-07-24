@@ -75,7 +75,7 @@ export function ProfileForm({
       </Field>
 
       {isVirtualIntern && (
-        <div className="flex flex-col gap-4 rounded-lg border border-indigo-100 bg-indigo-50/40 p-4">
+        <div className="flex flex-col gap-4 rounded-2xl border border-indigo-100 bg-indigo-50/40 p-4">
           <Field label="Career interest" error={errors.careerInterest?.message}>
             <Input {...register('careerInterest')} placeholder="Digital marketing" />
           </Field>
@@ -102,7 +102,7 @@ export function ProfileForm({
 
       <fieldset className="flex flex-col gap-1">
         <legend className="text-sm font-medium text-neutral-700">Skills</legend>
-        <div className="grid grid-cols-2 gap-x-4 gap-y-2 rounded-md border border-neutral-300 p-3 sm:grid-cols-3">
+        <div className="grid grid-cols-2 gap-x-4 gap-y-2 rounded-xl border border-neutral-300 bg-white p-3 sm:grid-cols-3">
           {allSkills.map((skill) => (
             <label key={skill.slug} className="flex items-center gap-2 text-sm text-neutral-700">
               <input type="checkbox" value={skill.slug} {...register('skillSlugs')} />

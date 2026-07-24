@@ -2,6 +2,7 @@
 
 import { useApplications, type ApplicationListItem } from '@/lib/query/applications';
 import Link from 'next/link';
+import { Badge } from '@/app/components/ui/badge';
 
 const STATUS_LABEL: Record<string, string> = {
   SUBMITTED: 'Submitted',
@@ -14,12 +15,14 @@ const STATUS_LABEL: Record<string, string> = {
   WITHDRAWN: 'Withdrawn',
 };
 
-const STATUS_CLASS: Record<string, string> = {
-  HIRED: 'bg-green-100 text-green-800',
-  OFFER_EXTENDED: 'bg-green-50 text-green-700',
-  SHORTLISTED: 'bg-blue-50 text-blue-700',
-  INTERVIEW_SCHEDULED: 'bg-blue-50 text-blue-700',
-  REJECTED: 'bg-red-50 text-red-700',
+// Semantic status tones: progress/outcome wins are success, "not selected"
+// warns, everything else stays neutral.
+const STATUS_TONE: Record<string, 'success' | 'warn' | 'neutral'> = {
+  SHORTLISTED: 'success',
+  INTERVIEW_SCHEDULED: 'success',
+  OFFER_EXTENDED: 'success',
+  HIRED: 'success',
+  REJECTED: 'warn',
 };
 
 export function ApplicationsList({
@@ -47,7 +50,7 @@ export function ApplicationsList({
   return (
     <ul className="grid list-none grid-cols-1 gap-3 p-0">
       {items.map((a) => (
-        <li key={a.id} className="rounded-xl border border-neutral-200 bg-white p-4">
+        <li key={a.id} className="rounded-2xl border border-neutral-200/80 bg-white p-4 shadow-soft">
           <div className="flex items-baseline justify-between gap-4">
             <div className="min-w-0">
               <Link href={`/jobs/${a.slug}`} className="font-semibold text-neutral-900 hover:underline">
@@ -56,15 +59,13 @@ export function ApplicationsList({
               <p className="mt-1 mb-0 text-neutral-600">{a.companyName}</p>
             </div>
             <div className="shrink-0 text-right">
-              <span
-                className={`inline-block rounded px-2 py-0.5 text-sm font-medium ${STATUS_CLASS[a.status] ?? 'bg-neutral-100 text-neutral-600'}`}
-              >
-                {STATUS_LABEL[a.status] ?? a.status}
-              </span>
+              <Badge tone={STATUS_TONE[a.status] ?? 'neutral'}>{STATUS_LABEL[a.status] ?? a.status}</Badge>
               <p className="mt-1 mb-0 text-sm text-neutral-500">{new Date(a.appliedAt).toLocaleDateString()}</p>
               {a.matchScore !== null && (
-                <p className="mt-1 mb-0 text-sm text-neutral-700">
-                  Match: <strong>{Math.round(a.matchScore * 100)}%</strong>
+                <p className="mt-1 mb-0">
+                  <Badge tone={a.matchScore >= 0.7 ? 'success' : 'neutral'}>
+                    Match: {Math.round(a.matchScore * 100)}%
+                  </Badge>
                 </p>
               )}
             </div>

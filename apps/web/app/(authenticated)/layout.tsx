@@ -23,14 +23,14 @@ async function Gate({ children }: { children: React.ReactNode }) {
 
 // While the gate resolves, the children (and any sub-nav they render, like the
 // jobseeker layout's) are still pending — so this reserves a nav strip of
-// link-width bars on top of the standard page skeleton.
+// pill placeholders on top of the standard page skeleton.
 function AuthenticatedShellSkeleton() {
   return (
     <>
       <div className="border-b border-indigo-100 bg-white/70 backdrop-blur">
-        <div className="mx-auto flex w-full max-w-6xl flex-wrap gap-x-5 gap-y-2 px-4 py-3 sm:px-6">
+        <div className="mx-auto flex w-full max-w-6xl flex-wrap gap-x-1.5 gap-y-1.5 px-4 py-2.5 sm:px-6">
           {[0, 1, 2, 3, 4].map((i) => (
-            <span key={i} className="my-0.5 h-4 w-20 animate-pulse rounded bg-neutral-200" />
+            <span key={i} className="h-8 w-24 animate-pulse rounded-full bg-neutral-200" />
           ))}
         </div>
       </div>

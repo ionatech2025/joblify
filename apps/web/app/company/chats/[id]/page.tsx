@@ -93,7 +93,7 @@ export default async function CompanyChatAreaPage({ params }: { params: Params }
           <h2 className="mt-0 text-sm font-semibold tracking-wide text-neutral-500 uppercase">Participants</h2>
           <ul className="grid list-none grid-cols-1 gap-2 p-0">
             {area.participants.map((p) => (
-              <li key={p.userId} className="rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm">
+              <li key={p.userId} className="rounded-2xl border border-neutral-200/80 bg-white px-3 py-2 text-sm shadow-soft">
                 <span className="font-medium text-neutral-900">
                   {p.userId === user.id
                     ? 'You'
@@ -118,7 +118,7 @@ export default async function CompanyChatAreaPage({ params }: { params: Params }
                 {candidates.map((c) => (
                   <li
                     key={c.userId}
-                    className="flex items-center justify-between gap-2 rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm"
+                    className="flex items-center justify-between gap-2 rounded-2xl border border-neutral-200/80 bg-white px-3 py-2 text-sm shadow-soft"
                   >
                     <span className="text-neutral-900">{c.name}</span>
                     <form action={addChatParticipant.bind(null, area.id, c.userId)}>

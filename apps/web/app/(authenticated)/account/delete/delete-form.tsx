@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { deleteMyAccount } from '@/app/actions/account';
+import { Button } from '@/app/components/ui/button';
 import { Input } from '@/app/components/ui/form';
 
 export function DeleteForm({ expectedConfirmation }: { expectedConfirmation: string }) {
@@ -32,13 +33,9 @@ export function DeleteForm({ expectedConfirmation }: { expectedConfirmation: str
         <Input type="email" value={confirmation} onChange={(e) => setConfirmation(e.target.value)} autoComplete="off" />
       </label>
       {error && <p className="m-0 text-red-700">{error}</p>}
-      <button
-        type="submit"
-        disabled={!ready || isPending}
-        className="self-start rounded-lg bg-red-600 px-5 py-2.5 font-semibold text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-neutral-300"
-      >
+      <Button type="submit" variant="danger" disabled={!ready || isPending} className="self-start">
         {isPending ? 'Deleting…' : 'Delete my account permanently'}
-      </button>
+      </Button>
     </form>
   );
 }

@@ -83,7 +83,7 @@ export function ResumeBuilderForm({ initialEntries }: { initialEntries: FormValu
 
       <form onSubmit={handleSubmit(onSave)} className="flex flex-col gap-4">
         {fields.map((field, index) => (
-          <div key={field.id} className="flex flex-col gap-3 rounded-lg border border-neutral-200 p-4">
+          <div key={field.id} className="flex flex-col gap-3 rounded-2xl border border-neutral-200/80 bg-white p-4 shadow-soft">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Field label="Company" error={errors.entries?.[index]?.company?.message}>
                 <Input {...register(`entries.${index}.company`)} placeholder="Acme Inc." />

@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { requireRole } from '@/lib/auth';
 import { getRecommendedJobs } from '@/lib/search/semantic-match';
 import { PageHeader } from '@/app/components/ui/ambient';
+import { Badge } from '@/app/components/ui/badge';
 
 export const metadata = { title: 'Matches' };
 
@@ -12,6 +13,7 @@ export default async function JobMatchesPage() {
   return (
     <main>
       <PageHeader
+        eyebrow="For you"
         title="Matches"
         subtitle="Jobs ranked by how closely they match your resume — not just keywords, the whole picture."
         width="max-w-3xl"
@@ -28,7 +30,10 @@ export default async function JobMatchesPage() {
         ) : (
           <ul className="mt-6 flex list-none flex-col gap-3 p-0">
             {jobs.map((j) => (
-              <li key={j.id} className="flex items-center justify-between gap-4 rounded-xl border border-neutral-200 p-4">
+              <li
+                key={j.id}
+                className="flex items-center justify-between gap-4 rounded-2xl border border-neutral-200/80 bg-white p-4 shadow-soft"
+              >
                 <Link href={`/jobs/${j.slug}`} className="min-w-0 text-neutral-900 no-underline">
                   <strong>{j.title}</strong>
                   <span className="text-neutral-600">
@@ -37,9 +42,9 @@ export default async function JobMatchesPage() {
                     {j.location ? ` · ${j.location}` : ''}
                   </span>
                 </Link>
-                <span className="shrink-0 rounded-full bg-indigo-50 px-3 py-1 text-sm font-semibold text-indigo-700">
+                <Badge tone={j.similarity >= 0.7 ? 'success' : 'neutral'} className="shrink-0">
                   {Math.round(j.similarity * 100)}% match
-                </span>
+                </Badge>
               </li>
             ))}
           </ul>

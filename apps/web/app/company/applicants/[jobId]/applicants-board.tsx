@@ -3,6 +3,9 @@
 import { useMemo, useState, useTransition } from 'react';
 import { updateApplicantStatus, saveApplicantNote } from '@/app/actions/update-applicant-status';
 import type { ApplicationStatus } from '@prisma/client';
+import { Badge } from '@/app/components/ui/badge';
+import { Card } from '@/app/components/ui/card';
+import { Select, Textarea } from '@/app/components/ui/form';
 
 type Row = {
   id: string;
@@ -32,8 +35,6 @@ const STAGES: { status: ApplicationStatus; label: string }[] = [
   { status: 'WITHDRAWN', label: 'Withdrawn' },
 ];
 const CLOSED: ApplicationStatus[] = ['HIRED', 'REJECTED', 'WITHDRAWN'];
-
-const controlClass = 'rounded-md border border-neutral-300 bg-white px-2 py-1.5 text-sm';
 
 export function ApplicantsBoard({ applications }: { applications: Row[] }) {
   const [rows, setRows] = useState(applications);
@@ -75,10 +76,12 @@ export function ApplicantsBoard({ applications }: { applications: Row[] }) {
       <div className="my-4 flex flex-wrap items-center gap-5">
         <label className="flex items-center gap-2 text-sm text-neutral-600">
           Sort
-          <select value={sort} onChange={(e) => setSort(e.target.value as 'recent' | 'match')} className={controlClass}>
-            <option value="recent">Most recent</option>
-            <option value="match">Highest match</option>
-          </select>
+          <span className="block w-44">
+            <Select value={sort} onChange={(e) => setSort(e.target.value as 'recent' | 'match')}>
+              <option value="recent">Most recent</option>
+              <option value="match">Highest match</option>
+            </Select>
+          </span>
         </label>
         <label className="flex items-center gap-2 text-sm text-neutral-600">
           <input type="checkbox" checked={showClosed} onChange={(e) => setShowClosed(e.target.checked)} />
@@ -91,8 +94,8 @@ export function ApplicantsBoard({ applications }: { applications: Row[] }) {
         {stages.map((stage) => {
           const items = sorted.filter((r) => r.status === stage.status);
           return (
-            <div key={stage.status} className="w-[280px] shrink-0 rounded-xl border border-neutral-200/70 bg-white/60 p-3 backdrop-blur-sm">
-              <h3 className="mb-3 flex justify-between text-sm font-semibold text-neutral-900">
+            <Card key={stage.status} tone="glass" className="w-[280px] shrink-0">
+              <h3 className="mt-0 mb-3 flex justify-between text-sm font-semibold text-neutral-900">
                 <span>{stage.label}</span>
                 <span className="text-neutral-400">{items.length}</span>
               </h3>
@@ -101,7 +104,7 @@ export function ApplicantsBoard({ applications }: { applications: Row[] }) {
                   <ApplicantCard key={r.id} row={r} onStatus={changeStatus} />
                 ))}
               </div>
-            </div>
+            </Card>
           );
         })}
       </div>
@@ -130,10 +133,14 @@ function ApplicantCard({ row, onStatus }: { row: Row; onStatus: (id: string, s: 
   const name = `${row.seeker.firstName ?? ''} ${row.seeker.lastName ?? ''}`.trim() || row.seeker.email;
 
   return (
-    <div className="rounded-lg border border-neutral-200 bg-white p-3">
+    <div className="rounded-2xl border border-neutral-200/80 bg-white p-3 shadow-soft">
       <div className="flex items-baseline justify-between gap-2">
         <strong className="text-sm">{name}</strong>
-        {row.matchScore !== null && <span className={matchPill(row.matchScore)}>{Math.round(row.matchScore * 100)}%</span>}
+        {row.matchScore !== null && (
+          <Badge tone={matchTone(row.matchScore)} className="shrink-0">
+            {Math.round(row.matchScore * 100)}%
+          </Badge>
+        )}
       </div>
       {row.seeker.headline && <p className="mt-0.5 mb-0 text-xs text-neutral-500">{row.seeker.headline}</p>}
       <p className="mt-0.5 mb-0 text-xs text-neutral-500">Applied {new Date(row.appliedAt).toLocaleDateString()}</p>
@@ -150,15 +157,15 @@ function ApplicantCard({ row, onStatus }: { row: Row; onStatus: (id: string, s: 
       </div>
 
       {openCover && row.coverLetter && (
-        <p className="mt-1 mb-0 whitespace-pre-wrap rounded-md border border-neutral-200 bg-white p-2 text-xs text-neutral-600">
+        <p className="mt-1 mb-0 whitespace-pre-wrap rounded-xl border border-neutral-200 bg-white p-2 text-xs text-neutral-600">
           {row.coverLetter}
         </p>
       )}
 
-      <select
+      <Select
         value={row.status}
         onChange={(e) => onStatus(row.id, e.target.value as ApplicationStatus)}
-        className="mt-2 w-full rounded border border-neutral-300 px-2 py-1.5 text-sm"
+        className="mt-2"
         aria-label={`Change status for ${name}`}
       >
         {STAGES.map((s) => (
@@ -166,9 +173,9 @@ function ApplicantCard({ row, onStatus }: { row: Row; onStatus: (id: string, s: 
             {s.label}
           </option>
         ))}
-      </select>
+      </Select>
 
-      <textarea
+      <Textarea
         value={notes}
         onChange={(e) => {
           setNotes(e.target.value);
@@ -178,7 +185,7 @@ function ApplicantCard({ row, onStatus }: { row: Row; onStatus: (id: string, s: 
         placeholder="Private notes…"
         rows={2}
         aria-label={`Notes for ${name}`}
-        className="mt-2 w-full resize-y rounded border border-neutral-200 px-2 py-1.5 text-xs"
+        className="mt-2 resize-y"
       />
       {noteState === 'saving' && <small className="text-neutral-400">Saving…</small>}
       {noteState === 'saved' && <small className="text-green-700">Saved</small>}
@@ -186,9 +193,7 @@ function ApplicantCard({ row, onStatus }: { row: Row; onStatus: (id: string, s: 
   );
 }
 
-function matchPill(score: number): string {
+function matchTone(score: number): 'success' | 'warn' | 'neutral' {
   const pct = Math.round(score * 100);
-  const tone =
-    pct >= 70 ? 'bg-green-100 text-green-800' : pct >= 50 ? 'bg-amber-100 text-amber-800' : 'bg-red-100 text-red-800';
-  return `shrink-0 rounded-full px-1.5 py-0.5 text-xs font-semibold ${tone}`;
+  return pct >= 70 ? 'success' : pct >= 50 ? 'warn' : 'neutral';
 }

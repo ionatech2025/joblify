@@ -4,6 +4,7 @@ import { db } from '@/lib/db';
 import { respondToInvitation } from '@/app/actions/invitations';
 import { unsubscribeFromCompany } from '@/app/actions/subscriptions';
 import { PageHeader } from '@/app/components/ui/ambient';
+import { Badge } from '@/app/components/ui/badge';
 import { Button } from '@/app/components/ui/button';
 
 export const metadata = { title: 'My subscriptions' };
@@ -43,7 +44,7 @@ export default async function JobseekerSubscriptionsPage() {
             <h2 className="text-lg font-semibold text-neutral-900">Invitations</h2>
             <ul className="mt-3 grid list-none grid-cols-1 gap-3 p-0">
               {invitations.map((inv) => (
-                <li key={inv.id} className="rounded-xl border border-indigo-100 bg-indigo-50/40 p-4">
+                <li key={inv.id} className="rounded-2xl border border-indigo-100 bg-indigo-50/40 p-4 shadow-soft">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                       <p className="m-0 font-medium text-neutral-900">
@@ -89,7 +90,7 @@ export default async function JobseekerSubscriptionsPage() {
               {subscriptions.map((sub) => (
                 <li
                   key={sub.id}
-                  className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-neutral-200 bg-white px-4 py-3"
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-neutral-200/80 bg-white px-4 py-3 shadow-soft"
                 >
                   <div>
                     {sub.company.companyProfile ? (
@@ -102,9 +103,9 @@ export default async function JobseekerSubscriptionsPage() {
                     ) : (
                       <span className="font-medium text-neutral-900">Company</span>
                     )}
-                    <span className="ml-2 rounded-full bg-neutral-100 px-2 py-0.5 text-xs font-medium text-neutral-700">
+                    <Badge tone="neutral" className="ml-2">
                       {typeLabel(sub.profileType)}
-                    </span>
+                    </Badge>
                   </div>
                   <form action={unsubscribeFromCompany.bind(null, sub.companyId, sub.profileType)}>
                     <Button type="submit" variant="ghost" size="sm">

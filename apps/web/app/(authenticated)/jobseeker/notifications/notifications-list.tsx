@@ -33,7 +33,9 @@ export function NotificationsList({ initial }: { initial: NotificationItem[] }) 
         return (
           <li
             key={n.id}
-            className={`flex justify-between gap-4 rounded-lg border border-neutral-200 px-4 py-3 ${isRead ? 'bg-white' : 'bg-indigo-50/40'}`}
+            className={`flex justify-between gap-4 rounded-2xl border px-4 py-3 shadow-soft ${
+              isRead ? 'border-neutral-200/80 bg-white' : 'border-indigo-100 bg-indigo-50/40'
+            }`}
           >
             <div>
               <p className={`mb-1 text-neutral-900 ${isRead ? 'font-normal' : 'font-semibold'}`}>

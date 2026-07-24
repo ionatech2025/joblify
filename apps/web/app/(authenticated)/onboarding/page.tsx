@@ -4,7 +4,7 @@ import { requireUser } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { completeJobSeekerOnboarding } from '@/app/actions/onboarding';
 import { PageHeader } from '@/app/components/ui/ambient';
-import { Button } from '@/app/components/ui/button';
+import { Button, buttonClasses } from '@/app/components/ui/button';
 
 export const metadata = { title: 'Get started' };
 
@@ -30,7 +30,7 @@ export default async function OnboardingPage() {
         width="max-w-3xl"
       />
       <div className="mx-auto grid max-w-3xl grid-cols-1 gap-6 px-4 py-8 sm:grid-cols-2 sm:px-6">
-        <section className="flex flex-col gap-4 rounded-xl border border-neutral-200 bg-white p-6">
+        <section className="flex flex-col gap-4 rounded-2xl border border-neutral-200/80 bg-white p-6 shadow-soft">
           <div>
             <h2 className="m-0 text-lg font-semibold text-neutral-900">I&apos;m looking for opportunities</h2>
             <p className="mt-1 mb-0 text-sm text-neutral-600">
@@ -48,7 +48,7 @@ export default async function OnboardingPage() {
           </form>
         </section>
 
-        <section className="flex flex-col gap-4 rounded-xl border border-neutral-200 bg-white p-6">
+        <section className="flex flex-col gap-4 rounded-2xl border border-neutral-200/80 bg-white p-6 shadow-soft">
           <div>
             <h2 className="m-0 text-lg font-semibold text-neutral-900">I&apos;m hiring</h2>
             <p className="mt-1 mb-0 text-sm text-neutral-600">
@@ -56,10 +56,7 @@ export default async function OnboardingPage() {
               virtual interns.
             </p>
           </div>
-          <Link
-            href="/employer-setup"
-            className="mt-auto rounded-lg bg-indigo-600 px-4 py-2 text-center text-sm font-semibold text-white transition-colors hover:bg-indigo-700"
-          >
+          <Link href="/employer-setup" className={`${buttonClasses('primary')} mt-auto no-underline`}>
             Set up my company
           </Link>
         </section>

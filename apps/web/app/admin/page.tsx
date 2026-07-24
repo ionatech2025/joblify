@@ -1,7 +1,9 @@
 import { requireRole } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { PageHeader } from '@/app/components/ui/ambient';
+import { Card } from '@/app/components/ui/card';
 import { Container } from '@/app/components/ui/container';
+import { Stat, StatRow } from '@/app/components/ui/stat';
 import { VerificationQueue } from './verification-queue';
 
 export const metadata = { title: 'Admin' };
@@ -29,13 +31,20 @@ export default async function AdminPage() {
 
   return (
     <main>
-      <PageHeader title="Admin" subtitle="Trust &amp; safety and platform overview." width="max-w-4xl" />
+      <PageHeader
+        eyebrow="Operations"
+        title="Admin"
+        subtitle="Trust &amp; safety and platform overview."
+        width="max-w-4xl"
+      />
       <Container className="max-w-4xl py-8">
-        <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <StatCard label="Jobseekers" value={jobSeekerCount} />
-          <StatCard label="Companies" value={companyCount} />
-          <StatCard label="Published jobs" value={publishedJobCount} />
-        </div>
+        <Card className="mb-8 p-6">
+          <StatRow>
+            <Stat value={jobSeekerCount.toLocaleString()} label="Jobseekers" />
+            <Stat value={companyCount.toLocaleString()} label="Companies" />
+            <Stat value={publishedJobCount.toLocaleString()} label="Published jobs" />
+          </StatRow>
+        </Card>
 
         <h2 className="text-lg font-semibold text-neutral-900">Company verification queue</h2>
         <p className="mt-1 text-sm text-neutral-600">
@@ -54,14 +63,5 @@ export default async function AdminPage() {
         />
       </Container>
     </main>
-  );
-}
-
-function StatCard({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="rounded-xl border border-neutral-200 bg-white p-4">
-      <p className="m-0 text-2xl font-bold text-neutral-900">{value.toLocaleString()}</p>
-      <p className="m-0 text-sm text-neutral-600">{label}</p>
-    </div>
   );
 }

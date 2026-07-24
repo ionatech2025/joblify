@@ -3,6 +3,8 @@
 import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport } from 'ai';
 import { useState } from 'react';
+import { Button } from '@/app/components/ui/button';
+import { Input } from '@/app/components/ui/form';
 
 // Bio coach — streams suggestions from Sonnet via AI Gateway. Lives on the
 // profile page as an "Improve my bio" assist. The current bio is sent as request
@@ -19,17 +21,14 @@ export function BioCoach({ currentBio }: { currentBio: string }) {
 
   if (!open) {
     return (
-      <button
-        onClick={() => setOpen(true)}
-        className="rounded-md bg-indigo-600 px-4 py-2 font-semibold text-white transition-colors hover:bg-indigo-700"
-      >
+      <Button type="button" onClick={() => setOpen(true)}>
         ✨ Improve my bio with AI
-      </button>
+      </Button>
     );
   }
 
   return (
-    <section className="mt-4 rounded-lg border border-indigo-200 bg-indigo-50/40 p-4">
+    <section className="mt-4 rounded-2xl border border-indigo-100 bg-indigo-50/40 p-4 shadow-soft">
       <div className="mb-2 flex justify-between">
         <strong>Bio coach</strong>
         <button onClick={() => setOpen(false)} aria-label="Close bio coach" className="cursor-pointer border-0 bg-transparent">
@@ -41,8 +40,8 @@ export function BioCoach({ currentBio }: { currentBio: string }) {
         {messages.map((m) => (
           <div
             key={m.id}
-            className={`max-w-[85%] whitespace-pre-wrap rounded-md border border-neutral-200 px-3 py-2 ${
-              m.role === 'user' ? 'self-end bg-indigo-50' : 'self-start bg-white'
+            className={`max-w-[85%] whitespace-pre-wrap rounded-2xl px-3.5 py-2 text-sm ${
+              m.role === 'user' ? 'self-end bg-neutral-900 text-white' : 'self-start bg-white text-neutral-900'
             }`}
           >
             {m.parts.map((part, i) => (part.type === 'text' ? <span key={i}>{part.text}</span> : null))}
@@ -60,19 +59,15 @@ export function BioCoach({ currentBio }: { currentBio: string }) {
         }}
         className="flex gap-2"
       >
-        <input
+        <Input
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder="Ask anything — 'make my bio more impactful'"
-          className="flex-1 rounded-md border border-neutral-300 px-3 py-2 text-sm"
+          className="flex-1"
         />
-        <button
-          type="submit"
-          disabled={status === 'streaming'}
-          className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
-        >
+        <Button type="submit" disabled={status === 'streaming'}>
           Send
-        </button>
+        </Button>
       </form>
     </section>
   );

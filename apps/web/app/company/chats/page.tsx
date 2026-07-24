@@ -51,7 +51,7 @@ export default async function CompanyChatsPage() {
         ) : (
           <ul className="grid list-none grid-cols-1 gap-3 p-0">
             {areas.map((a) => (
-              <li key={a.id} className="rounded-xl border border-neutral-200 bg-white p-4">
+              <li key={a.id} className="rounded-2xl border border-neutral-200/80 bg-white p-4 shadow-soft">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <Link href={`/company/chats/${a.id}`} className="font-semibold text-neutral-900 hover:underline">
@@ -79,7 +79,7 @@ export default async function CompanyChatsPage() {
               {jobsWithoutArea.map((j) => (
                 <li
                   key={j.id}
-                  className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-neutral-200 bg-white px-4 py-3"
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-neutral-200/80 bg-white px-4 py-3 shadow-soft"
                 >
                   <span className="text-sm font-medium text-neutral-900">{j.title}</span>
                   <form action={openJobChatArea.bind(null, j.id)}>
