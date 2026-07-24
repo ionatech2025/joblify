@@ -143,7 +143,6 @@ Grep: `git grep "TODO(week-"` to see them all in context.
 | AV scan | Cloudmersive integration in `resume-parse.workflow.ts` if resume volume crosses 1k/day. |
 | Re-index script | `scripts/reindex-all.ts` to rebuild Algolia from scratch. |
 | `middleware.ts` → `proxy.ts` | Next 16 deprecated the `middleware` file convention in favour of `proxy` (build prints a warning). Rename + adjust the export when convenient. |
-| `turbopack.root` | Set it in `next.config.ts` (or drop the root `package-lock.json`) to silence the multi-lockfile workspace-root warning. |
 
 ---
 
