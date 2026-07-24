@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { currentUser } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { subscribeToCompany, unsubscribeFromCompany } from '@/app/actions/subscriptions';
-import { Button } from '@/app/components/ui/button';
+import { Button, buttonClasses } from '@/app/components/ui/button';
 
 // Follow/unfollow control on the public company page (JOB_UC_07.0: subscribe
 // as EMPLOYABLE or VIRTUAL_INTERN). The offered type follows the seeker's
@@ -14,10 +14,7 @@ export async function SubscribeButton({ companyUserId }: { companyUserId: string
 
   if (!user) {
     return (
-      <Link
-        href="/sign-in"
-        className="rounded-lg border border-neutral-300 bg-white px-4 py-2 text-sm font-semibold text-neutral-900 transition-colors hover:bg-neutral-50"
-      >
+      <Link href="/sign-in" className={`${buttonClasses('secondary', 'sm')} no-underline`}>
         Sign in to subscribe
       </Link>
     );
@@ -31,10 +28,7 @@ export async function SubscribeButton({ companyUserId }: { companyUserId: string
 
   if (!profile) {
     return (
-      <Link
-        href="/onboarding"
-        className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-700"
-      >
+      <Link href="/onboarding" className={`${buttonClasses('primary', 'sm')} no-underline`}>
         Set up your profile to subscribe
       </Link>
     );

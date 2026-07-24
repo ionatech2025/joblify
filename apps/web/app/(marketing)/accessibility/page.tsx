@@ -5,7 +5,7 @@ export const metadata = { title: 'Accessibility statement' };
 export default function AccessibilityPage() {
   return (
     <main>
-      <PageHeader title="Accessibility statement" width="max-w-3xl" />
+      <PageHeader eyebrow="Our commitment" title="Accessibility statement" width="max-w-3xl" />
       <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
       <p>
         Joblify is committed to making this site usable by everyone. We target compliance with{' '}

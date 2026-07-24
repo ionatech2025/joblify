@@ -5,7 +5,7 @@ export const metadata = { title: 'Terms of service' };
 export default function TermsPage() {
   return (
     <main>
-      <PageHeader title="Terms of service" width="max-w-3xl" />
+      <PageHeader eyebrow="Legal" title="Terms of service" width="max-w-3xl" />
       <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
       <p>
         By using Joblify you agree to use the platform lawfully, not impersonate others, and respect

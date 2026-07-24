@@ -1,10 +1,10 @@
 import Link from 'next/link';
 import { currentUser } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { buttonClasses } from '@/app/components/ui/button';
 import { SaveButton } from './save-button';
 
-const primaryLink =
-  'inline-block rounded-lg bg-indigo-600 px-5 py-2.5 font-semibold text-white no-underline transition-colors hover:bg-indigo-700';
+const primaryLink = `${buttonClasses('primary')} no-underline`;
 const heading = 'm-0 mb-2 text-lg font-semibold text-neutral-900';
 
 // Dynamic island inside the cached JD page. Reads session, shows the right CTA.

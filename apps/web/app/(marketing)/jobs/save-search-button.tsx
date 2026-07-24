@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { saveSearch } from '@/app/actions/saved-searches';
+import { Button } from '@/app/components/ui/button';
 
 export function SaveSearchButton({ query }: { query: string }) {
   const [pending, startTransition] = useTransition();
@@ -24,14 +25,9 @@ export function SaveSearchButton({ query }: { query: string }) {
 
   return (
     <span className="flex items-center gap-2">
-      <button
-        type="button"
-        onClick={save}
-        disabled={pending}
-        className="rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-50 disabled:opacity-50"
-      >
+      <Button type="button" variant="secondary" size="sm" onClick={save} disabled={pending}>
         {pending ? 'Saving…' : '☆ Save search'}
-      </button>
+      </Button>
       {error && <span className="text-sm text-red-700">{error}</span>}
     </span>
   );

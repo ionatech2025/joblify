@@ -9,6 +9,7 @@ export default function ResourcesPage() {
   return (
     <main>
       <PageHeader
+        eyebrow="Guides"
         title="Resources"
         subtitle="Short, practical guides for getting the most out of Joblify."
         width="max-w-3xl"

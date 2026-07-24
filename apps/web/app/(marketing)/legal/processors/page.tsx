@@ -21,12 +21,13 @@ export default function ProcessorsPage() {
   return (
     <main>
       <PageHeader
+        eyebrow="Legal"
         title="Data processors"
         subtitle="Each third party below processes data on our behalf under a Data Processing Agreement. We minimize data shared with each."
         width="max-w-5xl"
       />
       <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6">
-      <div className="overflow-x-auto rounded-xl border border-neutral-200">
+      <div className="overflow-x-auto rounded-2xl border border-neutral-200 bg-white shadow-soft">
         <table className="w-full border-collapse text-sm">
           <thead>
             <tr className="border-b border-neutral-200 bg-neutral-50 text-left text-neutral-600">

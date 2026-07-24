@@ -43,6 +43,7 @@ async function ApplyContent({ slug }: { slug: string }) {
   return (
     <main>
       <PageHeader
+        eyebrow="Application"
         title={`Apply: ${job.title}`}
         subtitle={job.company.companyProfile?.companyName ?? 'Company'}
         width="max-w-3xl"
