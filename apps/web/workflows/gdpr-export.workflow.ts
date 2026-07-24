@@ -1,8 +1,10 @@
-// Vercel Workflow: GDPR Article 15 (Right to access) export.
+// GDPR Article 15 (Right to access) export.
 //
 // Collects every row owned by the user, packs it into a JSON bundle, uploads
-// it to private Blob, returns the signed URL, and emails it to the user with
-// a 24h expiry. Audit-logged.
+// it to Blob as an unguessable capability URL, and emails it to the user.
+// The 24h expiry promised in that email is enforced by the retention sweep
+// (workflows/retention.workflow.ts step 5), which deletes exports/ blobs
+// older than 24h. Audit-logged.
 
 import { db } from '@/lib/db';
 import { put } from '@vercel/blob';
@@ -41,7 +43,9 @@ export async function runGdprExport({ userId }: GdprExportInput): Promise<{ url:
 
   const json = JSON.stringify(bundle, null, 2);
   const blob = await put(`exports/${userId}/${Date.now()}.json`, json, {
-    access: 'public', // signed URL only — short-lived link emailed below
+    // Capability URL: unguessable via addRandomSuffix, and deleted after 24h
+    // by the retention sweep — the exports/ prefix is what that sweep scans.
+    access: 'public',
     contentType: 'application/json',
     addRandomSuffix: true,
   });
@@ -61,8 +65,8 @@ export async function runGdprExport({ userId }: GdprExportInput): Promise<{ url:
       from: EMAIL_FROM,
       to: user.email,
       subject: 'Your Joblify data export',
-      text: `Your data export is ready: ${blob.url}\n\nThis link expires in 24 hours.`,
-      html: `<p>Your data export is ready: <a href="${blob.url}">download</a>.</p><p>This link expires in 24 hours.</p>`,
+      text: `Your data export is ready: ${blob.url}\n\nThis link expires in 24 hours. You can request a fresh export at any time from your account page.`,
+      html: `<p>Your data export is ready: <a href="${blob.url}">download</a>.</p><p>This link expires in 24 hours. You can request a fresh export at any time from your account page.</p>`,
     });
   } catch (err) {
     logger.warn({ err, userId }, 'GDPR export email failed (best-effort)');
