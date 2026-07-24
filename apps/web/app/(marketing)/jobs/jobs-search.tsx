@@ -187,6 +187,11 @@ export function JobsSearch() {
                 ? `${data.nbHits.toLocaleString()} ${data.nbHits === 1 ? 'job' : 'jobs'}`
                 : ''}
           </p>
+          {/* Visually-hidden twin of the count above: politely announces the
+              result count to screen readers whenever results settle. */}
+          <p role="status" aria-live="polite" className="sr-only">
+            {data ? `${data.nbHits.toLocaleString()} ${data.nbHits === 1 ? 'job' : 'jobs'} found` : ''}
+          </p>
           <div className="flex flex-wrap items-center gap-3">
             {qs.length > 0 && (
               <SignedIn>

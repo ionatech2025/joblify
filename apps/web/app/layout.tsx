@@ -1,8 +1,8 @@
 import type { Metadata, Viewport } from 'next';
-import { Suspense } from 'react';
-import { ClerkProvider } from '@clerk/nextjs';
+import { ClerkClientProvider } from './components/clerk-provider';
 import { Providers } from './providers';
 import { Header } from './components/header';
+import { HeaderAuth } from './components/header-auth';
 import { Footer } from './components/footer';
 import { CookieBanner } from './components/cookie-banner';
 import { AnalyticsGate } from './components/analytics-gate';
@@ -24,13 +24,23 @@ export const viewport: Viewport = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  // ClerkProvider reads request headers (keyless status + auth), which is
-  // uncached. Under cacheComponents that access must sit inside a Suspense
-  // boundary, so the static <html>/<body> shell can prerender while the auth
-  // context streams in.
+  // ClerkClientProvider is a pure context provider (see its module comment) —
+  // it never reads the request, so nothing here may wrap the whole tree in a
+  // Suspense boundary that would collapse every route's static shell to a
+  // fallback. The only session-dependent server read at layout scope is the
+  // header's auth island (<HeaderAuth>), which suspends on its own; pages
+  // stream their own dynamic holes.
   return (
     <html lang="en">
       <body>
+        {/* First focusable element on every page: lets keyboard/AT users jump
+            past the chrome straight to the page content. */}
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[60] focus:rounded-lg focus:bg-indigo-600 focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-white"
+        >
+          Skip to main content
+        </a>
         {/* App-wide ambient backdrop (faint 'page' variant). Fixed + -z-10 so
             every section — header, main, footer — sits on the same canvas as
             glass/white surfaces. body is transparent (globals.css). */}
@@ -38,19 +48,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <AmbientCanvas variant="page" />
         </div>
         <SwRegister />
-        {/* Reserve the header height so the Clerk-gated header streaming in
-            doesn't push content down (avoids layout shift). */}
-        <Suspense fallback={<div className="h-14 border-b border-indigo-100 bg-white/70 backdrop-blur" />}>
-          {/* colorPrimary matches the app's indigo accent so Clerk's widgets
-              (sign-in/up card, UserButton) render on-palette. */}
-          <ClerkProvider appearance={{ variables: { colorPrimary: '#4f46e5' } }}>
-            <Header />
-            <Providers>{children}</Providers>
-            <Footer />
-            <CookieBanner />
-            <AnalyticsGate />
-          </ClerkProvider>
-        </Suspense>
+        <ClerkClientProvider>
+          <Header auth={<HeaderAuth />} />
+          <Providers>
+            <div id="main-content" tabIndex={-1} className="focus:outline-none">
+              {children}
+            </div>
+          </Providers>
+          <Footer />
+          <CookieBanner />
+          <AnalyticsGate />
+        </ClerkClientProvider>
       </body>
     </html>
   );
