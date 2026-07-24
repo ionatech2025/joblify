@@ -13,6 +13,7 @@ const m = vi.hoisted(() => {
       this.code = code;
     }
   }
+  const afterCallbacks: Array<() => unknown> = [];
   return {
     AuthError,
     requireRole: vi.fn(),
@@ -25,7 +26,17 @@ const m = vi.hoisted(() => {
     jpsCreateMany: vi.fn(),
     generateObject: vi.fn(),
     reindexJob: vi.fn(),
+    embedJobPost: vi.fn(),
     updateTag: vi.fn(),
+    captureException: vi.fn(),
+    // Fluid Compute drops floating promises at response-send: every background
+    // side effect must be registered through next/server's after(). The mock
+    // captures the callbacks so tests can assert registration and run them
+    // deliberately (runAfterCallbacks below).
+    afterCallbacks,
+    after: vi.fn((fn: () => unknown) => {
+      afterCallbacks.push(fn);
+    }),
   };
 });
 
@@ -48,13 +59,22 @@ vi.mock('@/lib/audit', () => ({
 vi.mock('ai', () => ({ generateObject: m.generateObject }));
 vi.mock('@/lib/ai/gateway', () => ({ gateway: () => ({}), MODELS: { haiku: 'h' } }));
 vi.mock('@/lib/search/index-job', () => ({ reindexJob: m.reindexJob }));
+vi.mock('@/workflows/match-score.workflow', () => ({ embedJobPost: m.embedJobPost }));
+vi.mock('@sentry/nextjs', () => ({ captureException: m.captureException }));
 vi.mock('@/lib/observability/logger', () => ({ logger: { info: vi.fn(), warn: vi.fn() } }));
 vi.mock('next/cache', () => ({ updateTag: m.updateTag }));
 vi.mock('next/headers', () => ({ headers: async () => new Map() }));
+vi.mock('next/server', () => ({ after: m.after }));
 
 import { postJob, updateJob, archiveJob } from '@/app/actions/post-job';
 
 const JOB_ID = '11111111-1111-1111-1111-111111111111';
+
+// Run the callbacks the action registered via after() — i.e. what Next would
+// execute once the response has been sent.
+async function runAfterCallbacks(): Promise<void> {
+  for (const cb of m.afterCallbacks.splice(0)) await cb();
+}
 
 function input(over: Record<string, unknown> = {}) {
   return {
@@ -78,6 +98,11 @@ function input(over: Record<string, unknown> = {}) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  m.afterCallbacks.length = 0;
+  m.after.mockImplementation((fn: () => unknown) => {
+    m.afterCallbacks.push(fn);
+  });
+  m.embedJobPost.mockResolvedValue([0.1, 0.2]);
   m.requireRole.mockResolvedValue({ id: 'company1', plan: 'PRO' });
   m.postJobLimit.mockResolvedValue({ success: true });
   m.jobFindFirst.mockResolvedValue(null); // no duplicate title by default
@@ -138,7 +163,8 @@ describe('postJob', () => {
 
   it('links extracted skills with required=2 / nice-to-have=1 weights', async () => {
     await postJob(input());
-    await vi.waitFor(() => expect(m.jpsCreateMany).toHaveBeenCalledTimes(1));
+    await runAfterCallbacks();
+    expect(m.jpsCreateMany).toHaveBeenCalledTimes(1);
     // re-extraction is idempotent: old links cleared first
     expect(m.jpsDeleteMany).toHaveBeenCalledWith({ where: { jobPostId: JOB_ID } });
     const rows = m.jpsCreateMany.mock.calls[0]![0].data;
@@ -148,20 +174,54 @@ describe('postJob', () => {
 
   it('pushes the job to the search index and invalidates caches', async () => {
     await postJob(input());
-    await vi.waitFor(() => expect(m.reindexJob).toHaveBeenCalledWith(JOB_ID));
+    await runAfterCallbacks();
+    expect(m.reindexJob).toHaveBeenCalledWith(JOB_ID);
     expect(m.updateTag).toHaveBeenCalledWith('jobs');
     expect(m.updateTag).toHaveBeenCalledWith('company:company1');
   });
 
-  it('still saves the job when AI skill extraction fails (best-effort)', async () => {
+  it('schedules all background work via after() instead of floating promises (issue #43)', async () => {
+    await postJob(input());
+    // Registered but NOT yet executed at response time…
+    expect(m.after).toHaveBeenCalledTimes(1);
+    expect(m.generateObject).not.toHaveBeenCalled();
+    expect(m.reindexJob).not.toHaveBeenCalled();
+    expect(m.embedJobPost).not.toHaveBeenCalled();
+    // …and running the registered callbacks performs the work.
+    await runAfterCallbacks();
+    expect(m.generateObject).toHaveBeenCalledTimes(1);
+    expect(m.reindexJob).toHaveBeenCalledWith(JOB_ID);
+    expect(m.embedJobPost).toHaveBeenCalledWith(JOB_ID);
+  });
+
+  it('embeds the JD on publish so never-applied jobs surface in matches (issue #41)', async () => {
+    await postJob(input({ publish: true }));
+    await runAfterCallbacks();
+    expect(m.embedJobPost).toHaveBeenCalledWith(JOB_ID);
+  });
+
+  it('does not embed drafts', async () => {
+    m.jobCreate.mockResolvedValue({ id: JOB_ID, status: 'DRAFT', title: 'Senior Rust Engineer' });
+    await postJob(input({ publish: false }));
+    await runAfterCallbacks();
+    expect(m.embedJobPost).not.toHaveBeenCalled();
+  });
+
+  it('still saves the job when AI skill extraction fails (best-effort), reporting to Sentry', async () => {
     m.generateObject.mockRejectedValue(new Error('gateway down'));
     await expect(postJob(input())).resolves.toBe(JOB_ID);
     expect(m.jobCreate).toHaveBeenCalledTimes(1);
+    await runAfterCallbacks(); // the failing extraction must not throw out of after()
+    expect(m.captureException).toHaveBeenCalledWith(expect.any(Error), { tags: { jobId: JOB_ID } });
+    // …and the later steps still ran.
+    expect(m.reindexJob).toHaveBeenCalledWith(JOB_ID);
   });
 
   it('still saves the job when the Algolia push fails (best-effort)', async () => {
     m.reindexJob.mockRejectedValue(new Error('algolia down'));
     await expect(postJob(input())).resolves.toBe(JOB_ID);
+    await runAfterCallbacks();
+    expect(m.captureException).toHaveBeenCalledWith(expect.any(Error), { tags: { jobId: JOB_ID } });
   });
 
   it('attaches a company-joined chat area when createChatArea is set (JOB_UC_11)', async () => {
@@ -208,10 +268,53 @@ describe('updateJob', () => {
   it('reindexes and invalidates the JD, list, and company caches', async () => {
     m.jobFindFirst.mockResolvedValueOnce({ id: JOB_ID, publishedAt: new Date() }).mockResolvedValueOnce(null);
     await updateJob(JOB_ID, input());
-    await vi.waitFor(() => expect(m.reindexJob).toHaveBeenCalledWith(JOB_ID));
+    await runAfterCallbacks();
+    expect(m.reindexJob).toHaveBeenCalledWith(JOB_ID);
     expect(m.updateTag).toHaveBeenCalledWith(`job:${JOB_ID}`);
     expect(m.updateTag).toHaveBeenCalledWith('jobs');
     expect(m.updateTag).toHaveBeenCalledWith('company:company1');
+  });
+
+  it('schedules background work via after() and force-refreshes the embedding when the JD text changed', async () => {
+    m.jobFindFirst
+      .mockResolvedValueOnce({
+        id: JOB_ID,
+        publishedAt: new Date(),
+        title: 'Senior Rust Engineer',
+        description: 'An older description that the edit replaces.',
+        requirements: null,
+      })
+      .mockResolvedValueOnce(null);
+    await updateJob(JOB_ID, input({ publish: true }));
+    expect(m.after).toHaveBeenCalledTimes(1);
+    expect(m.embedJobPost).not.toHaveBeenCalled();
+    await runAfterCallbacks();
+    expect(m.embedJobPost).toHaveBeenCalledWith(JOB_ID, { force: true });
+  });
+
+  it('keeps the existing embedding when the JD text is unchanged (idempotent re-save)', async () => {
+    const unchanged = input();
+    m.jobFindFirst
+      .mockResolvedValueOnce({
+        id: JOB_ID,
+        publishedAt: new Date(),
+        title: unchanged.title,
+        description: unchanged.description,
+        requirements: null, // form sends '' which normalizes to null
+      })
+      .mockResolvedValueOnce(null);
+    await updateJob(JOB_ID, unchanged);
+    await runAfterCallbacks();
+    expect(m.embedJobPost).toHaveBeenCalledWith(JOB_ID, { force: false });
+  });
+
+  it('does not embed when the edit lands as a draft', async () => {
+    m.jobFindFirst.mockResolvedValueOnce({ id: JOB_ID, publishedAt: null }).mockResolvedValueOnce(null);
+    m.jobUpdate.mockResolvedValue({ id: JOB_ID, status: 'DRAFT', title: 'Senior Rust Engineer' });
+    await updateJob(JOB_ID, input({ publish: false }));
+    await runAfterCallbacks();
+    expect(m.embedJobPost).not.toHaveBeenCalled();
+    expect(m.reindexJob).toHaveBeenCalledWith(JOB_ID); // deindexes the draft
   });
 
   it('rejects a duplicate title among the company\'s other live posts', async () => {
@@ -274,9 +377,13 @@ describe('archiveJob', () => {
     expect(data.deletedAt).toBeInstanceOf(Date);
   });
 
-  it('de-indexes from Algolia after archiving', async () => {
+  it('de-indexes from Algolia via after(), never a floating promise', async () => {
     m.jobFindFirst.mockResolvedValue({ id: JOB_ID });
     await archiveJob(JOB_ID);
-    await vi.waitFor(() => expect(m.reindexJob).toHaveBeenCalledWith(JOB_ID));
+    expect(m.after).toHaveBeenCalledTimes(1);
+    expect(m.reindexJob).not.toHaveBeenCalled();
+    await runAfterCallbacks();
+    expect(m.reindexJob).toHaveBeenCalledWith(JOB_ID);
+    expect(m.embedJobPost).not.toHaveBeenCalled();
   });
 });

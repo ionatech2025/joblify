@@ -2,8 +2,10 @@
 
 import { headers } from 'next/headers';
 import { updateTag } from 'next/cache';
+import { after } from 'next/server';
 import type { z } from 'zod';
 import { generateObject } from 'ai';
+import * as Sentry from '@sentry/nextjs';
 import { requireRole, assertPlan, AuthError } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { withAudit } from '@/lib/audit';
@@ -13,6 +15,7 @@ import { JdSkillsSchema, JD_SKILLS_SYSTEM } from '@/lib/ai/prompts/jd-skills';
 import { reindexJob } from '@/lib/search/index-job';
 import { logger } from '@/lib/observability/logger';
 import { postJobLimit } from '@/lib/ratelimit';
+import { embedJobPost } from '@/workflows/match-score.workflow';
 import { PostJobFormSchema } from '../company/jobs/job-form-schema';
 
 function slugify(title: string): string {
@@ -101,15 +104,34 @@ export async function postJob(input: z.infer<typeof Input>): Promise<string> {
       }),
   );
 
-  // AI skill extraction (inline, best-effort).
-  extractAndLinkSkills(job.id, parsed.title, parsed.description, parsed.requirements ?? '').catch((err) =>
-    logger.warn({ err, jobId: job.id }, 'JD skill extraction failed (non-blocking)'),
-  );
-
-  // Push to Algolia (best-effort).
-  reindexJob(job.id).catch((err) =>
-    logger.warn({ err, jobId: job.id }, 'Algolia index push failed (non-blocking)'),
-  );
+  // Off the response path: on Fluid Compute a floating promise can be dropped
+  // the moment the response is sent, so every post-save side effect runs
+  // inside after() (same pattern as actions/apply.ts). Skills first — the
+  // Algolia record includes them — then the index push, then the JD embedding
+  // for published jobs (powers /jobseeker/matches + the match badge).
+  // Best-effort: failures are logged + sent to Sentry, never surfaced.
+  after(async () => {
+    try {
+      await extractAndLinkSkills(job.id, parsed.title, parsed.description, parsed.requirements ?? '');
+    } catch (err) {
+      logger.warn({ err, jobId: job.id }, 'JD skill extraction failed (non-blocking)');
+      Sentry.captureException(err, { tags: { jobId: job.id } });
+    }
+    try {
+      await reindexJob(job.id);
+    } catch (err) {
+      logger.warn({ err, jobId: job.id }, 'Algolia index push failed (non-blocking)');
+      Sentry.captureException(err, { tags: { jobId: job.id } });
+    }
+    if (parsed.publish) {
+      try {
+        await embedJobPost(job.id);
+      } catch (err) {
+        logger.warn({ err, jobId: job.id }, 'JD embedding failed (non-blocking)');
+        Sentry.captureException(err, { tags: { jobId: job.id } });
+      }
+    }
+  });
 
   updateTag(tags.jobs());
   updateTag(tags.company(user.id));
@@ -127,10 +149,19 @@ export async function updateJob(jobId: string, input: z.infer<typeof Input>): Pr
 
   const parsed = Input.parse(input);
 
-  // Tenancy: the job must belong to this company.
+  // Tenancy: the job must belong to this company. Title/description/
+  // requirements are pulled to detect JD-text changes for the embedding
+  // refresh below.
   const existing = await db.jobPost.findFirst({
     where: { id: jobId, companyId: user.id, deletedAt: null },
-    select: { id: true, publishedAt: true, chatArea: { select: { id: true } } },
+    select: {
+      id: true,
+      publishedAt: true,
+      title: true,
+      description: true,
+      requirements: true,
+      chatArea: { select: { id: true } },
+    },
   });
   if (!existing) throw new AuthError('FORBIDDEN');
 
@@ -198,11 +229,39 @@ export async function updateJob(jobId: string, input: z.infer<typeof Input>): Pr
       }),
   );
 
-  // Re-extract skills + reindex (best-effort, never block the save).
-  extractAndLinkSkills(jobId, parsed.title, parsed.description, parsed.requirements ?? '').catch((err) =>
-    logger.warn({ err, jobId }, 'JD skill re-extraction failed (non-blocking)'),
-  );
-  reindexJob(jobId).catch((err) => logger.warn({ err, jobId }, 'Algolia reindex failed (non-blocking)'));
+  // The stored embedding is derived from these three fields — refresh it only
+  // when one of them actually changed (embedJobPost skips existing embeddings
+  // unless forced; there is no stored text hash, so the diff happens here).
+  const jdTextChanged =
+    parsed.title !== existing.title ||
+    parsed.description !== existing.description ||
+    (parsed.requirements || null) !== existing.requirements;
+
+  // Off the response path (after(), not floating promises — see postJob):
+  // re-extract skills, reindex, and refresh the JD embedding when the job is
+  // published. Best-effort: failures are logged + sent to Sentry.
+  after(async () => {
+    try {
+      await extractAndLinkSkills(jobId, parsed.title, parsed.description, parsed.requirements ?? '');
+    } catch (err) {
+      logger.warn({ err, jobId }, 'JD skill re-extraction failed (non-blocking)');
+      Sentry.captureException(err, { tags: { jobId } });
+    }
+    try {
+      await reindexJob(jobId);
+    } catch (err) {
+      logger.warn({ err, jobId }, 'Algolia reindex failed (non-blocking)');
+      Sentry.captureException(err, { tags: { jobId } });
+    }
+    if (parsed.publish) {
+      try {
+        await embedJobPost(jobId, { force: jdTextChanged });
+      } catch (err) {
+        logger.warn({ err, jobId }, 'JD embedding refresh failed (non-blocking)');
+        Sentry.captureException(err, { tags: { jobId } });
+      }
+    }
+  });
 
   updateTag(tags.job(jobId));
   updateTag(tags.jobs());
@@ -234,7 +293,16 @@ export async function archiveJob(jobId: string): Promise<void> {
     (tx) => tx.jobPost.update({ where: { id: jobId }, data: { status: 'ARCHIVED', deletedAt: new Date() } }),
   );
 
-  reindexJob(jobId).catch((err) => logger.warn({ err, jobId }, 'Algolia deindex failed (non-blocking)'));
+  // Off the response path (after(), not a floating promise — see postJob).
+  // reindexJob sees the ARCHIVED status and deletes the Algolia record.
+  after(async () => {
+    try {
+      await reindexJob(jobId);
+    } catch (err) {
+      logger.warn({ err, jobId }, 'Algolia deindex failed (non-blocking)');
+      Sentry.captureException(err, { tags: { jobId } });
+    }
+  });
 
   updateTag(tags.job(jobId));
   updateTag(tags.jobs());
