@@ -1,4 +1,9 @@
-// Vercel Workflow: parse a freshly uploaded resume.
+// Parse a freshly uploaded resume. Plain inline function — no durable-
+// execution runtime, no automatic retries. Callers invoke it off the response
+// path via Next's `after()` (apply action, upload route) and log failures. A
+// transient AI/blob failure leaves parsedJson/embedding NULL; the
+// algolia-reconcile cron's AI sweep re-runs stranded resumes (oldest first,
+// Resume.parseAttempts capped) so those recover on the next sweep.
 //
 // Steps:
 //   1. Fetch the Resume row + signed Blob URL.
@@ -13,8 +18,9 @@
 //   8. Match the parsed skills against the Skill catalog and link via
 //      JobSeekerSkill.
 //
-// On any failure: log + audit-event + Sentry. Workflow has built-in retry
-// + durable-step semantics, so transient errors self-heal.
+// Idempotent: fully-processed resumes (parsedJson + embedding present) are
+// skipped; a resume whose parse landed but whose embedding write failed gets
+// just the embedding recomputed from the stored parse.
 
 import { generateObject, embed } from 'ai';
 import { fileTypeFromBuffer } from 'file-type';
@@ -31,7 +37,19 @@ export async function runResumeParse({ resumeId }: ResumeParseInput): Promise<vo
   const resume = await db.resume.findUnique({ where: { id: resumeId } });
   if (!resume) throw new Error(`Resume ${resumeId} not found`);
   if (resume.parsedJson) {
-    logger.info({ resumeId }, 'resume already parsed; skipping');
+    // Parsed already — but the embedding write is a separate step and can have
+    // failed after the parse landed. Repair just the embedding from the stored
+    // parse (no re-download, no second Haiku call); skip when both exist.
+    const row = await db.$queryRaw<Array<{ hasEmbedding: boolean }>>`
+      SELECT embedding IS NOT NULL AS "hasEmbedding" FROM resumes WHERE id = ${resumeId}::uuid
+    `;
+    if (row[0]?.hasEmbedding) {
+      logger.info({ resumeId }, 'resume already parsed; skipping');
+      return;
+    }
+    const stored = resume.parsedJson as { summary?: string | null };
+    await writeEmbedding(resumeId, stored.summary ?? JSON.stringify(resume.parsedJson).slice(0, 8000));
+    logger.info({ resumeId }, 'resume embedding repaired from stored parse');
     return;
   }
 
@@ -61,25 +79,15 @@ export async function runResumeParse({ resumeId }: ResumeParseInput): Promise<vo
     temperature: 0,
   });
 
-  // 5. Embedding for match score
-  const { embedding } = await embed({
-    model: gateway.textEmbeddingModel(MODELS.embeddingLarge),
-    value: parsed.summary ?? text.slice(0, 8000),
-  });
-
-  // 6. Persist parsedJson + embedding
+  // 5. Persist parsedJson first: if the embedding step fails, the stored parse
+  //    lets the reconcile sweep repair the embedding without a second Haiku call.
   await db.resume.update({
     where: { id: resumeId },
     data: { parsedJson: parsed as unknown as Prisma.InputJsonValue },
   });
 
-  // pgvector column requires raw SQL — `'[0.1,0.2,...]'::vector` literal.
-  const vectorLiteral = `[${embedding.join(',')}]`;
-  await db.$executeRaw`
-    UPDATE resumes
-       SET embedding = ${vectorLiteral}::vector
-     WHERE id = ${resumeId}::uuid
-  `;
+  // 6. Embedding for match score
+  await writeEmbedding(resumeId, parsed.summary ?? text.slice(0, 8000));
 
   // 7. Link skills from the parsed list against our canonical Skill catalog.
   if (parsed.skills.length > 0) {
@@ -100,6 +108,22 @@ export async function runResumeParse({ resumeId }: ResumeParseInput): Promise<vo
   }
 
   logger.info({ resumeId, skills: parsed.skills.length }, 'resume parsed');
+}
+
+// Embed the given text and write it to the pgvector column. Raw SQL —
+// `'[0.1,0.2,...]'::vector` literal — because Prisma's Unsupported() type
+// can't be set directly.
+async function writeEmbedding(resumeId: string, value: string): Promise<void> {
+  const { embedding } = await embed({
+    model: gateway.textEmbeddingModel(MODELS.embeddingLarge),
+    value,
+  });
+  const vectorLiteral = `[${embedding.join(',')}]`;
+  await db.$executeRaw`
+    UPDATE resumes
+       SET embedding = ${vectorLiteral}::vector
+     WHERE id = ${resumeId}::uuid
+  `;
 }
 
 async function extractText(bytes: Uint8Array, mime: string): Promise<string> {

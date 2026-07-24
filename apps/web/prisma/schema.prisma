@@ -190,37 +190,44 @@ enum AuditAction {
 // ============================================================================
 
 model User {
-  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  clerkUserId   String   @unique
-  email         String   @unique @db.Citext
-  userType      UserType @default(JOB_SEEKER)
-  plan          PlanTier @default(PRO)
-  firstName     String?
-  lastName      String?
-  phone         String?
-  avatarUrl     String?
-  locale        String   @default("en")
-  timezone      String   @default("UTC")
-  consentJson   Json?
+  id                     String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clerkUserId            String    @unique
+  email                  String    @unique @db.Citext
+  userType               UserType  @default(JOB_SEEKER)
+  plan                   PlanTier  @default(PRO)
+  firstName              String?
+  lastName               String?
+  phone                  String?
+  avatarUrl              String?
+  locale                 String    @default("en")
+  timezone               String    @default("UTC")
+  consentJson            Json?
   emailSuppressedAt      DateTime?
   emailSuppressionReason String?
-  deletedAt     DateTime?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  /// Digest watermark: when this user last had a digest run complete for them
+  /// (sent, or nothing to send). The digest cron selects users whose watermark
+  /// is null/stale and stamps it per processed chunk, so interrupted runs
+  /// resume without double-sending. A raw-SQL partial index
+  /// (users_digest_eligibility_idx, see the digest_watermark migration)
+  /// backs the eligibility scan — partial indexes aren't expressible here.
+  lastDigestAt           DateTime?
+  deletedAt              DateTime?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
 
   jobSeekerProfile JobSeekerProfile?
   companyProfile   CompanyProfile?
 
-  jobsPosted       JobPost[]
-  applications     JobApplication[]
-  resumes          Resume[]
+  jobsPosted   JobPost[]
+  applications JobApplication[]
+  resumes      Resume[]
 
-  notifications    Notification[]
-  invitationsSent  Invitation[]    @relation("InvitationsByCompany")
-  invitationsRecv  Invitation[]    @relation("InvitationsToJobSeeker")
-  auditEvents      AuditEvent[]    @relation("AuditActor")
-  savedJobs        SavedJob[]
-  savedSearches    SavedSearch[]
+  notifications   Notification[]
+  invitationsSent Invitation[]   @relation("InvitationsByCompany")
+  invitationsRecv Invitation[]   @relation("InvitationsToJobSeeker")
+  auditEvents     AuditEvent[]   @relation("AuditActor")
+  savedJobs       SavedJob[]
+  savedSearches   SavedSearch[]
 
   subscribers      CompanySubscription[] @relation("SubscribersOfCompany")
   subscriptions    CompanySubscription[] @relation("SubscriptionsByJobSeeker")
@@ -234,38 +241,38 @@ model User {
 }
 
 model JobSeekerProfile {
-  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId        String   @unique @db.Uuid
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id     String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId String @unique @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  profileType   ProfileType @default(EMPLOYABLE)
-  bio           String?
-  headline      String?
+  profileType              ProfileType @default(EMPLOYABLE)
+  bio                      String?
+  headline                 String?
   /// Virtual-intern extras (JOB_UC_05.0/07.0): what they want to learn and
   /// how much time they can commit. Null for EMPLOYABLE profiles.
-  careerInterest            String?
-  availabilityHoursPerWeek  Int?
-  learningGoal              String?
-  yearsExperience Int?
-  desiredSalaryMin Int?
-  desiredSalaryMax Int?
-  desiredWorkMode  WorkMode?
-  location         String?
-  locationLat      Float?
-  locationLng      Float?
-  visibility       String   @default("PRIVATE")
+  careerInterest           String?
+  availabilityHoursPerWeek Int?
+  learningGoal             String?
+  yearsExperience          Int?
+  desiredSalaryMin         Int?
+  desiredSalaryMax         Int?
+  desiredWorkMode          WorkMode?
+  location                 String?
+  locationLat              Float?
+  locationLng              Float?
+  visibility               String      @default("PRIVATE")
 
   /// JOB_UC_05.0 profile-completeness fields: free-text academic background,
   /// free-text certifications, and a single portfolio/GitHub/behance link.
-  education        String?
-  certifications   String?
-  portfolioUrl     String?
+  education      String?
+  certifications String?
+  portfolioUrl   String?
 
-  skills           JobSeekerSkill[]
-  workExperiences  WorkExperience[]
+  skills          JobSeekerSkill[]
+  workExperiences WorkExperience[]
 
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([visibility, profileType])
   @@map("job_seeker_profiles")
@@ -275,8 +282,8 @@ model JobSeekerProfile {
 // builder. Dates are free text (like the AI resume parser's output) since
 // résumé date formats are inherently inconsistent ("2022", "Jan 2022 – Present").
 model WorkExperience {
-  id                 String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  jobSeekerProfileId String @db.Uuid
+  id                 String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  jobSeekerProfileId String           @db.Uuid
   jobSeekerProfile   JobSeekerProfile @relation(fields: [jobSeekerProfileId], references: [id], onDelete: Cascade)
 
   company     String
@@ -292,11 +299,11 @@ model WorkExperience {
 }
 
 model CompanyProfile {
-  id                    String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId                String   @unique @db.Uuid
-  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id     String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId String @unique @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  slug                  String   @unique
+  slug                  String       @unique
   companyName           String
   industry              IndustryType
   companySize           CompanySize
@@ -309,10 +316,10 @@ model CompanyProfile {
   contactPersonName     String?
   contactPersonPosition String?
 
-  verificationStatus    VerificationStatus @default(PENDING)
+  verificationStatus VerificationStatus @default(PENDING)
 
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([industry, verificationStatus])
   @@map("company_profiles")
@@ -338,12 +345,12 @@ model Skill {
 }
 
 model JobPostSkill {
-  jobPostId  String @db.Uuid
-  skillId    String @db.Uuid
-  weight     Int    @default(1)
+  jobPostId String @db.Uuid
+  skillId   String @db.Uuid
+  weight    Int    @default(1)
 
-  jobPost    JobPost @relation(fields: [jobPostId], references: [id], onDelete: Cascade)
-  skill      Skill   @relation(fields: [skillId], references: [id], onDelete: Restrict)
+  jobPost JobPost @relation(fields: [jobPostId], references: [id], onDelete: Cascade)
+  skill   Skill   @relation(fields: [skillId], references: [id], onDelete: Restrict)
 
   @@id([jobPostId, skillId])
   @@index([skillId])
@@ -356,8 +363,8 @@ model JobSeekerSkill {
   proficiency        Int    @default(3)
   years              Int    @default(0)
 
-  jobSeekerProfile   JobSeekerProfile @relation(fields: [jobSeekerProfileId], references: [id], onDelete: Cascade)
-  skill              Skill            @relation(fields: [skillId], references: [id], onDelete: Restrict)
+  jobSeekerProfile JobSeekerProfile @relation(fields: [jobSeekerProfileId], references: [id], onDelete: Cascade)
+  skill            Skill            @relation(fields: [skillId], references: [id], onDelete: Restrict)
 
   @@id([jobSeekerProfileId, skillId])
   @@index([skillId])
@@ -369,50 +376,50 @@ model JobSeekerSkill {
 // ============================================================================
 
 model JobPost {
-  id                  String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  slug                String          @unique
-  companyId           String          @db.Uuid
-  company             User            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  id        String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  slug      String @unique
+  companyId String @db.Uuid
+  company   User   @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
-  title               String
-  description         String
-  requirements        String?
-  benefits            String[]        @default([])
+  title        String
+  description  String
+  requirements String?
+  benefits     String[] @default([])
 
-  industry            IndustryType
-  jobType             JobType
-  experienceLevel     ExperienceLevel @default(MID)
-  workMode            WorkMode        @default(ONSITE)
+  industry        IndustryType
+  jobType         JobType
+  experienceLevel ExperienceLevel @default(MID)
+  workMode        WorkMode        @default(ONSITE)
 
-  location            String?
-  locationLat         Float?
-  locationLng         Float?
+  location    String?
+  locationLat Float?
+  locationLng Float?
   /// PostGIS Point(longitude, latitude) — written/read via raw SQL.
-  geo                 Unsupported("geography(Point, 4326)")?
+  geo         Unsupported("geography(Point, 4326)")?
 
-  salaryMin           Int?
-  salaryMax           Int?
-  salaryCurrency      String          @default("USD")
+  salaryMin      Int?
+  salaryMax      Int?
+  salaryCurrency String @default("USD")
 
   applicationDeadline DateTime?
-  status              JobPostStatus   @default(DRAFT)
+  status              JobPostStatus @default(DRAFT)
 
   /// 1536-dim embedding from openai/text-embedding-3-small (resized) or large.
-  embedding           Unsupported("vector(1536)")?
+  embedding Unsupported("vector(1536)")?
   /// tsvector built from title + description + requirements for FTS fallback.
-  tsv                 Unsupported("tsvector")?
+  tsv       Unsupported("tsvector")?
 
-  viewCount           Int             @default(0)
-  publishedAt         DateTime?
-  deletedAt           DateTime?
-  createdAt           DateTime        @default(now())
-  updatedAt           DateTime        @updatedAt
+  viewCount   Int       @default(0)
+  publishedAt DateTime?
+  deletedAt   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
-  applications        JobApplication[]
-  skills              JobPostSkill[]
-  views               JobView[]
-  savedBy             SavedJob[]
-  chatArea            ChatArea?
+  applications JobApplication[]
+  skills       JobPostSkill[]
+  views        JobView[]
+  savedBy      SavedJob[]
+  chatArea     ChatArea?
 
   @@index([companyId, status, deletedAt])
   @@index([status, publishedAt(sort: Desc)])
@@ -422,22 +429,22 @@ model JobPost {
 }
 
 model JobApplication {
-  id           String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  jobPostId    String            @db.Uuid
-  jobSeekerId  String            @db.Uuid
-  resumeId     String            @db.Uuid
+  id          String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  jobPostId   String @db.Uuid
+  jobSeekerId String @db.Uuid
+  resumeId    String @db.Uuid
 
-  jobPost      JobPost           @relation(fields: [jobPostId], references: [id], onDelete: Cascade)
-  jobSeeker    User              @relation(fields: [jobSeekerId], references: [id], onDelete: Cascade)
-  resume       Resume            @relation(fields: [resumeId], references: [id], onDelete: Restrict)
+  jobPost   JobPost @relation(fields: [jobPostId], references: [id], onDelete: Cascade)
+  jobSeeker User    @relation(fields: [jobSeekerId], references: [id], onDelete: Cascade)
+  resume    Resume  @relation(fields: [resumeId], references: [id], onDelete: Restrict)
 
   status         ApplicationStatus @default(SUBMITTED)
   coverLetter    String?
   recruiterNotes String?
   matchScore     Float?
 
-  appliedAt    DateTime          @default(now())
-  updatedAt    DateTime          @updatedAt
+  appliedAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([jobPostId, jobSeekerId])
   @@index([jobSeekerId, appliedAt(sort: Desc)])
@@ -446,14 +453,14 @@ model JobApplication {
 }
 
 model JobView {
-  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  jobPostId  String   @db.Uuid
-  userId     String?  @db.Uuid
-  ipHash     String
-  referrer   String?
-  createdAt  DateTime @default(now())
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  jobPostId String   @db.Uuid
+  userId    String?  @db.Uuid
+  ipHash    String
+  referrer  String?
+  createdAt DateTime @default(now())
 
-  jobPost    JobPost  @relation(fields: [jobPostId], references: [id], onDelete: Cascade)
+  jobPost JobPost @relation(fields: [jobPostId], references: [id], onDelete: Cascade)
 
   @@index([jobPostId, createdAt])
   @@index([createdAt])
@@ -461,13 +468,13 @@ model JobView {
 }
 
 model SavedJob {
-  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId     String   @db.Uuid
-  jobPostId  String   @db.Uuid
-  createdAt  DateTime @default(now())
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String   @db.Uuid
+  jobPostId String   @db.Uuid
+  createdAt DateTime @default(now())
 
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  jobPost    JobPost  @relation(fields: [jobPostId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jobPost JobPost @relation(fields: [jobPostId], references: [id], onDelete: Cascade)
 
   @@unique([userId, jobPostId])
   @@index([userId, createdAt(sort: Desc)])
@@ -483,7 +490,7 @@ model SavedSearch {
   lastNotifiedAt DateTime?
   createdAt      DateTime  @default(now())
 
-  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt(sort: Desc)])
   @@map("saved_searches")
@@ -509,9 +516,9 @@ model IndexOutbox {
 // ============================================================================
 
 model Resume {
-  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId        String   @db.Uuid
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id     String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId String @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   title         String
   fileBlobUrl   String
@@ -521,13 +528,17 @@ model Resume {
   parsedJson    Json?
   /// 1536-dim embedding from the parsed resume text.
   embedding     Unsupported("vector(1536)")?
+  /// How many times the algolia-reconcile AI sweep retried parsing/embedding
+  /// this resume. Capped (see MAX_PARSE_ATTEMPTS in the cron route) so a
+  /// poison file can't burn AI budget forever.
+  parseAttempts Int                          @default(0)
 
-  isDefault     Boolean  @default(false)
-  deletedAt     DateTime?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  isDefault Boolean   @default(false)
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
-  applications  JobApplication[]
+  applications JobApplication[]
 
   @@index([userId, isDefault])
   @@index([userId, deletedAt])
@@ -547,10 +558,10 @@ model CompanySubscription {
   jobSeekerId String      @db.Uuid
   profileType ProfileType
 
-  company     User        @relation("SubscribersOfCompany", fields: [companyId], references: [id], onDelete: Cascade)
-  jobSeeker   User        @relation("SubscriptionsByJobSeeker", fields: [jobSeekerId], references: [id], onDelete: Cascade)
+  company   User @relation("SubscribersOfCompany", fields: [companyId], references: [id], onDelete: Cascade)
+  jobSeeker User @relation("SubscriptionsByJobSeeker", fields: [jobSeekerId], references: [id], onDelete: Cascade)
 
-  createdAt   DateTime    @default(now())
+  createdAt DateTime @default(now())
 
   // Per-type uniqueness (JOB_UC_07.0): the same seeker may subscribe to a
   // company as EMPLOYABLE and as VIRTUAL_INTERN.
@@ -570,8 +581,8 @@ model ChatArea {
   jobPostId String?      @unique @db.Uuid
   title     String
 
-  company   User         @relation("ChatAreasOwned", fields: [companyId], references: [id], onDelete: Cascade)
-  jobPost   JobPost?     @relation(fields: [jobPostId], references: [id], onDelete: Cascade)
+  company User     @relation("ChatAreasOwned", fields: [companyId], references: [id], onDelete: Cascade)
+  jobPost JobPost? @relation(fields: [jobPostId], references: [id], onDelete: Cascade)
 
   participants ChatParticipant[]
   messages     ChatMessage[]
@@ -588,8 +599,8 @@ model ChatParticipant {
   userId     String   @db.Uuid
   joinedAt   DateTime @default(now())
 
-  chatArea   ChatArea @relation(fields: [chatAreaId], references: [id], onDelete: Cascade)
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  chatArea ChatArea @relation(fields: [chatAreaId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@id([chatAreaId, userId])
   @@index([userId])
@@ -606,8 +617,8 @@ model ChatMessage {
   attachmentUrl String?
   createdAt     DateTime        @default(now())
 
-  chatArea      ChatArea        @relation(fields: [chatAreaId], references: [id], onDelete: Cascade)
-  sender        User            @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  chatArea ChatArea @relation(fields: [chatAreaId], references: [id], onDelete: Cascade)
+  sender   User     @relation(fields: [senderId], references: [id], onDelete: Cascade)
 
   @@index([chatAreaId, createdAt])
   @@map("chat_messages")
@@ -618,9 +629,9 @@ model ChatMessage {
 // ============================================================================
 
 model Notification {
-  id        String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId    String           @db.Uuid
-  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id     String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId String @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   kind      NotificationKind
   payload   Json
@@ -634,20 +645,20 @@ model Notification {
 // A company asking a seeker to subscribe as EMPLOYABLE or VIRTUAL_INTERN
 // (JOB_UC_10.0/10.1). Accepting creates the matching CompanySubscription.
 model Invitation {
-  id            String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  companyId     String           @db.Uuid
-  jobSeekerId   String           @db.Uuid
-  jobPostId     String?          @db.Uuid
-  profileType   ProfileType      @default(EMPLOYABLE)
+  id          String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId   String      @db.Uuid
+  jobSeekerId String      @db.Uuid
+  jobPostId   String?     @db.Uuid
+  profileType ProfileType @default(EMPLOYABLE)
 
-  company       User             @relation("InvitationsByCompany", fields: [companyId], references: [id], onDelete: Cascade)
-  jobSeeker     User             @relation("InvitationsToJobSeeker", fields: [jobSeekerId], references: [id], onDelete: Cascade)
+  company   User @relation("InvitationsByCompany", fields: [companyId], references: [id], onDelete: Cascade)
+  jobSeeker User @relation("InvitationsToJobSeeker", fields: [jobSeekerId], references: [id], onDelete: Cascade)
 
-  message       String?
-  status        InvitationStatus @default(PENDING)
-  expiresAt     DateTime
-  respondedAt   DateTime?
-  createdAt     DateTime         @default(now())
+  message     String?
+  status      InvitationStatus @default(PENDING)
+  expiresAt   DateTime
+  respondedAt DateTime?
+  createdAt   DateTime         @default(now())
 
   // One invitation per company/seeker/type (JOB_UC_10.1: "cannot accept
   // duplicate invitations from the same company for the same type").
@@ -662,9 +673,9 @@ model Invitation {
 // ============================================================================
 
 model AuditEvent {
-  id        String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  actorId   String?     @db.Uuid
-  actor     User?       @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+  id      String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  actorId String? @db.Uuid
+  actor   User?   @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
 
   action    AuditAction
   entity    String
