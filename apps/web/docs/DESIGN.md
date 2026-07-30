@@ -120,11 +120,25 @@ appending and letting stylesheet order decide.
 | `skeleton.tsx`     | `Skeleton` `SkeletonTitle` `SkeletonText` `SkeletonCard` `SkeletonList` `SkeletonPillNav`                                         |
 | `kbd.tsx`          | `Kbd`, `KbdHint`                                                                                                                  |
 | `sparkline.tsx`    | `Sparkline` — inline SVG polyline, no charting runtime                                                                            |
-| `theme-toggle.tsx` | `ThemeToggle`                                                                                                                     |
+| `theme-toggle.tsx` | `ThemeToggle` — Radix `DropdownMenu` exposing Light/Dark/System explicitly                                                        |
 | `ambient.tsx`      | `AmbientCanvas` (`hero` > `band` > `page`), `AmbientBand`, `PageHeader`                                                           |
 | `container.tsx`    | `Container`                                                                                                                       |
 
-Icons are [lucide-react](https://lucide.dev) — tree-shaken, ~1KB each.
+Icons are [lucide-react](https://lucide.dev) — tree-shaken, ~1KB each. No Material UI icons or
+components anywhere in the app; mixing icon sets is a visual-consistency footgun (Material's
+filled/circular glyphs read as a different product next to Lucide's stroke-line style). Where an
+interaction needs real accessible menu/dialog mechanics rather than a static glyph — `ThemeToggle`
+is the first case — reach for [Radix UI Primitives](https://www.radix-ui.com/primitives) rather
+than hand-rolling roving-focus/Escape/typeahead handling again; `CommandPalette` predates this and
+still hand-rolls its own listbox, which is why it's more code than `ThemeToggle` for a similar
+amount of behavior.
+
+**No Unicode glyphs standing in for icons.** `→` `←` `↗` `✓` in JSX text used to do duty for
+"go to", "back", "opens externally" and "done" — replace with `ArrowRight`/`ArrowLeft`/
+`ExternalLink`/`CheckCircle2` etc. The one deliberate exception is the command palette's `Kbd`
+footer legend (`↑↓` `navigate`, `↵` `open`): those glyphs represent literal keyboard keys, which is
+how virtually every app with a command palette shows a shortcut legend — a Lucide icon doesn't
+read as "the Enter key" the way `↵` does inside a `<kbd>`-styled tag.
 
 ### Rules of thumb
 

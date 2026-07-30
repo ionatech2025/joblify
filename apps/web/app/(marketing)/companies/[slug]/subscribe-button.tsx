@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { currentUser } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { CheckCircle2 } from 'lucide-react';
 import { subscribeToCompany, unsubscribeFromCompany } from '@/app/actions/subscriptions';
 import { Button, buttonClasses } from '@/app/components/ui/button';
 
@@ -50,8 +51,13 @@ export async function SubscribeButton({ companyUserId }: { companyUserId: string
   if (subscription) {
     return (
       <form action={unsubscribeFromCompany.bind(null, companyUserId, profile.profileType)}>
-        <Button type="submit" variant="secondary">
-          Subscribed as {typeLabel} ✓ — unsubscribe
+        <Button
+          type="submit"
+          variant="secondary"
+          icon={<CheckCircle2 aria-hidden className="size-4 text-success" />}
+          iconPosition="end"
+        >
+          Subscribed as {typeLabel} — unsubscribe
         </Button>
       </form>
     );

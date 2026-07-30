@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import { SignedIn } from '@clerk/nextjs';
-import { SearchX } from 'lucide-react';
+import { ChevronLeft, ChevronRight, SearchX } from 'lucide-react';
 import type { JobSearchRecord } from '@/lib/search/algolia';
 import { Badge } from '@/app/components/ui/badge';
 import { Card } from '@/app/components/ui/card';
@@ -252,8 +252,9 @@ export function JobsSearch() {
                   size="sm"
                   disabled={page <= 0}
                   onClick={() => patch({ page: page - 1 })}
+                  icon={<ChevronLeft aria-hidden className="size-4" />}
                 >
-                  ← Prev
+                  Prev
                 </Button>
                 <span className="text-sm text-fg-muted">
                   Page {page + 1} of {data.nbPages}
@@ -263,8 +264,10 @@ export function JobsSearch() {
                   size="sm"
                   disabled={page >= data.nbPages - 1}
                   onClick={() => patch({ page: page + 1 })}
+                  icon={<ChevronRight aria-hidden className="size-4" />}
+                  iconPosition="end"
                 >
-                  Next →
+                  Next
                 </Button>
               </nav>
             )}

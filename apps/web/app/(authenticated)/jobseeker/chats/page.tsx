@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { requireRole } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { MessagesSquare } from 'lucide-react';
+import { ArrowRight, MessagesSquare } from 'lucide-react';
 import { PageHeader } from '@/app/components/ui/ambient';
 import { EmptyState } from '@/app/components/ui/empty-state';
 import { buttonClasses } from '@/app/components/ui/button';
@@ -70,9 +70,10 @@ export default async function JobseekerChatsPage() {
                   </div>
                   <Link
                     href={`/jobseeker/chats/${a.id}`}
-                    className="text-sm text-brand hover:underline"
+                    className="inline-flex items-center gap-1 text-sm text-brand hover:underline"
                   >
-                    Open →
+                    Open
+                    <ArrowRight aria-hidden className="size-3.5" />
                   </Link>
                 </div>
               </li>

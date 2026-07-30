@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Resume } from '@prisma/client';
 import Link from 'next/link';
+import { ArrowRight } from 'lucide-react';
 import { useApplyDraftStore } from '@/lib/stores/apply-draft';
 import { submitApplication } from '@/app/actions/apply';
 import { Field, Select, Textarea } from '@/app/components/ui/form';
@@ -50,8 +51,12 @@ export function ApplyForm({
         {resumes.length === 0 ? (
           <p className="m-0 text-danger">
             You need a resume first.{' '}
-            <Link href="/jobseeker/resumes" className="font-semibold text-brand hover:underline">
-              Upload one →
+            <Link
+              href="/jobseeker/resumes"
+              className="inline-flex items-center gap-1 font-semibold text-brand hover:underline"
+            >
+              Upload one
+              <ArrowRight aria-hidden className="size-3.5" />
             </Link>
           </p>
         ) : (

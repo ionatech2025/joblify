@@ -13,7 +13,7 @@ const tones: Record<Tone, string> = {
   warn: 'bg-warn-subtle text-warn-subtle-fg',
   danger: 'bg-danger-subtle text-danger-subtle-fg',
   info: 'bg-info-subtle text-info-subtle-fg',
-  dark: 'bg-surface-inverse text-fg-inverse',
+  dark: 'bg-ink text-ink-fg',
 };
 
 export function Badge({

@@ -4,7 +4,7 @@ import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { upload } from '@vercel/blob/client';
 import Link from 'next/link';
-import { FileText } from 'lucide-react';
+import { CheckCircle2, FileText } from 'lucide-react';
 import { registerResume, deleteResume } from '@/app/actions/uploads';
 import { Button, buttonClasses } from '@/app/components/ui/button';
 import { EmptyState } from '@/app/components/ui/empty-state';
@@ -142,8 +142,15 @@ export function ResumeManager({
                   {r.title}
                 </a>
                 <p className="mt-1 mb-0 text-sm text-fg-subtle">
-                  {r.parsed ? 'Parsed ✓' : 'Processing…'} · added{' '}
-                  {new Date(r.createdAt).toLocaleDateString()}
+                  {r.parsed ? (
+                    <span className="inline-flex items-center gap-1">
+                      <CheckCircle2 aria-hidden className="size-3.5 text-success" />
+                      Parsed
+                    </span>
+                  ) : (
+                    'Processing…'
+                  )}{' '}
+                  · added {new Date(r.createdAt).toLocaleDateString()}
                 </p>
               </div>
               <Button

@@ -3,7 +3,7 @@
 import { useMemo, useState, useTransition } from 'react';
 import { updateApplicantStatus, saveApplicantNote } from '@/app/actions/update-applicant-status';
 import type { ApplicationStatus } from '@prisma/client';
-import { Users } from 'lucide-react';
+import { ExternalLink, Users } from 'lucide-react';
 import { Badge } from '@/app/components/ui/badge';
 import { EmptyState } from '@/app/components/ui/empty-state';
 import {
@@ -178,9 +178,10 @@ function ApplicantCard({
           href={row.resumeUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-brand hover:underline"
+          className="inline-flex items-center gap-1 text-brand hover:underline"
         >
-          Résumé ↗
+          Résumé
+          <ExternalLink aria-hidden className="size-3" />
         </a>
         {row.coverLetter && (
           <button onClick={() => setOpenCover((o) => !o)} className="text-brand hover:underline">

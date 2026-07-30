@@ -93,6 +93,23 @@ PLAYWRIGHT_BASE_URL=https://joblify-web-<sha>.vercel.app bun run test:e2e
 
 Configured browsers: Chromium + Firefox + WebKit. All three must pass.
 
+> **Running the matrix locally.** `bunx playwright install firefox webkit` fetches the
+> browser binaries, but WebKit additionally needs system libraries
+> (`libflite1`, `libavif16`, `libjpeg-turbo8`, `libmanette-0.2-0`, `libhyphen0`, `libwoff1`,
+> `gstreamer1.0-libav`) that only `sudo playwright install-deps` (or the apt equivalent) can
+> install — on a host without root, WebKit fails every test at `browserType.launch`, before
+> any assertion runs. Chromium and Firefox need no extra system packages and both verified
+> clean against a production build (2026-07-30): 34/36 and 12/13 respectively, with the
+> single failure in each being the environmental DB-migration issue below, not a design or
+> browser-engine defect.
+>
+> Also: run one `--project` at a time locally. `--project=chromium --project=firefox`
+> together against a single `bun run start` instance is enough concurrent load to flake —
+> re-running the same combined command reproduced a different failing test each time, while
+> every project run in isolation was stable. CI likely doesn't hit this (either more
+> resources or one project per job); it's a local-resource-contention artifact of this
+> specific harness, not a product bug.
+
 ## Accessibility (axe-core)
 
 `tests/e2e/a11y.spec.ts` runs axe against five public seed pages —

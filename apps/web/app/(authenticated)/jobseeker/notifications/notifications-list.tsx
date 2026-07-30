@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { BellOff } from 'lucide-react';
+import { ArrowRight, BellOff } from 'lucide-react';
 import {
   useNotifications,
   useMarkNotificationRead,
@@ -57,25 +57,28 @@ export function NotificationsList({ initial }: { initial: NotificationItem[] }) 
               {typeof n.payload.jobSlug === 'string' && (
                 <Link
                   href={`/jobs/${n.payload.jobSlug}`}
-                  className="text-sm text-brand hover:underline"
+                  className="inline-flex items-center gap-1 text-sm text-brand hover:underline"
                 >
-                  View job →
+                  View job
+                  <ArrowRight aria-hidden className="size-3.5" />
                 </Link>
               )}
               {typeof n.payload.chatAreaId === 'string' && (
                 <Link
                   href={`/jobseeker/chats/${n.payload.chatAreaId}`}
-                  className="text-sm text-brand hover:underline"
+                  className="inline-flex items-center gap-1 text-sm text-brand hover:underline"
                 >
-                  Open chat →
+                  Open chat
+                  <ArrowRight aria-hidden className="size-3.5" />
                 </Link>
               )}
               {typeof n.payload.invitationId === 'string' && n.kind === 'INVITATION_RECEIVED' && (
                 <Link
                   href="/jobseeker/subscriptions"
-                  className="text-sm text-brand hover:underline"
+                  className="inline-flex items-center gap-1 text-sm text-brand hover:underline"
                 >
-                  View invitation →
+                  View invitation
+                  <ArrowRight aria-hidden className="size-3.5" />
                 </Link>
               )}
               <p className="mt-1 mb-0 text-xs text-fg-subtle">
