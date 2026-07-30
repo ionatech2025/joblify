@@ -1,4 +1,4 @@
-import { requireUser } from '@/lib/auth';
+import { requireRole } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { NotificationsList } from './notifications-list';
 import type { NotificationItem } from '@/lib/query/notifications';
@@ -7,7 +7,7 @@ import { PageHeader } from '@/app/components/ui/ambient';
 export const metadata = { title: 'Notifications' };
 
 export default async function NotificationsPage() {
-  const user = await requireUser();
+  const user = await requireRole('JOB_SEEKER');
   const rows = await db.notification.findMany({
     where: { userId: user.id },
     orderBy: { createdAt: 'desc' },

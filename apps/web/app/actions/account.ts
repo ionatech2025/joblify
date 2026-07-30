@@ -55,5 +55,8 @@ export async function deleteMyAccount(confirmation: string): Promise<void> {
     }
   }
 
-  redirect('/sign-out?reason=deleted');
+  // No /sign-out route exists in this app (Clerk's own client-side sign-out
+  // owns that, and the Clerk user was already deleted above, which revokes
+  // the session). Land on the public homepage rather than a dead route.
+  redirect('/?account_deleted=1');
 }

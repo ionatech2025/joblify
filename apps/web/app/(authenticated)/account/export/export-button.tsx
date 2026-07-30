@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { Button } from '@/app/components/ui/button';
+import { toast } from '@/lib/stores/ui';
 
 export function ExportButton() {
   const [isPending, startTransition] = useTransition();
@@ -20,8 +21,11 @@ export function ExportButton() {
         }
         const body = (await res.json()) as { url: string };
         setMessage(`Export ready. Download: ${body.url}`);
+        toast.success('Export ready', 'Your download link is below.');
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Export failed');
+        const message = err instanceof Error ? err.message : 'Export failed';
+        setError(message);
+        toast.error('Export failed', message);
       }
     });
   }

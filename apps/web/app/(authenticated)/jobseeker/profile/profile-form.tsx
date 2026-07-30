@@ -7,6 +7,7 @@ import { useTransition, useState } from 'react';
 import { saveProfile } from '@/app/actions/profile';
 import { Field, Input, Select, Textarea } from '@/app/components/ui/form';
 import { Button } from '@/app/components/ui/button';
+import { toast } from '@/lib/stores/ui';
 
 const ProfileFormSchema = z.object({
   profileType: z.enum(['EMPLOYABLE', 'VIRTUAL_INTERN']),
@@ -59,8 +60,11 @@ export function ProfileForm({
       try {
         await saveProfile(values);
         setSaved(true);
+        toast.success('Profile saved');
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Save failed.');
+        const message = err instanceof Error ? err.message : 'Save failed.';
+        setError(message);
+        toast.error("Couldn't save your profile", message);
       }
     });
   }

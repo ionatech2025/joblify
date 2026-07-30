@@ -52,6 +52,11 @@ export default async function CompanyJobseekersPage({
   const tab = (href: string, label: string, active: boolean) => (
     <Link
       href={href}
+      // Not "page" — these toggle a filtered view of the same page rather
+      // than navigating to a different one, so the generic "true" token is
+      // the correct aria-current value here (mirrors pill-nav.tsx's pattern
+      // without misusing "page" for what's actually a filter selection).
+      aria-current={active ? 'true' : undefined}
       className={`rounded-full px-3.5 py-1.5 text-sm font-medium no-underline transition-colors ${
         active
           ? 'bg-ink text-ink-fg hover:bg-ink-hover'

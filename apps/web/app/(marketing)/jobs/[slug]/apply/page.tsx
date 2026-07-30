@@ -4,6 +4,7 @@ import { db } from '@/lib/db';
 import { requireRole } from '@/lib/auth';
 import { ApplyForm } from './apply-form';
 import { PageHeader } from '@/app/components/ui/ambient';
+import ApplyLoading from './loading';
 
 type Params = Promise<{ slug: string }>;
 
@@ -12,9 +13,14 @@ export const metadata = { title: 'Apply' };
 export default async function ApplyPage({ params }: { params: Params }) {
   const { slug } = await params;
   // The body is fully dynamic (auth + per-user resume list), so it streams
-  // inside a Suspense boundary as cacheComponents requires.
+  // inside a Suspense boundary as cacheComponents requires. The outer
+  // route-segment loading.tsx resolves almost instantly (its own suspend
+  // point is just `await params`), so without a real fallback here the
+  // actual latency window (auth + 3 queries) rendered a blank page before
+  // the form popped in — reuse the same skeleton loading.tsx already shows,
+  // same fix as job-detail-skeleton.tsx one route up.
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<ApplyLoading />}>
       <ApplyContent slug={slug} />
     </Suspense>
   );

@@ -1,5 +1,7 @@
 import { currentUser } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { Badge } from '@/app/components/ui/badge';
+import { matchTone } from '@/lib/ui/status';
 
 // Match badge — server-rendered, only for authenticated jobseekers who have
 // at least one resume parsed. Pulls from the precomputed match score; reads
@@ -20,20 +22,11 @@ export async function MatchBadge({ jobId }: { jobId: string }) {
   if (score === null) return null;
 
   const pct = Math.round(score * 100);
-  const tone =
-    pct >= 70
-      ? 'bg-success-subtle text-success'
-      : pct >= 50
-        ? 'bg-warn-subtle text-warn'
-        : 'bg-danger-subtle text-danger';
 
   return (
-    <span
-      className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-semibold ${tone}`}
-      aria-label={`Match score ${pct} percent`}
-    >
+    <Badge tone={matchTone(score)} className="px-3 py-1.5 text-sm">
       Match: {pct}%
-    </span>
+    </Badge>
   );
 }
 

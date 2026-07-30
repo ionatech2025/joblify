@@ -14,80 +14,78 @@ export async function GET(_request: Request, { params }: { params: Params }) {
   const company = await getCompanyBySlug(slug);
 
   return new ImageResponse(
-    (
+    <div
+      style={{
+        width: '100%',
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'space-between',
+        padding: '80px',
+        background: '#0a0a0a',
+        fontFamily: 'system-ui, sans-serif',
+      }}
+    >
       <div
         style={{
-          width: '100%',
-          height: '100%',
           display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'space-between',
-          padding: '80px',
-          background: '#0a0a0a',
-          fontFamily: 'system-ui, sans-serif',
+          fontSize: 26,
+          fontWeight: 700,
+          letterSpacing: '0.2em',
+          textTransform: 'uppercase',
+          color: '#818cf8',
         }}
       >
+        Joblify
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column' }}>
         <div
           style={{
             display: 'flex',
-            fontSize: 26,
-            fontWeight: 700,
-            letterSpacing: '0.2em',
-            textTransform: 'uppercase',
-            color: '#818cf8',
+            fontSize: 72,
+            fontWeight: 800,
+            letterSpacing: '-0.02em',
+            lineHeight: 1.1,
+            color: '#fafafa',
+            maxWidth: 1000,
           }}
         >
-          Joblify
+          {company?.companyName ?? 'Company profile'}
         </div>
-
-        <div style={{ display: 'flex', flexDirection: 'column' }}>
+        {company?.description && (
           <div
             style={{
               display: 'flex',
-              fontSize: 72,
-              fontWeight: 800,
-              letterSpacing: '-0.02em',
-              lineHeight: 1.1,
-              color: '#fafafa',
-              maxWidth: 1000,
+              marginTop: 24,
+              fontSize: 30,
+              color: '#a3a3a3',
+              maxWidth: 900,
             }}
           >
-            {company?.companyName ?? 'Company profile'}
-          </div>
-          {company?.description && (
-            <div
-              style={{
-                display: 'flex',
-                marginTop: 24,
-                fontSize: 30,
-                color: '#a3a3a3',
-                maxWidth: 900,
-              }}
-            >
-              {company.description.slice(0, 120)}
-              {company.description.length > 120 ? '…' : ''}
-            </div>
-          )}
-        </div>
-
-        {company?.industry && (
-          <div
-            style={{
-              display: 'flex',
-              padding: '10px 22px',
-              borderRadius: 999,
-              background: '#fafafa',
-              color: '#0a0a0a',
-              fontSize: 24,
-              fontWeight: 600,
-              alignSelf: 'flex-start',
-            }}
-          >
-            {company.industry.charAt(0) + company.industry.slice(1).toLowerCase()}
+            {company.description.slice(0, 120)}
+            {company.description.length > 120 ? '…' : ''}
           </div>
         )}
       </div>
-    ),
+
+      {company?.industry && (
+        <div
+          style={{
+            display: 'flex',
+            padding: '10px 22px',
+            borderRadius: 999,
+            background: '#fafafa',
+            color: '#0a0a0a',
+            fontSize: 24,
+            fontWeight: 600,
+            alignSelf: 'flex-start',
+          }}
+        >
+          {company.industry.charAt(0) + company.industry.slice(1).toLowerCase()}
+        </div>
+      )}
+    </div>,
     { width: 1200, height: 630 },
   );
 }

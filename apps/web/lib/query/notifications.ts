@@ -2,6 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from './client';
+import { toast } from '@/lib/stores/ui';
 
 export type NotificationItem = {
   id: string;
@@ -51,6 +52,9 @@ export function useMarkNotificationRead() {
       if (ctx?.previous) {
         queryClient.setQueryData(queryKeys.notifications(), ctx.previous);
       }
+      // Optimistic update just silently rolled back — without this a failed
+      // mark-as-read looks identical to a no-op click.
+      toast.error("Couldn't mark as read", 'Try again in a moment.');
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.notifications() });

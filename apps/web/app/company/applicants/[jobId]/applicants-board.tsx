@@ -148,8 +148,10 @@ function ApplicantCard({
       await saveApplicantNote(row.id, notes);
       setBaseline(notes);
       setNoteState('saved');
-    } catch {
+    } catch (err) {
       setNoteState('idle');
+      const message = err instanceof Error ? err.message : 'Note failed to save.';
+      toast.error("Couldn't save note", message);
     }
   }
 
@@ -198,7 +200,18 @@ function ApplicantCard({
 
       <Select
         value={row.status}
-        onChange={(e) => onStatus(row.id, e.target.value as ApplicationStatus)}
+        onChange={(e) => {
+          const next = e.target.value as ApplicationStatus;
+          // Rejecting emails the applicant with no undo — every other
+          // transition is freely reversible, so only this one gates.
+          if (
+            next === 'REJECTED' &&
+            !window.confirm(`Reject ${name}? They'll be emailed, and this can't be undone.`)
+          ) {
+            return;
+          }
+          onStatus(row.id, next);
+        }}
         className="mt-2"
         aria-label={`Change status for ${name}`}
       >

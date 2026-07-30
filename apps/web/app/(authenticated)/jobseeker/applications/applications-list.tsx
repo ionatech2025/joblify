@@ -6,7 +6,7 @@ import { Briefcase } from 'lucide-react';
 import { Badge } from '@/app/components/ui/badge';
 import { EmptyState } from '@/app/components/ui/empty-state';
 import { buttonClasses } from '@/app/components/ui/button';
-import { applicationStatusLabel, applicationStatusTone } from '@/lib/ui/status';
+import { applicationStatusLabel, applicationStatusTone, matchTone } from '@/lib/ui/status';
 
 export function ApplicationsList({
   userId,
@@ -53,7 +53,7 @@ export function ApplicationsList({
               </p>
               {a.matchScore !== null && (
                 <p className="mt-1 mb-0">
-                  <Badge tone={a.matchScore >= 0.7 ? 'success' : 'neutral'}>
+                  <Badge tone={matchTone(a.matchScore)}>
                     Match: {Math.round(a.matchScore * 100)}%
                   </Badge>
                 </p>

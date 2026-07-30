@@ -1,9 +1,8 @@
 import Link from 'next/link';
 import { currentUser } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { CheckCircle2 } from 'lucide-react';
-import { subscribeToCompany, unsubscribeFromCompany } from '@/app/actions/subscriptions';
-import { Button, buttonClasses } from '@/app/components/ui/button';
+import { buttonClasses } from '@/app/components/ui/button';
+import { SubscribeToggle } from './subscribe-toggle';
 
 // Follow/unfollow control on the public company page (JOB_UC_07.0: subscribe
 // as EMPLOYABLE or VIRTUAL_INTERN). The offered type follows the seeker's
@@ -46,26 +45,11 @@ export async function SubscribeButton({ companyUserId }: { companyUserId: string
     select: { id: true },
   });
 
-  const typeLabel = profile.profileType === 'VIRTUAL_INTERN' ? 'virtual intern' : 'employable';
-
-  if (subscription) {
-    return (
-      <form action={unsubscribeFromCompany.bind(null, companyUserId, profile.profileType)}>
-        <Button
-          type="submit"
-          variant="secondary"
-          icon={<CheckCircle2 aria-hidden className="size-4 text-success" />}
-          iconPosition="end"
-        >
-          Subscribed as {typeLabel} — unsubscribe
-        </Button>
-      </form>
-    );
-  }
-
   return (
-    <form action={subscribeToCompany.bind(null, companyUserId, profile.profileType)}>
-      <Button type="submit">Subscribe as {typeLabel}</Button>
-    </form>
+    <SubscribeToggle
+      companyUserId={companyUserId}
+      profileType={profile.profileType}
+      initialSubscribed={!!subscription}
+    />
   );
 }

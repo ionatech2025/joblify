@@ -1,4 +1,4 @@
-import { PillNav } from '../pill-nav';
+import { JobseekerPillNav } from './jobseeker-pill-nav';
 
 const LINKS = [
   { href: '/jobseeker/applications', label: 'Applications' },
@@ -15,7 +15,7 @@ const LINKS = [
 export default function JobseekerLayout({ children }: { children: React.ReactNode }) {
   return (
     <section>
-      <PillNav label="Jobseeker" links={LINKS} />
+      <JobseekerPillNav links={LINKS} />
       {children}
     </section>
   );

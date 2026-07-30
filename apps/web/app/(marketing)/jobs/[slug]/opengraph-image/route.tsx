@@ -36,80 +36,78 @@ export async function GET(_request: Request, { params }: { params: Params }) {
   }
 
   return new ImageResponse(
-    (
+    <div
+      style={{
+        width: '100%',
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'space-between',
+        padding: '80px',
+        background: '#0a0a0a',
+        fontFamily: 'system-ui, sans-serif',
+      }}
+    >
       <div
         style={{
-          width: '100%',
-          height: '100%',
           display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'space-between',
-          padding: '80px',
-          background: '#0a0a0a',
-          fontFamily: 'system-ui, sans-serif',
+          fontSize: 26,
+          fontWeight: 700,
+          letterSpacing: '0.2em',
+          textTransform: 'uppercase',
+          color: '#818cf8',
         }}
       >
+        Joblify
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column' }}>
         <div
           style={{
             display: 'flex',
-            fontSize: 26,
-            fontWeight: 700,
-            letterSpacing: '0.2em',
-            textTransform: 'uppercase',
-            color: '#818cf8',
+            fontSize: job ? 64 : 76,
+            fontWeight: 800,
+            letterSpacing: '-0.02em',
+            lineHeight: 1.1,
+            color: '#fafafa',
+            maxWidth: 1000,
           }}
         >
-          Joblify
+          {job?.title ?? 'Job posting'}
         </div>
-
-        <div style={{ display: 'flex', flexDirection: 'column' }}>
-          <div
-            style={{
-              display: 'flex',
-              fontSize: job ? 64 : 76,
-              fontWeight: 800,
-              letterSpacing: '-0.02em',
-              lineHeight: 1.1,
-              color: '#fafafa',
-              maxWidth: 1000,
-            }}
-          >
-            {job?.title ?? 'Job posting'}
-          </div>
-          <div
-            style={{
-              display: 'flex',
-              marginTop: 20,
-              fontSize: 34,
-              color: '#a3a3a3',
-            }}
-          >
-            {companyName}
-          </div>
+        <div
+          style={{
+            display: 'flex',
+            marginTop: 20,
+            fontSize: 34,
+            color: '#a3a3a3',
+          }}
+        >
+          {companyName}
         </div>
-
-        {meta.length > 0 && (
-          <div style={{ display: 'flex', gap: 16 }}>
-            {meta.map((m) => (
-              <div
-                key={m}
-                style={{
-                  display: 'flex',
-                  padding: '10px 22px',
-                  borderRadius: 999,
-                  background: '#fafafa',
-                  color: '#0a0a0a',
-                  fontSize: 24,
-                  fontWeight: 600,
-                }}
-              >
-                {m}
-              </div>
-            ))}
-          </div>
-        )}
       </div>
-    ),
+
+      {meta.length > 0 && (
+        <div style={{ display: 'flex', gap: 16 }}>
+          {meta.map((m) => (
+            <div
+              key={m}
+              style={{
+                display: 'flex',
+                padding: '10px 22px',
+                borderRadius: 999,
+                background: '#fafafa',
+                color: '#0a0a0a',
+                fontSize: 24,
+                fontWeight: 600,
+              }}
+            >
+              {m}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>,
     { width: 1200, height: 630 },
   );
 }
