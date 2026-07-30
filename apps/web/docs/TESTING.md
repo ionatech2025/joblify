@@ -8,7 +8,7 @@ Four layers, with a clear contract for what belongs where.
 | Integration / e2e | Playwright                          | `tests/e2e/*.spec.ts`    | `bun run test:e2e`         |
 | Accessibility     | Playwright + `@axe-core/playwright` | `tests/e2e/a11y.spec.ts` | part of `bun run test:e2e` |
 | Load              | k6                                  | `tests/load/*.js`        | `k6 run <file>`            |
-| Lighthouse        | LHCI                                | `lighthouserc.json`      | runs on PR preview deploys |
+| Lighthouse        | LHCI                                | `lighthouserc.js`        | runs on PR preview deploys |
 
 ## Unit (Vitest)
 
@@ -192,7 +192,7 @@ Run before every cutover and quarterly thereafter. Increase RPS as user base gro
 
 ## Lighthouse (LHCI)
 
-`lighthouserc.json` defines the budgets. **Accessibility is the only one asserted at
+`lighthouserc.js` defines the budgets. **Accessibility is the only one asserted at
 `error`** — the rest are `warn` until their gaps close (see
 [REMAINING_STEPS.md](./REMAINING_STEPS.md)):
 

@@ -212,7 +212,7 @@ Next 16 + Turbopack handles route-level splitting automatically. Push for compon
 
 ## Performance budgets
 
-Enforced via `lighthouserc.json` in CI:
+Enforced via `lighthouserc.js` in CI:
 
 - Performance ≥ 85
 - A11y ≥ 95

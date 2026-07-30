@@ -125,7 +125,7 @@ For V1, logs are best-correlated by entity ID (userId, applicationId, jobId) —
 
 Read at <https://vercel.com/[team]/joblify-web/speed-insights>.
 
-Budgets enforced in CI via `lighthouserc.json`:
+Budgets enforced in CI via `lighthouserc.js`:
 
 - LCP ≤ 2500ms
 - INP ≤ 200ms

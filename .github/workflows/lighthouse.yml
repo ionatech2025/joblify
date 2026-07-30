@@ -20,12 +20,17 @@ jobs:
       - uses: actions/checkout@v4
       - name: Run Lighthouse CI
         uses: treosh/lighthouse-ci-action@v12
+        env:
+          # lighthouserc.js reads this to set collect.settings.extraHeaders —
+          # without it, Lighthouse scores Vercel's Deployment Protection (SSO)
+          # redirect page instead of the app: a deceptive pass, not a real one.
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
         with:
           urls: |
             ${{ github.event.deployment_status.target_url }}
             ${{ github.event.deployment_status.target_url }}/jobs
             ${{ github.event.deployment_status.target_url }}/sign-up
-          configPath: ./apps/web/lighthouserc.json
+          configPath: ./apps/web/lighthouserc.js
           temporaryPublicStorage: true
 
   # Blocking axe gate: runs the Playwright axe spec against the preview URL
