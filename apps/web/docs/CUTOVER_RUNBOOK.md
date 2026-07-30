@@ -55,10 +55,12 @@ Each should return `ok: true` with non-zero counts.
 ## On-call
 
 For the first 7 days post-cutover, define on-call rotation in PagerDuty:
+
 - P0: Sentry new-issue in production, or error rate > 2% over 10min.
 - P1: function p95 > 1500ms over 10min, or cron failure.
 
 The cutover succeeds when all four conditions hold for 7 consecutive days:
+
 - Sentry error rate < 0.5%.
 - p95 API latency under targets.
 - All Playwright critical paths green.

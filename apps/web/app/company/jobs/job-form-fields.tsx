@@ -22,11 +22,19 @@ export function JobFormFields({
       </Field>
 
       <Field label="Description" error={errors.description?.message}>
-        <Textarea {...register('description')} rows={10} placeholder="The role, the team, what success looks like." />
+        <Textarea
+          {...register('description')}
+          rows={10}
+          placeholder="The role, the team, what success looks like."
+        />
       </Field>
 
       <Field label="Requirements" error={errors.requirements?.message}>
-        <Textarea {...register('requirements')} rows={6} placeholder="Must-haves and nice-to-haves." />
+        <Textarea
+          {...register('requirements')}
+          rows={6}
+          placeholder="Must-haves and nice-to-haves."
+        />
       </Field>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -89,12 +97,12 @@ export function JobFormFields({
         <Input type="date" {...register('applicationDeadline')} />
       </Field>
 
-      <label className="flex items-center gap-2 text-sm text-neutral-700">
+      <label className="flex items-center gap-2 text-sm text-fg-muted">
         <input type="checkbox" {...register('publish')} />
         Published (uncheck to move to draft)
       </label>
 
-      <label className="flex items-center gap-2 text-sm text-neutral-700">
+      <label className="flex items-center gap-2 text-sm text-fg-muted">
         <input type="checkbox" {...register('createChatArea')} />
         Create a job-specific chat area (shortlisted applicants join it automatically)
       </label>

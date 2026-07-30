@@ -6,10 +6,13 @@ import type { JobType } from '@prisma/client';
 import { db } from '@/lib/db';
 import { tags } from '@/lib/cache';
 import { jobPostingJsonLd } from '@/lib/seo/job-jsonld';
+import { META_CHIP } from '@/lib/ui/status';
 import { Badge } from '@/app/components/ui/badge';
 import { Card } from '@/app/components/ui/card';
 import { AmbientBand } from '@/app/components/ui/ambient';
+import { IslandBoundary } from '@/app/components/island-boundary';
 import { ApplyPanel } from './apply-panel';
+import { JobDetailSkeleton } from './job-detail-skeleton';
 import { MatchBadge } from './match-badge';
 import { SimilarJobs } from './similar-jobs';
 import { ViewTracker } from './view-tracker';
@@ -25,10 +28,14 @@ const JOB_TYPE_LABELS: Record<JobType, string> = {
 };
 
 // Deterministic formatting for the deadline (no locale drift between servers).
-const deadlineFormat = new Intl.DateTimeFormat('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+const deadlineFormat = new Intl.DateTimeFormat('en-US', {
+  year: 'numeric',
+  month: 'long',
+  day: 'numeric',
+});
 
 // Glassy chip that reads well over the ambient band wash.
-const metaChip = 'bg-white/70 backdrop-blur-sm';
+const metaChip = META_CHIP;
 
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const { slug } = await params;
@@ -61,24 +68,6 @@ export default async function JobDetailPage({ params }: { params: Params }) {
   );
 }
 
-function JobDetailSkeleton() {
-  return (
-    <main>
-      <AmbientBand>
-        <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
-          <div className="h-3 w-28 animate-pulse rounded-full bg-indigo-200/70" />
-          <div className="mt-4 h-10 w-2/3 animate-pulse rounded-2xl bg-neutral-200" />
-          <div className="mt-5 flex flex-wrap gap-2">
-            <div className="h-6 w-24 animate-pulse rounded-full bg-neutral-200" />
-            <div className="h-6 w-20 animate-pulse rounded-full bg-neutral-200" />
-            <div className="h-6 w-36 animate-pulse rounded-full bg-neutral-300" />
-          </div>
-        </div>
-      </AmbientBand>
-    </main>
-  );
-}
-
 async function JobDetailBody({ slug }: { slug: string }) {
   await connection();
   const job = await getJobBySlug(slug);
@@ -91,12 +80,16 @@ async function JobDetailBody({ slug }: { slug: string }) {
       <ViewTracker jobId={job.id} />
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: jobPostingJsonLd({ job, company: job.company, siteUrl }) }}
+        dangerouslySetInnerHTML={{
+          __html: jobPostingJsonLd({ job, company: job.company, siteUrl }),
+        }}
       />
 
       <AmbientBand>
         <header className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
-          <p className="eyebrow m-0 mb-3">{job.company.companyProfile?.companyName ?? 'Open role'}</p>
+          <p className="eyebrow m-0 mb-3">
+            {job.company.companyProfile?.companyName ?? 'Open role'}
+          </p>
           <div className="flex flex-wrap items-center gap-4">
             {job.company.companyProfile?.logoUrl && (
               // eslint-disable-next-line @next/next/no-img-element -- remote company logo, fixed size
@@ -105,13 +98,17 @@ async function JobDetailBody({ slug }: { slug: string }) {
                 alt=""
                 width={48}
                 height={48}
-                className="rounded-xl object-cover"
+                className="rounded-control object-cover"
               />
             )}
-            <h1 className="display m-0 text-3xl text-neutral-900 sm:text-4xl">{job.title}</h1>
-            <Suspense fallback={null}>
-              <MatchBadge jobId={job.id} />
-            </Suspense>
+            <h1 className="display m-0 text-3xl text-fg sm:text-4xl">{job.title}</h1>
+            {/* Decorative enhancement over pgvector — must never be able to
+                take down the JD page, which is the SEO surface. */}
+            <IslandBoundary fallback={null}>
+              <Suspense fallback={null}>
+                <MatchBadge jobId={job.id} />
+              </Suspense>
+            </IslandBoundary>
           </div>
           <div className="mt-4 flex flex-wrap items-center gap-2">
             {job.location && (
@@ -135,7 +132,7 @@ async function JobDetailBody({ slug }: { slug: string }) {
             )}
           </div>
           {job.applicationDeadline && (
-            <p className="mt-4 mb-0 text-sm font-semibold text-neutral-900">
+            <p className="mt-4 mb-0 text-sm font-semibold text-fg">
               Apply by {deadlineFormat.format(job.applicationDeadline)}
             </p>
           )}
@@ -152,37 +149,43 @@ async function JobDetailBody({ slug }: { slug: string }) {
       </AmbientBand>
 
       <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
-      <article className="leading-relaxed whitespace-pre-wrap text-neutral-800">{job.description}</article>
+        <article className="leading-relaxed whitespace-pre-wrap text-fg">{job.description}</article>
 
-      {job.requirements && (
-        <section className="mt-8">
-          <h2 className="text-xl font-semibold text-neutral-900">Requirements</h2>
-          <p className="leading-relaxed whitespace-pre-wrap text-neutral-800">{job.requirements}</p>
+        {job.requirements && (
+          <section className="mt-8">
+            <h2 className="text-xl font-semibold text-fg">Requirements</h2>
+            <p className="leading-relaxed whitespace-pre-wrap text-fg">{job.requirements}</p>
+          </section>
+        )}
+
+        {job.benefits.length > 0 && (
+          <section className="mt-8">
+            <h2 className="text-xl font-semibold text-fg">Benefits</h2>
+            <ul className="list-disc pl-5 text-fg">
+              {job.benefits.map((b) => (
+                <li key={b}>{b}</li>
+              ))}
+            </ul>
+          </section>
+        )}
+
+        <section className="mt-12">
+          <Card tone="glass" className="p-6 sm:p-8">
+            <Suspense fallback={<p className="m-0 text-fg-muted">Loading apply options…</p>}>
+              <ApplyPanel jobId={job.id} slug={job.slug} />
+            </Suspense>
+          </Card>
         </section>
-      )}
 
-      {job.benefits.length > 0 && (
-        <section className="mt-8">
-          <h2 className="text-xl font-semibold text-neutral-900">Benefits</h2>
-          <ul className="list-disc pl-5 text-neutral-800">
-            {job.benefits.map((b) => (
-              <li key={b}>{b}</li>
-            ))}
-          </ul>
-        </section>
-      )}
-
-      <section className="mt-12">
-        <Card tone="glass" className="p-6 sm:p-8">
-          <Suspense fallback={<p className="m-0 text-neutral-700">Loading apply options…</p>}>
-            <ApplyPanel jobId={job.id} slug={job.slug} />
+        <IslandBoundary fallback={null}>
+          <Suspense fallback={null}>
+            <SimilarJobs
+              jobId={job.id}
+              industry={job.industry}
+              skillIds={job.skills.map((js) => js.skillId)}
+            />
           </Suspense>
-        </Card>
-      </section>
-
-      <Suspense fallback={null}>
-        <SimilarJobs jobId={job.id} industry={job.industry} skillIds={job.skills.map((js) => js.skillId)} />
-      </Suspense>
+        </IslandBoundary>
       </div>
     </main>
   );

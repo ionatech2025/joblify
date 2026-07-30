@@ -62,7 +62,11 @@ defaultOptions: {
 
 Stores in `lib/stores/`. Decision rule: if the data lives on the server, it does NOT belong in Zustand.
 
-- `ui.ts` — theme (persisted), mobile menu, cookie banner state.
+- `ui.ts` — theme (persisted; read pre-paint by `components/theme-script.tsx`), mobile
+  menu, cookie banner, command-palette open state, and the toast queue. The `toast.*`
+  helper at the bottom of the file is for call sites that aren't components (Server Action
+  result handlers, catch blocks); inside a component use
+  `useUiStore((s) => s.pushToast)`.
 - `search.ts` — search filter draft. Committed search goes via TanStack Query keyed off the draft.
 - `apply-draft.ts` — multi-step apply form draft, keyed by jobId, persisted to localStorage, cleared on successful submit.
 
@@ -137,11 +141,21 @@ function onSubmit(formData: FormData) {
 
 ## Styling
 
-V1 uses inline styles to keep the bundle minimal and avoid a Tailwind dependency. The legacy frontend has Tailwind + Radix; if you want to bring those over, do it in a single PR with a `<ThemeProvider>` + `tailwind.config.ts` + `globals.css` update. Until then, inline styles + `style={...}` objects are fine — these pages are mostly skeletons that will be redesigned with a designer.
+**Tailwind CSS v4**, configured CSS-first via `@tailwindcss/postcss`. There is no
+`tailwind.config.*` — the theme lives in the `@theme` block in `app/globals.css`.
 
-When inline styles get unwieldy:
-- Extract repeated style objects to module-level `const` (see `inputStyle` / `buttonStyle` in `jobs-search.tsx`).
-- Bring in Tailwind 4 via `@tailwindcss/postcss` in a single follow-up PR.
+The full token list, primitive inventory, dark-mode mechanics and the rules for extending
+any of it are in **[DESIGN.md](./DESIGN.md)**. The two rules you need before writing a
+component:
+
+1. **Never write a literal palette class** (`neutral-700`, `white`, `indigo-600`). Use the
+   semantic token — `bg-surface`, `text-fg-muted`, `border-border`, `bg-ink`,
+   `text-success` — and dark mode works with no extra annotation.
+2. **Compose classNames with `cn()`** (`lib/cn.ts`, `clsx` + `tailwind-merge`) so a
+   caller's `className` overrides a primitive's default instead of appending to it.
+
+Inline `style={{}}` is reserved for values Tailwind cannot express — currently only the
+ambient canvas gradients, which reference CSS custom properties directly.
 
 ## Accessibility
 
@@ -161,14 +175,14 @@ Manual SR test on the apply funnel before each release: NVDA on Windows + VoiceO
 
 ## SEO
 
-| Surface | What's done |
-|---|---|
-| `<title>` per page | `export const metadata = { title: ... }` on every page |
-| OG / Twitter | `generateMetadata` on `/jobs/[slug]` and `/companies/[slug]` |
-| JSON-LD JobPosting | `lib/seo/job-jsonld.ts` injected into `/jobs/[slug]` |
-| Sitemap | `app/sitemap.ts` — pulls live jobs + verified companies |
-| Robots | `app/robots.ts` — disallow `/api`, `/dashboard`, `/jobseeker`, `/company`, `/account`, `/admin` |
-| Canonical URLs | All slugs unique (`@unique` on `job_posts.slug`, `company_profiles.slug`) |
+| Surface            | What's done                                                                                     |
+| ------------------ | ----------------------------------------------------------------------------------------------- |
+| `<title>` per page | `export const metadata = { title: ... }` on every page                                          |
+| OG / Twitter       | `generateMetadata` on `/jobs/[slug]` and `/companies/[slug]`                                    |
+| JSON-LD JobPosting | `lib/seo/job-jsonld.ts` injected into `/jobs/[slug]`                                            |
+| Sitemap            | `app/sitemap.ts` — pulls live jobs + verified companies                                         |
+| Robots             | `app/robots.ts` — disallow `/api`, `/dashboard`, `/jobseeker`, `/company`, `/account`, `/admin` |
+| Canonical URLs     | All slugs unique (`@unique` on `job_posts.slug`, `company_profiles.slug`)                       |
 
 For Google Jobs indexing, the JSON-LD must contain: `title`, `description`, `datePosted`, `employmentType`, `hiringOrganization`, `jobLocation` (or `jobLocationType: TELECOMMUTE` for remote), and `validThrough`. The helper builds all of these.
 
@@ -185,7 +199,12 @@ Reserve `next.config.ts` `i18n` config + `<html lang>` for that work.
 
 ## Image handling
 
-V1 uses native `<img>` with `loading="lazy"` and explicit `width`/`height`. When the design system arrives, swap to `next/image` and configure `images.remotePatterns` in `next.config.ts` (already pre-configured for Vercel Blob + Clerk avatars + Pixabay).
+Still native `<img>` with `loading="lazy"` and explicit `width`/`height`, each with an
+`eslint-disable` for `@next/next/no-img-element`. `images.remotePatterns` in
+`next.config.ts` is already configured for Vercel Blob + Clerk avatars + Pixabay, so the
+swap to `next/image` is unblocked — it is tracked in
+[REMAINING_STEPS.md](./REMAINING_STEPS.md) rather than gated on the design system, which
+has landed (see [DESIGN.md](./DESIGN.md)).
 
 ## Code splitting
 

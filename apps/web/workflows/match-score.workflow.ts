@@ -61,7 +61,10 @@ export async function embedJobPost(
   return embedding;
 }
 
-export async function runMatchScore({ jobPostId, jobSeekerId }: MatchScoreInput): Promise<number | null> {
+export async function runMatchScore({
+  jobPostId,
+  jobSeekerId,
+}: MatchScoreInput): Promise<number | null> {
   // Resume embedding lookup
   const resumeRow = await db.$queryRaw<EmbeddingRow[]>`
     SELECT embedding::float8[] AS embedding

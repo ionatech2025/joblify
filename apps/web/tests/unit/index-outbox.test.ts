@@ -20,7 +20,9 @@ vi.mock('@/lib/search/algolia', () => ({
   deleteJob: m.deleteJob,
   toJobRecord: (job: { id: string }) => ({ objectID: job.id }),
 }));
-vi.mock('@/lib/observability/logger', () => ({ logger: { error: vi.fn(), info: vi.fn(), warn: vi.fn() } }));
+vi.mock('@/lib/observability/logger', () => ({
+  logger: { error: vi.fn(), info: vi.fn(), warn: vi.fn() },
+}));
 
 import { drainIndexOutbox } from '@/lib/search/index-job';
 

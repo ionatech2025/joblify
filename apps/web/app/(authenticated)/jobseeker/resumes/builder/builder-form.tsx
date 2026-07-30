@@ -73,9 +73,9 @@ export function ResumeBuilderForm({ initialEntries }: { initialEntries: FormValu
 
   return (
     <div className="flex flex-col gap-6">
-      <p className="m-0 text-sm text-neutral-600">
+      <p className="m-0 text-sm text-fg-muted">
         Your headline, bio, skills, education, and certifications come from{' '}
-        <Link href="/jobseeker/profile" className="text-indigo-600 hover:underline">
+        <Link href="/jobseeker/profile" className="text-brand hover:underline">
           your profile
         </Link>
         . Add work history below, then generate a PDF.
@@ -83,7 +83,10 @@ export function ResumeBuilderForm({ initialEntries }: { initialEntries: FormValu
 
       <form onSubmit={handleSubmit(onSave)} className="flex flex-col gap-4">
         {fields.map((field, index) => (
-          <div key={field.id} className="flex flex-col gap-3 rounded-2xl border border-neutral-200/80 bg-white p-4 shadow-soft">
+          <div
+            key={field.id}
+            className="flex flex-col gap-3 rounded-card border border-border bg-surface p-4 shadow-soft"
+          >
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Field label="Company" error={errors.entries?.[index]?.company?.message}>
                 <Input {...register(`entries.${index}.company`)} placeholder="Acme Inc." />
@@ -101,20 +104,36 @@ export function ResumeBuilderForm({ initialEntries }: { initialEntries: FormValu
               </Field>
             </div>
             <Field label="Description" error={errors.entries?.[index]?.description?.message}>
-              <Textarea {...register(`entries.${index}.description`)} rows={3} placeholder="What did you do?" />
+              <Textarea
+                {...register(`entries.${index}.description`)}
+                rows={3}
+                placeholder="What did you do?"
+              />
             </Field>
-            <Button type="button" variant="danger" size="sm" className="self-start" onClick={() => remove(index)}>
+            <Button
+              type="button"
+              variant="danger"
+              size="sm"
+              className="self-start"
+              onClick={() => remove(index)}
+            >
               Remove
             </Button>
           </div>
         ))}
 
-        <Button type="button" variant="secondary" size="sm" className="self-start" onClick={() => append(EMPTY_ENTRY)}>
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          className="self-start"
+          onClick={() => append(EMPTY_ENTRY)}
+        >
           + Add work experience
         </Button>
 
-        {error && <p className="m-0 text-red-700">{error}</p>}
-        {saved && <p className="m-0 text-green-700">Saved.</p>}
+        {error && <p className="m-0 text-danger">{error}</p>}
+        {saved && <p className="m-0 text-success">Saved.</p>}
 
         <div className="flex flex-wrap items-center gap-3">
           <Button type="submit" disabled={isSaving || !isDirty}>
@@ -132,7 +151,7 @@ export function ResumeBuilderForm({ initialEntries }: { initialEntries: FormValu
         </div>
 
         {resumeUrl && (
-          <p className="m-0 text-green-700">
+          <p className="m-0 text-success">
             Resume ready —{' '}
             <a href={resumeUrl} target="_blank" rel="noopener noreferrer" className="underline">
               open it

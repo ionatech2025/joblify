@@ -39,14 +39,14 @@ export async function SimilarJobs({
   return (
     <section className="mt-12">
       <p className="eyebrow m-0">More like this</p>
-      <h2 className="display m-0 mt-2 mb-4 text-2xl text-neutral-900">Similar jobs</h2>
+      <h2 className="display m-0 mt-2 mb-4 text-2xl text-fg">Similar jobs</h2>
       <ul className="grid list-none grid-cols-1 gap-3 p-0 sm:grid-cols-2">
         {jobs.map((j) => (
           <li key={j.id}>
             <Link href={`/jobs/${j.slug}`} className="block h-full no-underline">
               <Card className="h-full transition-shadow hover:shadow-md">
-                <h3 className="m-0 text-base font-semibold text-neutral-900">{j.title}</h3>
-                <p className="mt-1 mb-0 text-sm text-neutral-600">
+                <h3 className="m-0 text-base font-semibold text-fg">{j.title}</h3>
+                <p className="mt-1 mb-0 text-sm text-fg-muted">
                   {j.company.companyProfile?.companyName ?? 'Company'}
                   {j.location ? ` · ${j.location}` : ''}
                 </p>

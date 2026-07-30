@@ -18,7 +18,9 @@ export async function POST(req: Request) {
 
   const system =
     BIO_COACH_SYSTEM +
-    (currentBio ? `\n\nThe user's current bio: """${currentBio}"""` : '\n\nThe user has no bio yet.');
+    (currentBio
+      ? `\n\nThe user's current bio: """${currentBio}"""`
+      : '\n\nThe user has no bio yet.');
 
   const result = streamText({
     model: gateway(MODELS.sonnet),

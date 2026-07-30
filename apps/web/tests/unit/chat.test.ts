@@ -48,7 +48,12 @@ const m = vi.hoisted(() => {
 
 vi.mock('@/lib/auth', async (importOriginal) => {
   const actual = await importOriginal<typeof AuthModule>();
-  return { ...actual, requireRole: m.requireRole, requireUser: m.requireUser, AuthError: m.AuthError };
+  return {
+    ...actual,
+    requireRole: m.requireRole,
+    requireUser: m.requireUser,
+    AuthError: m.AuthError,
+  };
 });
 vi.mock('@/lib/ratelimit', () => ({ chatMessageLimit: m.chatMessageLimit }));
 vi.mock('@/lib/observability/logger', () => ({ logger: { info: vi.fn(), warn: vi.fn() } }));

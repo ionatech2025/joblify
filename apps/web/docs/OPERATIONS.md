@@ -4,29 +4,30 @@ Where things live and how to operate them in production. Use this when on-call.
 
 ## Where to look
 
-| Concern | Surface |
-|---|---|
-| Errors (web + functions) | Sentry → joblify-web project |
-| Function logs + traces | Vercel Observability → joblify-web |
-| Web vitals + RUM | Vercel Speed Insights |
-| Page traffic | Vercel Analytics |
-| DB metrics | Neon console → joblify project |
-| Cache + rate limits | Upstash console → joblify-redis |
-| Search index | Algolia dashboard → jobs / companies indexes |
-| Email deliveries | Resend dashboard |
-| Auth, MFA, OAuth | Clerk dashboard |
-| Bot protection | Vercel BotID stats |
-| AI spend + provider routing | Vercel AI Gateway |
+| Concern                     | Surface                                      |
+| --------------------------- | -------------------------------------------- |
+| Errors (web + functions)    | Sentry → joblify-web project                 |
+| Function logs + traces      | Vercel Observability → joblify-web           |
+| Web vitals + RUM            | Vercel Speed Insights                        |
+| Page traffic                | Vercel Analytics                             |
+| DB metrics                  | Neon console → joblify project               |
+| Cache + rate limits         | Upstash console → joblify-redis              |
+| Search index                | Algolia dashboard → jobs / companies indexes |
+| Email deliveries            | Resend dashboard                             |
+| Auth, MFA, OAuth            | Clerk dashboard                              |
+| Bot protection              | Vercel BotID stats                           |
+| AI spend + provider routing | Vercel AI Gateway                            |
 
 ## Crons (configured in `vercel.ts`)
 
-| Path | Schedule (UTC) | What it does |
-|---|---|---|
-| `/api/v1/cron/digest-email` | `0 8 * * *` | Daily new-jobs digest via Resend |
-| `/api/v1/cron/retention` | `0 2 * * *` | Hard-delete expired soft-deletes, purge old views/invites/notifications |
-| `/api/v1/cron/algolia-reconcile` | `*/15 * * * *` | Re-index recently-updated jobs |
+| Path                             | Schedule (UTC) | What it does                                                            |
+| -------------------------------- | -------------- | ----------------------------------------------------------------------- |
+| `/api/v1/cron/digest-email`      | `0 8 * * *`    | Daily new-jobs digest via Resend                                        |
+| `/api/v1/cron/retention`         | `0 2 * * *`    | Hard-delete expired soft-deletes, purge old views/invites/notifications |
+| `/api/v1/cron/algolia-reconcile` | `*/15 * * * *` | Re-index recently-updated jobs                                          |
 
 Manual trigger:
+
 ```bash
 curl -H "Authorization: Bearer ${CRON_SECRET}" "${URL}/api/v1/cron/<name>"
 ```

@@ -19,7 +19,10 @@ vi.mock('@/lib/audit', () => ({
     fn({
       jobSeekerProfile: { upsert: m.profileUpsert },
       skill: { findMany: m.skillFindMany },
-      jobSeekerSkill: { deleteMany: m.jobSeekerSkillDeleteMany, createMany: m.jobSeekerSkillCreateMany },
+      jobSeekerSkill: {
+        deleteMany: m.jobSeekerSkillDeleteMany,
+        createMany: m.jobSeekerSkillCreateMany,
+      },
     }),
 }));
 vi.mock('next/cache', () => ({ updateTag: m.updateTag }));
@@ -142,7 +145,9 @@ describe('saveProfile', () => {
     expect(m.jobSeekerSkillDeleteMany).toHaveBeenCalledWith({
       where: { jobSeekerProfileId: 'profile1' },
     });
-    expect(m.skillFindMany).toHaveBeenCalledWith({ where: { slug: { in: ['react', 'typescript'] } } });
+    expect(m.skillFindMany).toHaveBeenCalledWith({
+      where: { slug: { in: ['react', 'typescript'] } },
+    });
     const created = m.jobSeekerSkillCreateMany.mock.calls[0]![0];
     expect(created.data).toEqual([
       { jobSeekerProfileId: 'profile1', skillId: 'skill-react' },

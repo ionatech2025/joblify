@@ -11,7 +11,6 @@ import {
 } from '@/lib/storage/blob';
 import { logger } from '@/lib/observability/logger';
 
-
 // Signs scoped upload tokens for Vercel Blob client uploads. Path prefix is
 // always derived server-side from the authenticated user — the client cannot
 // upload outside their own namespace.

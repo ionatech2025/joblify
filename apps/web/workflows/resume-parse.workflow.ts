@@ -48,7 +48,10 @@ export async function runResumeParse({ resumeId }: ResumeParseInput): Promise<vo
       return;
     }
     const stored = resume.parsedJson as { summary?: string | null };
-    await writeEmbedding(resumeId, stored.summary ?? JSON.stringify(resume.parsedJson).slice(0, 8000));
+    await writeEmbedding(
+      resumeId,
+      stored.summary ?? JSON.stringify(resume.parsedJson).slice(0, 8000),
+    );
     logger.info({ resumeId }, 'resume embedding repaired from stored parse');
     return;
   }
@@ -61,7 +64,10 @@ export async function runResumeParse({ resumeId }: ResumeParseInput): Promise<vo
   // 2. Magic-byte mime check
   const detected = await fileTypeFromBuffer(bytes);
   if (!detected || !RESUME_MIME.includes(detected.mime as (typeof RESUME_MIME)[number])) {
-    logger.warn({ resumeId, declared: resume.fileMime, detected: detected?.mime }, 'mime mismatch — rejecting');
+    logger.warn(
+      { resumeId, declared: resume.fileMime, detected: detected?.mime },
+      'mime mismatch — rejecting',
+    );
     await db.resume.update({ where: { id: resumeId }, data: { deletedAt: new Date() } });
     throw new Error('Mime mismatch');
   }
@@ -92,14 +98,19 @@ export async function runResumeParse({ resumeId }: ResumeParseInput): Promise<vo
   // 7. Link skills from the parsed list against our canonical Skill catalog.
   if (parsed.skills.length > 0) {
     const slugs = parsed.skills.map((s) =>
-      s.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''),
+      s
+        .toLowerCase()
+        .replace(/\s+/g, '-')
+        .replace(/[^a-z0-9-]/g, ''),
     );
     const matched = await db.skill.findMany({ where: { slug: { in: slugs } } });
     const profile = await db.jobSeekerProfile.findUnique({ where: { userId: resume.userId } });
     if (profile) {
       for (const skill of matched) {
         await db.jobSeekerSkill.upsert({
-          where: { jobSeekerProfileId_skillId: { jobSeekerProfileId: profile.id, skillId: skill.id } },
+          where: {
+            jobSeekerProfileId_skillId: { jobSeekerProfileId: profile.id, skillId: skill.id },
+          },
           create: { jobSeekerProfileId: profile.id, skillId: skill.id, proficiency: 3, years: 0 },
           update: {},
         });

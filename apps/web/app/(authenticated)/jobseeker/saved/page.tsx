@@ -43,18 +43,20 @@ export default async function SavedJobsPage() {
     <main>
       <PageHeader title="Saved" width="max-w-3xl" />
       <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
-      {savedSearches.length > 0 && (
-        <section className="mt-0">
-          <h2 className="text-lg font-semibold text-neutral-900">Saved searches</h2>
-          <p className="mt-1 text-sm text-neutral-500">Re-run a search, or get new matches in your daily digest.</p>
-          <SavedSearchList initial={savedSearches} />
-        </section>
-      )}
+        {savedSearches.length > 0 && (
+          <section className="mt-0">
+            <h2 className="text-lg font-semibold text-fg">Saved searches</h2>
+            <p className="mt-1 text-sm text-fg-subtle">
+              Re-run a search, or get new matches in your daily digest.
+            </p>
+            <SavedSearchList initial={savedSearches} />
+          </section>
+        )}
 
-      <section className="mt-8">
-        <h2 className="text-lg font-semibold text-neutral-900">Saved jobs</h2>
-        <SavedList initial={jobs} />
-      </section>
+        <section className="mt-8">
+          <h2 className="text-lg font-semibold text-fg">Saved jobs</h2>
+          <SavedList initial={jobs} />
+        </section>
       </div>
     </main>
   );

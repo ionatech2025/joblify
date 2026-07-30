@@ -18,7 +18,10 @@ export async function shareJobFromForm(jobSeekerUserId: string, formData: FormDa
 // Flowchart: "share job post link to job seekers of interest". Sends the
 // seeker an in-app notification that links to the public job page.
 // JOB_UC_14.0: sharing a job post is a premium outreach action.
-export async function shareJobWithJobseeker(jobPostId: string, jobSeekerUserId: string): Promise<void> {
+export async function shareJobWithJobseeker(
+  jobPostId: string,
+  jobSeekerUserId: string,
+): Promise<void> {
   const user = await requireRole('COMPANY');
   assertPlan(user, 'PRO');
 
@@ -45,7 +48,12 @@ export async function shareJobWithJobseeker(jobPostId: string, jobSeekerUserId: 
 
   await withAudit(
     { actorId: user.id, ip, ua },
-    { action: 'JOB_SHARED', entity: 'job_post', entityId: job.id, after: () => ({ jobSeekerId: seeker.id }) },
+    {
+      action: 'JOB_SHARED',
+      entity: 'job_post',
+      entityId: job.id,
+      after: () => ({ jobSeekerId: seeker.id }),
+    },
     (tx) =>
       tx.notification.create({
         data: {

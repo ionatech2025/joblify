@@ -37,16 +37,16 @@ export async function RecentlyViewed({ userId }: { userId: string }) {
 
   return (
     <section className="mb-8">
-      <h2 className="mb-3 text-base font-semibold text-neutral-900">Recently viewed</h2>
+      <h2 className="mb-3 text-base font-semibold text-fg">Recently viewed</h2>
       <div className="flex gap-3 overflow-x-auto pb-2">
         {jobs.map((j) => (
           <Link
             key={j.slug}
             href={`/jobs/${j.slug}`}
-            className="block w-56 shrink-0 rounded-2xl border border-neutral-200/80 bg-white p-3 no-underline shadow-soft transition-shadow hover:shadow-md"
+            className="block w-56 shrink-0 rounded-card border border-border bg-surface p-3 no-underline shadow-soft transition-shadow hover:shadow-md"
           >
-            <strong className="block text-sm text-neutral-900">{j.title}</strong>
-            <span className="text-sm text-neutral-600">{j.company}</span>
+            <strong className="block text-sm text-fg">{j.title}</strong>
+            <span className="text-sm text-fg-muted">{j.company}</span>
           </Link>
         ))}
       </div>

@@ -20,11 +20,11 @@ Never import `@ai-sdk/anthropic`, `@ai-sdk/openai`, or any other provider SDK di
 
 ## Models we use
 
-| Alias | Model string | Where |
-|---|---|---|
-| `haiku` | `anthropic/claude-haiku-4-5` | Cheap structured extraction: resume parse, JD skills |
-| `sonnet` | `anthropic/claude-sonnet-4-6` | Assistant features: bio coach |
-| `embeddingLarge` | `openai/text-embedding-3-large` | 1536-dim embeddings for match score |
+| Alias            | Model string                    | Where                                                |
+| ---------------- | ------------------------------- | ---------------------------------------------------- |
+| `haiku`          | `anthropic/claude-haiku-4-5`    | Cheap structured extraction: resume parse, JD skills |
+| `sonnet`         | `anthropic/claude-sonnet-4-6`   | Assistant features: bio coach                        |
+| `embeddingLarge` | `openai/text-embedding-3-large` | 1536-dim embeddings for match score                  |
 
 Aliases live in `lib/ai/gateway.ts` `MODELS` so we can swap a model in one place if a cheaper / better option ships.
 
@@ -116,6 +116,7 @@ The schema is the contract. Prompt updates that change the output shape require 
 - **Workflow idempotency**: workflows run off the response path via `after()` and are best-effort (failures are logged; the algolia-reconcile cron is the search backstop). They're written idempotent — re-running skips already-parsed/scored rows — so the future Workflow DevKit retry policy won't double-bill.
 
 Estimated costs at 10k MAU, ~500 applies/day:
+
 - Resume parse: ~$0.50/day
 - JD skills: ~$0.25/day (per job post)
 - Match score: ~$0.05/day
@@ -125,12 +126,12 @@ Total AI budget V1: ~$100-300/month. Re-evaluate at 100k MAU.
 
 ## Workflows vs inline
 
-| Use a workflow if… | Use inline if… |
-|---|---|
-| The operation takes > 5 s | Synchronous result needed |
-| Multiple steps with possible retries | Single API call |
-| External file processing involved | Pure prompt → response |
-| The user shouldn't wait | The user is actively waiting |
+| Use a workflow if…                   | Use inline if…               |
+| ------------------------------------ | ---------------------------- |
+| The operation takes > 5 s            | Synchronous result needed    |
+| Multiple steps with possible retries | Single API call              |
+| External file processing involved    | Pure prompt → response       |
+| The user shouldn't wait              | The user is actively waiting |
 
 Resume parse → workflow (file I/O, multiple steps, retries). JD skill extraction → inline (fast, single call, save runs end-to-end fast for the company). Match score → workflow when triggered from apply (user is redirecting anyway); inline on hot read when both embeddings exist.
 

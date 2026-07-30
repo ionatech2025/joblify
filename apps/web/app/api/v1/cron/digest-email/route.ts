@@ -10,5 +10,10 @@ export async function GET(req: Request) {
   // The workflow stops itself at ~80% of the budget so this response always
   // goes out; the per-user watermark resumes the remainder next run.
   const result = await runDigest({ deadlineMs: maxDuration * 1000 * 0.8 });
-  return NextResponse.json({ ok: true, ran: 'digest-email', at: new Date().toISOString(), ...result });
+  return NextResponse.json({
+    ok: true,
+    ran: 'digest-email',
+    at: new Date().toISOString(),
+    ...result,
+  });
 }

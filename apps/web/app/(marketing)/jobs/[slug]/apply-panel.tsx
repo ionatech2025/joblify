@@ -5,7 +5,7 @@ import { buttonClasses } from '@/app/components/ui/button';
 import { SaveButton } from './save-button';
 
 const primaryLink = `${buttonClasses('primary')} no-underline`;
-const heading = 'm-0 mb-2 text-lg font-semibold text-neutral-900';
+const heading = 'm-0 mb-2 text-lg font-semibold text-fg';
 
 // Dynamic island inside the cached JD page. Reads session, shows the right CTA.
 export async function ApplyPanel({ jobId, slug }: { jobId: string; slug: string }) {
@@ -15,7 +15,7 @@ export async function ApplyPanel({ jobId, slug }: { jobId: string; slug: string 
     return (
       <>
         <h3 className={heading}>Apply for this role</h3>
-        <p className="mb-4 text-neutral-600">Sign in to apply with your saved resume.</p>
+        <p className="mb-4 text-fg-muted">Sign in to apply with your saved resume.</p>
         <Link href={`/sign-in?redirect_url=/jobs/${slug}/apply`} className={primaryLink}>
           Sign in to apply
         </Link>
@@ -24,7 +24,7 @@ export async function ApplyPanel({ jobId, slug }: { jobId: string; slug: string 
   }
 
   if (user.userType !== 'JOB_SEEKER') {
-    return <p className="m-0 text-neutral-600">Only jobseekers can apply to job posts.</p>;
+    return <p className="m-0 text-fg-muted">Only jobseekers can apply to job posts.</p>;
   }
 
   const [existing, saved] = await Promise.all([
@@ -43,8 +43,9 @@ export async function ApplyPanel({ jobId, slug }: { jobId: string; slug: string 
       {existing ? (
         <>
           <h3 className={heading}>You applied already</h3>
-          <p className="m-0 text-neutral-600">
-            Status: <strong>{existing.status}</strong> · applied {existing.appliedAt.toLocaleDateString()}
+          <p className="m-0 text-fg-muted">
+            Status: <strong>{existing.status}</strong> · applied{' '}
+            {existing.appliedAt.toLocaleDateString()}
           </p>
         </>
       ) : (

@@ -47,7 +47,11 @@ export async function postJob(input: z.infer<typeof Input>): Promise<string> {
 
   // No duplicate titles for the same company among its live postings.
   const duplicate = await db.jobPost.findFirst({
-    where: { companyId: user.id, deletedAt: null, title: { equals: parsed.title, mode: 'insensitive' } },
+    where: {
+      companyId: user.id,
+      deletedAt: null,
+      title: { equals: parsed.title, mode: 'insensitive' },
+    },
     select: { id: true },
   });
   if (duplicate) throw new Error('You already have a job post with this title.');
@@ -83,7 +87,9 @@ export async function postJob(input: z.infer<typeof Input>): Promise<string> {
           salaryMin: parsed.salaryMin,
           salaryMax: parsed.salaryMax,
           salaryCurrency: parsed.salaryCurrency,
-          applicationDeadline: parsed.applicationDeadline ? new Date(parsed.applicationDeadline) : null,
+          applicationDeadline: parsed.applicationDeadline
+            ? new Date(parsed.applicationDeadline)
+            : null,
           status: parsed.publish ? 'PUBLISHED' : 'DRAFT',
           publishedAt: parsed.publish ? new Date() : null,
           // JOB_UC_11.0: optional job-specific chat area at creation; the
@@ -112,7 +118,12 @@ export async function postJob(input: z.infer<typeof Input>): Promise<string> {
   // Best-effort: failures are logged + sent to Sentry, never surfaced.
   after(async () => {
     try {
-      await extractAndLinkSkills(job.id, parsed.title, parsed.description, parsed.requirements ?? '');
+      await extractAndLinkSkills(
+        job.id,
+        parsed.title,
+        parsed.description,
+        parsed.requirements ?? '',
+      );
     } catch (err) {
       logger.warn({ err, jobId: job.id }, 'JD skill extraction failed (non-blocking)');
       Sentry.captureException(err, { tags: { jobId: job.id } });
@@ -206,7 +217,9 @@ export async function updateJob(jobId: string, input: z.infer<typeof Input>): Pr
           salaryMin: parsed.salaryMin,
           salaryMax: parsed.salaryMax,
           salaryCurrency: parsed.salaryCurrency,
-          applicationDeadline: parsed.applicationDeadline ? new Date(parsed.applicationDeadline) : null,
+          applicationDeadline: parsed.applicationDeadline
+            ? new Date(parsed.applicationDeadline)
+            : null,
           status: parsed.publish ? 'PUBLISHED' : 'DRAFT',
           // First publish stamps publishedAt; keep the original on re-saves. The
           // slug is left unchanged to preserve SEO + inbound links.
@@ -242,7 +255,12 @@ export async function updateJob(jobId: string, input: z.infer<typeof Input>): Pr
   // published. Best-effort: failures are logged + sent to Sentry.
   after(async () => {
     try {
-      await extractAndLinkSkills(jobId, parsed.title, parsed.description, parsed.requirements ?? '');
+      await extractAndLinkSkills(
+        jobId,
+        parsed.title,
+        parsed.description,
+        parsed.requirements ?? '',
+      );
     } catch (err) {
       logger.warn({ err, jobId }, 'JD skill re-extraction failed (non-blocking)');
       Sentry.captureException(err, { tags: { jobId } });
@@ -289,8 +307,17 @@ export async function archiveJob(jobId: string): Promise<void> {
 
   await withAudit(
     { actorId: user.id, ip, ua },
-    { action: 'JOB_DELETED', entity: 'job_post', entityId: jobId, after: () => ({ status: 'ARCHIVED' }) },
-    (tx) => tx.jobPost.update({ where: { id: jobId }, data: { status: 'ARCHIVED', deletedAt: new Date() } }),
+    {
+      action: 'JOB_DELETED',
+      entity: 'job_post',
+      entityId: jobId,
+      after: () => ({ status: 'ARCHIVED' }),
+    },
+    (tx) =>
+      tx.jobPost.update({
+        where: { id: jobId },
+        data: { status: 'ARCHIVED', deletedAt: new Date() },
+      }),
   );
 
   // Off the response path (after(), not a floating promise — see postJob).
@@ -330,12 +357,20 @@ async function extractAndLinkSkills(
   // Match against canonical Skill catalog; ignore unknown ones rather than
   // creating dups — admin can curate new entries later.
   const allSlugs = [...object.requiredSkills, ...object.niceToHave].map((s) =>
-    s.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''),
+    s
+      .toLowerCase()
+      .replace(/\s+/g, '-')
+      .replace(/[^a-z0-9-]/g, ''),
   );
 
   const skills = await db.skill.findMany({ where: { slug: { in: allSlugs } } });
   const requiredSlugs = new Set(
-    object.requiredSkills.map((s) => s.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')),
+    object.requiredSkills.map((s) =>
+      s
+        .toLowerCase()
+        .replace(/\s+/g, '-')
+        .replace(/[^a-z0-9-]/g, ''),
+    ),
   );
 
   // Reset this job's skill links, then add the freshly-extracted set — keeps

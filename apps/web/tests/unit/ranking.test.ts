@@ -38,6 +38,8 @@ describe('rankScore', () => {
 
 describe('jaccard', () => {
   it('is 0 for two empty sets', () => expect(jaccard([], [])).toBe(0));
-  it('is 1 for identical sets, case-insensitively', () => expect(jaccard(['React', 'Node'], ['react', 'node'])).toBe(1));
-  it('is intersection over union', () => expect(jaccard(['a', 'b'], ['b', 'c'])).toBeCloseTo(1 / 3, 6));
+  it('is 1 for identical sets, case-insensitively', () =>
+    expect(jaccard(['React', 'Node'], ['react', 'node'])).toBe(1));
+  it('is intersection over union', () =>
+    expect(jaccard(['a', 'b'], ['b', 'c'])).toBeCloseTo(1 / 3, 6));
 });

@@ -22,8 +22,10 @@ export default function Error({
       <AmbientCanvas variant="hero" />
       <div className="relative mx-auto max-w-xl text-center">
         <p className="eyebrow m-0">Error</p>
-        <h1 className="display m-0 mt-3 text-3xl text-neutral-900 sm:text-4xl">Something went wrong</h1>
-        <p className="mt-3 text-neutral-600">An unexpected error occurred. You can try again, or head back home.</p>
+        <h1 className="display m-0 mt-3 text-3xl text-fg sm:text-4xl">Something went wrong</h1>
+        <p className="mt-3 text-fg-muted">
+          An unexpected error occurred. You can try again, or head back home.
+        </p>
         <div className="mt-8 flex flex-wrap justify-center gap-3">
           <button onClick={reset} className={buttonClasses('primary', 'lg')}>
             Try again

@@ -4,7 +4,9 @@ import { db } from '@/lib/db';
 import { shareJobFromForm } from '@/app/actions/share-job';
 import { addVirtualInternToChat } from '@/app/actions/chat';
 import { inviteJobseeker } from '@/app/actions/invitations';
+import { Users } from 'lucide-react';
 import { PageHeader } from '@/app/components/ui/ambient';
+import { EmptyState } from '@/app/components/ui/empty-state';
 import { Badge } from '@/app/components/ui/badge';
 import { Button } from '@/app/components/ui/button';
 import { Select } from '@/app/components/ui/form';
@@ -27,7 +29,11 @@ type SeekerRow = {
 // site / those subscribed"). "All" shows PUBLIC profiles; "Subscribed" shows
 // this company's subscribers regardless of visibility, since subscribing is an
 // explicit opt-in toward the company.
-export default async function CompanyJobseekersPage({ searchParams }: { searchParams: SearchParams }) {
+export default async function CompanyJobseekersPage({
+  searchParams,
+}: {
+  searchParams: SearchParams;
+}) {
   const user = await requireRole('COMPANY');
   const params = await searchParams;
   const filter = params.filter === 'subscribed' ? 'subscribed' : 'all';
@@ -47,15 +53,16 @@ export default async function CompanyJobseekersPage({ searchParams }: { searchPa
     <Link
       href={href}
       className={`rounded-full px-3.5 py-1.5 text-sm font-medium no-underline transition-colors ${
-        active ? 'bg-neutral-900 text-white hover:bg-neutral-700' : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
+        active
+          ? 'bg-ink text-ink-fg hover:bg-ink-hover'
+          : 'bg-surface-sunken text-fg-muted hover:bg-border'
       }`}
     >
       {label}
     </Link>
   );
 
-  const qs = (f: string, t?: string) =>
-    `/company/jobseekers?filter=${f}${t ? `&type=${t}` : ''}`;
+  const qs = (f: string, t?: string) => `/company/jobseekers?filter=${f}${t ? `&type=${t}` : ''}`;
 
   return (
     <main>
@@ -68,25 +75,32 @@ export default async function CompanyJobseekersPage({ searchParams }: { searchPa
         <div className="mb-6 flex flex-wrap items-center gap-2">
           {tab(qs('all', type), 'On site', filter === 'all')}
           {tab(qs('subscribed', type), 'Subscribed to you', filter === 'subscribed')}
-          <span className="mx-2 h-4 w-px bg-neutral-200" aria-hidden />
+          <span className="mx-2 h-4 w-px bg-surface-sunken" aria-hidden />
           {tab(qs(filter), 'All types', !type)}
           {tab(qs(filter, 'EMPLOYABLE'), 'Employable', type === 'EMPLOYABLE')}
           {tab(qs(filter, 'VIRTUAL_INTERN'), 'Virtual interns', type === 'VIRTUAL_INTERN')}
         </div>
 
         {seekers.length === 0 ? (
-          <p className="text-neutral-600">
-            {filter === 'subscribed'
-              ? 'No one has subscribed to your company yet.'
-              : 'No public job seeker profiles match this filter yet.'}
-          </p>
+          <EmptyState
+            icon={<Users />}
+            title={filter === 'subscribed' ? 'No subscribers yet' : 'No profiles match this filter'}
+            description={
+              filter === 'subscribed'
+                ? 'Seekers who subscribe to your company appear here, and you can invite them to roles directly.'
+                : 'Try a different profile type, or check back as more seekers make their profiles public.'
+            }
+          />
         ) : (
           <ul className="grid list-none grid-cols-1 gap-3 p-0">
             {seekers.map((s) => (
-              <li key={s.userId} className="rounded-2xl border border-neutral-200/80 bg-white p-4 shadow-soft">
+              <li
+                key={s.userId}
+                className="rounded-card border border-border bg-surface p-4 shadow-soft"
+              >
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
-                    <p className="m-0 font-semibold text-neutral-900">
+                    <p className="m-0 font-semibold text-fg">
                       {s.name}
                       <Badge tone="neutral" className="ml-2">
                         {s.profileType === 'VIRTUAL_INTERN' ? 'Virtual intern' : 'Employable'}
@@ -97,14 +111,17 @@ export default async function CompanyJobseekersPage({ searchParams }: { searchPa
                         </Badge>
                       )}
                     </p>
-                    {s.headline && <p className="mt-1 mb-0 text-sm text-neutral-700">{s.headline}</p>}
-                    <p className="mt-1 mb-0 text-xs text-neutral-500">
+                    {s.headline && <p className="mt-1 mb-0 text-sm text-fg-muted">{s.headline}</p>}
+                    <p className="mt-1 mb-0 text-xs text-fg-subtle">
                       {[s.location, s.skills.slice(0, 6).join(', ')].filter(Boolean).join(' · ')}
                     </p>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
                     {publishedJobs.length > 0 && (
-                      <form action={shareJobFromForm.bind(null, s.userId)} className="flex items-center gap-2">
+                      <form
+                        action={shareJobFromForm.bind(null, s.userId)}
+                        className="flex items-center gap-2"
+                      >
                         <Select name="jobPostId" required className="w-48" defaultValue="">
                           <option value="" disabled>
                             Share a job…

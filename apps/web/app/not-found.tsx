@@ -8,8 +8,8 @@ export default function NotFound() {
       <AmbientCanvas variant="hero" />
       <div className="relative mx-auto max-w-xl text-center">
         <p className="eyebrow m-0">Page not found</p>
-        <h1 className="display m-0 mt-3 text-6xl text-neutral-900 sm:text-7xl">404</h1>
-        <p className="mt-3 text-neutral-600">We couldn&apos;t find that page.</p>
+        <h1 className="display m-0 mt-3 text-6xl text-fg sm:text-7xl">404</h1>
+        <p className="mt-3 text-fg-muted">We couldn&apos;t find that page.</p>
         <div className="mt-8 flex flex-wrap justify-center gap-3">
           <Link href="/" className={`${buttonClasses('primary', 'lg')} no-underline`}>
             Go home

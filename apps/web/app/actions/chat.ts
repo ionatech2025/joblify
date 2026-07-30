@@ -37,7 +37,11 @@ export async function openJobChatArea(jobPostId: string): Promise<void> {
     try {
       area = await withAudit(
         await auditCtx(user.id),
-        { action: 'CHAT_AREA_CREATED', entity: 'chat_area', after: (r) => ({ id: r.id, kind: 'JOB', jobPostId }) },
+        {
+          action: 'CHAT_AREA_CREATED',
+          entity: 'chat_area',
+          after: (r) => ({ id: r.id, kind: 'JOB', jobPostId }),
+        },
         (tx) =>
           tx.chatArea.create({
             data: {
@@ -84,7 +88,11 @@ async function ensureVirtualInternChatArea(companyUserId: string): Promise<{ id:
   try {
     return await withAudit(
       await auditCtx(companyUserId),
-      { action: 'CHAT_AREA_CREATED', entity: 'chat_area', after: (r) => ({ id: r.id, kind: 'VIRTUAL_INTERN' }) },
+      {
+        action: 'CHAT_AREA_CREATED',
+        entity: 'chat_area',
+        after: (r) => ({ id: r.id, kind: 'VIRTUAL_INTERN' }),
+      },
       (tx) =>
         tx.chatArea.create({
           data: {
@@ -113,7 +121,10 @@ async function ensureVirtualInternChatArea(companyUserId: string): Promise<{ id:
 // JOB_UC_14.0: both add-to-job-chat and add-to-VI-chat are premium outreach
 // actions (addVirtualInternToChat below delegates here, so gating once here
 // covers both entry points).
-export async function addChatParticipant(chatAreaId: string, jobSeekerUserId: string): Promise<void> {
+export async function addChatParticipant(
+  chatAreaId: string,
+  jobSeekerUserId: string,
+): Promise<void> {
   const user = await requireRole('COMPANY');
   assertPlan(user, 'PRO');
 

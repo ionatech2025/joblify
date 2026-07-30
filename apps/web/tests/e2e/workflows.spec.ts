@@ -10,7 +10,10 @@ import { STORAGE } from './storage-paths';
 function waitForAppMutation(page: Page) {
   const pathname = new URL(page.url()).pathname;
   return page.waitForResponse(
-    (r) => r.request().method() === 'POST' && r.status() === 200 && new URL(r.url()).pathname === pathname,
+    (r) =>
+      r.request().method() === 'POST' &&
+      r.status() === 200 &&
+      new URL(r.url()).pathname === pathname,
   );
 }
 
@@ -62,7 +65,9 @@ test.describe('jobseeker workflows', () => {
 
     await Promise.all([waitForAppMutation(page), unsubscribe.click()]);
     await page.reload();
-    await expect(page.locator('button:visible', { hasText: /^Subscribe as/i })).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator('button:visible', { hasText: /^Subscribe as/i })).toBeVisible({
+      timeout: 10_000,
+    });
   });
 
   test('saves and unsaves a job', async ({ page }) => {
@@ -86,7 +91,9 @@ test.describe('jobseeker workflows', () => {
     await expect(page.getByText('Frontend Engineer (React)')).toHaveCount(0, { timeout: 10_000 });
   });
 
-  test('accepts a pending invitation and can unsubscribe from the resulting subscription', async ({ page }) => {
+  test('accepts a pending invitation and can unsubscribe from the resulting subscription', async ({
+    page,
+  }) => {
     // Exact match: a substring match on "Accept" also catches the cookie
     // banner's "Accept all" button.
     const accept = page.locator('button:visible', { hasText: /^Accept$/ });
@@ -94,7 +101,9 @@ test.describe('jobseeker workflows', () => {
     await expect(page.getByRole('heading', { name: 'Invitations' }).first()).toBeVisible();
     await Promise.all([waitForAppMutation(page), accept.click()]);
     await page.reload();
-    await expect(page.locator('button:visible', { hasText: /^Accept$/ })).toHaveCount(0, { timeout: 10_000 });
+    await expect(page.locator('button:visible', { hasText: /^Accept$/ })).toHaveCount(0, {
+      timeout: 10_000,
+    });
     const unsubscribe = page.locator('button:visible', { hasText: /^Unsubscribe$/i });
     await expect(unsubscribe).toBeVisible();
     await Promise.all([waitForAppMutation(page), unsubscribe.click()]);
@@ -122,10 +131,14 @@ test.describe('jobseeker workflows', () => {
     // be unread at the same time, so a page-wide "0 Mark read buttons left"
     // check would be wrong.
     await page.goto('/jobseeker/notifications');
-    const row = page.locator('li:visible', { hasText: 'E2E fixture notification for the mark-read test.' });
+    const row = page.locator('li:visible', {
+      hasText: 'E2E fixture notification for the mark-read test.',
+    });
     await expect(row).toBeVisible();
     await row.locator('button:visible', { hasText: 'Mark read' }).click();
-    await expect(row.locator('button:visible', { hasText: 'Mark read' })).toHaveCount(0, { timeout: 10_000 });
+    await expect(row.locator('button:visible', { hasText: 'Mark read' })).toHaveCount(0, {
+      timeout: 10_000,
+    });
   });
 
   test('resumes list shows the fixture resume', async ({ page }) => {
@@ -136,7 +149,9 @@ test.describe('jobseeker workflows', () => {
   test('reads and replies in the shared fixture chat area', async ({ page }) => {
     await page.goto('/jobseeker/chats');
     await page.locator('a:visible', { hasText: FIXTURE_JOB_TITLE }).first().click();
-    await expect(page.getByText('Welcome — this is the e2e fixture chat area.').first()).toBeVisible();
+    await expect(
+      page.getByText('Welcome — this is the e2e fixture chat area.').first(),
+    ).toBeVisible();
     const reply = `Jobseeker reply ${Date.now()}`;
     await page.locator('textarea[name="body"]:visible').fill(reply);
     // ChatThread's messages come from the page's own server-rendered props, not
@@ -188,10 +203,9 @@ test.describe('company workflows', () => {
     // wait for the mutation and reload to confirm it actually persisted.
     await Promise.all([waitForAppMutation(page), statusSelect.selectOption('SHORTLISTED')]);
     await page.reload();
-    await expect(page.locator('select:visible[aria-label^="Change status for"]').first()).toHaveValue(
-      'SHORTLISTED',
-      { timeout: 10_000 },
-    );
+    await expect(
+      page.locator('select:visible[aria-label^="Change status for"]').first(),
+    ).toHaveValue('SHORTLISTED', { timeout: 10_000 });
   });
 
   test('sends a message in the fixture job chat area', async ({ page }) => {

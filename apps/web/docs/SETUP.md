@@ -26,6 +26,7 @@ bunx vercel link
 ```
 
 When prompted:
+
 - Scope: pick the team.
 - Project: **Create new project** → name it `joblify-web`.
 - Root directory: `apps/web/`.
@@ -37,14 +38,14 @@ Vercel reads `vercel.ts` for framework + install/build commands; you don't have 
 
 In Vercel dashboard → **joblify-web** → **Integrations**. Install in this order. Each install auto-injects its env vars into Production + Preview + Development scopes; do not paste anything manually.
 
-| Order | Integration | Why | Env vars injected |
-|---|---|---|---|
-| 1 | **Neon Postgres** | Database | `DATABASE_URL`, `DATABASE_URL_UNPOOLED` |
-| 2 | **Upstash Redis** | Cache + rate-limit | `KV_REST_API_URL`, `KV_REST_API_TOKEN`, `KV_REST_API_READ_ONLY_TOKEN` |
-| 3 | **Clerk** | Auth | `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, `CLERK_WEBHOOK_SECRET` |
-| 4 | **Sentry** | Errors + traces | `SENTRY_DSN`, `NEXT_PUBLIC_SENTRY_DSN`, `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_PROJECT` |
-| 5 | **Resend** | Transactional email | `RESEND_API_KEY` |
-| 6 | **Algolia** | Search | `ALGOLIA_APP_ID`, `ALGOLIA_ADMIN_API_KEY`, `NEXT_PUBLIC_ALGOLIA_APP_ID`, `NEXT_PUBLIC_ALGOLIA_SEARCH_API_KEY` |
+| Order | Integration       | Why                 | Env vars injected                                                                                             |
+| ----- | ----------------- | ------------------- | ------------------------------------------------------------------------------------------------------------- |
+| 1     | **Neon Postgres** | Database            | `DATABASE_URL`, `DATABASE_URL_UNPOOLED`                                                                       |
+| 2     | **Upstash Redis** | Cache + rate-limit  | `KV_REST_API_URL`, `KV_REST_API_TOKEN`, `KV_REST_API_READ_ONLY_TOKEN`                                         |
+| 3     | **Clerk**         | Auth                | `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, `CLERK_WEBHOOK_SECRET`                               |
+| 4     | **Sentry**        | Errors + traces     | `SENTRY_DSN`, `NEXT_PUBLIC_SENTRY_DSN`, `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_PROJECT`                   |
+| 5     | **Resend**        | Transactional email | `RESEND_API_KEY`                                                                                              |
+| 6     | **Algolia**       | Search              | `ALGOLIA_APP_ID`, `ALGOLIA_ADMIN_API_KEY`, `NEXT_PUBLIC_ALGOLIA_APP_ID`, `NEXT_PUBLIC_ALGOLIA_SEARCH_API_KEY` |
 
 Neon + Upstash + Clerk are required to get past Week 2 locally. Sentry / Resend / Algolia can wait until Week 4–6 work.
 
@@ -52,13 +53,13 @@ Neon + Upstash + Clerk are required to get past Week 2 locally. Sentry / Resend 
 
 Set these via the Vercel dashboard → **Settings → Environment Variables**.
 
-| Name | Value | Scopes |
-|---|---|---|
-| `NEXT_PUBLIC_SITE_URL` | Production: `https://your-prod-domain` · Preview: leave blank · Development: `http://localhost:3000` | All |
-| `CRON_SECRET` | `openssl rand -base64 48` output — generate a **separate** value per scope; never reuse the production secret in Development | All |
-| `RESEND_WEBHOOK_SECRET` | Set after configuring Resend webhook (Step 8) | All |
-| `EMAIL_FROM` | `Joblify <noreply@your-verified-domain>` | All |
-| `AI_GATEWAY_API_KEY` | Auto-injected by Vercel in deploys; for local dev set from the Gateway dashboard | Development |
+| Name                    | Value                                                                                                                        | Scopes      |
+| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------- | ----------- |
+| `NEXT_PUBLIC_SITE_URL`  | Production: `https://your-prod-domain` · Preview: leave blank · Development: `http://localhost:3000`                         | All         |
+| `CRON_SECRET`           | `openssl rand -base64 48` output — generate a **separate** value per scope; never reuse the production secret in Development | All         |
+| `RESEND_WEBHOOK_SECRET` | Set after configuring Resend webhook (Step 8)                                                                                | All         |
+| `EMAIL_FROM`            | `Joblify <noreply@your-verified-domain>`                                                                                     | All         |
+| `AI_GATEWAY_API_KEY`    | Auto-injected by Vercel in deploys; for local dev set from the Gateway dashboard                                             | Development |
 
 ## 5. Pull env to local dev
 

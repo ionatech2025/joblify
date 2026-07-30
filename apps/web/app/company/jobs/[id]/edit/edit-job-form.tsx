@@ -17,7 +17,11 @@ export function EditJobForm({ jobId, initial }: { jobId: string; initial: PostJo
   const [saved, setSaved] = useState(false);
 
   function onDelete() {
-    if (!window.confirm('Delete this job post? Existing applications and chat history are kept, but the listing is removed from search and your active posts.')) {
+    if (
+      !window.confirm(
+        'Delete this job post? Existing applications and chat history are kept, but the listing is removed from search and your active posts.',
+      )
+    ) {
       return;
     }
     setError(null);
@@ -58,8 +62,8 @@ export function EditJobForm({ jobId, initial }: { jobId: string; initial: PostJo
     <form onSubmit={handleSubmit(onSubmit)} className="mt-6 flex flex-col gap-4">
       <JobFormFields register={register} errors={errors} />
 
-      {error && <p className="m-0 text-red-700">{error}</p>}
-      {saved && <p className="m-0 text-green-700">Saved.</p>}
+      {error && <p className="m-0 text-danger">{error}</p>}
+      {saved && <p className="m-0 text-success">Saved.</p>}
 
       <div className="flex items-center gap-3">
         <Button type="submit" disabled={isPending} className="self-start">

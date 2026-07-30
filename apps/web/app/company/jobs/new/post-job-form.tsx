@@ -49,7 +49,7 @@ export function PostJobForm() {
     <form onSubmit={handleSubmit(onSubmit)} className="mt-6 flex flex-col gap-4">
       <JobFormFields register={register} errors={errors} />
 
-      {error && <p className="m-0 text-red-700">{error}</p>}
+      {error && <p className="m-0 text-danger">{error}</p>}
 
       <Button type="submit" disabled={isPending} className="self-start">
         {isPending ? 'Saving…' : 'Post job'}

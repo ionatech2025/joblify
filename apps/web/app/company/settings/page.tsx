@@ -19,18 +19,18 @@ export default async function CompanySettingsPage() {
         width="max-w-2xl"
       />
       <div className="mx-auto max-w-2xl px-4 py-8 sm:px-6">
-      <CompanySettingsForm
-        userId={user.id}
-        logoUrl={profile.logoUrl ?? null}
-        initial={{
-          companyName: profile.companyName,
-          industry: profile.industry,
-          companySize: profile.companySize,
-          description: profile.description,
-          website: profile.website ?? '',
-          linkedin: profile.linkedin ?? '',
-        }}
-      />
+        <CompanySettingsForm
+          userId={user.id}
+          logoUrl={profile.logoUrl ?? null}
+          initial={{
+            companyName: profile.companyName,
+            industry: profile.industry,
+            companySize: profile.companySize,
+            description: profile.description,
+            website: profile.website ?? '',
+            linkedin: profile.linkedin ?? '',
+          }}
+        />
       </div>
     </main>
   );

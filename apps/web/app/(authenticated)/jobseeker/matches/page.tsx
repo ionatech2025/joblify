@@ -1,8 +1,11 @@
 import Link from 'next/link';
 import { requireRole } from '@/lib/auth';
 import { getRecommendedJobs } from '@/lib/search/semantic-match';
+import { Sparkles } from 'lucide-react';
 import { PageHeader } from '@/app/components/ui/ambient';
 import { Badge } from '@/app/components/ui/badge';
+import { EmptyState } from '@/app/components/ui/empty-state';
+import { buttonClasses } from '@/app/components/ui/button';
 
 export const metadata = { title: 'Matches' };
 
@@ -20,23 +23,27 @@ export default async function JobMatchesPage() {
       />
       <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
         {jobs.length === 0 ? (
-          <p className="mt-6 text-neutral-500">
-            No matches yet.{' '}
-            <Link href="/jobseeker/resumes" className="text-indigo-600 hover:underline">
-              Upload or build a resume
-            </Link>{' '}
-            and check back once it's processed.
-          </p>
+          <EmptyState
+            className="mt-6"
+            icon={<Sparkles />}
+            title="No matches yet"
+            description="Matches are computed from your resume. Upload or build one and they'll appear here once it has been processed."
+            action={
+              <Link href="/jobseeker/resumes" className={`${buttonClasses()} no-underline`}>
+                Add a resume
+              </Link>
+            }
+          />
         ) : (
           <ul className="mt-6 flex list-none flex-col gap-3 p-0">
             {jobs.map((j) => (
               <li
                 key={j.id}
-                className="flex items-center justify-between gap-4 rounded-2xl border border-neutral-200/80 bg-white p-4 shadow-soft"
+                className="flex items-center justify-between gap-4 rounded-card border border-border bg-surface p-4 shadow-soft"
               >
-                <Link href={`/jobs/${j.slug}`} className="min-w-0 text-neutral-900 no-underline">
+                <Link href={`/jobs/${j.slug}`} className="min-w-0 text-fg no-underline">
                   <strong>{j.title}</strong>
-                  <span className="text-neutral-600">
+                  <span className="text-fg-muted">
                     {' — '}
                     {j.companyName}
                     {j.location ? ` · ${j.location}` : ''}

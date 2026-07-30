@@ -43,25 +43,28 @@ export function CookieBanner() {
     <aside
       role="dialog"
       aria-label="Cookie preferences"
-      className="fixed inset-x-4 bottom-4 z-[1000] mx-auto flex max-w-3xl flex-col gap-3 rounded-xl bg-neutral-900 px-5 py-4 text-white shadow-2xl"
+      className="rounded-card bg-band text-band-fg shadow-raised fixed inset-x-4 bottom-4 z-[1000] mx-auto flex max-w-3xl flex-col gap-3 px-5 py-4"
     >
       <p className="m-0 text-sm">
         Joblify uses essential cookies to keep you signed in. With your consent, we also use
         analytics to understand how the site is used.{' '}
-        <a href="/legal/privacy" className="text-sky-300 underline">
+        <a href="/legal/privacy" className="text-band-fg underline">
           Privacy policy
         </a>
       </p>
+      {/* Pills, matching every other CTA in the app. These can't use <Button>:
+          its variants resolve against the page surface, and this banner sits on
+          the always-dark band regardless of theme. */}
       <div className="flex flex-wrap gap-2">
         <button
           onClick={() => decide('all')}
-          className="rounded-md bg-white px-4 py-2 text-sm font-semibold text-neutral-900"
+          className="bg-band-fg text-band focus-visible:ring-band-fg focus-visible:ring-offset-band rounded-full px-4 py-2 text-sm font-semibold transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
         >
           Accept all
         </button>
         <button
           onClick={() => decide('necessary')}
-          className="rounded-md border border-neutral-600 px-4 py-2 text-sm font-semibold text-white"
+          className="border-band-fg/30 text-band-fg hover:bg-band-fg/10 focus-visible:ring-band-fg focus-visible:ring-offset-band rounded-full border px-4 py-2 text-sm font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
         >
           Necessary only
         </button>

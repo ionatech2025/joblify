@@ -17,13 +17,13 @@ The defenses below address each.
 
 ## Secret hygiene
 
-| Rule | How |
-|---|---|
-| Real secrets never in code or `.env.example` | `.env.example` has placeholders only; CI runs `gitleaks` on every push. |
-| Secrets live in Vercel Project Env | Marketplace integrations auto-inject; manual ones via `vercel env add`. |
-| Local secrets pulled via CLI | `bunx vercel env pull .env.local`; `.env*` gitignored except `.env.example`. |
-| Rotation cadence | Clerk webhook secret: on suspicion of leak. `CRON_SECRET`: every 90 days. API keys: yearly. |
-| History scrubbing on leak | `git filter-repo --replace-text` followed by `git push --force-with-lease`. |
+| Rule                                         | How                                                                                         |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| Real secrets never in code or `.env.example` | `.env.example` has placeholders only; CI runs `gitleaks` on every push.                     |
+| Secrets live in Vercel Project Env           | Marketplace integrations auto-inject; manual ones via `vercel env add`.                     |
+| Local secrets pulled via CLI                 | `bunx vercel env pull .env.local`; `.env*` gitignored except `.env.example`.                |
+| Rotation cadence                             | Clerk webhook secret: on suspicion of leak. `CRON_SECRET`: every 90 days. API keys: yearly. |
+| History scrubbing on leak                    | `git filter-repo --replace-text` followed by `git push --force-with-lease`.                 |
 
 If you push a secret by accident: **rotate it first**, then scrub history. Order matters — the secret is recoverable from any clone until rotated.
 
@@ -50,14 +50,14 @@ Three-layer gate. See [AUTH.md](./AUTH.md):
 
 Centralized in `lib/ratelimit.ts`. Backed by Upstash Redis sliding window.
 
-| Endpoint | Limit | Identifier |
-|---|---|---|
-| `/sign-up` | 3 / hour | IP |
-| `/sign-in` | 10 / 15 min | IP |
-| `/jobs/[id]/apply` (Server Action) | 20 / day | userId |
-| `/api/v1/account/*` | 2 / day | userId |
-| `/api/v1/jobs/search` | 100 / min | IP |
-| Global | 600 / 15 min | IP |
+| Endpoint                           | Limit        | Identifier |
+| ---------------------------------- | ------------ | ---------- |
+| `/sign-up`                         | 3 / hour     | IP         |
+| `/sign-in`                         | 10 / 15 min  | IP         |
+| `/jobs/[id]/apply` (Server Action) | 20 / day     | userId     |
+| `/api/v1/account/*`                | 2 / day      | userId     |
+| `/api/v1/jobs/search`              | 100 / min    | IP         |
+| Global                             | 600 / 15 min | IP         |
 
 When Upstash env is unset (local dev), the limiter is a no-op — production always has env via Marketplace.
 
@@ -113,13 +113,13 @@ If you add a cross-origin POST handler, gate it with a same-site check or a veri
 
 In `next.config.ts` `headers()`:
 
-| Header | Value |
-|---|---|
+| Header                      | Value                                          |
+| --------------------------- | ---------------------------------------------- |
 | `Strict-Transport-Security` | `max-age=63072000; includeSubDomains; preload` |
-| `X-Frame-Options` | `DENY` |
-| `X-Content-Type-Options` | `nosniff` |
-| `Referrer-Policy` | `strict-origin-when-cross-origin` |
-| `Permissions-Policy` | `camera=(), microphone=(), geolocation=(self)` |
+| `X-Frame-Options`           | `DENY`                                         |
+| `X-Content-Type-Options`    | `nosniff`                                      |
+| `Referrer-Policy`           | `strict-origin-when-cross-origin`              |
+| `Permissions-Policy`        | `camera=(), microphone=(), geolocation=(self)` |
 
 No CSP yet — the Clerk widget needs flexible script sources and tuning a strict CSP across Clerk + Vercel Analytics + Speed Insights + Sentry needs a dedicated PR. Add in Week 11 hardening.
 

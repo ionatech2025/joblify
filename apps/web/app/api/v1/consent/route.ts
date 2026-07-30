@@ -4,7 +4,6 @@ import { currentUser } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { logger } from '@/lib/observability/logger';
 
-
 const ConsentSchema = z.object({
   analytics: z.boolean(),
   marketing: z.boolean().optional(),

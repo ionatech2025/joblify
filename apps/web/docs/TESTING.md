@@ -2,13 +2,13 @@
 
 Four layers, with a clear contract for what belongs where.
 
-| Layer | Tool | Files | Run command |
-|---|---|---|---|
-| Unit | Vitest | `tests/unit/*.test.ts` | `bun run test` |
-| Integration / e2e | Playwright | `tests/e2e/*.spec.ts` | `bun run test:e2e` |
-| Accessibility | Playwright + `@axe-core/playwright` | `tests/e2e/a11y.spec.ts` | part of `bun run test:e2e` |
-| Load | k6 | `tests/load/*.js` | `k6 run <file>` |
-| Lighthouse | LHCI | `lighthouserc.json` | runs on PR preview deploys |
+| Layer             | Tool                                | Files                    | Run command                |
+| ----------------- | ----------------------------------- | ------------------------ | -------------------------- |
+| Unit              | Vitest                              | `tests/unit/*.test.ts`   | `bun run test`             |
+| Integration / e2e | Playwright                          | `tests/e2e/*.spec.ts`    | `bun run test:e2e`         |
+| Accessibility     | Playwright + `@axe-core/playwright` | `tests/e2e/a11y.spec.ts` | part of `bun run test:e2e` |
+| Load              | k6                                  | `tests/load/*.js`        | `k6 run <file>`            |
+| Lighthouse        | LHCI                                | `lighthouserc.json`      | runs on PR preview deploys |
 
 ## Unit (Vitest)
 
@@ -20,14 +20,29 @@ import { rankScore } from '@/lib/search/ranking';
 
 describe('rankScore', () => {
   it('weights skill overlap', () => {
-    const a = rankScore({ algoliaScore: 0.5, skillOverlap: 0, daysSincePosted: 0, salaryFitDelta: 0, geoDistanceKm: null, employerQuality: 0 });
-    const b = rankScore({ algoliaScore: 0.5, skillOverlap: 1, daysSincePosted: 0, salaryFitDelta: 0, geoDistanceKm: null, employerQuality: 0 });
+    const a = rankScore({
+      algoliaScore: 0.5,
+      skillOverlap: 0,
+      daysSincePosted: 0,
+      salaryFitDelta: 0,
+      geoDistanceKm: null,
+      employerQuality: 0,
+    });
+    const b = rankScore({
+      algoliaScore: 0.5,
+      skillOverlap: 1,
+      daysSincePosted: 0,
+      salaryFitDelta: 0,
+      geoDistanceKm: null,
+      employerQuality: 0,
+    });
     expect(b).toBeGreaterThan(a);
   });
 });
 ```
 
 What's already covered:
+
 - `tests/unit/health.test.ts` — cache tag namespacing.
 - `tests/unit/stores.test.ts` — search-store reducer.
 - `tests/unit/auth.test.ts` — AuthError shape.
@@ -47,6 +62,7 @@ test('health endpoint responds', async ({ request }) => {
 ```
 
 What's wired today:
+
 - Health check.
 - Home renders.
 - Jobs search page loads.
@@ -54,6 +70,7 @@ What's wired today:
 - Protected routes redirect to `/sign-in`.
 
 Implemented in `tests/e2e/authenticated.spec.ts`, gated on `E2E_TEST_*` so they skip (not fail) without creds:
+
 - Jobseeker applications dashboard renders.
 - GDPR export request surfaces a download/confirmation.
 - Company posts a job and sees it on the jobs list.
@@ -78,7 +95,7 @@ Configured browsers: Chromium + Firefox + WebKit. All three must pass.
 
 ## Accessibility (axe-core)
 
-`tests/e2e/a11y.spec.ts` runs axe against five seed pages:
+`tests/e2e/a11y.spec.ts` runs axe against five public seed pages —
 
 - `/`
 - `/jobs`
@@ -86,7 +103,29 @@ Configured browsers: Chromium + Firefox + WebKit. All three must pass.
 - `/sign-in`
 - `/sign-up`
 
-Run locally or against a preview: `PLAYWRIGHT_BASE_URL=<url> bun run test:e2e`. In CI, accessibility is gated on the **preview deploy** via Lighthouse (its accessibility category is axe-core, `minScore 0.95`) — a CI-spun server can't reach Chromium reliably (no loopback proxy/DNS in the runner) and has no real services. Tags: `wcag2a`, `wcag2aa`, `wcag21a`, `wcag21aa`.
+— **in both light and dark themes**, driven by Playwright's `colorScheme` (which exercises
+the real `system` resolution path through `components/theme-script.tsx`). Dark mode is
+scanned because contrast is where a semantic token layer most easily regresses: the footer
+already needed neutral-400 rather than neutral-500 to clear 4.5:1 on ink.
+
+Authenticated surfaces (`/jobseeker/*`, `/company/*`, the resume builder) are scanned too,
+using the Playwright `setup` project's `storageState`; they skip cleanly without
+`E2E_TEST_*` creds. The applicants board needs a job id and so isn't a static path — it is
+covered functionally by `workflows.spec.ts` and tracked in
+[REMAINING_STEPS.md](./REMAINING_STEPS.md).
+
+> **What the `/sign-in` and `/sign-up` scans do _not_ cover locally.** A no-vendor run uses
+> a format-valid _placeholder_ Clerk publishable key, which clerk-js rejects at runtime — so
+> `<SignIn>`/`<SignUp>` never mount and **no Clerk markup is in the page at all**. Those two
+> scans are therefore exercising the split-screen shell, not the auth form. The same applies
+> to the light/dark appearance sets in `components/clerk-provider.tsx`. Both only get real
+> coverage on a preview deploy with a live key, which is where the CI `axe` job runs.
+
+Run locally or against a preview: `PLAYWRIGHT_BASE_URL=<url> bun run test:e2e`. In CI the
+blocking gate is the `axe` job in `.github/workflows/lighthouse.yml`, which runs this spec
+against the preview deploy on `deployment_status` — a CI-spun server can't reach Chromium
+reliably (no loopback proxy/DNS in the runner) and has no real services. Tags: `wcag2a`,
+`wcag2aa`, `wcag21a`, `wcag21aa`; critical/serious violations fail.
 
 Add a page to the rotation:
 
@@ -109,6 +148,7 @@ Two scripts:
 ### `tests/load/k6-search.js`
 
 Stresses `/api/v1/jobs/search`. Targets:
+
 - 200 RPS sustained, 5 min.
 - p95 < 500 ms.
 - Error rate < 1%.
@@ -126,6 +166,7 @@ k6 run -e BASE_URL=https://joblify-web-prod.vercel.app tests/load/k6-apply.js
 ```
 
 Targets:
+
 - 20 RPS sustained, 3 min.
 - p95 < 1500 ms.
 - Error rate < 2%.
@@ -134,23 +175,24 @@ Run before every cutover and quarterly thereafter. Increase RPS as user base gro
 
 ## Lighthouse (LHCI)
 
-`lighthouserc.json` defines budgets:
+`lighthouserc.json` defines the budgets. **Accessibility is the only one asserted at
+`error`** — the rest are `warn` until their gaps close (see
+[REMAINING_STEPS.md](./REMAINING_STEPS.md)):
 
-```json
-{
-  "categories:performance": [{ "minScore": 0.85 }],
-  "categories:accessibility": [{ "minScore": 0.95 }],
-  "categories:best-practices": [{ "minScore": 0.95 }],
-  "categories:seo": [{ "minScore": 0.95 }],
-  "largest-contentful-paint": [{ "maxNumericValue": 2500 }],
-  "interaction-to-next-paint": [{ "maxNumericValue": 200 }],
-  "cumulative-layout-shift": [{ "maxNumericValue": 0.1 }]
-}
-```
+| Assertion                   | Level     | Threshold                       |
+| --------------------------- | --------- | ------------------------------- |
+| `categories:accessibility`  | **error** | 0.90 (raise to 0.95 once clean) |
+| `categories:performance`    | warn      | 0.85                            |
+| `categories:best-practices` | warn      | 0.95                            |
+| `categories:seo`            | warn      | 0.95 (currently ~0.82)          |
+| `largest-contentful-paint`  | warn      | ≤ 2500 ms                       |
+| `cumulative-layout-shift`   | warn      | ≤ 0.1                           |
 
-Pages tested: `/`, `/jobs`, `/sign-up`.
+INP is a field-only metric and is deliberately absent from the lab assertions.
 
-Wire LHCI against PR preview URLs (TODO Week 11 — uses `treosh/lighthouse-ci-action` against the deployment URL).
+Pages tested: `/`, `/jobs`, `/sign-up`, 3 runs each, desktop preset. LHCI is wired: the
+`lhci` job in `.github/workflows/lighthouse.yml` runs `treosh/lighthouse-ci-action` against
+the preview `target_url` on `deployment_status`.
 
 ## CI gates
 
@@ -192,18 +234,38 @@ bun run test:e2e                         # against bun run dev on :3000
 
 ## Adding a new test
 
-| Type | Where |
-|---|---|
-| Validates a Zod schema or pure function | `tests/unit/<feature>.test.ts` |
-| Validates a Server Action (mocked DB) | `tests/unit/<feature>.test.ts` with `vi.mock('@/lib/db')` |
-| Validates a Route Handler shape | `tests/e2e/<feature>.spec.ts` using `request.get` |
-| Validates a user flow | `tests/e2e/critical-paths.spec.ts` or its own spec |
-| Validates a page for a11y | add to `tests/e2e/a11y.spec.ts` PAGES list |
-| Validates throughput | `tests/load/k6-<endpoint>.js` |
+| Type                                    | Where                                                                                                                                                      |
+| --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Validates a Zod schema or pure function | `tests/unit/<feature>.test.ts`                                                                                                                             |
+| Validates a Server Action (mocked DB)   | `tests/unit/<feature>.test.ts` with `vi.mock('@/lib/db')`                                                                                                  |
+| Validates a Route Handler shape         | `tests/e2e/<feature>.spec.ts` using `request.get`                                                                                                          |
+| Validates a user flow                   | `tests/e2e/critical-paths.spec.ts` or its own spec                                                                                                         |
+| Validates a page for a11y               | add to the appropriate list in `tests/e2e/a11y.spec.ts` (`DEFAULT_PAGES`, `JOBSEEKER_PAGES`, `COMPANY_PAGES`) — it is scanned in both themes automatically |
+| Validates a design-system contract      | `tests/e2e/design-regression.spec.ts`                                                                                                                      |
+| Validates throughput                    | `tests/load/k6-<endpoint>.js`                                                                                                                              |
+
+## Design-system regression
+
+`tests/e2e/design-regression.spec.ts` locks the design contract with **DOM queries and
+computed-style assertions — no pixel snapshots**. That is deliberate: every assertion has
+to hold both in a no-vendor local run and against a full preview, and screenshots would be
+flaky across the Chromium/Firefox/WebKit matrix.
+
+What it locks: pill radii on the hero and header CTAs, `.eyebrow`/`.display` presence, the
+dark footer band (parsing both `lab()` and `rgb()` computed serializations), skip-link-first
+focus order, the split-auth viewport flip, 404 treatment, every semantic token resolving on
+`:root`, the fonts resolving to Archivo/Inter, the light↔dark flip repainting surfaces _and_
+persisting across reload, the footer band **not** inverting in dark mode, the command
+palette (shortcut, filtering, empty state, Escape, theme switching), and
+`prefers-reduced-motion` neutralising transitions.
+
+See [DESIGN.md](./DESIGN.md) for the tokens these assertions are written against.
 
 ## What we don't test (and why)
 
-- **Tailwind / inline style output** — visual regressions live in design tooling (Percy / Chromatic) when a design system lands.
+- **Pixel-level appearance** — no Percy/Chromatic. The token and computed-style assertions
+  above cover the contract that actually breaks; a screenshot diff would mostly generate
+  noise across three browser engines.
 - **Clerk internals** — vendor responsibility.
 - **Algolia internals** — vendor responsibility; we test our adapter, not the index.
 - **AI model output** — test the schema / typing, not the wording.

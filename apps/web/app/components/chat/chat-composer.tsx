@@ -73,7 +73,7 @@ export function ChatComposer({ chatAreaId }: { chatAreaId: string }) {
           {isPending ? 'Sending…' : 'Send'}
         </Button>
         {state && !state.ok && (
-          <p role="alert" className="m-0 text-sm text-red-600">
+          <p role="alert" className="m-0 text-sm text-danger">
             {state.error}
           </p>
         )}

@@ -45,7 +45,6 @@ export const queryKeys = {
   notifications: () => ['notifications'] as const,
   applications: (userId: string) => ['applications', userId] as const,
   application: (id: string) => ['application', id] as const,
-  jobMatchScore: (userId: string, jobId: string) =>
-    ['match-score', userId, jobId] as const,
+  jobMatchScore: (userId: string, jobId: string) => ['match-score', userId, jobId] as const,
   searchJobs: (filters: unknown) => ['search', 'jobs', filters] as const,
 } as const;

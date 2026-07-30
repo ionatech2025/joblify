@@ -5,9 +5,12 @@ import { connection } from 'next/server';
 import { Suspense } from 'react';
 import { db } from '@/lib/db';
 import { tags } from '@/lib/cache';
+import { Briefcase } from 'lucide-react';
 import { AmbientBand } from '@/app/components/ui/ambient';
+import { EmptyState } from '@/app/components/ui/empty-state';
 import { Badge } from '@/app/components/ui/badge';
 import { Card } from '@/app/components/ui/card';
+import { CompanyDetailSkeleton } from './company-detail-skeleton';
 import { SubscribeButton } from './subscribe-button';
 
 type Params = Promise<{ slug: string }>;
@@ -34,22 +37,6 @@ export default async function CompanyDetailPage({ params }: { params: Params }) 
   );
 }
 
-function CompanyDetailSkeleton() {
-  return (
-    <main>
-      <AmbientBand>
-        <div className="mx-auto flex max-w-4xl items-center gap-4 px-4 py-10 sm:px-6">
-          <div className="size-[72px] animate-pulse rounded-2xl bg-neutral-200" />
-          <div>
-            <div className="h-3 w-32 animate-pulse rounded-full bg-indigo-200/70" />
-            <div className="mt-3 h-8 w-64 animate-pulse rounded-2xl bg-neutral-200" />
-          </div>
-        </div>
-      </AmbientBand>
-    </main>
-  );
-}
-
 async function CompanyDetailBody({ slug }: { slug: string }) {
   await connection();
   const company = await getCompanyBySlug(slug);
@@ -67,16 +54,22 @@ async function CompanyDetailBody({ slug }: { slug: string }) {
         <header className="mx-auto flex max-w-4xl flex-wrap items-center gap-4 px-4 py-10 sm:px-6">
           {company.logoUrl && (
             // eslint-disable-next-line @next/next/no-img-element -- remote company logo, fixed size
-            <img src={company.logoUrl} alt="" width={72} height={72} className="size-[72px] rounded-2xl object-cover" />
+            <img
+              src={company.logoUrl}
+              alt=""
+              width={72}
+              height={72}
+              className="size-[72px] rounded-card object-cover"
+            />
           )}
           <div>
             <p className="eyebrow m-0 mb-2">Company profile</p>
-            <h1 className="display m-0 text-3xl text-neutral-900 sm:text-4xl">{company.companyName}</h1>
+            <h1 className="display m-0 text-3xl text-fg sm:text-4xl">{company.companyName}</h1>
             <div className="mt-3 flex flex-wrap gap-2">
-              <Badge tone="neutral" className="bg-white/70 backdrop-blur-sm">
+              <Badge tone="neutral" className="bg-surface/70 backdrop-blur-sm">
                 {company.industry.replace('_', ' ')}
               </Badge>
-              <Badge tone="neutral" className="bg-white/70 backdrop-blur-sm">
+              <Badge tone="neutral" className="bg-surface/70 backdrop-blur-sm">
                 {company.companySize.replace('_', ' ').toLowerCase()}
               </Badge>
             </div>
@@ -88,36 +81,49 @@ async function CompanyDetailBody({ slug }: { slug: string }) {
       </AmbientBand>
 
       <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
-      <article className="mb-8 leading-relaxed whitespace-pre-wrap text-neutral-800">{company.description}</article>
+        <article className="mb-8 leading-relaxed whitespace-pre-wrap text-fg">
+          {company.description}
+        </article>
 
-      {company.website && (
-        <p>
-          <a href={company.website} rel="noopener noreferrer" target="_blank" className="text-indigo-700 hover:underline">
-            {company.website}
-          </a>
-        </p>
-      )}
-
-      <section className="mt-12">
-        <p className="eyebrow m-0">Now hiring</p>
-        <h2 className="display m-0 mt-2 mb-4 text-2xl text-neutral-900">Open positions</h2>
-        {openJobs.length === 0 ? (
-          <p className="text-neutral-500">No open positions right now.</p>
-        ) : (
-          <ul className="grid list-none grid-cols-1 gap-3 p-0 sm:grid-cols-2">
-            {openJobs.map((job) => (
-              <li key={job.id}>
-                <Link href={`/jobs/${job.slug}`} className="block h-full no-underline">
-                  <Card className="h-full transition-shadow hover:shadow-md">
-                    <h3 className="m-0 text-base font-semibold text-neutral-900">{job.title}</h3>
-                    {job.location && <p className="mt-1 mb-0 text-sm text-neutral-600">{job.location}</p>}
-                  </Card>
-                </Link>
-              </li>
-            ))}
-          </ul>
+        {company.website && (
+          <p>
+            <a
+              href={company.website}
+              rel="noopener noreferrer"
+              target="_blank"
+              className="text-brand hover:underline"
+            >
+              {company.website}
+            </a>
+          </p>
         )}
-      </section>
+
+        <section className="mt-12">
+          <p className="eyebrow m-0">Now hiring</p>
+          <h2 className="display m-0 mt-2 mb-4 text-2xl text-fg">Open positions</h2>
+          {openJobs.length === 0 ? (
+            <EmptyState
+              icon={<Briefcase />}
+              title="No open positions right now"
+              description="Subscribe to this company and you'll be notified the moment they publish a role."
+            />
+          ) : (
+            <ul className="grid list-none grid-cols-1 gap-3 p-0 sm:grid-cols-2">
+              {openJobs.map((job) => (
+                <li key={job.id}>
+                  <Link href={`/jobs/${job.slug}`} className="block h-full no-underline">
+                    <Card className="h-full transition-shadow hover:shadow-md">
+                      <h3 className="m-0 text-base font-semibold text-fg">{job.title}</h3>
+                      {job.location && (
+                        <p className="mt-1 mb-0 text-sm text-fg-muted">{job.location}</p>
+                      )}
+                    </Card>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
       </div>
     </main>
   );

@@ -15,27 +15,33 @@ Build plan covers 10k MAU; Grow plan at ~100k MAU. The cost delta is well below 
 
 Three indexes, defined in `lib/search/algolia.ts` `INDEX`:
 
-| Index | Records | Source of truth |
-|---|---|---|
-| `jobs` | One per published JD | `job_posts` table |
+| Index       | Records                  | Source of truth          |
+| ----------- | ------------------------ | ------------------------ |
+| `jobs`      | One per published JD     | `job_posts` table        |
 | `companies` | One per verified company | `company_profiles` table |
-| `skills` | One per canonical skill | `skills` table |
+| `skills`    | One per canonical skill  | `skills` table           |
 
 ## `jobs` record shape
 
 ```ts
 type JobSearchRecord = {
-  objectID: string;            // job_posts.id (UUID)
-  slug: string;                // for /jobs/[slug] links
-  title, description: string;
-  companyId, companyName: string;
+  objectID: string; // job_posts.id (UUID)
+  slug: string; // for /jobs/[slug] links
+  title;
+  description: string;
+  companyId;
+  companyName: string;
   companyLogoUrl: string | null;
-  industry, jobType, experienceLevel, workMode: string;
+  industry;
+  jobType;
+  experienceLevel;
+  workMode: string;
   location: string | null;
-  salaryMin, salaryMax: number | null;
+  salaryMin;
+  salaryMax: number | null;
   salaryCurrency: string;
-  publishedAt: number;         // ms epoch — used for recency boost
-  skills: string[];            // canonical labels
+  publishedAt: number; // ms epoch — used for recency boost
+  skills: string[]; // canonical labels
   _geoloc?: { lat: number; lng: number };
 };
 ```
@@ -76,12 +82,13 @@ Configure in the Algolia dashboard:
 ### Composite signal: client-side rerank (lib/search/ranking.ts)
 
 ```ts
-rankScore = 0.45 * algoliaScore
-          + 0.20 * skillOverlap            // Jaccard of user skills vs job skills
-          + 0.15 * recency                  // exp(-daysSincePosted / 14)
-          + 0.10 * salaryFit
-          + 0.05 * geoDistance              // decay over 100km
-          + 0.05 * employerQuality
+rankScore =
+  0.45 * algoliaScore +
+  0.2 * skillOverlap + // Jaccard of user skills vs job skills
+  0.15 * recency + // exp(-daysSincePosted / 14)
+  0.1 * salaryFit +
+  0.05 * geoDistance + // decay over 100km
+  0.05 * employerQuality;
 ```
 
 Tunes from A/B tests once traffic accumulates. The weights above are a defensible V1; don't overfit before you have data.
@@ -120,11 +127,11 @@ Production index lives in Algolia's EU region (Frankfurt). For US traffic, confi
 
 ## Cost shape
 
-| Metric | Plan implication |
-|---|---|
-| Records | Build plan = up to 1M total. We'll fit comfortably at 10k MAU. |
+| Metric     | Plan implication                                                                       |
+| ---------- | -------------------------------------------------------------------------------------- |
+| Records    | Build plan = up to 1M total. We'll fit comfortably at 10k MAU.                         |
 | Operations | Each search + each index op counts. Build plan = 10k ops/mo free; pay-as-you-go after. |
-| Replicas | Each replica counts as a separate index. EU + US = 2× cost. |
+| Replicas   | Each replica counts as a separate index. EU + US = 2× cost.                            |
 
 At 10k MAU + 1k JDs daily, expect ~$40–80/mo. At 100k MAU, ~$200–400/mo.
 

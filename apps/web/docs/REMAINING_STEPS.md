@@ -8,6 +8,33 @@ Updated 2026-07-18.
 
 ## P0 — must do before ANY production traffic
 
+### 0. Apply pending migrations to the database in `.env.local`
+
+Discovered 2026-07-30. The Neon database that `.env.local` points at is **behind on
+migrations** — `users.lastDigestAt` does not exist, so every query that pulls the `company`
+→ `User` relation fails at runtime with Prisma `P2022`:
+
+```
+The column `users.lastDigestAt` does not exist in the current database.
+```
+
+That column comes from `prisma/migrations/20260724120000_digest_watermark_and_parse_attempts`.
+Concretely it breaks `getFeaturedJobs()`, so the home page's featured-jobs island and the
+JD click-through it feeds cannot render, and two E2E tests fail for that reason alone.
+
+```bash
+cd apps/web
+bunx prisma migrate status     # confirm which migrations are pending
+bunx prisma migrate deploy     # needs DATABASE_URL_UNPOOLED (pooled PgBouncer can't run DDL)
+```
+
+**Check which database you are pointed at first.** If `.env.local` was populated by
+`vercel env pull`, it holds _production_ credentials — run `prisma migrate status` before
+anything, and prefer a Neon branch for local work. Since `prisma migrate deploy` runs in
+the Vercel build (`vercel.ts` `buildCommand`), a deployed environment should already be
+current; a drifted database means someone is pointing local dev at a database that has
+never been through that build.
+
 ### 1. Rotate the leaked credentials and scrub git history
 
 The Mongo Atlas URI + JWT secret from the legacy `Joblify-backend/.env.example` are still recoverable from git history (the directory itself has been removed from the working tree, but history retains every prior revision). The Mongo URI shared earlier in our conversation is also in the chat transcript.
@@ -74,6 +101,7 @@ Beyond what Marketplace auto-injects, set in Vercel:
 ### Clerk webhook
 
 Configure in Clerk dashboard with URL `${NEXT_PUBLIC_SITE_URL}/api/v1/webhooks/clerk` and events:
+
 - `user.created`, `user.updated`, `user.deleted`
 - `organization.created`, `organization.updated`, `organization.deleted`
 - `organizationMembership.created`, `organizationMembership.deleted`
@@ -83,6 +111,7 @@ Copy signing secret to `CLERK_WEBHOOK_SECRET` in Vercel.
 ### Resend webhook + domain verification
 
 In Resend:
+
 - Verify the email-from domain (DKIM, SPF, DMARC).
 - Configure webhook at `${NEXT_PUBLIC_SITE_URL}/api/v1/webhooks/resend` for `email.bounced`, `email.complained`, `email.delivered_delayed`.
 - Copy signing secret to `RESEND_WEBHOOK_SECRET`.
@@ -92,6 +121,7 @@ In Resend:
 Create `jobs`, `companies`, `skills` indexes in Algolia. Configure searchable attributes + custom ranking for `jobs` per [SEARCH.md](./SEARCH.md).
 
 Add two `jobs` replicas to back the search sort dropdown (the `/api/v1/jobs/search` route falls back to relevance until they exist):
+
 - `jobs_recent` — ranking by `publishedAt` desc
 - `jobs_salary_desc` — ranking by `salaryMax` desc
 
@@ -111,6 +141,7 @@ bun run seed:skills
 ```
 
 Add a follow-up SQL migration for the manual indexes ([DATABASE.md](./DATABASE.md) §"Indexes"):
+
 - HNSW on `resumes.embedding` + `job_posts.embedding`
 - GIN on `job_posts.tsv` + `job_posts.title gin_trgm_ops`
 - GIST on `job_posts.geo`
@@ -127,24 +158,26 @@ Grep: `git grep "TODO(week-"` to see them all in context.
 
 ### Week 4 follow-up — search outbox
 
-| File | What |
-|---|---|
+| File                      | What                                                                                                                  |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------- |
 | `lib/search/index-job.ts` | Implement a real `index_outbox` table + writer; cron drains it. Current behavior is fire-and-forget + reconcile-only. |
 
 ### Week 11 — hardening (remaining)
 
-| Item | What |
-|---|---|
-| DB migration in CI | Run `prisma migrate deploy` before Vercel promotes. **Blocked:** no public Postgres image bundles both PostGIS and pgvector — use a custom image or a managed Neon CI branch. |
-| CSP enforce | Flip `Content-Security-Policy-Report-Only` → `Content-Security-Policy` in `next.config.ts` once the violation report is clean. |
-| Lighthouse budgets (enforce) | Accessibility now asserts `error` at a 0.90 floor and the blocking `axe` job runs the Playwright axe spec on every preview (2026-07-24, #42). Remaining: raise the a11y floor to 0.95 and flip performance/best-practices/SEO to `error` once their gaps close (SEO 0.82→0.95). (INP is a field-only metric, omitted from the lab assertions.) |
-| A11y on authenticated surfaces | The axe gate covers public pages only. Extend `tests/e2e/a11y.spec.ts` with authed fixtures — the Playwright `setup` project + `storageState` via the existing `E2E_TEST_EMAIL_JOBSEEKER`/`E2E_TEST_PASSWORD` creds — to scan `/jobseeker/*`, `/company/*`, the resume builder, and the applicants board. Refs #42. |
-| Synthetic check + PagerDuty | Vercel Cron hitting `/api/v1/health` every 5 min, paging on 3 consecutive failures. |
-| Rolling Release auto-rollback | Configure auto-rollback policy in Vercel based on error rate. |
-| AV scan | Cloudmersive integration in `resume-parse.workflow.ts` if resume volume crosses 1k/day. |
-| Re-index script | `scripts/reindex-all.ts` to rebuild Algolia from scratch. |
-| `middleware.ts` → `proxy.ts` | Next 16 deprecated the `middleware` file convention in favour of `proxy` (build prints a warning). Rename + adjust the export when convenient. |
-| Clerk v7 upgrade | `app/components/clerk-provider.tsx` exists only because @clerk/nextjs v6's provider reads `usePathname()` during render, which under cacheComponents forced the entire tree dynamic (#38). v7 dropped that read — upgrade `@clerk/nextjs`, delete the wrapper (and the now-direct `@clerk/clerk-react` dep), and restore the library's own provider. |
+| Item                                | What                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| DB migration in CI                  | Run `prisma migrate deploy` before Vercel promotes. **Blocked:** no public Postgres image bundles both PostGIS and pgvector — use a custom image or a managed Neon CI branch.                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| CSP enforce                         | Flip `Content-Security-Policy-Report-Only` → `Content-Security-Policy` in `next.config.ts` once the violation report is clean.                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| Lighthouse budgets (enforce)        | Accessibility now asserts `error` at a 0.90 floor and the blocking `axe` job runs the Playwright axe spec on every preview (2026-07-24, #42). Remaining: raise the a11y floor to 0.95 and flip performance/best-practices/SEO to `error` once their gaps close (SEO 0.82→0.95). (INP is a field-only metric, omitted from the lab assertions.)                                                                                                                                                                                                                                                            |
+| A11y on authenticated surfaces      | **Done (2026-07-30):** `tests/e2e/a11y.spec.ts` now scans every page in **both themes**, and adds `/jobseeker/*` + `/company/*` + the resume builder via the `setup` project + `storageState`. They skip without `E2E_TEST_*`, so wiring those creds into CI (see the row above) is what actually turns the gate on. Remaining: the applicants board needs a stable seeded job id to be a static path. Refs #42.                                                                                                                                                                                          |
+| `next/image` migration              | `images.remotePatterns` is already configured for Vercel Blob + Clerk avatars + Pixabay, and the design system has landed, so nothing blocks it. ~5 raw `<img>` with `eslint-disable @next/next/no-img-element` remain (header/footer brand mark, company logos, avatars).                                                                                                                                                                                                                                                                                                                                |
+| Synthetic check + PagerDuty         | Vercel Cron hitting `/api/v1/health` every 5 min, paging on 3 consecutive failures.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| Rolling Release auto-rollback       | Configure auto-rollback policy in Vercel based on error rate.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| AV scan                             | Cloudmersive integration in `resume-parse.workflow.ts` if resume volume crosses 1k/day.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| Re-index script                     | `scripts/reindex-all.ts` to rebuild Algolia from scratch.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| `middleware.ts` → `proxy.ts`        | Next 16 deprecated the `middleware` file convention in favour of `proxy` (build prints a warning). Rename + adjust the export when convenient.                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| Clerk v7 upgrade                    | `app/components/clerk-provider.tsx` exists only because @clerk/nextjs v6's provider reads `usePathname()` during render, which under cacheComponents forced the entire tree dynamic (#38). v7 dropped that read — upgrade `@clerk/nextjs`, delete the wrapper (and the now-direct `@clerk/clerk-react` dep), and restore the library's own provider. Carry the light/dark `appearance` sets over when you do.                                                                                                                                                                                             |
+| Verify Clerk dark mode on a preview | `clerk-provider.tsx` now ships light + dark `appearance` variable sets (2026-07-30), but **this cannot be checked locally**: a no-vendor run uses a placeholder publishable key that clerk-js rejects, so no Clerk markup renders on `/sign-in` or `/sign-up` at all. On the next preview with a live key, eyeball `<SignIn>`, `<SignUp>` and the `<UserButton>` popover in dark mode and confirm the axe dark scan of those two routes still passes with the form actually present. The values are concrete hex duplicated from `globals.css` — see the token-coupling note in [DESIGN.md](./DESIGN.md). |
 
 ---
 
@@ -152,57 +185,57 @@ Grep: `git grep "TODO(week-"` to see them all in context.
 
 Don't sneak these into V1. They land after Week 12 cutover + 4-week stability period.
 
-| Feature | Why deferred | Notes |
-|---|---|---|
-| Realtime chat transport | Chat areas (job-specific + virtual-intern) shipped 2026-07-03 as request/response Server Actions | Only the push transport (SSE/WebSocket) remains deferred; messages currently appear on submit/reload |
-| Recruiter AI screening summaries | Most expensive AI feature | Defer until paying recruiter customers exist |
-| Saved-search alerts with diff | Cron + diff complexity | V1 has a simple daily digest of new jobs |
-| AI vector reranking on search | Marginal gain at 10k MAU | Add when search CTR plateaus |
-| Public `/jobseekers` listing | Company-facing directory shipped 2026-07-03 (`/company/jobseekers`: PUBLIC profiles + subscribers, type filters, invite/share actions) | An unauthenticated public listing still needs UX + SEO thought |
-| Mobile native client | `/api/v1/*` is ready when this ships | iOS + Android with shared Route Handlers |
-| Personalization ("jobs like ones you applied to" — behavioral) | Needs behavioral data | Collect via `JobView` for V1; mine in V1.5. Note: a *content*-based variant (resume↔job embedding similarity) shipped as `/jobseeker/matches` — this line is specifically about interaction/behavioral signals, which is a separate, still-open gap |
-| Feature flags / A/B test framework | Need traffic first | Use Algolia A/B for search ranking; build app-side later |
-| Per-user TZ for daily digest | Single 08:00 UTC is good enough at beta scale | V1 sends all at the same time |
-| i18n (es, fr, pt, ar with RTL) | English-only for beta | When markets demand it, see [FRONTEND.md](./FRONTEND.md) §i18n |
-| Radix (accessible primitives) | The hand-rolled primitives in `app/components/ui/` cover current needs | Tailwind 4 is already adopted; add Radix only if a future component (combobox, accessible modal) outgrows the hand-rolled version |
+| Feature                                                        | Why deferred                                                                                                                           | Notes                                                                                                                                                                                                                                               |
+| -------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Realtime chat transport                                        | Chat areas (job-specific + virtual-intern) shipped 2026-07-03 as request/response Server Actions                                       | Only the push transport (SSE/WebSocket) remains deferred; messages currently appear on submit/reload                                                                                                                                                |
+| Recruiter AI screening summaries                               | Most expensive AI feature                                                                                                              | Defer until paying recruiter customers exist                                                                                                                                                                                                        |
+| Saved-search alerts with diff                                  | Cron + diff complexity                                                                                                                 | V1 has a simple daily digest of new jobs                                                                                                                                                                                                            |
+| AI vector reranking on search                                  | Marginal gain at 10k MAU                                                                                                               | Add when search CTR plateaus                                                                                                                                                                                                                        |
+| Public `/jobseekers` listing                                   | Company-facing directory shipped 2026-07-03 (`/company/jobseekers`: PUBLIC profiles + subscribers, type filters, invite/share actions) | An unauthenticated public listing still needs UX + SEO thought                                                                                                                                                                                      |
+| Mobile native client                                           | `/api/v1/*` is ready when this ships                                                                                                   | iOS + Android with shared Route Handlers                                                                                                                                                                                                            |
+| Personalization ("jobs like ones you applied to" — behavioral) | Needs behavioral data                                                                                                                  | Collect via `JobView` for V1; mine in V1.5. Note: a _content_-based variant (resume↔job embedding similarity) shipped as `/jobseeker/matches` — this line is specifically about interaction/behavioral signals, which is a separate, still-open gap |
+| Feature flags / A/B test framework                             | Need traffic first                                                                                                                     | Use Algolia A/B for search ranking; build app-side later                                                                                                                                                                                            |
+| Per-user TZ for daily digest                                   | Single 08:00 UTC is good enough at beta scale                                                                                          | V1 sends all at the same time                                                                                                                                                                                                                       |
+| i18n (es, fr, pt, ar with RTL)                                 | English-only for beta                                                                                                                  | When markets demand it, see [FRONTEND.md](./FRONTEND.md) §i18n                                                                                                                                                                                      |
+| Radix (accessible primitives)                                  | The hand-rolled primitives in `app/components/ui/` cover current needs                                                                 | Tailwind 4 is already adopted; add Radix only if a future component (combobox, accessible modal) outgrows the hand-rolled version                                                                                                                   |
 
 ---
 
 ## V2 — bigger product moves
 
-| Feature | Why later |
-|---|---|
-| Stripe billing | The `PlanTier` model + real gates (chat area creation, chat/share outreach, application tracking) shipped — everyone defaults to `PRO` since there's no checkout yet. Actual payment collection needs a sustained user base first |
+| Feature                                                                                              | Why later                                                                                                                                                                                                                                         |
+| ---------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Stripe billing                                                                                       | The `PlanTier` model + real gates (chat area creation, chat/share outreach, application tracking) shipped — everyone defaults to `PRO` since there's no checkout yet. Actual payment collection needs a sustained user base first                 |
 | Agentic multi-tool AI features (interview prep coach, application-quality reviewer, multi-turn chat) | Every AI feature today (resume parse, JD skill extraction, bio coach, match scoring) is single-shot — no tool-calling/looping. A real agentic feature needs conversation history + state + a new UI surface, which is more scope than a point fix |
-| Job-board syndication (ATS integrations) | Partner integrations |
-| White-label for enterprise | Multi-tenancy in route group + theming |
-| Talent pool / sourcing | New product surface |
-| SOC 2 Type 1 audit | Annual, after first revenue |
+| Job-board syndication (ATS integrations)                                                             | Partner integrations                                                                                                                                                                                                                              |
+| White-label for enterprise                                                                           | Multi-tenancy in route group + theming                                                                                                                                                                                                            |
+| Talent pool / sourcing                                                                               | New product surface                                                                                                                                                                                                                               |
+| SOC 2 Type 1 audit                                                                                   | Annual, after first revenue                                                                                                                                                                                                                       |
 
 ---
 
 ## Documentation gaps
 
-| Doc | Status |
-|---|---|
-| `apps/web/docs/README.md` | Done — index |
-| `SETUP.md` | Done |
-| `ARCHITECTURE.md` | Done |
-| `FRONTEND.md` | Done |
-| `BACKEND.md` | Done |
-| `DATABASE.md` | Done |
-| `AUTH.md` | Done |
-| `AI.md` | Done |
-| `SEARCH.md` | Done |
-| `SECURITY.md` | Done |
-| `COMPLIANCE.md` | Done |
-| `OBSERVABILITY.md` | Done |
-| `TESTING.md` | Done |
-| `DEPLOYMENT.md` | Done |
-| `OPERATIONS.md` | Done (pre-existing) |
-| `CUTOVER_RUNBOOK.md` | Done (pre-existing) |
-| `REMAINING_STEPS.md` | This file |
-| `postmortems/<date>-<slug>.md` | Created on first incident |
+| Doc                                 | Status                                           |
+| ----------------------------------- | ------------------------------------------------ |
+| `apps/web/docs/README.md`           | Done — index                                     |
+| `SETUP.md`                          | Done                                             |
+| `ARCHITECTURE.md`                   | Done                                             |
+| `FRONTEND.md`                       | Done                                             |
+| `BACKEND.md`                        | Done                                             |
+| `DATABASE.md`                       | Done                                             |
+| `AUTH.md`                           | Done                                             |
+| `AI.md`                             | Done                                             |
+| `SEARCH.md`                         | Done                                             |
+| `SECURITY.md`                       | Done                                             |
+| `COMPLIANCE.md`                     | Done                                             |
+| `OBSERVABILITY.md`                  | Done                                             |
+| `TESTING.md`                        | Done                                             |
+| `DEPLOYMENT.md`                     | Done                                             |
+| `OPERATIONS.md`                     | Done (pre-existing)                              |
+| `CUTOVER_RUNBOOK.md`                | Done (pre-existing)                              |
+| `REMAINING_STEPS.md`                | This file                                        |
+| `postmortems/<date>-<slug>.md`      | Created on first incident                        |
 | `decisions/<date>-<slug>.md` (ADRs) | Optional; add when a non-obvious decision sticks |
 
 ---

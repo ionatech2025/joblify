@@ -4,7 +4,14 @@ import * as Sentry from '@sentry/nextjs';
 // Marketplace integration provisions SENTRY_DSN this is a no-op, so boot never
 // fails on missing config. Called from instrumentation.ts `register()`.
 
-const REDACT_KEYS = ['password', 'confirmPassword', 'token', 'authorization', 'cookie', 'refreshToken'];
+const REDACT_KEYS = [
+  'password',
+  'confirmPassword',
+  'token',
+  'authorization',
+  'cookie',
+  'refreshToken',
+];
 
 export function init(): void {
   const dsn = process.env.SENTRY_DSN;

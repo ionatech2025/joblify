@@ -90,7 +90,7 @@ export function EmployerSetupForm() {
         <Input {...register('website')} placeholder="https://acme.com" />
       </Field>
 
-      {error && <p className="m-0 text-red-700">{error}</p>}
+      {error && <p className="m-0 text-danger">{error}</p>}
 
       <Button type="submit" disabled={pending} className="self-start">
         {pending ? 'Creating…' : 'Create company & continue'}

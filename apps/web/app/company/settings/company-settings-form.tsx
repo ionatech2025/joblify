@@ -85,12 +85,20 @@ export function CompanySettingsForm({
 
   return (
     <div className="mt-6">
-      <section className="mb-6 flex items-center gap-4 border-b border-neutral-200 pb-6">
+      <section className="mb-6 flex items-center gap-4 border-b border-border pb-6">
         {logo ? (
           // eslint-disable-next-line @next/next/no-img-element -- user-supplied logo, no fixed dims
-          <img src={logo} alt="Company logo" width={64} height={64} className="size-16 rounded-xl object-cover" />
+          <img
+            src={logo}
+            alt="Company logo"
+            width={64}
+            height={64}
+            className="size-16 rounded-control object-cover"
+          />
         ) : (
-          <div className="grid size-16 place-items-center rounded-xl bg-neutral-100 text-sm text-neutral-400">Logo</div>
+          <div className="grid size-16 place-items-center rounded-control bg-surface-sunken text-sm text-fg-subtle">
+            Logo
+          </div>
         )}
         <input
           ref={logoInput}
@@ -100,7 +108,12 @@ export function CompanySettingsForm({
           className="hidden"
           aria-hidden="true"
         />
-        <Button type="button" variant="secondary" onClick={() => logoInput.current?.click()} disabled={logoBusy}>
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={() => logoInput.current?.click()}
+          disabled={logoBusy}
+        >
           {logoBusy ? 'Uploading…' : 'Upload logo'}
         </Button>
       </section>
@@ -142,8 +155,8 @@ export function CompanySettingsForm({
           <Input {...register('linkedin')} placeholder="https://linkedin.com/company/acme" />
         </Field>
 
-        {error && <p className="m-0 text-red-700">{error}</p>}
-        {saved && <p className="m-0 text-green-700">Saved.</p>}
+        {error && <p className="m-0 text-danger">{error}</p>}
+        {saved && <p className="m-0 text-success">Saved.</p>}
 
         <Button type="submit" disabled={pending} className="self-start">
           {pending ? 'Saving…' : 'Save changes'}

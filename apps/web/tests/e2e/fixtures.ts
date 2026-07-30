@@ -14,7 +14,10 @@ const FIXTURE_RESUME_ID = 'e2e00000-0000-4000-8000-000000000001';
 const FIXTURE_MESSAGE_ID = 'e2e00000-0000-4000-8000-000000000002';
 const FIXTURE_NOTIFICATION_ID = 'e2e00000-0000-4000-8000-000000000003';
 
-export async function ensureE2eFixtures(jobseekerEmail: string, companyEmail: string): Promise<void> {
+export async function ensureE2eFixtures(
+  jobseekerEmail: string,
+  companyEmail: string,
+): Promise<void> {
   const [jobseeker, company] = await Promise.all([
     db.user.findUnique({ where: { email: jobseekerEmail }, select: { id: true } }),
     db.user.findUnique({ where: { email: companyEmail }, select: { id: true } }),
@@ -27,7 +30,8 @@ export async function ensureE2eFixtures(jobseekerEmail: string, companyEmail: st
       id: FIXTURE_RESUME_ID,
       userId: jobseeker.id,
       title: 'E2E Fixture Resume.pdf',
-      fileBlobUrl: 'https://demo-blob.public.blob.vercel-storage.com/resumes/e2e-fixture-resume.pdf',
+      fileBlobUrl:
+        'https://demo-blob.public.blob.vercel-storage.com/resumes/e2e-fixture-resume.pdf',
       fileMime: 'application/pdf',
       fileSizeBytes: 123_456,
       isDefault: true,
@@ -91,7 +95,12 @@ export async function ensureE2eFixtures(jobseekerEmail: string, companyEmail: st
   // it to SHORTLISTED) is repeatable.
   await db.jobApplication.upsert({
     where: { jobPostId_jobSeekerId: { jobPostId: job.id, jobSeekerId: jobseeker.id } },
-    create: { jobPostId: job.id, jobSeekerId: jobseeker.id, resumeId: resume.id, status: 'SUBMITTED' },
+    create: {
+      jobPostId: job.id,
+      jobSeekerId: jobseeker.id,
+      resumeId: resume.id,
+      status: 'SUBMITTED',
+    },
     update: { status: 'SUBMITTED' },
   });
 
@@ -101,7 +110,10 @@ export async function ensureE2eFixtures(jobseekerEmail: string, companyEmail: st
   // runs and eventually bloat the notifications page enough to time out other
   // specs. Only ever produced for this fixture application, so safe to clear.
   await db.notification.deleteMany({
-    where: { userId: jobseeker.id, kind: { in: ['APPLICATION_STATUS_CHANGED', 'CHAT_AREA_ADDED'] } },
+    where: {
+      userId: jobseeker.id,
+      kind: { in: ['APPLICATION_STATUS_CHANGED', 'CHAT_AREA_ADDED'] },
+    },
   });
 
   // Reset to PENDING each run so the accept/decline e2e test is repeatable.

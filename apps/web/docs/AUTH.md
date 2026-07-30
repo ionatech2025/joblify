@@ -38,7 +38,10 @@ Coarse gate — redirects unauthenticated traffic away from protected paths befo
 
 ```ts
 const isProtected = createRouteMatcher([
-  '/dashboard(.*)', '/jobseeker(.*)', '/company(.*)', '/account(.*)',
+  '/dashboard(.*)',
+  '/jobseeker(.*)',
+  '/company(.*)',
+  '/account(.*)',
 ]);
 
 export default clerkMiddleware(async (auth, req) => {
@@ -70,22 +73,22 @@ Three layers means a single misconfiguration in any one doesn't break the gate.
 
 ## Helpers (`lib/auth.ts`)
 
-| Helper | Returns | Behavior |
-|---|---|---|
-| `currentUser()` | `User \| null` | The mirrored Postgres user. `null` if no Clerk session or user soft-deleted. |
-| `requireUser()` | `User` | Like `currentUser` but redirects to `/sign-in` if no user. |
-| `requireRole(role)` | `User` | `requireUser` + throws `AuthError('FORBIDDEN')` if wrong `userType`. |
-| `requireSelfOrAdmin(id)` | `User` | `requireUser` + ensures `user.id === id \|\| user.userType === 'ADMIN'`. |
+| Helper                   | Returns        | Behavior                                                                     |
+| ------------------------ | -------------- | ---------------------------------------------------------------------------- |
+| `currentUser()`          | `User \| null` | The mirrored Postgres user. `null` if no Clerk session or user soft-deleted. |
+| `requireUser()`          | `User`         | Like `currentUser` but redirects to `/sign-in` if no user.                   |
+| `requireRole(role)`      | `User`         | `requireUser` + throws `AuthError('FORBIDDEN')` if wrong `userType`.         |
+| `requireSelfOrAdmin(id)` | `User`         | `requireUser` + ensures `user.id === id \|\| user.userType === 'ADMIN'`.     |
 
 Use these in Server Components, Server Actions, Route Handlers. Same surface, same guarantees.
 
 ## Roles
 
-| `userType` | Granted | Maps to |
-|---|---|---|
-| `JOB_SEEKER` | Default on signup | Personal dashboards, apply flow |
-| `COMPANY` | When user joins/creates a Clerk Organization | Company dashboards, post-job |
-| `ADMIN` | Manually set in DB | Future admin tooling (deferred to V1.5) |
+| `userType`   | Granted                                      | Maps to                                 |
+| ------------ | -------------------------------------------- | --------------------------------------- |
+| `JOB_SEEKER` | Default on signup                            | Personal dashboards, apply flow         |
+| `COMPANY`    | When user joins/creates a Clerk Organization | Company dashboards, post-job            |
+| `ADMIN`      | Manually set in DB                           | Future admin tooling (deferred to V1.5) |
 
 Clerk Organizations represent companies. Each Org has roles `org:company` (members) and `org:admin` (org owner — distinct from our `User.userType: ADMIN`). The webhook handler flips `userType: COMPANY` when a user joins an org.
 
@@ -117,13 +120,13 @@ Used today on the `org:company` gate only; expand as new sensitive ops appear (p
 
 ## OAuth providers
 
-| Provider | Status | Notes |
-|---|---|---|
-| Email + password | Enabled | Magic-link variant available |
-| Google | Enable in Clerk dashboard | Free; no review |
-| LinkedIn OIDC | Submit Day 1; review 2–4 weeks | Non-negotiable for a job board long-term |
-| Apple | Optional | Adds App Store reach when mobile lands |
-| GitHub | Optional | Niche; helpful for dev-focused listings |
+| Provider         | Status                         | Notes                                    |
+| ---------------- | ------------------------------ | ---------------------------------------- |
+| Email + password | Enabled                        | Magic-link variant available             |
+| Google           | Enable in Clerk dashboard      | Free; no review                          |
+| LinkedIn OIDC    | Submit Day 1; review 2–4 weeks | Non-negotiable for a job board long-term |
+| Apple            | Optional                       | Adds App Store reach when mobile lands   |
+| GitHub           | Optional                       | Niche; helpful for dev-focused listings  |
 
 While LinkedIn review is pending, ship with Google + email/password. Flip LinkedIn on once approved.
 

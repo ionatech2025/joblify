@@ -2,7 +2,10 @@
 
 import { useState, useTransition } from 'react';
 import { verifyCompany } from '@/app/actions/admin';
+import { ShieldCheck } from 'lucide-react';
 import { Button } from '@/app/components/ui/button';
+import { EmptyState } from '@/app/components/ui/empty-state';
+import { toast } from '@/lib/stores/ui';
 
 type PendingCompany = {
   id: string;
@@ -20,17 +23,26 @@ export function VerificationQueue({ initial }: { initial: PendingCompany[] }) {
   const [error, setError] = useState<string | null>(null);
 
   function decide(id: string, status: 'VERIFIED' | 'REJECTED') {
-    if (status === 'REJECTED' && !window.confirm('Reject this company? They will be notified.')) return;
+    if (status === 'REJECTED' && !window.confirm('Reject this company? They will be notified.'))
+      return;
     setError(null);
     setBusyId(id);
     const prev = rows;
     setRows((r) => r.filter((row) => row.id !== id)); // optimistic
+    const name = prev.find((row) => row.id === id)?.companyName ?? 'Company';
     startTransition(async () => {
       try {
         await verifyCompany(id, status);
+        if (status === 'VERIFIED') {
+          toast.success(`${name} verified`, 'They now appear in search and the directory.');
+        } else {
+          toast.success(`${name} rejected`, 'They have been notified.');
+        }
       } catch (err) {
         setRows(prev);
-        setError(err instanceof Error ? err.message : 'Action failed.');
+        const message = err instanceof Error ? err.message : 'Action failed.';
+        setError(message);
+        toast.error(`Couldn't update ${name}`, message);
       } finally {
         setBusyId(null);
       }
@@ -38,29 +50,44 @@ export function VerificationQueue({ initial }: { initial: PendingCompany[] }) {
   }
 
   if (rows.length === 0) {
-    return <p className="mt-6 text-neutral-600">No companies waiting on verification.</p>;
+    return (
+      <EmptyState
+        className="mt-6"
+        icon={<ShieldCheck />}
+        title="Verification queue is clear"
+        description="Newly registered companies appear here for review before they show in search and the directory."
+      />
+    );
   }
 
   return (
     <div className="mt-6">
-      {error && <p className="mb-4 text-red-700">{error}</p>}
+      {error && <p className="mb-4 text-danger">{error}</p>}
       <ul className="grid list-none grid-cols-1 gap-3 p-0">
         {rows.map((c) => (
-          <li key={c.id} className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-neutral-200/80 bg-white p-4 shadow-soft">
+          <li
+            key={c.id}
+            className="flex flex-wrap items-center justify-between gap-4 rounded-card border border-border bg-surface p-4 shadow-soft"
+          >
             <div>
-              <p className="m-0 font-semibold text-neutral-900">{c.companyName}</p>
-              <p className="mt-1 mb-0 text-sm text-neutral-500">
+              <p className="m-0 font-semibold text-fg">{c.companyName}</p>
+              <p className="mt-1 mb-0 text-sm text-fg-subtle">
                 {titleCase(c.industry)} · {sizeLabel(c.companySize)}
                 {c.website && (
                   <>
                     {' · '}
-                    <a href={c.website} target="_blank" rel="noopener noreferrer" className="text-indigo-700 hover:underline">
+                    <a
+                      href={c.website}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-brand hover:underline"
+                    >
                       {c.website}
                     </a>
                   </>
                 )}
               </p>
-              <p className="mt-1 mb-0 text-xs text-neutral-400">
+              <p className="mt-1 mb-0 text-xs text-fg-subtle">
                 Applied {new Date(c.createdAt).toLocaleDateString()}
               </p>
             </div>

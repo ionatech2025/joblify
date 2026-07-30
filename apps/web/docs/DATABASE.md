@@ -62,26 +62,26 @@ Plus: `Invitation`, `JobView`.
 
 ## Identity & access
 
-| Field | Purpose |
-|---|---|
-| `User.clerkUserId` | The Clerk-side ID. Mirrored on `user.created` webhook. Unique. |
-| `User.email` | `citext` (case-insensitive). Unique. |
-| `User.userType` | `JOB_SEEKER` / `COMPANY` / `ADMIN`. Drives route gating. |
-| `User.deletedAt` | Soft delete. Hard-deleted by `retention.workflow.ts` after 30 d. |
+| Field              | Purpose                                                          |
+| ------------------ | ---------------------------------------------------------------- |
+| `User.clerkUserId` | The Clerk-side ID. Mirrored on `user.created` webhook. Unique.   |
+| `User.email`       | `citext` (case-insensitive). Unique.                             |
+| `User.userType`    | `JOB_SEEKER` / `COMPANY` / `ADMIN`. Drives route gating.         |
+| `User.deletedAt`   | Soft delete. Hard-deleted by `retention.workflow.ts` after 30 d. |
 
 `User` has two 1:1 profile rows (`JobSeekerProfile`, `CompanyProfile`) — they exist for the user's `userType`. Look up via `db.user.findUnique({ include: { jobSeekerProfile: true } })`.
 
 ## Jobs
 
-| Field | Purpose |
-|---|---|
-| `JobPost.slug` | Unique URL slug. Generated from title + random suffix. |
-| `JobPost.companyId` | FK to `User.id` (the owner). |
-| `JobPost.status` | `DRAFT` / `PENDING_REVIEW` / `PUBLISHED` / `CLOSED` / `ARCHIVED`. Only `PUBLISHED` shows on /jobs. |
-| `JobPost.embedding` | 1536-dim `vector` for match scoring. Written by `resume-parse` + `match-score` workflows. |
-| `JobPost.geo` | PostGIS `geography(Point, 4326)` for radius queries. Optional. |
-| `JobPost.tsv` | `tsvector` for FTS fallback. Optional — Algolia handles primary search. |
-| `JobPost.deletedAt` | Soft delete. |
+| Field               | Purpose                                                                                            |
+| ------------------- | -------------------------------------------------------------------------------------------------- |
+| `JobPost.slug`      | Unique URL slug. Generated from title + random suffix.                                             |
+| `JobPost.companyId` | FK to `User.id` (the owner).                                                                       |
+| `JobPost.status`    | `DRAFT` / `PENDING_REVIEW` / `PUBLISHED` / `CLOSED` / `ARCHIVED`. Only `PUBLISHED` shows on /jobs. |
+| `JobPost.embedding` | 1536-dim `vector` for match scoring. Written by `resume-parse` + `match-score` workflows.          |
+| `JobPost.geo`       | PostGIS `geography(Point, 4326)` for radius queries. Optional.                                     |
+| `JobPost.tsv`       | `tsvector` for FTS fallback. Optional — Algolia handles primary search.                            |
+| `JobPost.deletedAt` | Soft delete.                                                                                       |
 
 `JobApplication` joins jobseeker × jobPost × resume with a `@@unique([jobPostId, jobSeekerId])` so a user can't apply twice.
 
@@ -90,6 +90,7 @@ Plus: `Invitation`, `JobView`.
 `Skill` is canonical (slug-unique). Seeded by `prisma db seed` (`prisma/seed.ts`) with ~30 starter skills; expand to the full ESCO catalogue (~13k entries) when search relevance demands it.
 
 `JobPostSkill` and `JobSeekerSkill` are join tables with extra columns:
+
 - `JobPostSkill.weight` — 1 (nice-to-have) or 2 (required).
 - `JobSeekerSkill.proficiency` 1–5, `JobSeekerSkill.years` integer.
 
@@ -97,36 +98,36 @@ These power the Jaccard skill overlap in `lib/search/ranking.ts`.
 
 ## Notifications + invitations
 
-| Model | Use |
-|---|---|
+| Model          | Use                                                                                                                                      |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
 | `Notification` | In-app feed for jobseeker + company. Polled every 30 s by TanStack Query. Cleared by retention cron (read >6 months or unread >90 days). |
-| `Invitation` | Company → jobseeker invitations. PENDING / ACCEPTED / DECLINED / EXPIRED / REVOKED. Purged 90 d after expiry. |
+| `Invitation`   | Company → jobseeker invitations. PENDING / ACCEPTED / DECLINED / EXPIRED / REVOKED. Purged 90 d after expiry.                            |
 
 ## Audit log
 
 `AuditEvent` is the immutable trail. Written by `withAudit` on every state change. Never delete rows — retention sets a 1-year TTL via the `retention` workflow.
 
-| Field | Notes |
-|---|---|
-| `actorId` | FK to User; nulled when the user is hard-deleted (GDPR keeps the audit, drops PII). |
-| `action` | `AuditAction` enum. Add new values via migration. |
-| `entity` + `entityId` | Subject of the action. |
-| `before` / `after` | JSON snapshots. Diff is the truth. |
+| Field                 | Notes                                                                               |
+| --------------------- | ----------------------------------------------------------------------------------- |
+| `actorId`             | FK to User; nulled when the user is hard-deleted (GDPR keeps the audit, drops PII). |
+| `action`              | `AuditAction` enum. Add new values via migration.                                   |
+| `entity` + `entityId` | Subject of the action.                                                              |
+| `before` / `after`    | JSON snapshots. Diff is the truth.                                                  |
 
 ## Indexes (defined in `schema.prisma`)
 
-| Index | Purpose |
-|---|---|
-| `User: [userType, deletedAt]` | Fast filter for jobseekers / companies / admins, skipping soft-deleted. |
-| `JobPost: [companyId, status, deletedAt]` | Company dashboard listing. |
-| `JobPost: [status, publishedAt desc]` | Public /jobs feed. |
-| `JobPost: [industry, status]` | Industry-faceted browse. |
-| `JobApplication: [jobSeekerId, appliedAt desc]` | Jobseeker applications list. |
-| `JobApplication: [jobPostId, status]` | Company applicants list. |
-| `JobView: [jobPostId, createdAt]` | Per-JD analytics. |
-| `Notification: [userId, readAt, createdAt desc]` | Notifications feed; the readAt-in-key lets us pull unread fast. |
-| `AuditEvent: [actorId, createdAt desc]` | "What did user X do?" |
-| `AuditEvent: [entity, entityId]` | "Who touched this thing?" |
+| Index                                            | Purpose                                                                 |
+| ------------------------------------------------ | ----------------------------------------------------------------------- |
+| `User: [userType, deletedAt]`                    | Fast filter for jobseekers / companies / admins, skipping soft-deleted. |
+| `JobPost: [companyId, status, deletedAt]`        | Company dashboard listing.                                              |
+| `JobPost: [status, publishedAt desc]`            | Public /jobs feed.                                                      |
+| `JobPost: [industry, status]`                    | Industry-faceted browse.                                                |
+| `JobApplication: [jobSeekerId, appliedAt desc]`  | Jobseeker applications list.                                            |
+| `JobApplication: [jobPostId, status]`            | Company applicants list.                                                |
+| `JobView: [jobPostId, createdAt]`                | Per-JD analytics.                                                       |
+| `Notification: [userId, readAt, createdAt desc]` | Notifications feed; the readAt-in-key lets us pull unread fast.         |
+| `AuditEvent: [actorId, createdAt desc]`          | "What did user X do?"                                                   |
+| `AuditEvent: [entity, entityId]`                 | "Who touched this thing?"                                               |
 
 Manual indexes for vector / FTS columns are added via raw SQL migrations:
 
@@ -241,15 +242,15 @@ Target: full restore in < 4 h.
 
 These are the contracts that protect against IDOR. Code reviews must enforce them.
 
-| Resource | Who can read | Who can write |
-|---|---|---|
-| `User.id` | self + admin | self + admin |
-| `JobSeekerProfile` | self; `visibility: PUBLIC` profiles are listable | self |
-| `CompanyProfile` | anyone (public) | the owning user |
-| `JobPost` | anyone if `status: PUBLISHED && deletedAt: null` | the owning company |
-| `JobApplication` | the jobseeker + the company that owns the job | jobseeker creates; company changes status |
-| `Resume` | self; visible to companies through applications | self |
-| `Notification` | self | system writes; self marks read |
-| `AuditEvent` | admin only | system writes (immutable) |
+| Resource           | Who can read                                     | Who can write                             |
+| ------------------ | ------------------------------------------------ | ----------------------------------------- |
+| `User.id`          | self + admin                                     | self + admin                              |
+| `JobSeekerProfile` | self; `visibility: PUBLIC` profiles are listable | self                                      |
+| `CompanyProfile`   | anyone (public)                                  | the owning user                           |
+| `JobPost`          | anyone if `status: PUBLISHED && deletedAt: null` | the owning company                        |
+| `JobApplication`   | the jobseeker + the company that owns the job    | jobseeker creates; company changes status |
+| `Resume`           | self; visible to companies through applications  | self                                      |
+| `Notification`     | self                                             | system writes; self marks read            |
+| `AuditEvent`       | admin only                                       | system writes (immutable)                 |
 
 Every controller that reads or writes from these tables must include the right `where` clause. Never use `findUnique({ where: { id } })` for a resource that has a tenancy boundary — use `findFirst({ where: { id, ownerId: user.id } })`.

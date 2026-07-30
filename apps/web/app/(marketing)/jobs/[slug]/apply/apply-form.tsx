@@ -48,9 +48,9 @@ export function ApplyForm({
 
       <Field label="Resume">
         {resumes.length === 0 ? (
-          <p className="m-0 text-red-700">
+          <p className="m-0 text-danger">
             You need a resume first.{' '}
-            <Link href="/jobseeker/resumes" className="font-semibold text-indigo-700 hover:underline">
+            <Link href="/jobseeker/resumes" className="font-semibold text-brand hover:underline">
               Upload one →
             </Link>
           </p>
@@ -84,7 +84,7 @@ export function ApplyForm({
         />
       </Field>
 
-      <label className="flex items-start gap-2 text-sm text-neutral-600">
+      <label className="flex items-start gap-2 text-sm text-fg-muted">
         <input
           type="checkbox"
           name="acknowledgedDataUse"
@@ -93,10 +93,13 @@ export function ApplyForm({
           onChange={(e) => update(jobId, { acknowledgedDataUse: e.target.checked })}
           className="mt-1"
         />
-        <span>I agree my application data (resume, cover letter, profile) may be shared with this employer.</span>
+        <span>
+          I agree my application data (resume, cover letter, profile) may be shared with this
+          employer.
+        </span>
       </label>
 
-      {error && <p className="m-0 text-red-700">{error}</p>}
+      {error && <p className="m-0 text-danger">{error}</p>}
 
       <Button type="submit" disabled={isPending || resumes.length === 0} className="self-start">
         {isPending ? 'Submitting…' : 'Submit application'}

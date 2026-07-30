@@ -75,11 +75,14 @@ export function ProfileForm({
       </Field>
 
       {isVirtualIntern && (
-        <div className="flex flex-col gap-4 rounded-2xl border border-indigo-100 bg-indigo-50/40 p-4">
+        <div className="flex flex-col gap-4 rounded-card border border-border bg-brand-subtle p-4">
           <Field label="Career interest" error={errors.careerInterest?.message}>
             <Input {...register('careerInterest')} placeholder="Digital marketing" />
           </Field>
-          <Field label="Availability (hours per week)" error={errors.availabilityHoursPerWeek?.message}>
+          <Field
+            label="Availability (hours per week)"
+            error={errors.availabilityHoursPerWeek?.message}
+          >
             <Input type="number" {...register('availabilityHoursPerWeek')} min={1} max={80} />
           </Field>
           <Field label="Learning goal" error={errors.learningGoal?.message}>
@@ -97,20 +100,26 @@ export function ProfileForm({
       </Field>
 
       <Field label="Bio" error={errors.bio?.message}>
-        <Textarea {...register('bio')} rows={6} placeholder="A short summary of what you do and what you're looking for." />
+        <Textarea
+          {...register('bio')}
+          rows={6}
+          placeholder="A short summary of what you do and what you're looking for."
+        />
       </Field>
 
       <fieldset className="flex flex-col gap-1">
-        <legend className="text-sm font-medium text-neutral-700">Skills</legend>
-        <div className="grid grid-cols-2 gap-x-4 gap-y-2 rounded-xl border border-neutral-300 bg-white p-3 sm:grid-cols-3">
+        <legend className="text-sm font-medium text-fg-muted">Skills</legend>
+        <div className="grid grid-cols-2 gap-x-4 gap-y-2 rounded-control border border-border-strong bg-surface p-3 sm:grid-cols-3">
           {allSkills.map((skill) => (
-            <label key={skill.slug} className="flex items-center gap-2 text-sm text-neutral-700">
+            <label key={skill.slug} className="flex items-center gap-2 text-sm text-fg-muted">
               <input type="checkbox" value={skill.slug} {...register('skillSlugs')} />
               {skill.label}
             </label>
           ))}
         </div>
-        {errors.skillSlugs?.message && <span className="text-sm text-red-600">{errors.skillSlugs.message}</span>}
+        {errors.skillSlugs?.message && (
+          <span className="text-sm text-danger">{errors.skillSlugs.message}</span>
+        )}
       </fieldset>
 
       <Field label="Years of professional experience" error={errors.yearsExperience?.message}>
@@ -118,11 +127,19 @@ export function ProfileForm({
       </Field>
 
       <Field label="Education" error={errors.education?.message}>
-        <Textarea {...register('education')} rows={3} placeholder="B.Sc. Computer Science, University of Nairobi (2018–2022)" />
+        <Textarea
+          {...register('education')}
+          rows={3}
+          placeholder="B.Sc. Computer Science, University of Nairobi (2018–2022)"
+        />
       </Field>
 
       <Field label="Certifications" error={errors.certifications?.message}>
-        <Textarea {...register('certifications')} rows={3} placeholder="AWS Certified Solutions Architect (2024)" />
+        <Textarea
+          {...register('certifications')}
+          rows={3}
+          placeholder="AWS Certified Solutions Architect (2024)"
+        />
       </Field>
 
       <Field label="Portfolio / GitHub link" error={errors.portfolioUrl?.message}>
@@ -158,8 +175,8 @@ export function ProfileForm({
         </Select>
       </Field>
 
-      {error && <p className="m-0 text-red-700">{error}</p>}
-      {saved && <p className="m-0 text-green-700">Saved.</p>}
+      {error && <p className="m-0 text-danger">{error}</p>}
+      {saved && <p className="m-0 text-success">Saved.</p>}
 
       <Button type="submit" disabled={isPending || !isDirty} className="self-start">
         {isPending ? 'Saving…' : 'Save profile'}

@@ -18,7 +18,11 @@ setup('authenticate test users', async ({ browser }) => {
   if (!password) return;
 
   const roles = [
-    { email: process.env.E2E_TEST_EMAIL_JOBSEEKER, landing: '/jobseeker/applications', file: STORAGE.jobseeker },
+    {
+      email: process.env.E2E_TEST_EMAIL_JOBSEEKER,
+      landing: '/jobseeker/applications',
+      file: STORAGE.jobseeker,
+    },
     { email: process.env.E2E_TEST_EMAIL_COMPANY, landing: '/company/jobs', file: STORAGE.company },
   ];
 
@@ -35,11 +39,20 @@ setup('authenticate test users', async ({ browser }) => {
     await page.evaluate(
       async ({ identifier, password }) => {
         const { Clerk } = window as unknown as ClerkWindow;
-        const signIn = await Clerk.client.signIn.create({ strategy: 'password', identifier, password });
+        const signIn = await Clerk.client.signIn.create({
+          strategy: 'password',
+          identifier,
+          password,
+        });
         if (signIn.status === 'needs_second_factor') {
-          const emailFactor = signIn.supportedSecondFactors.find((f) => f.strategy === 'email_code');
+          const emailFactor = signIn.supportedSecondFactors.find(
+            (f) => f.strategy === 'email_code',
+          );
           if (!emailFactor) throw new Error('email_code second factor not offered');
-          await signIn.prepareSecondFactor({ strategy: 'email_code', emailAddressId: emailFactor.emailAddressId });
+          await signIn.prepareSecondFactor({
+            strategy: 'email_code',
+            emailAddressId: emailFactor.emailAddressId,
+          });
           const done = await signIn.attemptSecondFactor({ strategy: 'email_code', code: '424242' });
           await Clerk.setActive({ session: done.createdSessionId });
         } else if (signIn.status === 'complete') {
@@ -59,7 +72,10 @@ setup('authenticate test users', async ({ browser }) => {
   // triggered lazy Clerk->Postgres provisioning) — safe to provision the
   // cross-account fixtures workflows.spec.ts depends on.
   if (process.env.E2E_TEST_EMAIL_JOBSEEKER && process.env.E2E_TEST_EMAIL_COMPANY) {
-    await ensureE2eFixtures(process.env.E2E_TEST_EMAIL_JOBSEEKER, process.env.E2E_TEST_EMAIL_COMPANY);
+    await ensureE2eFixtures(
+      process.env.E2E_TEST_EMAIL_JOBSEEKER,
+      process.env.E2E_TEST_EMAIL_COMPANY,
+    );
   }
 });
 
@@ -76,7 +92,17 @@ interface ClerkSignInResource {
   status: string;
   createdSessionId: string | null;
   supportedSecondFactors: { strategy: string; emailAddressId: string }[];
-  create(params: { strategy: 'password'; identifier: string; password: string }): Promise<ClerkSignInResource>;
-  prepareSecondFactor(params: { strategy: 'email_code'; emailAddressId: string }): Promise<ClerkSignInResource>;
-  attemptSecondFactor(params: { strategy: 'email_code'; code: string }): Promise<ClerkSignInResource>;
+  create(params: {
+    strategy: 'password';
+    identifier: string;
+    password: string;
+  }): Promise<ClerkSignInResource>;
+  prepareSecondFactor(params: {
+    strategy: 'email_code';
+    emailAddressId: string;
+  }): Promise<ClerkSignInResource>;
+  attemptSecondFactor(params: {
+    strategy: 'email_code';
+    code: string;
+  }): Promise<ClerkSignInResource>;
 }

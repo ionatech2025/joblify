@@ -69,7 +69,10 @@ function makeLimit(prefix: string, limit: ReturnType<typeof Ratelimit.slidingWin
 export const signupLimit: Limiter = makeLimit('signup', Ratelimit.slidingWindow(3, '1 h'));
 export const signinLimit: Limiter = makeLimit('signin', Ratelimit.slidingWindow(10, '15 m'));
 export const applyLimit: Limiter = makeLimit('apply', Ratelimit.slidingWindow(20, '1 d'));
-export const accountExportLimit: Limiter = makeLimit('account-export', Ratelimit.slidingWindow(2, '1 d'));
+export const accountExportLimit: Limiter = makeLimit(
+  'account-export',
+  Ratelimit.slidingWindow(2, '1 d'),
+);
 export const searchLimit: Limiter = makeLimit('search', Ratelimit.slidingWindow(100, '1 m'));
 export const globalLimit: Limiter = makeLimit('global', Ratelimit.slidingWindow(600, '15 m'));
 // Each post/update triggers a paid AI Gateway skill-extraction call + an
@@ -77,4 +80,7 @@ export const globalLimit: Limiter = makeLimit('global', Ratelimit.slidingWindow(
 // just a spam nuisance.
 export const postJobLimit: Limiter = makeLimit('post-job', Ratelimit.slidingWindow(10, '1 d'));
 export const inviteLimit: Limiter = makeLimit('invite', Ratelimit.slidingWindow(30, '1 d'));
-export const chatMessageLimit: Limiter = makeLimit('chat-message', Ratelimit.slidingWindow(60, '10 m'));
+export const chatMessageLimit: Limiter = makeLimit(
+  'chat-message',
+  Ratelimit.slidingWindow(60, '10 m'),
+);

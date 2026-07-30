@@ -16,7 +16,10 @@ vi.mock('@/lib/audit', () => ({
   withAudit: (_ctx: unknown, _meta: unknown, fn: (tx: unknown) => unknown) =>
     fn({
       jobSeekerProfile: { upsert: m.profileUpsert },
-      workExperience: { deleteMany: m.workExperienceDeleteMany, createMany: m.workExperienceCreateMany },
+      workExperience: {
+        deleteMany: m.workExperienceDeleteMany,
+        createMany: m.workExperienceCreateMany,
+      },
     }),
 }));
 vi.mock('next/cache', () => ({ updateTag: m.updateTag }));
@@ -68,11 +71,21 @@ describe('saveWorkExperiences', () => {
       update: {},
       select: { id: true },
     });
-    expect(m.workExperienceDeleteMany).toHaveBeenCalledWith({ where: { jobSeekerProfileId: 'profile1' } });
+    expect(m.workExperienceDeleteMany).toHaveBeenCalledWith({
+      where: { jobSeekerProfileId: 'profile1' },
+    });
     const created = m.workExperienceCreateMany.mock.calls[0]![0];
     expect(created.data).toEqual([
-      expect.objectContaining({ jobSeekerProfileId: 'profile1', company: 'Acme Inc.', title: 'Engineer' }),
-      expect.objectContaining({ jobSeekerProfileId: 'profile1', company: 'Globex', title: 'Senior Engineer' }),
+      expect.objectContaining({
+        jobSeekerProfileId: 'profile1',
+        company: 'Acme Inc.',
+        title: 'Engineer',
+      }),
+      expect.objectContaining({
+        jobSeekerProfileId: 'profile1',
+        company: 'Globex',
+        title: 'Senior Engineer',
+      }),
     ]);
     expect(m.updateTag).toHaveBeenCalledWith('user:seeker1');
   });
@@ -87,7 +100,9 @@ describe('saveWorkExperiences', () => {
 
   it('clears all entries without recreating any when the list is empty', async () => {
     await saveWorkExperiences([]);
-    expect(m.workExperienceDeleteMany).toHaveBeenCalledWith({ where: { jobSeekerProfileId: 'profile1' } });
+    expect(m.workExperienceDeleteMany).toHaveBeenCalledWith({
+      where: { jobSeekerProfileId: 'profile1' },
+    });
     expect(m.workExperienceCreateMany).not.toHaveBeenCalled();
   });
 });

@@ -1,8 +1,8 @@
 import { Suspense } from 'react';
 import { redirect } from 'next/navigation';
 import { requireUser } from '@/lib/auth';
-import { Container } from '@/app/components/ui/container';
 import { PillNav } from '@/app/(authenticated)/pill-nav';
+import { ShellSkeleton } from '@/app/components/shell-skeleton';
 import CompanyLoading from './loading';
 
 // The role check is uncached, so under cacheComponents it runs inside Suspense
@@ -12,26 +12,15 @@ import CompanyLoading from './loading';
 // instead of a blank body.
 export default function CompanyLayout({ children }: { children: React.ReactNode }) {
   return (
-    <Suspense fallback={<CompanyShellSkeleton />}>
+    <Suspense
+      fallback={
+        <ShellSkeleton>
+          <CompanyLoading />
+        </ShellSkeleton>
+      }
+    >
       <CompanyShell>{children}</CompanyShell>
     </Suspense>
-  );
-}
-
-// While the role check resolves, the real sub-nav is still pending — so this
-// reserves a nav strip of pill placeholders on top of the standard page skeleton.
-function CompanyShellSkeleton() {
-  return (
-    <section>
-      <div className="border-b border-indigo-100 bg-white/70 backdrop-blur">
-        <Container className="flex flex-wrap gap-x-1.5 gap-y-1.5 py-2.5">
-          {[0, 1, 2, 3, 4].map((i) => (
-            <span key={i} className="h-8 w-24 animate-pulse rounded-full bg-neutral-200" />
-          ))}
-        </Container>
-      </div>
-      <CompanyLoading />
-    </section>
   );
 }
 

@@ -26,9 +26,9 @@ export default async function JobseekerApplicationsPage({
       <main>
         <PageHeader eyebrow="Your pipeline" title="My applications" width="max-w-4xl" />
         <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
-          <div className="rounded-2xl border border-indigo-100 bg-indigo-50/60 p-6 text-center shadow-soft">
-            <p className="m-0 font-semibold text-neutral-900">Track your applications with Pro</p>
-            <p className="mt-1 mb-0 text-sm text-neutral-600">
+          <div className="rounded-card border border-border bg-brand-subtle p-6 text-center shadow-soft">
+            <p className="m-0 font-semibold text-fg">Track your applications with Pro</p>
+            <p className="mt-1 mb-0 text-sm text-fg-muted">
               See real-time status — viewed, shortlisted, interview, and outcome — for every job
               you&apos;ve applied to.
             </p>
@@ -69,24 +69,24 @@ export default async function JobseekerApplicationsPage({
     <main>
       <PageHeader eyebrow="Your pipeline" title="My applications" width="max-w-4xl" />
       <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
-      {sp.just_applied && (
-        <div className="mb-4 rounded-2xl bg-green-50 px-4 py-3 text-sm text-green-800">
-          Application submitted — you&apos;ll get an email when the team updates the status.
-        </div>
-      )}
-      {initialData.length > 0 && (
-        <Card className="mb-8 p-6">
-          <StatRow>
-            <Stat value={initialData.length} label="Applications" />
-            <Stat value={inProgress} label="In progress" />
-            <Stat value={hired} label="Hired" />
-          </StatRow>
-        </Card>
-      )}
-      <Suspense fallback={null}>
-        <RecentlyViewed userId={user.id} />
-      </Suspense>
-      <ApplicationsList userId={user.id} initialData={initialData} />
+        {sp.just_applied && (
+          <div className="mb-4 rounded-card bg-success-subtle px-4 py-3 text-sm text-success">
+            Application submitted — you&apos;ll get an email when the team updates the status.
+          </div>
+        )}
+        {initialData.length > 0 && (
+          <Card className="mb-8 p-6">
+            <StatRow>
+              <Stat value={initialData.length} label="Applications" />
+              <Stat value={inProgress} label="In progress" />
+              <Stat value={hired} label="Hired" />
+            </StatRow>
+          </Card>
+        )}
+        <Suspense fallback={null}>
+          <RecentlyViewed userId={user.id} />
+        </Suspense>
+        <ApplicationsList userId={user.id} initialData={initialData} />
       </div>
     </main>
   );

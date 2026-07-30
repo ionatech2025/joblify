@@ -3,7 +3,16 @@
 import { useMemo, useState, useTransition } from 'react';
 import { updateApplicantStatus, saveApplicantNote } from '@/app/actions/update-applicant-status';
 import type { ApplicationStatus } from '@prisma/client';
+import { Users } from 'lucide-react';
 import { Badge } from '@/app/components/ui/badge';
+import { EmptyState } from '@/app/components/ui/empty-state';
+import {
+  APPLICATION_STAGES as STAGES,
+  CLOSED_APPLICATION_STATUSES as CLOSED,
+  applicationStatusLabel,
+  matchTone,
+} from '@/lib/ui/status';
+import { toast } from '@/lib/stores/ui';
 import { Card } from '@/app/components/ui/card';
 import { Select, Textarea } from '@/app/components/ui/form';
 
@@ -24,18 +33,6 @@ type Row = {
   };
 };
 
-const STAGES: { status: ApplicationStatus; label: string }[] = [
-  { status: 'SUBMITTED', label: 'New' },
-  { status: 'VIEWED', label: 'Viewed' },
-  { status: 'SHORTLISTED', label: 'Shortlisted' },
-  { status: 'INTERVIEW_SCHEDULED', label: 'Interview' },
-  { status: 'OFFER_EXTENDED', label: 'Offer' },
-  { status: 'HIRED', label: 'Hired' },
-  { status: 'REJECTED', label: 'Rejected' },
-  { status: 'WITHDRAWN', label: 'Withdrawn' },
-];
-const CLOSED: ApplicationStatus[] = ['HIRED', 'REJECTED', 'WITHDRAWN'];
-
 export function ApplicantsBoard({ applications }: { applications: Row[] }) {
   const [rows, setRows] = useState(applications);
   const [, startTransition] = useTransition();
@@ -50,9 +47,18 @@ export function ApplicantsBoard({ applications }: { applications: Row[] }) {
     startTransition(async () => {
       try {
         await updateApplicantStatus(id, status);
+        // A status change emails the applicant and sends an in-app
+        // notification, so confirming it actually committed matters here more
+        // than anywhere else on the board.
+        toast.success(
+          `Moved to ${applicationStatusLabel(status)}`,
+          'The applicant has been notified.',
+        );
       } catch (err) {
         setRows(prev);
-        setError(err instanceof Error ? err.message : 'Status change failed.');
+        const message = err instanceof Error ? err.message : 'Status change failed.';
+        setError(message);
+        toast.error("Couldn't change the status", message);
       }
     });
   }
@@ -67,14 +73,21 @@ export function ApplicantsBoard({ applications }: { applications: Row[] }) {
     return copy;
   }, [rows, sort]);
 
-  if (rows.length === 0) return <p className="text-neutral-600">No applicants yet.</p>;
+  if (rows.length === 0)
+    return (
+      <EmptyState
+        icon={<Users />}
+        title="No applicants yet"
+        description="Applicants show up here the moment they apply, ranked by how well their resume matches this role."
+      />
+    );
 
   const stages = showClosed ? STAGES : STAGES.filter((s) => !CLOSED.includes(s.status));
 
   return (
     <>
       <div className="my-4 flex flex-wrap items-center gap-5">
-        <label className="flex items-center gap-2 text-sm text-neutral-600">
+        <label className="flex items-center gap-2 text-sm text-fg-muted">
           Sort
           <span className="block w-44">
             <Select value={sort} onChange={(e) => setSort(e.target.value as 'recent' | 'match')}>
@@ -83,11 +96,15 @@ export function ApplicantsBoard({ applications }: { applications: Row[] }) {
             </Select>
           </span>
         </label>
-        <label className="flex items-center gap-2 text-sm text-neutral-600">
-          <input type="checkbox" checked={showClosed} onChange={(e) => setShowClosed(e.target.checked)} />
+        <label className="flex items-center gap-2 text-sm text-fg-muted">
+          <input
+            type="checkbox"
+            checked={showClosed}
+            onChange={(e) => setShowClosed(e.target.checked)}
+          />
           Show closed stages
         </label>
-        {error && <span className="text-red-700">{error}</span>}
+        {error && <span className="text-danger">{error}</span>}
       </div>
 
       <div className="flex items-start gap-4 overflow-x-auto pb-4">
@@ -95,9 +112,9 @@ export function ApplicantsBoard({ applications }: { applications: Row[] }) {
           const items = sorted.filter((r) => r.status === stage.status);
           return (
             <Card key={stage.status} tone="glass" className="w-[280px] shrink-0">
-              <h3 className="mt-0 mb-3 flex justify-between text-sm font-semibold text-neutral-900">
+              <h3 className="mt-0 mb-3 flex justify-between text-sm font-semibold text-fg">
                 <span>{stage.label}</span>
-                <span className="text-neutral-400">{items.length}</span>
+                <span className="text-fg-subtle">{items.length}</span>
               </h3>
               <div className="flex flex-col gap-2.5">
                 {items.map((r) => (
@@ -112,7 +129,13 @@ export function ApplicantsBoard({ applications }: { applications: Row[] }) {
   );
 }
 
-function ApplicantCard({ row, onStatus }: { row: Row; onStatus: (id: string, s: ApplicationStatus) => void }) {
+function ApplicantCard({
+  row,
+  onStatus,
+}: {
+  row: Row;
+  onStatus: (id: string, s: ApplicationStatus) => void;
+}) {
   const [openCover, setOpenCover] = useState(false);
   const [notes, setNotes] = useState(row.recruiterNotes ?? '');
   const [baseline, setBaseline] = useState(row.recruiterNotes ?? '');
@@ -130,10 +153,11 @@ function ApplicantCard({ row, onStatus }: { row: Row; onStatus: (id: string, s: 
     }
   }
 
-  const name = `${row.seeker.firstName ?? ''} ${row.seeker.lastName ?? ''}`.trim() || row.seeker.email;
+  const name =
+    `${row.seeker.firstName ?? ''} ${row.seeker.lastName ?? ''}`.trim() || row.seeker.email;
 
   return (
-    <div className="rounded-2xl border border-neutral-200/80 bg-white p-3 shadow-soft">
+    <div className="rounded-card border border-border bg-surface p-3 shadow-soft">
       <div className="flex items-baseline justify-between gap-2">
         <strong className="text-sm">{name}</strong>
         {row.matchScore !== null && (
@@ -142,22 +166,31 @@ function ApplicantCard({ row, onStatus }: { row: Row; onStatus: (id: string, s: 
           </Badge>
         )}
       </div>
-      {row.seeker.headline && <p className="mt-0.5 mb-0 text-xs text-neutral-500">{row.seeker.headline}</p>}
-      <p className="mt-0.5 mb-0 text-xs text-neutral-500">Applied {new Date(row.appliedAt).toLocaleDateString()}</p>
+      {row.seeker.headline && (
+        <p className="mt-0.5 mb-0 text-xs text-fg-subtle">{row.seeker.headline}</p>
+      )}
+      <p className="mt-0.5 mb-0 text-xs text-fg-subtle">
+        Applied {new Date(row.appliedAt).toLocaleDateString()}
+      </p>
 
       <div className="mt-1 flex gap-3 text-xs">
-        <a href={row.resumeUrl} target="_blank" rel="noopener noreferrer" className="text-indigo-700 hover:underline">
+        <a
+          href={row.resumeUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-brand hover:underline"
+        >
           Résumé ↗
         </a>
         {row.coverLetter && (
-          <button onClick={() => setOpenCover((o) => !o)} className="text-indigo-700 hover:underline">
+          <button onClick={() => setOpenCover((o) => !o)} className="text-brand hover:underline">
             {openCover ? 'Hide cover letter' : 'Cover letter'}
           </button>
         )}
       </div>
 
       {openCover && row.coverLetter && (
-        <p className="mt-1 mb-0 whitespace-pre-wrap rounded-xl border border-neutral-200 bg-white p-2 text-xs text-neutral-600">
+        <p className="mt-1 mb-0 whitespace-pre-wrap rounded-control border border-border bg-surface p-2 text-xs text-fg-muted">
           {row.coverLetter}
         </p>
       )}
@@ -187,13 +220,8 @@ function ApplicantCard({ row, onStatus }: { row: Row; onStatus: (id: string, s: 
         aria-label={`Notes for ${name}`}
         className="mt-2 resize-y"
       />
-      {noteState === 'saving' && <small className="text-neutral-400">Saving…</small>}
-      {noteState === 'saved' && <small className="text-green-700">Saved</small>}
+      {noteState === 'saving' && <small className="text-fg-subtle">Saving…</small>}
+      {noteState === 'saved' && <small className="text-success">Saved</small>}
     </div>
   );
-}
-
-function matchTone(score: number): 'success' | 'warn' | 'neutral' {
-  const pct = Math.round(score * 100);
-  return pct >= 70 ? 'success' : pct >= 50 ? 'warn' : 'neutral';
 }

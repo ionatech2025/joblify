@@ -24,7 +24,8 @@ export function useApplications(userId: string, initialData?: ApplicationListIte
     queryKey: queryKeys.applications(userId),
     queryFn: async (): Promise<ApplicationListItem[]> => {
       const res = await fetch('/api/v1/applications');
-      if (!res.ok) throw Object.assign(new Error('applications fetch failed'), { status: res.status });
+      if (!res.ok)
+        throw Object.assign(new Error('applications fetch failed'), { status: res.status });
       return res.json();
     },
     initialData,

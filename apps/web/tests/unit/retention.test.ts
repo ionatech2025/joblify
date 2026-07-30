@@ -49,8 +49,14 @@ describe('runRetention', () => {
 
   it('selects only export blobs older than the 24h TTL', () => {
     const now = Date.now();
-    const stale = { url: 'https://blob/exports/a.json', uploadedAt: new Date(now - EXPORT_TTL_MS - 60_000) };
-    const fresh = { url: 'https://blob/exports/b.json', uploadedAt: new Date(now - EXPORT_TTL_MS + 60_000) };
+    const stale = {
+      url: 'https://blob/exports/a.json',
+      uploadedAt: new Date(now - EXPORT_TTL_MS - 60_000),
+    };
+    const fresh = {
+      url: 'https://blob/exports/b.json',
+      uploadedAt: new Date(now - EXPORT_TTL_MS + 60_000),
+    };
     expect(expiredExportUrls([stale, fresh], now)).toEqual([stale.url]);
   });
 

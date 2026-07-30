@@ -65,5 +65,8 @@ export async function verifyCompany(
   updateTag(tags.companies());
   updateTag(tags.notifications(profile.userId));
 
-  logger.info({ companyProfileId: profile.id, adminId: admin.id, status }, 'company verification status changed');
+  logger.info(
+    { companyProfileId: profile.id, adminId: admin.id, status },
+    'company verification status changed',
+  );
 }
