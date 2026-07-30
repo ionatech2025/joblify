@@ -5,11 +5,13 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import { SignedIn } from '@clerk/nextjs';
+import { SearchX } from 'lucide-react';
 import type { JobSearchRecord } from '@/lib/search/algolia';
 import { Badge } from '@/app/components/ui/badge';
 import { Card } from '@/app/components/ui/card';
 import { Button } from '@/app/components/ui/button';
 import { Input, Select } from '@/app/components/ui/form';
+import { EmptyState } from '@/app/components/ui/empty-state';
 import { SaveSearchButton } from './save-search-button';
 
 type SearchResponse = { hits: JobSearchRecord[]; nbHits: number; page: number; nbPages: number };
@@ -81,11 +83,23 @@ export function JobsSearch() {
       salaryMin: searchParams.get('salaryMin') ?? '',
       salaryMax: searchParams.get('salaryMax') ?? '',
     };
-    if (qText === cur.q && locText === cur.location && salMin === cur.salaryMin && salMax === cur.salaryMax) {
+    if (
+      qText === cur.q &&
+      locText === cur.location &&
+      salMin === cur.salaryMin &&
+      salMax === cur.salaryMax
+    ) {
       return;
     }
     const t = setTimeout(
-      () => patch({ q: qText, location: locText, salaryMin: salMin || null, salaryMax: salMax || null, page: '' }),
+      () =>
+        patch({
+          q: qText,
+          location: locText,
+          salaryMin: salMin || null,
+          salaryMax: salMax || null,
+          page: '',
+        }),
       400,
     );
     return () => clearTimeout(t);
@@ -163,7 +177,11 @@ export function JobsSearch() {
           />
         </div>
         {qs.length > 0 && (
-          <Button variant="ghost" size="sm" onClick={() => router.replace('/jobs', { scroll: false })}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => router.replace('/jobs', { scroll: false })}
+          >
             Clear filters
           </Button>
         )}
@@ -171,7 +189,7 @@ export function JobsSearch() {
 
       <section>
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <p className="m-0 text-sm text-neutral-600">
+          <p className="m-0 text-sm text-fg-muted">
             {isLoading && !data
               ? 'Searching…'
               : data
@@ -181,7 +199,9 @@ export function JobsSearch() {
           {/* Visually-hidden twin of the count above: politely announces the
               result count to screen readers whenever results settle. */}
           <p role="status" aria-live="polite" className="sr-only">
-            {data ? `${data.nbHits.toLocaleString()} ${data.nbHits === 1 ? 'job' : 'jobs'} found` : ''}
+            {data
+              ? `${data.nbHits.toLocaleString()} ${data.nbHits === 1 ? 'job' : 'jobs'} found`
+              : ''}
           </p>
           <div className="flex flex-wrap items-center gap-3">
             {qs.length > 0 && (
@@ -189,10 +209,13 @@ export function JobsSearch() {
                 <SaveSearchButton key={qs} query={qs} />
               </SignedIn>
             )}
-            <label className="flex items-center gap-2 text-sm text-neutral-600">
+            <label className="flex items-center gap-2 text-sm text-fg-muted">
               Sort
               <span className="w-40">
-                <Select value={getp('sort')} onChange={(e) => patch({ sort: e.target.value, page: '' })}>
+                <Select
+                  value={getp('sort')}
+                  onChange={(e) => patch({ sort: e.target.value, page: '' })}
+                >
                   <option value="">Relevance</option>
                   <option value="recent">Most recent</option>
                   <option value="salary">Highest salary</option>
@@ -203,14 +226,16 @@ export function JobsSearch() {
         </div>
 
         {isError && (
-          <p className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-red-700">
+          <p className="rounded-card border border-danger/30 bg-danger-subtle px-4 py-3 text-danger">
             Search is unavailable right now. Try again shortly.
           </p>
         )}
         {data && data.hits.length === 0 && !isLoading && (
-          <p className="rounded-2xl border border-dashed border-neutral-300 bg-white/60 px-6 py-10 text-center text-neutral-500">
-            No jobs match these filters. Try broadening your search.
-          </p>
+          <EmptyState
+            icon={<SearchX />}
+            title="No jobs match these filters"
+            description="Try a broader keyword, widen the location radius, or clear a filter or two."
+          />
         )}
 
         {data && data.hits.length > 0 && (
@@ -222,10 +247,15 @@ export function JobsSearch() {
             </ul>
             {data.nbPages > 1 && (
               <nav className="mt-8 flex items-center justify-center gap-4" aria-label="Pagination">
-                <Button variant="secondary" size="sm" disabled={page <= 0} onClick={() => patch({ page: page - 1 })}>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  disabled={page <= 0}
+                  onClick={() => patch({ page: page - 1 })}
+                >
                   ← Prev
                 </Button>
-                <span className="text-sm text-neutral-600">
+                <span className="text-sm text-fg-muted">
                   Page {page + 1} of {data.nbPages}
                 </span>
                 <Button
@@ -252,26 +282,40 @@ function JobCard({ hit }: { hit: JobSearchRecord }) {
         <Card className="flex gap-4 p-5 transition-shadow hover:shadow-md">
           {hit.companyLogoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element -- remote logo, fixed small size
-            <img src={hit.companyLogoUrl} alt="" width={48} height={48} className="size-12 shrink-0 rounded-xl object-cover" />
+            <img
+              src={hit.companyLogoUrl}
+              alt=""
+              width={48}
+              height={48}
+              className="size-12 shrink-0 rounded-control object-cover"
+            />
           ) : (
-            <div className="size-12 shrink-0 rounded-xl bg-neutral-100" aria-hidden="true" />
+            <div
+              className="size-12 shrink-0 rounded-control bg-surface-sunken"
+              aria-hidden="true"
+            />
           )}
           <div className="min-w-0">
             {/* h2: the page h1 is "Search jobs"; card titles are the next level */}
-            <h2 className="m-0 text-base font-semibold text-neutral-900">{hit.title}</h2>
-            <p className="m-0 text-sm text-neutral-600">
+            <h2 className="m-0 text-base font-semibold text-fg">{hit.title}</h2>
+            <p className="m-0 text-sm text-fg-muted">
               {hit.companyName}
               {hit.location ? ` · ${hit.location}` : ''}
-              {hit.workMode === 'REMOTE' ? ' · Remote' : hit.workMode === 'HYBRID' ? ' · Hybrid' : ''}
+              {hit.workMode === 'REMOTE'
+                ? ' · Remote'
+                : hit.workMode === 'HYBRID'
+                  ? ' · Hybrid'
+                  : ''}
               {hit.publishedAt ? ` · ${relativeDate(hit.publishedAt)}` : ''}
             </p>
             {hit.salaryMin && hit.salaryMax ? (
               <Badge tone="dark" className="mt-2">
-                {hit.salaryCurrency} {hit.salaryMin.toLocaleString()}–{hit.salaryMax.toLocaleString()}
+                {hit.salaryCurrency} {hit.salaryMin.toLocaleString()}–
+                {hit.salaryMax.toLocaleString()}
               </Badge>
             ) : null}
             {hit.description ? (
-              <p className="mt-1.5 mb-0 line-clamp-2 text-sm leading-snug text-neutral-500">
+              <p className="mt-1.5 mb-0 line-clamp-2 text-sm leading-snug text-fg-subtle">
                 {hit.description.slice(0, 150)}
                 {hit.description.length > 150 ? '…' : ''}
               </p>

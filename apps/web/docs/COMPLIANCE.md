@@ -4,13 +4,13 @@ GDPR (EU) + CCPA (California) are the floors. Joblify aims for both from day one
 
 ## Legal basis (GDPR Article 6)
 
-| Processing activity | Basis |
-|---|---|
-| Operating accounts + applications | Contract |
-| Anti-fraud / abuse logs | Legitimate interest |
-| Email notifications | Consent |
-| Analytics (Speed Insights / Analytics) | Consent |
-| Audit log | Legal obligation (also legit interest) |
+| Processing activity                    | Basis                                  |
+| -------------------------------------- | -------------------------------------- |
+| Operating accounts + applications      | Contract                               |
+| Anti-fraud / abuse logs                | Legitimate interest                    |
+| Email notifications                    | Consent                                |
+| Analytics (Speed Insights / Analytics) | Consent                                |
+| Audit log                              | Legal obligation (also legit interest) |
 
 ## Subject rights
 
@@ -71,16 +71,16 @@ Implicit via `/account/delete` and via cookie consent rejection. Email opt-out v
 
 `/legal/processors` lists every third party that processes data on our behalf:
 
-| Processor | Purpose | Region |
-|---|---|---|
-| Vercel | Hosting + edge + Blob storage | EU + US |
-| Neon | Postgres database | EU |
-| Upstash | Redis | EU |
-| Clerk | Auth | EU + US |
-| Algolia | Search | EU + US |
-| Resend | Transactional email | EU + US |
-| Sentry | Errors + traces | EU + US |
-| OpenAI + Anthropic (via Vercel AI Gateway) | AI features | US (ZDR contracts) |
+| Processor                                  | Purpose                       | Region             |
+| ------------------------------------------ | ----------------------------- | ------------------ |
+| Vercel                                     | Hosting + edge + Blob storage | EU + US            |
+| Neon                                       | Postgres database             | EU                 |
+| Upstash                                    | Redis                         | EU                 |
+| Clerk                                      | Auth                          | EU + US            |
+| Algolia                                    | Search                        | EU + US            |
+| Resend                                     | Transactional email           | EU + US            |
+| Sentry                                     | Errors + traces               | EU + US            |
+| OpenAI + Anthropic (via Vercel AI Gateway) | AI features                   | US (ZDR contracts) |
 
 Each is bound by a DPA. Add new processors to the list **and** sign a DPA before integrating.
 
@@ -97,14 +97,14 @@ AI Gateway forwards to providers in US — disclosed in `/legal/processors` and 
 
 ## Retention policy
 
-| Data | Active | Deleted | Reason |
-|---|---|---|---|
-| User account | until deleted | 30 d soft → hard | GDPR Art. 17 + abuse recovery window |
-| AuditEvent | 1 year | purged by retention workflow | legal / anti-fraud |
-| JobView | 13 months | purged | analytics window |
-| Notification | read >6 mo or unread >90 d | purged | UX, not strictly required |
-| Invitation | 90 d after expiry | purged | cleanup |
-| LoginSession | 365 d | purged | session log retention |
+| Data         | Active                     | Deleted                      | Reason                               |
+| ------------ | -------------------------- | ---------------------------- | ------------------------------------ |
+| User account | until deleted              | 30 d soft → hard             | GDPR Art. 17 + abuse recovery window |
+| AuditEvent   | 1 year                     | purged by retention workflow | legal / anti-fraud                   |
+| JobView      | 13 months                  | purged                       | analytics window                     |
+| Notification | read >6 mo or unread >90 d | purged                       | UX, not strictly required            |
+| Invitation   | 90 d after expiry          | purged                       | cleanup                              |
+| LoginSession | 365 d                      | purged                       | session log retention                |
 
 Defined in `workflows/retention.workflow.ts`. Run daily; idempotent.
 
@@ -121,8 +121,12 @@ Choice persisted to `localStorage` key `joblify.consent`. Server-side mirror via
 The Speed Insights + Analytics scripts in `app/layout.tsx` mount unconditionally today; gate by consent before EU launch:
 
 ```tsx
-{consent.analytics && <Analytics />}
-{consent.analytics && <SpeedInsights />}
+{
+  consent.analytics && <Analytics />;
+}
+{
+  consent.analytics && <SpeedInsights />;
+}
 ```
 
 ## Accessibility
@@ -130,6 +134,7 @@ The Speed Insights + Analytics scripts in `app/layout.tsx` mount unconditionally
 WCAG 2.2 Level AA target. Statement at `/accessibility`. Automated checks in CI via `@axe-core/playwright`. Manual SR test on critical funnels per [TESTING.md](./TESTING.md).
 
 The statement page documents:
+
 - Target conformance level.
 - Last automated check (build date implicitly).
 - Contact email for accessibility issues.

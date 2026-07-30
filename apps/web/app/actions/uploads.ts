@@ -23,12 +23,24 @@ const RegisterResume = z.object({
   url: z.string().url(),
   title: z.string().min(1).max(200),
   contentType: z.string().max(200).optional(),
-  sizeBytes: z.number().int().min(0).max(50 * 1024 * 1024).optional(),
+  sizeBytes: z
+    .number()
+    .int()
+    .min(0)
+    .max(50 * 1024 * 1024)
+    .optional(),
 });
 
-export type RegisteredResume = { id: string; title: string; fileBlobUrl: string; createdAt: string };
+export type RegisteredResume = {
+  id: string;
+  title: string;
+  fileBlobUrl: string;
+  createdAt: string;
+};
 
-export async function registerResume(input: z.infer<typeof RegisterResume>): Promise<RegisteredResume> {
+export async function registerResume(
+  input: z.infer<typeof RegisterResume>,
+): Promise<RegisteredResume> {
   const user = await requireRole('JOB_SEEKER');
   const parsed = RegisterResume.parse(input);
 

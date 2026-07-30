@@ -38,13 +38,20 @@ const PAGE_SIZE = 200;
 const CHUNK_SIZE = 25;
 const JOBS_PER_EMAIL = 5;
 
-const jobInclude = { company: { include: { companyProfile: true } } } satisfies Prisma.JobPostInclude;
+const jobInclude = {
+  company: { include: { companyProfile: true } },
+} satisfies Prisma.JobPostInclude;
 
 type DigestJob = Prisma.JobPostGetPayload<{ include: typeof jobInclude }>;
 type DigestUser = { id: string; email: string; firstName: string | null };
 type SavedSearchLite = { query: string; lastNotifiedAt: Date | null };
 
-export type DigestSummary = { sent: number; skipped: number; failed: number; stoppedEarly: boolean };
+export type DigestSummary = {
+  sent: number;
+  skipped: number;
+  failed: number;
+  stoppedEarly: boolean;
+};
 
 // Jobs to surface to one jobseeker: new matches across their saved searches
 // (each since its own watermark), else the shared generic list computed once
@@ -62,7 +69,11 @@ async function digestJobsFor(
         where: {
           AND: [
             savedSearchWhere(s.query),
-            { status: 'PUBLISHED', deletedAt: null, publishedAt: { gte: s.lastNotifiedAt ?? since } },
+            {
+              status: 'PUBLISHED',
+              deletedAt: null,
+              publishedAt: { gte: s.lastNotifiedAt ?? since },
+            },
           ],
         },
         orderBy: { publishedAt: 'desc' },
@@ -105,7 +116,9 @@ async function processUser(
   return 'sent';
 }
 
-export async function runDigest({ deadlineMs = 240_000 }: { deadlineMs?: number } = {}): Promise<DigestSummary> {
+export async function runDigest({
+  deadlineMs = 240_000,
+}: { deadlineMs?: number } = {}): Promise<DigestSummary> {
   const runStart = Date.now();
   const deadline = runStart + deadlineMs;
   const since = new Date(runStart - SINCE_HOURS * 3600 * 1000);
@@ -169,7 +182,9 @@ export async function runDigest({ deadlineMs = 240_000 }: { deadlineMs?: number 
       }
       const chunk = page.slice(i, i + CHUNK_SIZE);
       const results = await Promise.allSettled(
-        chunk.map((user) => processUser(user, searchesByUser.get(user.id) ?? [], since, genericJobs)),
+        chunk.map((user) =>
+          processUser(user, searchesByUser.get(user.id) ?? [], since, genericJobs),
+        ),
       );
 
       const processedIds: string[] = [];
@@ -192,7 +207,10 @@ export async function runDigest({ deadlineMs = 240_000 }: { deadlineMs?: number 
       // chunk. Failed sends are deliberately left unstamped.
       if (processedIds.length > 0) {
         const now = new Date();
-        await db.user.updateMany({ where: { id: { in: processedIds } }, data: { lastDigestAt: now } });
+        await db.user.updateMany({
+          where: { id: { in: processedIds } },
+          data: { lastDigestAt: now },
+        });
         await db.savedSearch.updateMany({
           where: { userId: { in: processedIds } },
           data: { lastNotifiedAt: now },
@@ -216,7 +234,11 @@ export async function runDigest({ deadlineMs = 240_000 }: { deadlineMs?: number 
 
 function textBody(
   name: string,
-  jobs: Array<{ slug: string; title: string; company: { companyProfile: { companyName: string } | null } }>,
+  jobs: Array<{
+    slug: string;
+    title: string;
+    company: { companyProfile: { companyName: string } | null };
+  }>,
 ): string {
   const lines = [
     `Hi ${name},`,
@@ -235,7 +257,11 @@ function textBody(
 
 function htmlBody(
   name: string,
-  jobs: Array<{ slug: string; title: string; company: { companyProfile: { companyName: string } | null } }>,
+  jobs: Array<{
+    slug: string;
+    title: string;
+    company: { companyProfile: { companyName: string } | null };
+  }>,
 ): string {
   const items = jobs
     .map(

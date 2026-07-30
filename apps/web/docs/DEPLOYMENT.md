@@ -35,10 +35,10 @@ GitHub repo ─ push ─► CI (.github/workflows/ci.yml)
 
 `.github/workflows/ci.yml`:
 
-| Job | Steps |
-|---|---|
-| `web` | install → prisma validate/generate → lint → typecheck → unit tests → build |
-| `gitleaks` | scan for committed secrets |
+| Job        | Steps                                                                      |
+| ---------- | -------------------------------------------------------------------------- |
+| `web`      | install → prisma validate/generate → lint → typecheck → unit tests → build |
+| `gitleaks` | scan for committed secrets                                                 |
 
 Both must pass to merge. Accessibility is gated separately on the preview deploy via Lighthouse CI (`.github/workflows/lighthouse.yml`) — its accessibility category is axe-core (`minScore 0.95`) and runs against real URLs + services, which a CI-spun server can't.
 
@@ -83,11 +83,11 @@ Build steps:
 
 ## Environments
 
-| Environment | URL | DB | Clerk | Use |
-|---|---|---|---|---|
-| Production | `https://<your-prod-domain>` | Neon default branch | Prod instance | Real users |
-| Preview | `https://joblify-web-<sha>.vercel.app` | Neon branch (per PR) | Dev instance | PR review, QA |
-| Development | `http://localhost:3000` | Neon dev branch or local PG | Dev instance | Local dev |
+| Environment | URL                                    | DB                          | Clerk         | Use           |
+| ----------- | -------------------------------------- | --------------------------- | ------------- | ------------- |
+| Production  | `https://<your-prod-domain>`           | Neon default branch         | Prod instance | Real users    |
+| Preview     | `https://joblify-web-<sha>.vercel.app` | Neon branch (per PR)        | Dev instance  | PR review, QA |
+| Development | `http://localhost:3000`                | Neon dev branch or local PG | Dev instance  | Local dev     |
 
 Env vars are scoped per environment in the Vercel dashboard. Most Marketplace integrations auto-inject across all three scopes; tighten if a key shouldn't leak to Preview.
 

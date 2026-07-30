@@ -4,12 +4,12 @@ Server Actions, Route Handlers, audit log, workflows. Everything that runs on Fl
 
 ## What lives where
 
-| Surface | Use it for |
-|---|---|
-| **Server Components** | Read paths on Server-Component-rendered pages. Direct Prisma queries; no HTTP indirection. |
-| **Server Actions** (`app/actions/*.ts`) | Mutations triggered by forms or client components. Default mutation path. |
-| **Route Handlers** (`app/api/v1/*/route.ts`) | Public HTTP surface: webhooks, cron triggers, future mobile API, JSON responses. |
-| **Workflows** (`workflows/*.workflow.ts`) | Multi-step or > 30 s operations. Durable, retried, idempotent. |
+| Surface                                      | Use it for                                                                                 |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| **Server Components**                        | Read paths on Server-Component-rendered pages. Direct Prisma queries; no HTTP indirection. |
+| **Server Actions** (`app/actions/*.ts`)      | Mutations triggered by forms or client components. Default mutation path.                  |
+| **Route Handlers** (`app/api/v1/*/route.ts`) | Public HTTP surface: webhooks, cron triggers, future mobile API, JSON responses.           |
+| **Workflows** (`workflows/*.workflow.ts`)    | Multi-step or > 30 s operations. Durable, retried, idempotent.                             |
 
 If you're writing a button-click POST from a Client Component → use a Server Action. If you're writing a webhook receiver → Route Handler. If the operation involves AI or file processing → Workflow.
 
@@ -99,10 +99,15 @@ const headerPayload = await headers();
 const svixId = headerPayload.get('svix-id');
 const svixTimestamp = headerPayload.get('svix-timestamp');
 const svixSignature = headerPayload.get('svix-signature');
-if (!svixId || !svixTimestamp || !svixSignature) return new Response('missing svix headers', { status: 400 });
+if (!svixId || !svixTimestamp || !svixSignature)
+  return new Response('missing svix headers', { status: 400 });
 
 const body = await req.text();
-const evt = new Webhook(secret).verify(body, { 'svix-id': svixId, 'svix-timestamp': svixTimestamp, 'svix-signature': svixSignature });
+const evt = new Webhook(secret).verify(body, {
+  'svix-id': svixId,
+  'svix-timestamp': svixTimestamp,
+  'svix-signature': svixSignature,
+});
 ```
 
 Clerk + Resend both use svix. Other providers — adapt accordingly; never accept an unverified webhook.

@@ -1,7 +1,10 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import { Star } from 'lucide-react';
 import { toggleSavedJob } from '@/app/actions/saved-jobs';
+import { toast } from '@/lib/stores/ui';
+import { cn } from '@/lib/cn';
 
 export function SaveButton({ jobId, initialSaved }: { jobId: string; initialSaved: boolean }) {
   const [saved, setSaved] = useState(initialSaved);
@@ -14,8 +17,14 @@ export function SaveButton({ jobId, initialSaved }: { jobId: string; initialSave
       try {
         const r = await toggleSavedJob(jobId);
         setSaved(r.saved);
+        toast.success(r.saved ? 'Job saved' : 'Removed from saved jobs');
       } catch {
+        // The optimistic star used to just flip back with no explanation.
         setSaved(!next);
+        toast.error(
+          next ? "Couldn't save this job" : "Couldn't remove this job",
+          'Check your connection and try again.',
+        );
       }
     });
   }
@@ -26,13 +35,15 @@ export function SaveButton({ jobId, initialSaved }: { jobId: string; initialSave
       onClick={toggle}
       disabled={pending}
       aria-pressed={saved}
-      className={`inline-flex items-center justify-center gap-2 rounded-full border px-4 py-2 font-semibold transition-colors disabled:cursor-wait ${
+      className={cn(
+        'focus-visible:ring-brand focus-visible:ring-offset-canvas inline-flex items-center justify-center gap-2 rounded-full border px-4 py-2 font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-wait',
         saved
-          ? 'border-indigo-200 bg-indigo-50 text-indigo-700'
-          : 'border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-50'
-      }`}
+          ? 'border-border-strong bg-brand-subtle text-brand'
+          : 'border-border-strong bg-surface text-fg-muted hover:bg-surface-sunken',
+      )}
     >
-      {saved ? '★ Saved' : '☆ Save job'}
+      <Star aria-hidden className="size-4" fill={saved ? 'currentColor' : 'none'} />
+      {saved ? 'Saved' : 'Save job'}
     </button>
   );
 }

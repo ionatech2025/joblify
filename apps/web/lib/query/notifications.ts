@@ -20,7 +20,8 @@ export function useNotifications() {
     queryKey: queryKeys.notifications(),
     queryFn: async (): Promise<NotificationItem[]> => {
       const res = await fetch('/api/v1/notifications');
-      if (!res.ok) throw Object.assign(new Error('notifications fetch failed'), { status: res.status });
+      if (!res.ok)
+        throw Object.assign(new Error('notifications fetch failed'), { status: res.status });
       return res.json();
     },
     refetchInterval: 30_000,

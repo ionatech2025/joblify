@@ -186,8 +186,14 @@ async function migrateApplications(): Promise<number> {
 
     // Skip if dependencies are missing — pre-existing data integrity.
     const job = await prisma.jobPost.findUnique({ where: { id: jobPostId }, select: { id: true } });
-    const seeker = await prisma.user.findUnique({ where: { id: jobSeekerId }, select: { id: true } });
-    const resume = await prisma.resume.findUnique({ where: { id: resumeId }, select: { id: true } });
+    const seeker = await prisma.user.findUnique({
+      where: { id: jobSeekerId },
+      select: { id: true },
+    });
+    const resume = await prisma.resume.findUnique({
+      where: { id: resumeId },
+      select: { id: true },
+    });
     if (!job || !seeker || !resume) {
       console.warn(`Skipping application ${doc._id.toHexString()} — missing FK`);
       continue;
@@ -396,11 +402,19 @@ async function main(): Promise<void> {
 
   console.log('Migrating company profiles…');
   const companies = await migrateCompanyProfiles();
-  assertParity('company_profiles', await dbm.collection('company_profiles').countDocuments(), companies);
+  assertParity(
+    'company_profiles',
+    await dbm.collection('company_profiles').countDocuments(),
+    companies,
+  );
 
   console.log('Migrating jobseeker profiles…');
   const seekers = await migrateJobSeekerProfiles();
-  assertParity('job_seeker_profiles', await dbm.collection('job_seeker_profiles').countDocuments(), seekers);
+  assertParity(
+    'job_seeker_profiles',
+    await dbm.collection('job_seeker_profiles').countDocuments(),
+    seekers,
+  );
 
   console.log('Migrating job posts…');
   const jobs = await migrateJobPosts();
@@ -413,7 +427,11 @@ async function main(): Promise<void> {
 
   console.log('Migrating applications…');
   const applications = await migrateApplications();
-  assertParity('job_applications', await dbm.collection('job_applications').countDocuments(), applications);
+  assertParity(
+    'job_applications',
+    await dbm.collection('job_applications').countDocuments(),
+    applications,
+  );
 
   console.log('Done.');
 }

@@ -137,7 +137,10 @@ export async function submitApplication(formData: FormData): Promise<void> {
     }
   });
 
-  logger.info({ applicationId: application.id, userId: user.id, jobId: job.id }, 'application submitted');
+  logger.info(
+    { applicationId: application.id, userId: user.id, jobId: job.id },
+    'application submitted',
+  );
 }
 
 function resendSafe(fn: () => Promise<unknown>): void {

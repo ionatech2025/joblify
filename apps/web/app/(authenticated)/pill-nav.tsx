@@ -21,7 +21,7 @@ export function PillNav({ label, links }: { label: string; links: PillNavLink[] 
   }, null);
 
   return (
-    <nav aria-label={label} className="border-b border-indigo-100 bg-white/70 backdrop-blur">
+    <nav aria-label={label} className="border-b border-border bg-surface/70 backdrop-blur">
       <Container className="flex flex-wrap gap-x-1.5 gap-y-1.5 py-2.5">
         {links.map((l) => {
           const isActive = active?.href === l.href;
@@ -32,8 +32,8 @@ export function PillNav({ label, links }: { label: string; links: PillNavLink[] 
               aria-current={isActive ? 'page' : undefined}
               className={`rounded-full px-3.5 py-1.5 text-sm font-medium no-underline transition-colors ${
                 isActive
-                  ? 'bg-neutral-900 text-white hover:bg-neutral-700'
-                  : 'text-neutral-700 hover:bg-neutral-100 hover:text-neutral-900'
+                  ? 'bg-ink text-ink-fg hover:bg-ink-hover'
+                  : 'text-fg-muted hover:bg-surface-sunken hover:text-fg'
               }`}
             >
               {l.label}

@@ -45,7 +45,9 @@ const styles = StyleSheet.create({
 });
 
 export function ResumeDocument({ data }: { data: ResumeData }) {
-  const contactLine = [data.email, data.location, data.portfolioUrl].filter(Boolean).join('   ·   ');
+  const contactLine = [data.email, data.location, data.portfolioUrl]
+    .filter(Boolean)
+    .join('   ·   ');
 
   return (
     <Document>

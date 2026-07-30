@@ -22,7 +22,10 @@ async function auditCtx(actorId: string) {
 // must hold a matching profile first — subscribing is how they appear in the
 // company's "interested employees / interested virtual interns" lists — and
 // may hold one subscription per type to the same company.
-export async function subscribeToCompany(companyUserId: string, profileType: ProfileType): Promise<void> {
+export async function subscribeToCompany(
+  companyUserId: string,
+  profileType: ProfileType,
+): Promise<void> {
   const user = await requireRole('JOB_SEEKER');
 
   const profile = await db.jobSeekerProfile.findUnique({
@@ -82,7 +85,10 @@ export async function subscribeToCompany(companyUserId: string, profileType: Pro
   updateTag(tags.notifications(company.userId));
 }
 
-export async function unsubscribeFromCompany(companyUserId: string, profileType: ProfileType): Promise<void> {
+export async function unsubscribeFromCompany(
+  companyUserId: string,
+  profileType: ProfileType,
+): Promise<void> {
   const user = await requireRole('JOB_SEEKER');
 
   const existing = await db.companySubscription.findUnique({

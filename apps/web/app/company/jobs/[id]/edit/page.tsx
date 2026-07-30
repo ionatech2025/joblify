@@ -38,7 +38,9 @@ export default async function EditJobPage({
     salaryMin: job.salaryMin,
     salaryMax: job.salaryMax,
     salaryCurrency: job.salaryCurrency,
-    applicationDeadline: job.applicationDeadline ? job.applicationDeadline.toISOString().slice(0, 10) : '',
+    applicationDeadline: job.applicationDeadline
+      ? job.applicationDeadline.toISOString().slice(0, 10)
+      : '',
     publish: job.status === 'PUBLISHED',
     createChatArea: !!job.chatArea,
   };
@@ -50,25 +52,25 @@ export default async function EditJobPage({
         width="max-w-3xl"
         actions={
           job.status === 'PUBLISHED' ? (
-            <Link href={`/jobs/${job.slug}`} className="text-indigo-700 hover:underline">
+            <Link href={`/jobs/${job.slug}`} className="text-brand hover:underline">
               View public page ↗
             </Link>
           ) : undefined
         }
       />
       <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
-      {sp.just_posted && (
-        <div className="my-4 rounded-2xl bg-green-50 px-4 py-3 text-sm text-green-800">
-          Job posted — it&apos;s live on /jobs and indexed within a minute.
-        </div>
-      )}
+        {sp.just_posted && (
+          <div className="my-4 rounded-card bg-success-subtle px-4 py-3 text-sm text-success">
+            Job posted — it&apos;s live on /jobs and indexed within a minute.
+          </div>
+        )}
 
-      <p className="mt-2 text-neutral-600">
-        Current status: <strong>{JOB_STATUS_LABEL[job.status]}</strong>. Saving re-extracts skills and re-indexes
-        search.
-      </p>
+        <p className="mt-2 text-fg-muted">
+          Current status: <strong>{JOB_STATUS_LABEL[job.status]}</strong>. Saving re-extracts skills
+          and re-indexes search.
+        </p>
 
-      <EditJobForm jobId={job.id} initial={initial} />
+        <EditJobForm jobId={job.id} initial={initial} />
       </div>
     </main>
   );

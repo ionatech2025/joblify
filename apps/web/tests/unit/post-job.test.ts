@@ -254,19 +254,25 @@ describe('updateJob', () => {
   it('keeps the original publishedAt on re-saves of a published job', async () => {
     const first = new Date('2026-01-01T00:00:00Z');
     // Calls in order: tenancy check, then the title-uniqueness check (no dup).
-    m.jobFindFirst.mockResolvedValueOnce({ id: JOB_ID, publishedAt: first }).mockResolvedValueOnce(null);
+    m.jobFindFirst
+      .mockResolvedValueOnce({ id: JOB_ID, publishedAt: first })
+      .mockResolvedValueOnce(null);
     await updateJob(JOB_ID, input({ publish: true }));
     expect(m.jobUpdate.mock.calls[0]![0].data.publishedAt).toBe(first);
   });
 
   it('stamps publishedAt on first publish of a draft', async () => {
-    m.jobFindFirst.mockResolvedValueOnce({ id: JOB_ID, publishedAt: null }).mockResolvedValueOnce(null);
+    m.jobFindFirst
+      .mockResolvedValueOnce({ id: JOB_ID, publishedAt: null })
+      .mockResolvedValueOnce(null);
     await updateJob(JOB_ID, input({ publish: true }));
     expect(m.jobUpdate.mock.calls[0]![0].data.publishedAt).toBeInstanceOf(Date);
   });
 
   it('reindexes and invalidates the JD, list, and company caches', async () => {
-    m.jobFindFirst.mockResolvedValueOnce({ id: JOB_ID, publishedAt: new Date() }).mockResolvedValueOnce(null);
+    m.jobFindFirst
+      .mockResolvedValueOnce({ id: JOB_ID, publishedAt: new Date() })
+      .mockResolvedValueOnce(null);
     await updateJob(JOB_ID, input());
     await runAfterCallbacks();
     expect(m.reindexJob).toHaveBeenCalledWith(JOB_ID);
@@ -309,7 +315,9 @@ describe('updateJob', () => {
   });
 
   it('does not embed when the edit lands as a draft', async () => {
-    m.jobFindFirst.mockResolvedValueOnce({ id: JOB_ID, publishedAt: null }).mockResolvedValueOnce(null);
+    m.jobFindFirst
+      .mockResolvedValueOnce({ id: JOB_ID, publishedAt: null })
+      .mockResolvedValueOnce(null);
     m.jobUpdate.mockResolvedValue({ id: JOB_ID, status: 'DRAFT', title: 'Senior Rust Engineer' });
     await updateJob(JOB_ID, input({ publish: false }));
     await runAfterCallbacks();
@@ -317,7 +325,7 @@ describe('updateJob', () => {
     expect(m.reindexJob).toHaveBeenCalledWith(JOB_ID); // deindexes the draft
   });
 
-  it('rejects a duplicate title among the company\'s other live posts', async () => {
+  it("rejects a duplicate title among the company's other live posts", async () => {
     m.jobFindFirst
       .mockResolvedValueOnce({ id: JOB_ID, publishedAt: new Date() })
       .mockResolvedValueOnce({ id: 'other-job' });
@@ -336,7 +344,9 @@ describe('updateJob', () => {
   it('requires a Pro plan to create a chat area that does not yet exist', async () => {
     m.requireRole.mockResolvedValue({ id: 'company1', plan: 'FREE' });
     m.jobFindFirst.mockResolvedValueOnce({ id: JOB_ID, publishedAt: new Date(), chatArea: null });
-    await expect(updateJob(JOB_ID, input({ createChatArea: true }))).rejects.toThrow('UPGRADE_REQUIRED');
+    await expect(updateJob(JOB_ID, input({ createChatArea: true }))).rejects.toThrow(
+      'UPGRADE_REQUIRED',
+    );
     expect(m.jobUpdate).not.toHaveBeenCalled();
   });
 

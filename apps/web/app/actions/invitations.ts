@@ -24,7 +24,10 @@ async function auditCtx(actorId: string) {
 
 // Company invites a seeker to subscribe as EMPLOYABLE or VIRTUAL_INTERN
 // (JOB_UC_10.0). One pending invitation per company/seeker/type.
-export async function inviteJobseeker(jobSeekerUserId: string, profileType: ProfileType): Promise<void> {
+export async function inviteJobseeker(
+  jobSeekerUserId: string,
+  profileType: ProfileType,
+): Promise<void> {
   const user = await requireRole('COMPANY');
 
   const rl = await inviteLimit(user.id);
@@ -104,12 +107,17 @@ export async function inviteJobseeker(jobSeekerUserId: string, profileType: Prof
 
 // Seeker accepts or declines a pending invitation (JOB_UC_10.1). Accepting
 // creates the matching CompanySubscription; either way the company is told.
-export async function respondToInvitation(invitationId: string, response: 'ACCEPT' | 'DECLINE'): Promise<void> {
+export async function respondToInvitation(
+  invitationId: string,
+  response: 'ACCEPT' | 'DECLINE',
+): Promise<void> {
   const user = await requireRole('JOB_SEEKER');
 
   const invitation = await db.invitation.findFirst({
     where: { id: invitationId, jobSeekerId: user.id },
-    include: { company: { select: { id: true, companyProfile: { select: { companyName: true } } } } },
+    include: {
+      company: { select: { id: true, companyProfile: { select: { companyName: true } } } },
+    },
   });
   if (!invitation) throw new AuthError('FORBIDDEN');
   if (invitation.status !== 'PENDING') return; // already answered
@@ -178,5 +186,8 @@ export async function respondToInvitation(invitationId: string, response: 'ACCEP
 
   updateTag(tags.notifications(invitation.companyId));
 
-  logger.info({ invitationId: invitation.id, jobSeekerId: user.id, status }, 'invitation responded to');
+  logger.info(
+    { invitationId: invitation.id, jobSeekerId: user.id, status },
+    'invitation responded to',
+  );
 }

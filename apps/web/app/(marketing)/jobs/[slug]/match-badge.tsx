@@ -21,7 +21,11 @@ export async function MatchBadge({ jobId }: { jobId: string }) {
 
   const pct = Math.round(score * 100);
   const tone =
-    pct >= 70 ? 'bg-green-100 text-green-800' : pct >= 50 ? 'bg-amber-100 text-amber-800' : 'bg-red-100 text-red-800';
+    pct >= 70
+      ? 'bg-success-subtle text-success'
+      : pct >= 50
+        ? 'bg-warn-subtle text-warn'
+        : 'bg-danger-subtle text-danger';
 
   return (
     <span
@@ -33,7 +37,10 @@ export async function MatchBadge({ jobId }: { jobId: string }) {
   );
 }
 
-async function computeMatchIfEmbeddingsExist(jobId: string, userId: string): Promise<number | null> {
+async function computeMatchIfEmbeddingsExist(
+  jobId: string,
+  userId: string,
+): Promise<number | null> {
   // Inline cheap path — only if both embeddings already exist. Heavy compute
   // (creating embeddings) is workflow-triggered.
   const result = await db.$queryRaw<{ score: number | null }[]>`

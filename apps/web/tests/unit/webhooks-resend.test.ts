@@ -14,7 +14,9 @@ vi.mock('next/headers', () => ({
     ]),
 }));
 vi.mock('next/server', () => ({
-  NextResponse: { json: (body: unknown, init?: { status?: number }) => new Response(JSON.stringify(body), init) },
+  NextResponse: {
+    json: (body: unknown, init?: { status?: number }) => new Response(JSON.stringify(body), init),
+  },
 }));
 
 import { POST } from '@/app/api/v1/webhooks/resend/route';
@@ -30,7 +32,10 @@ describe('resend webhook', () => {
   });
 
   it('suppresses recipients on a hard bounce', async () => {
-    m.verify.mockReturnValue({ type: 'email.bounced', data: { email_id: 'e1', to: ['bounce@x.com'] } });
+    m.verify.mockReturnValue({
+      type: 'email.bounced',
+      data: { email_id: 'e1', to: ['bounce@x.com'] },
+    });
     m.updateMany.mockResolvedValue({ count: 1 });
     const res = await POST(req());
     expect(res.status).toBe(200);
@@ -43,14 +48,20 @@ describe('resend webhook', () => {
   });
 
   it('marks complaints with the COMPLAINED reason', async () => {
-    m.verify.mockReturnValue({ type: 'email.complained', data: { email_id: 'e3', to: ['spam@x.com'] } });
+    m.verify.mockReturnValue({
+      type: 'email.complained',
+      data: { email_id: 'e3', to: ['spam@x.com'] },
+    });
     m.updateMany.mockResolvedValue({ count: 1 });
     await POST(req());
     expect(m.updateMany.mock.calls[0]![0].data.emailSuppressionReason).toBe('COMPLAINED');
   });
 
   it('does not suppress on a delivered event', async () => {
-    m.verify.mockReturnValue({ type: 'email.delivered', data: { email_id: 'e2', to: ['ok@x.com'] } });
+    m.verify.mockReturnValue({
+      type: 'email.delivered',
+      data: { email_id: 'e2', to: ['ok@x.com'] },
+    });
     const res = await POST(req());
     expect(res.status).toBe(200);
     expect(m.updateMany).not.toHaveBeenCalled();

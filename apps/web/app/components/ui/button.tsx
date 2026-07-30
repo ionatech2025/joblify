@@ -1,15 +1,19 @@
-import type { ButtonHTMLAttributes } from 'react';
+import type { ButtonHTMLAttributes, ReactNode } from 'react';
+import { Loader2 } from 'lucide-react';
+import { cn } from '@/lib/cn';
 
 type Variant = 'primary' | 'secondary' | 'ghost' | 'danger';
 type Size = 'sm' | 'md' | 'lg';
 
-// Pill buttons. Primary is ink-black (editorial CTA); indigo stays the accent
-// color for focus rings, links, and badges.
+// Pill buttons. Primary is the ink register — near-black on light, near-white
+// on dark (the --ink token inverts), so it is always the highest-contrast
+// element on the page. Brand indigo stays the accent for focus rings, links
+// and badges rather than becoming a fill.
 const variants: Record<Variant, string> = {
-  primary: 'bg-neutral-900 text-white hover:bg-neutral-700',
-  secondary: 'border border-neutral-300 bg-white text-neutral-900 hover:bg-neutral-50',
-  ghost: 'text-neutral-700 hover:bg-neutral-100',
-  danger: 'border border-red-200 bg-white text-red-700 hover:bg-red-50',
+  primary: 'bg-ink text-ink-fg hover:bg-ink-hover',
+  secondary: 'border border-border-strong bg-surface text-fg hover:bg-surface-sunken',
+  ghost: 'text-fg-muted hover:bg-surface-sunken hover:text-fg',
+  danger: 'border border-danger/30 bg-surface text-danger hover:bg-danger-subtle',
 };
 
 const sizes: Record<Size, string> = {
@@ -18,22 +22,82 @@ const sizes: Record<Size, string> = {
   lg: 'px-6 py-3 text-base',
 };
 
+// ring-offset-canvas keeps the 2px gap around the focus ring the colour of the
+// page rather than Tailwind's hardcoded white, which would read as a bright
+// halo in dark mode.
+const base =
+  'inline-flex items-center justify-center gap-2 rounded-full font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-canvas disabled:cursor-not-allowed disabled:opacity-50';
+
 export function Button({
   variant = 'primary',
   size = 'md',
-  className = '',
+  loading = false,
+  icon,
+  iconPosition = 'start',
+  className,
+  children,
+  disabled,
   ...props
-}: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant; size?: Size }) {
+}: ButtonHTMLAttributes<HTMLButtonElement> & {
+  variant?: Variant;
+  size?: Size;
+  /** Shows a spinner and blocks input. Keeps the label so width doesn't jump. */
+  loading?: boolean;
+  icon?: ReactNode;
+  iconPosition?: 'start' | 'end';
+}) {
+  const glyph = loading ? <Loader2 aria-hidden className="size-4 animate-spin" /> : icon;
   return (
     <button
-      className={`inline-flex items-center justify-center gap-2 rounded-full font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${sizes[size]} ${variants[variant]} ${className}`}
+      className={cn(base, sizes[size], variants[variant], className)}
+      disabled={disabled ?? loading}
+      aria-busy={loading || undefined}
       {...props}
-    />
+    >
+      {glyph && iconPosition === 'start' ? glyph : null}
+      {children}
+      {glyph && iconPosition === 'end' ? glyph : null}
+    </button>
   );
 }
 
-// The same look for <Link>/<a> call sites (marketing CTAs). Compose:
-// `${buttonClasses('primary', 'lg')} no-underline`.
+/**
+ * Circular icon-only button — the arrow-in-circle affordance used for card
+ * actions, carousel controls and the palette trigger. `label` is required
+ * because there is no visible text to name it.
+ */
+export function IconButton({
+  label,
+  variant = 'secondary',
+  size = 'md',
+  className,
+  children,
+  ...props
+}: Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'aria-label'> & {
+  label: string;
+  variant?: Variant;
+  size?: Size;
+}) {
+  const box: Record<Size, string> = {
+    sm: 'size-8 [&_svg]:size-4',
+    md: 'size-10 [&_svg]:size-[1.125rem]',
+    lg: 'size-12 [&_svg]:size-5',
+  };
+  return (
+    <button
+      aria-label={label}
+      className={cn(base, 'shrink-0 p-0', box[size], variants[variant], className)}
+      {...props}
+    >
+      {children}
+    </button>
+  );
+}
+
+/**
+ * The same look for <Link>/<a> call sites (marketing CTAs). Compose:
+ * `${buttonClasses('primary', 'lg')} no-underline`.
+ */
 export function buttonClasses(variant: Variant = 'primary', size: Size = 'md'): string {
-  return `inline-flex items-center justify-center gap-2 rounded-full font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 ${sizes[size]} ${variants[variant]}`;
+  return cn(base, sizes[size], variants[variant]);
 }

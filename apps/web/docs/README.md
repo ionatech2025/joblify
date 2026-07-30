@@ -10,25 +10,25 @@ This folder is the canonical reference for `@joblify/web`. Read these in order o
 
 ## By concern
 
-| Concern | Doc |
-|---|---|
-| Frontend conventions (state, forms, components, a11y) | [FRONTEND.md](./FRONTEND.md) |
-| Server Actions, Route Handlers, audit log, workflows | [BACKEND.md](./BACKEND.md) |
-| Postgres schema, pgvector, PostGIS, migrations | [DATABASE.md](./DATABASE.md) |
-| Clerk wiring, RBAC, route gating | [AUTH.md](./AUTH.md) |
-| AI Gateway, prompts, workflows, cost management | [AI.md](./AI.md) |
-| Algolia indexing, ranking, reranking | [SEARCH.md](./SEARCH.md) |
-| Secret hygiene, gitleaks, rate limit, BotID, CSP | [SECURITY.md](./SECURITY.md) |
-| GDPR/CCPA, audit log, retention | [COMPLIANCE.md](./COMPLIANCE.md) |
-| Sentry, structured logger, alerts | [OBSERVABILITY.md](./OBSERVABILITY.md) |
-| Vitest, Playwright, k6, axe, Lighthouse | [TESTING.md](./TESTING.md) |
-| CI/CD, Vercel preview/prod, Rolling Releases | [DEPLOYMENT.md](./DEPLOYMENT.md) |
+| Concern                                               | Doc                                    |
+| ----------------------------------------------------- | -------------------------------------- |
+| Frontend conventions (state, forms, components, a11y) | [FRONTEND.md](./FRONTEND.md)           |
+| Server Actions, Route Handlers, audit log, workflows  | [BACKEND.md](./BACKEND.md)             |
+| Postgres schema, pgvector, PostGIS, migrations        | [DATABASE.md](./DATABASE.md)           |
+| Clerk wiring, RBAC, route gating                      | [AUTH.md](./AUTH.md)                   |
+| AI Gateway, prompts, workflows, cost management       | [AI.md](./AI.md)                       |
+| Algolia indexing, ranking, reranking                  | [SEARCH.md](./SEARCH.md)               |
+| Secret hygiene, gitleaks, rate limit, BotID, CSP      | [SECURITY.md](./SECURITY.md)           |
+| GDPR/CCPA, audit log, retention                       | [COMPLIANCE.md](./COMPLIANCE.md)       |
+| Sentry, structured logger, alerts                     | [OBSERVABILITY.md](./OBSERVABILITY.md) |
+| Vitest, Playwright, k6, axe, Lighthouse               | [TESTING.md](./TESTING.md)             |
+| CI/CD, Vercel preview/prod, Rolling Releases          | [DEPLOYMENT.md](./DEPLOYMENT.md)       |
 
 ## Live runbooks
 
-| Doc | When you read it |
-|---|---|
-| [OPERATIONS.md](./OPERATIONS.md) | On-call. Where things live, common plays, SLOs. |
+| Doc                                        | When you read it                                               |
+| ------------------------------------------ | -------------------------------------------------------------- |
+| [OPERATIONS.md](./OPERATIONS.md)           | On-call. Where things live, common plays, SLOs.                |
 | [CUTOVER_RUNBOOK.md](./CUTOVER_RUNBOOK.md) | Week 12 cutover. Don't ship to prod without ticking every box. |
 
 ## House rules

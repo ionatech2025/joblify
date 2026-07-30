@@ -7,7 +7,10 @@ import { db } from '@/lib/db';
 import { withAudit } from '@/lib/audit';
 import { tags } from '@/lib/cache';
 import { logger } from '@/lib/observability/logger';
-import { CompanyProfileSchema, type CompanyProfileInput } from '@/app/company/company-profile-schema';
+import {
+  CompanyProfileSchema,
+  type CompanyProfileInput,
+} from '@/app/company/company-profile-schema';
 
 function slugify(name: string): string {
   const base =
@@ -35,7 +38,10 @@ export async function createCompanyProfile(input: CompanyProfileInput): Promise<
   const user = await requireUser();
   const parsed = CompanyProfileSchema.parse(input);
 
-  const existing = await db.companyProfile.findUnique({ where: { userId: user.id }, select: { id: true } });
+  const existing = await db.companyProfile.findUnique({
+    where: { userId: user.id },
+    select: { id: true },
+  });
   if (existing) return; // already set up
 
   const ctx = { ...(await auditCtx()), actorId: user.id };
@@ -68,14 +74,22 @@ export async function updateCompanyProfile(input: CompanyProfileInput): Promise<
   const user = await requireRole('COMPANY');
   const parsed = CompanyProfileSchema.parse(input);
 
-  const profile = await db.companyProfile.findUnique({ where: { userId: user.id }, select: { id: true } });
+  const profile = await db.companyProfile.findUnique({
+    where: { userId: user.id },
+    select: { id: true },
+  });
   if (!profile) throw new AuthError('FORBIDDEN');
 
   const ctx = { ...(await auditCtx()), actorId: user.id };
 
   await withAudit(
     ctx,
-    { action: 'COMPANY_PROFILE_UPDATED', entity: 'company_profile', entityId: profile.id, after: () => parsed },
+    {
+      action: 'COMPANY_PROFILE_UPDATED',
+      entity: 'company_profile',
+      entityId: profile.id,
+      after: () => parsed,
+    },
     (tx) =>
       tx.companyProfile.update({
         where: { id: profile.id },

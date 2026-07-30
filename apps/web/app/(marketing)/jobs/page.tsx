@@ -17,7 +17,7 @@ export default function JobsPage() {
       />
       <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
         {/* JobsSearch reads useSearchParams() — must sit inside a Suspense boundary. */}
-        <Suspense fallback={<p className="text-neutral-500">Loading…</p>}>
+        <Suspense fallback={<p className="text-fg-subtle">Loading…</p>}>
           <JobsSearch />
         </Suspense>
       </div>

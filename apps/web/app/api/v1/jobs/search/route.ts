@@ -37,7 +37,18 @@ export async function GET(req: NextRequest) {
   if (!parsed.success) {
     return NextResponse.json({ error: 'invalid search parameters' }, { status: 400 });
   }
-  const { q, location, workMode, jobType, experienceLevel, salaryMin, salaryMax, radiusKm, sort, page } = parsed.data;
+  const {
+    q,
+    location,
+    workMode,
+    jobType,
+    experienceLevel,
+    salaryMin,
+    salaryMax,
+    radiusKm,
+    sort,
+    page,
+  } = parsed.data;
 
   const filters: string[] = [];
   if (workMode) filters.push(`workMode:${workMode}`);
@@ -58,7 +69,9 @@ export async function GET(req: NextRequest) {
   });
 
   async function run(indexName: string): Promise<AlgoliaPage> {
-    const res = await adminClient().search<JobSearchRecord>({ requests: [buildRequest(indexName)] });
+    const res = await adminClient().search<JobSearchRecord>({
+      requests: [buildRequest(indexName)],
+    });
     return res.results[0] as AlgoliaPage;
   }
 

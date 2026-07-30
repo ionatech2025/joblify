@@ -51,24 +51,24 @@ export default async function ApplicantsPage({ params }: { params: Promise<{ job
         }
       />
       <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
-      <ApplicantsBoard
-        applications={applications.map((a) => ({
-          id: a.id,
-          status: a.status,
-          appliedAt: a.appliedAt.toISOString(),
-          matchScore: a.matchScore,
-          coverLetter: a.coverLetter,
-          recruiterNotes: a.recruiterNotes,
-          resumeUrl: a.resume.fileBlobUrl,
-          seeker: {
-            id: a.jobSeekerId,
-            firstName: a.jobSeeker.firstName ?? null,
-            lastName: a.jobSeeker.lastName ?? null,
-            email: a.jobSeeker.email,
-            headline: a.jobSeeker.jobSeekerProfile?.headline ?? null,
-          },
-        }))}
-      />
+        <ApplicantsBoard
+          applications={applications.map((a) => ({
+            id: a.id,
+            status: a.status,
+            appliedAt: a.appliedAt.toISOString(),
+            matchScore: a.matchScore,
+            coverLetter: a.coverLetter,
+            recruiterNotes: a.recruiterNotes,
+            resumeUrl: a.resume.fileBlobUrl,
+            seeker: {
+              id: a.jobSeekerId,
+              firstName: a.jobSeeker.firstName ?? null,
+              lastName: a.jobSeeker.lastName ?? null,
+              email: a.jobSeeker.email,
+              headline: a.jobSeeker.jobSeekerProfile?.headline ?? null,
+            },
+          }))}
+        />
       </div>
     </main>
   );

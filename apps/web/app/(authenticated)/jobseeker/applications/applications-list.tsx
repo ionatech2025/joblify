@@ -2,28 +2,11 @@
 
 import { useApplications, type ApplicationListItem } from '@/lib/query/applications';
 import Link from 'next/link';
+import { Briefcase } from 'lucide-react';
 import { Badge } from '@/app/components/ui/badge';
-
-const STATUS_LABEL: Record<string, string> = {
-  SUBMITTED: 'Submitted',
-  VIEWED: 'Viewed',
-  SHORTLISTED: 'Shortlisted',
-  INTERVIEW_SCHEDULED: 'Interview scheduled',
-  OFFER_EXTENDED: 'Offer extended',
-  HIRED: 'Hired',
-  REJECTED: 'Not selected',
-  WITHDRAWN: 'Withdrawn',
-};
-
-// Semantic status tones: progress/outcome wins are success, "not selected"
-// warns, everything else stays neutral.
-const STATUS_TONE: Record<string, 'success' | 'warn' | 'neutral'> = {
-  SHORTLISTED: 'success',
-  INTERVIEW_SCHEDULED: 'success',
-  OFFER_EXTENDED: 'success',
-  HIRED: 'success',
-  REJECTED: 'warn',
-};
+import { EmptyState } from '@/app/components/ui/empty-state';
+import { buttonClasses } from '@/app/components/ui/button';
+import { applicationStatusLabel, applicationStatusTone } from '@/lib/ui/status';
 
 export function ApplicationsList({
   userId,
@@ -37,30 +20,37 @@ export function ApplicationsList({
 
   if (items.length === 0) {
     return (
-      <p className="text-neutral-600">
-        You haven&apos;t applied to any jobs yet.{' '}
-        <Link href="/jobs" className="text-indigo-700 hover:underline">
-          Find a role
-        </Link>
-        .
-      </p>
+      <EmptyState
+        icon={<Briefcase />}
+        title="No applications yet"
+        description="Every role you apply to shows up here, with its status as the company moves it through their pipeline."
+        action={
+          <Link href="/jobs" className={`${buttonClasses()} no-underline`}>
+            Find a role
+          </Link>
+        }
+      />
     );
   }
 
   return (
     <ul className="grid list-none grid-cols-1 gap-3 p-0">
       {items.map((a) => (
-        <li key={a.id} className="rounded-2xl border border-neutral-200/80 bg-white p-4 shadow-soft">
+        <li key={a.id} className="rounded-card border border-border bg-surface p-4 shadow-soft">
           <div className="flex items-baseline justify-between gap-4">
             <div className="min-w-0">
-              <Link href={`/jobs/${a.slug}`} className="font-semibold text-neutral-900 hover:underline">
+              <Link href={`/jobs/${a.slug}`} className="font-semibold text-fg hover:underline">
                 {a.jobTitle}
               </Link>
-              <p className="mt-1 mb-0 text-neutral-600">{a.companyName}</p>
+              <p className="mt-1 mb-0 text-fg-muted">{a.companyName}</p>
             </div>
             <div className="shrink-0 text-right">
-              <Badge tone={STATUS_TONE[a.status] ?? 'neutral'}>{STATUS_LABEL[a.status] ?? a.status}</Badge>
-              <p className="mt-1 mb-0 text-sm text-neutral-500">{new Date(a.appliedAt).toLocaleDateString()}</p>
+              <Badge tone={applicationStatusTone(a.status)}>
+                {applicationStatusLabel(a.status)}
+              </Badge>
+              <p className="mt-1 mb-0 text-sm text-fg-subtle">
+                {new Date(a.appliedAt).toLocaleDateString()}
+              </p>
               {a.matchScore !== null && (
                 <p className="mt-1 mb-0">
                   <Badge tone={a.matchScore >= 0.7 ? 'success' : 'neutral'}>
@@ -72,7 +62,7 @@ export function ApplicationsList({
           </div>
         </li>
       ))}
-      {isFetching && <li className="text-sm text-neutral-500">Refreshing…</li>}
+      {isFetching && <li className="text-sm text-fg-subtle">Refreshing…</li>}
     </ul>
   );
 }

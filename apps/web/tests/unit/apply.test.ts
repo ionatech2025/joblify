@@ -45,7 +45,9 @@ vi.mock('@/lib/email/resend', () => ({
   EMAIL_FROM: 'x@joblify.test',
   isEmailSuppressed: m.isEmailSuppressed,
 }));
-vi.mock('@/lib/email/templates', () => ({ applicationConfirm: () => ({ subject: 's', text: 't', html: 'h' }) }));
+vi.mock('@/lib/email/templates', () => ({
+  applicationConfirm: () => ({ subject: 's', text: 't', html: 'h' }),
+}));
 vi.mock('@/lib/observability/logger', () => ({ logger: { info: vi.fn(), warn: vi.fn() } }));
 vi.mock('next/cache', () => ({ updateTag: vi.fn() }));
 vi.mock('next/headers', () => ({ headers: async () => new Map() }));

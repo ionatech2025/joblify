@@ -22,14 +22,22 @@ vi.mock('@/lib/db', () => ({
     savedSearch: { findMany: m.savedFind, updateMany: m.savedUpdate },
   },
 }));
-vi.mock('@/lib/email/resend', () => ({ resend: () => ({ emails: { send: m.send } }), EMAIL_FROM: 'no-reply@joblify.test' }));
+vi.mock('@/lib/email/resend', () => ({
+  resend: () => ({ emails: { send: m.send } }),
+  EMAIL_FROM: 'no-reply@joblify.test',
+}));
 vi.mock('@sentry/nextjs', () => ({ captureException: m.captureException }));
 vi.mock('@/lib/observability/logger', () => ({ logger: { warn: vi.fn(), info: vi.fn() } }));
 
 import { runDigest } from '@/workflows/digest-email.workflow';
 
 const HOUR = 3600 * 1000;
-const job = { id: 'j1', slug: 'eng', title: 'Engineer', company: { companyProfile: { companyName: 'Acme' } } };
+const job = {
+  id: 'j1',
+  slug: 'eng',
+  title: 'Engineer',
+  company: { companyProfile: { companyName: 'Acme' } },
+};
 
 function seeker(id: string) {
   return { id, email: `${id}@x.com`, firstName: id.toUpperCase() };
@@ -57,12 +65,18 @@ describe('runDigest', () => {
     // Watermark window: never digested OR digested before the padded cutoff
     // (24h - 2h slack, so a run stamped minutes after yesterday's schedule
     // still qualifies today).
-    expect(args.where.OR).toEqual([{ lastDigestAt: null }, { lastDigestAt: { lt: expect.any(Date) } }]);
+    expect(args.where.OR).toEqual([
+      { lastDigestAt: null },
+      { lastDigestAt: { lt: expect.any(Date) } },
+    ]);
     const cutoffAge = (Date.now() - args.where.OR[1].lastDigestAt.lt.getTime()) / HOUR;
     expect(cutoffAge).toBeGreaterThan(21.9);
     expect(cutoffAge).toBeLessThan(22.1);
     // Oldest watermark first, never-digested (null) leading; paged, not capped.
-    expect(args.orderBy).toEqual([{ lastDigestAt: { sort: 'asc', nulls: 'first' } }, { id: 'asc' }]);
+    expect(args.orderBy).toEqual([
+      { lastDigestAt: { sort: 'asc', nulls: 'first' } },
+      { id: 'asc' },
+    ]);
     expect(args.take).toBe(200);
   });
 
@@ -123,7 +137,9 @@ describe('runDigest', () => {
 
   it('personalizes for saved-search users and stamps lastNotifiedAt only after processing', async () => {
     m.userFind.mockResolvedValueOnce([seeker('u1')]);
-    m.savedFind.mockResolvedValueOnce([{ userId: 'u1', query: 'workMode=REMOTE', lastNotifiedAt: null }]);
+    m.savedFind.mockResolvedValueOnce([
+      { userId: 'u1', query: 'workMode=REMOTE', lastNotifiedAt: null },
+    ]);
     m.jobFind
       .mockResolvedValueOnce([]) // generic list (computed once, unused here)
       .mockResolvedValueOnce([job]); // the saved-search diff

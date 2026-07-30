@@ -63,13 +63,13 @@ A single Next.js 16 App Router app on Vercel Fluid Compute, fronted by Clerk aut
 
 ## Route group layout
 
-| Group | Purpose | Auth | Rendering |
-|---|---|---|---|
-| `(marketing)` | Public, SEO-critical, indexed | None | PPR: `'use cache' + cacheTag + cacheLife('hours')` |
-| `(auth)` | Clerk SignIn / SignUp | Public | Dynamic (Clerk widget) |
-| `(authenticated)` | Jobseeker dashboards + account | `auth().protect()` in layout | Dynamic RSC, no cache |
-| `company` | Company dashboards (real `company/` segment, not a group) | `auth().protect((has) => has({ role: 'org:company' }))` in layout | Dynamic RSC, no cache |
-| `(admin)` | Admin (not in V1) | — | — |
+| Group             | Purpose                                                   | Auth                                                              | Rendering                                          |
+| ----------------- | --------------------------------------------------------- | ----------------------------------------------------------------- | -------------------------------------------------- |
+| `(marketing)`     | Public, SEO-critical, indexed                             | None                                                              | PPR: `'use cache' + cacheTag + cacheLife('hours')` |
+| `(auth)`          | Clerk SignIn / SignUp                                     | Public                                                            | Dynamic (Clerk widget)                             |
+| `(authenticated)` | Jobseeker dashboards + account                            | `auth().protect()` in layout                                      | Dynamic RSC, no cache                              |
+| `company`         | Company dashboards (real `company/` segment, not a group) | `auth().protect((has) => has({ role: 'org:company' }))` in layout | Dynamic RSC, no cache                              |
+| `(admin)`         | Admin (not in V1)                                         | —                                                                 | —                                                  |
 
 ## Request lifecycle examples
 
@@ -120,13 +120,13 @@ When an authenticated jobseeker views a JD they haven't applied to and both embe
 
 ## Caching strategy
 
-| Layer | Tool | Use |
-|---|---|---|
-| HTML / RSC | Next 16 `'use cache'` directive | JD shell, company profile shell, marketing pages |
-| Tag invalidation | `cacheTag` + `updateTag` | All mutations call `updateTag` on the right keys |
-| Server runtime | Upstash Redis (`@upstash/ratelimit` + ad-hoc K/V) | Rate-limit counters; future runtime cache for hot reads |
-| Client | TanStack Query (`staleTime: 30s`, `gcTime: 5min`) | All client-side fetches |
-| CDN | Vercel edge | Static assets, OG images |
+| Layer            | Tool                                              | Use                                                     |
+| ---------------- | ------------------------------------------------- | ------------------------------------------------------- |
+| HTML / RSC       | Next 16 `'use cache'` directive                   | JD shell, company profile shell, marketing pages        |
+| Tag invalidation | `cacheTag` + `updateTag`                          | All mutations call `updateTag` on the right keys        |
+| Server runtime   | Upstash Redis (`@upstash/ratelimit` + ad-hoc K/V) | Rate-limit counters; future runtime cache for hot reads |
+| Client           | TanStack Query (`staleTime: 30s`, `gcTime: 5min`) | All client-side fetches                                 |
+| CDN              | Vercel edge                                       | Static assets, OG images                                |
 
 Tag namespace is centralized in `lib/cache.ts`. Never inline a tag string — always go through `tags.*`.
 
@@ -163,13 +163,13 @@ Browser ──> /jobseeker/applications ──> middleware.ts (auth.protect)
 
 `workflows/*.workflow.ts` are plain async functions. Each is invoked off the response path via Next's `after()` (apply Server Action + upload route) or directly from a Cron Route Handler (retention, digest-email). They are idempotent and best-effort — failures are logged, and the algolia-reconcile cron reconciles search. Durable steps + automatic retries arrive when the Vercel Workflow DevKit is enabled on the account; the idempotent design makes that a drop-in.
 
-| Workflow | Triggered by | Duration p95 | Idempotent? |
-|---|---|---|---|
-| `resume-parse` | apply Server Action; algolia-reconcile cron re-runs stranded rows (parseAttempts-capped) | 8–20s | yes (skips completed work; repairs a missing embedding from the stored parse) |
-| `match-score` | apply Server Action; its `embedJobPost` step also runs on JD publish/edit (post-job Server Action, in `after()`) and from the algolia-reconcile sweep | 1–5s | yes (writes to existing application row) |
-| `digest-email` | daily cron | 30–120s | yes (per-user `lastDigestAt` watermark, stamped per chunk — a re-run resumes instead of double-sending) |
-| `gdpr-export` | account export endpoint | 5–30s | yes (signed URL, can run twice) |
-| `retention` | daily cron | 5–60s | yes (deleteMany is idempotent) |
+| Workflow       | Triggered by                                                                                                                                          | Duration p95 | Idempotent?                                                                                             |
+| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | ------------ | ------------------------------------------------------------------------------------------------------- |
+| `resume-parse` | apply Server Action; algolia-reconcile cron re-runs stranded rows (parseAttempts-capped)                                                              | 8–20s        | yes (skips completed work; repairs a missing embedding from the stored parse)                           |
+| `match-score`  | apply Server Action; its `embedJobPost` step also runs on JD publish/edit (post-job Server Action, in `after()`) and from the algolia-reconcile sweep | 1–5s         | yes (writes to existing application row)                                                                |
+| `digest-email` | daily cron                                                                                                                                            | 30–120s      | yes (per-user `lastDigestAt` watermark, stamped per chunk — a re-run resumes instead of double-sending) |
+| `gdpr-export`  | account export endpoint                                                                                                                               | 5–30s        | yes (signed URL, can run twice)                                                                         |
+| `retention`    | daily cron                                                                                                                                            | 5–60s        | yes (deleteMany is idempotent)                                                                          |
 
 ## What's intentionally simple
 

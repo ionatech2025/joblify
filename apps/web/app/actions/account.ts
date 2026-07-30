@@ -45,7 +45,10 @@ export async function deleteMyAccount(confirmation: string): Promise<void> {
   // jobseekers have nothing in the search index in V1.
   if (user.userType === 'COMPANY') {
     try {
-      const jobs = await db.jobPost.findMany({ where: { companyId: user.id }, select: { id: true } });
+      const jobs = await db.jobPost.findMany({
+        where: { companyId: user.id },
+        select: { id: true },
+      });
       await Promise.allSettled(jobs.map((j) => deleteJob(j.id)));
     } catch (err) {
       logger.warn({ err, userId: user.id }, 'algolia deindex failed (post account-delete)');

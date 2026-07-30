@@ -16,6 +16,27 @@ const MARKERS: Marker[] = [
   { location: [0.3476, 32.5825], size: 0.04 }, // Kampala
 ];
 
+// cobe bakes its colours in at creation, so a theme flip needs a rebuild.
+function palette(dark: boolean) {
+  return dark
+    ? {
+        dark: 1,
+        diffuse: 1.4,
+        mapBrightness: 6,
+        baseColor: [0.16, 0.17, 0.24] as [number, number, number],
+        markerColor: [0.65, 0.7, 0.99] as [number, number, number],
+        glowColor: [0.16, 0.18, 0.3] as [number, number, number],
+      }
+    : {
+        dark: 0,
+        diffuse: 1.2,
+        mapBrightness: 5.4,
+        baseColor: [0.8, 0.82, 0.93] as [number, number, number],
+        markerColor: [0.45, 0.36, 0.97] as [number, number, number],
+        glowColor: [0.9, 0.92, 1] as [number, number, number],
+      };
+}
+
 export function Globe() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -23,46 +44,85 @@ export function Globe() {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    let phi = 0;
     let width = 0;
     let raf = 0;
+    let globe: ReturnType<typeof createGlobe> | null = null;
+
+    const motion = window.matchMedia('(prefers-reduced-motion: reduce)');
+    // Guard the rebuild on the value that actually matters. The MutationObserver
+    // below watches <html class>, which React also rewrites during hydration
+    // (the next/font variable classes live there) — rebuilding on every such
+    // record spins up a fresh WebGL context each time, exhausts the browser's
+    // context limit and starves the main thread.
+    let builtDark: boolean | null = null;
+
+    // Rebuilt (not just re-styled) on theme or motion-preference change; both
+    // are baked into the instance. Doing it imperatively rather than through
+    // React state keeps this to a single effect with no re-render churn.
+    const build = (force = false) => {
+      const dark = document.documentElement.classList.contains('dark');
+      if (!force && dark === builtDark) return;
+      builtDark = dark;
+
+      cancelAnimationFrame(raf);
+      globe?.destroy();
+
+      let phi = 0;
+      globe = createGlobe(canvas, {
+        devicePixelRatio: 2,
+        width: width * 2,
+        height: width * 2,
+        phi: 0,
+        theta: 0.25,
+        mapSamples: 12000,
+        markers: MARKERS,
+        ...palette(dark),
+      });
+
+      if (motion.matches) {
+        // Reduced motion: render one frame at a slight rotation so it still
+        // reads as a globe, and never start the rAF loop. CSS can't reach a
+        // canvas animation, so this is the only place it can be honoured.
+        globe.update({ phi: 0.6, width: width * 2, height: width * 2 });
+      } else {
+        const tick = () => {
+          phi += 0.0035;
+          globe?.update({ phi, width: width * 2, height: width * 2 });
+          raf = requestAnimationFrame(tick);
+        };
+        raf = requestAnimationFrame(tick);
+      }
+      requestAnimationFrame(() => {
+        canvas.style.opacity = '1';
+      });
+    };
+
     const onResize = () => {
       width = canvas.offsetWidth;
+      // The rAF loop picks the new size up on its own; the static frame can't.
+      if (motion.matches) globe?.update({ phi: 0.6, width: width * 2, height: width * 2 });
     };
     window.addEventListener('resize', onResize);
-    onResize();
+    width = canvas.offsetWidth;
 
-    const globe = createGlobe(canvas, {
-      devicePixelRatio: 2,
-      width: width * 2,
-      height: width * 2,
-      phi: 0,
-      theta: 0.25,
-      dark: 0,
-      diffuse: 1.2,
-      mapSamples: 12000,
-      mapBrightness: 5.4,
-      baseColor: [0.8, 0.82, 0.93], // cool indigo-grey landmass
-      markerColor: [0.45, 0.36, 0.97], // indigo-violet markers
-      glowColor: [0.9, 0.92, 1],
-      markers: MARKERS,
-    });
-
-    // cobe v2 renders on update() — drive our own rAF loop for the spin.
-    const tick = () => {
-      phi += 0.0035;
-      globe.update({ phi, width: width * 2, height: width * 2 });
-      raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-    requestAnimationFrame(() => {
-      canvas.style.opacity = '1';
+    build(true);
+    // A motion-preference flip changes the render mode, not the palette, so it
+    // has to bypass the dark-only guard.
+    const onMotionChange = () => build(true);
+    motion.addEventListener('change', onMotionChange);
+    // Fires on any <html class> write; build() decides whether it mattered.
+    const themeObserver = new MutationObserver(() => build());
+    themeObserver.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class'],
     });
 
     return () => {
       cancelAnimationFrame(raf);
-      globe.destroy();
+      globe?.destroy();
       window.removeEventListener('resize', onResize);
+      motion.removeEventListener('change', onMotionChange);
+      themeObserver.disconnect();
     };
   }, []);
 

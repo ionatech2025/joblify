@@ -1,39 +1,278 @@
 /*
- * Tailwind v4 with preflight (the modern reset). Inline style={{}} still wins
- * over preflight, so any not-yet-migrated component keeps its look; the base
- * layer below restores sensible typography for raw elements (headings, text,
- * lists) that previously relied on browser defaults.
+ * Tailwind v4, CSS-first. There is no tailwind.config.* — the theme lives in
+ * the @theme block below.
+ *
+ * Token architecture:
+ *   :root / .dark   declare RAW values, one palette each.
+ *   @theme inline   maps them to Tailwind utility names BY REFERENCE, so
+ *                   `bg-surface` emits `var(--surface)` directly rather than an
+ *                   intermediate `var(--color-surface)`. That matters: with a
+ *                   plain (non-inline) @theme the intermediate resolves once at
+ *                   :root and the dark override never reaches descendants.
+ *
+ * Rule for component code: never write a literal palette class (neutral-700,
+ * white, indigo-600). Use the semantic name — surface, fg, fg-muted, border,
+ * brand, ink, success/warn/danger/info — and dark mode comes for free.
  */
+
 @import 'tailwindcss';
 
-@theme {
-  --color-brand: #4f46e5;
-  --color-brand-fg: #ffffff;
-  /* Near-black "ink" — primary CTAs and dark bands (footer, dark cards). */
-  --color-ink: #0a0a0a;
-  /* Soft elevation for floating cards: a hairline plus a long, low shadow. */
+/* Class-based dark mode. `:where()` keeps specificity at 0 so utilities still
+   win normally. The class is set on <html> by the no-flash script in layout.tsx. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  color-scheme: light;
+
+  /* Surfaces — canvas is the page, surface is a card, raised floats above
+     other cards, sunken is a recessed well (table headers, kanban columns).
+     Inverse is the ink register (footer, own chat bubble). */
+  --canvas: #ffffff;
+  --surface: #ffffff;
+  --surface-raised: #ffffff;
+  --surface-sunken: #fafafa;
+
+  /* The always-dark editorial band: footer, ticket cards, cookie banner. It
+     does NOT invert with the theme — a dark band is a deliberate register, not
+     "the opposite of the page". Contrast with --ink below, which does invert.
+     band-fg-muted is neutral-400: neutral-500 fails AA at 4.17:1 on this bg,
+     which the axe e2e gate catches. */
+  --band: #0a0a0a;
+  --band-fg: #fafafa;
+  --band-fg-muted: #a3a3a3;
+
+  /* Foreground ramp. muted and subtle are both AA on --surface. */
+  --fg: #171717;
+  --fg-muted: #525252;
+  --fg-subtle: #6b6b6b;
+  --fg-inverse: #fafafa;
+
+  /* Lines */
+  --border: rgb(229 229 229 / 0.8);
+  --border-strong: #d4d4d4;
+
+  /* Ink — the primary CTA register. Inverts in dark so a primary button is
+     always maximum contrast against the page it sits on. */
+  --ink: #0a0a0a;
+  --ink-fg: #ffffff;
+  --ink-hover: #404040;
+
+  /* Brand (indigo) stays the accent: links, focus rings, eyebrows, badges.
+     `brand` is the text/ring value, `brand-solid` the fill value. */
+  --brand: #4338ca;
+  --brand-solid: #4f46e5;
+  --brand-fg: #ffffff;
+  --brand-subtle: #eef2ff;
+  --brand-subtle-fg: #4338ca;
+
+  /* Status. Each has a subtle pair (badge/alert) plus a standalone value for
+     delta text and inline validation. `green` and `emerald` used to coexist
+     in the codebase — success is now the single source. */
+  --success: #047857;
+  --success-subtle: #ecfdf5;
+  --success-subtle-fg: #047857;
+  --warn: #92400e;
+  --warn-subtle: #fffbeb;
+  --warn-subtle-fg: #92400e;
+  --danger: #b91c1c;
+  --danger-subtle: #fef2f2;
+  --danger-subtle-fg: #b91c1c;
+  --info: #1d4ed8;
+  --info-subtle: #eff6ff;
+  --info-subtle-fg: #1d4ed8;
+
+  /* Frosted surfaces (header, floating hero cards, kanban columns). */
+  --glass-bg: rgb(255 255 255 / 0.7);
+  --glass-border: rgb(255 255 255 / 0.5);
+
+  /* Elevation: a hairline plus a long, low shadow. */
   --shadow-soft: 0 1px 2px rgb(0 0 0 / 0.04), 0 12px 32px -16px rgb(0 0 0 / 0.14);
+  --shadow-raised: 0 2px 4px rgb(0 0 0 / 0.06), 0 20px 48px -20px rgb(0 0 0 / 0.2);
+
+  /* Ambient canvas — the CSS-only wash/aurora/grid/starfield behind every
+     page (components/ui/ambient.tsx). Whole gradient strings live here rather
+     than individual stops so the dark variant can restructure them freely. */
+  --ambient-wash: linear-gradient(
+    135deg,
+    oklch(0.972 0.032 280) 0%,
+    oklch(0.995 0.005 272) 50%,
+    oklch(0.965 0.035 235) 100%
+  );
+  --ambient-aurora:
+    radial-gradient(42% 55% at 16% 18%, oklch(0.7 0.18 288 / 0.2), transparent 70%),
+    radial-gradient(46% 52% at 88% 26%, oklch(0.72 0.16 258 / 0.18), transparent 72%),
+    radial-gradient(44% 48% at 72% 100%, oklch(0.78 0.13 228 / 0.14), transparent 72%);
+  --ambient-grid:
+    linear-gradient(oklch(0.45 0.05 272 / 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, oklch(0.45 0.05 272 / 0.07) 1px, transparent 1px);
+  --ambient-starfield-hero:
+    radial-gradient(1.5px 1.5px at 20% 26%, oklch(0.52 0.14 288 / 0.4), transparent 50%),
+    radial-gradient(1.5px 1.5px at 62% 16%, oklch(0.55 0.13 258 / 0.35), transparent 50%),
+    radial-gradient(2px 2px at 81% 60%, oklch(0.58 0.12 228 / 0.32), transparent 50%),
+    radial-gradient(1.5px 1.5px at 38% 70%, oklch(0.52 0.14 288 / 0.3), transparent 50%),
+    radial-gradient(1.5px 1.5px at 91% 36%, oklch(0.55 0.13 258 / 0.33), transparent 50%),
+    radial-gradient(1.5px 1.5px at 8% 64%, oklch(0.58 0.12 228 / 0.28), transparent 50%);
+  --ambient-starfield-band:
+    radial-gradient(1.5px 1.5px at 24% 38%, oklch(0.52 0.14 288 / 0.28), transparent 50%),
+    radial-gradient(1.5px 1.5px at 68% 22%, oklch(0.55 0.13 258 / 0.24), transparent 50%),
+    radial-gradient(1.5px 1.5px at 88% 64%, oklch(0.58 0.12 228 / 0.22), transparent 50%);
+}
+
+.dark {
+  color-scheme: dark;
+
+  /* Dark elevation is carried by surface lightness plus a hairline, not by
+     shadow — drop shadows are invisible on a near-black canvas. */
+  --canvas: #08080a;
+  --surface: #121215;
+  --surface-raised: #1a1a1f;
+  --surface-sunken: #1c1c21;
+
+  /* Still a distinct dark panel, but lifted off --canvas so the band reads as
+     a band rather than merging into the page. */
+  --band: #141418;
+  --band-fg: #f5f5f5;
+  --band-fg-muted: #a3a3a3;
+
+  --fg: #f5f5f5;
+  --fg-muted: #a3a3a3;
+  --fg-subtle: #8f8f8f;
+  --fg-inverse: #0a0a0a;
+
+  --border: rgb(255 255 255 / 0.1);
+  --border-strong: rgb(255 255 255 / 0.18);
+
+  --ink: #fafafa;
+  --ink-fg: #0a0a0a;
+  --ink-hover: #d4d4d4;
+
+  --brand: #a5b4fc;
+  --brand-solid: #6366f1;
+  --brand-fg: #ffffff;
+  --brand-subtle: rgb(99 102 241 / 0.16);
+  --brand-subtle-fg: #c7d2fe;
+
+  --success: #6ee7b7;
+  --success-subtle: rgb(16 185 129 / 0.16);
+  --success-subtle-fg: #6ee7b7;
+  --warn: #fcd34d;
+  --warn-subtle: rgb(245 158 11 / 0.16);
+  --warn-subtle-fg: #fcd34d;
+  --danger: #fca5a5;
+  --danger-subtle: rgb(239 68 68 / 0.16);
+  --danger-subtle-fg: #fca5a5;
+  --info: #93c5fd;
+  --info-subtle: rgb(59 130 246 / 0.16);
+  --info-subtle-fg: #93c5fd;
+
+  --glass-bg: rgb(26 26 31 / 0.62);
+  --glass-border: rgb(255 255 255 / 0.12);
+
+  --shadow-soft: 0 1px 2px rgb(0 0 0 / 0.4), 0 12px 32px -16px rgb(0 0 0 / 0.6);
+  --shadow-raised: 0 2px 4px rgb(0 0 0 / 0.5), 0 20px 48px -20px rgb(0 0 0 / 0.7);
+
+  /* Same geometry, inverted energy: the wash barely lifts off --canvas and the
+     aurora becomes the only real light source, so cards keep reading as the
+     brightest thing on screen. */
+  --ambient-wash: linear-gradient(
+    135deg,
+    oklch(0.19 0.03 280) 0%,
+    oklch(0.14 0.015 272) 50%,
+    oklch(0.18 0.032 235) 100%
+  );
+  --ambient-aurora:
+    radial-gradient(42% 55% at 16% 18%, oklch(0.55 0.19 288 / 0.28), transparent 70%),
+    radial-gradient(46% 52% at 88% 26%, oklch(0.55 0.17 258 / 0.24), transparent 72%),
+    radial-gradient(44% 48% at 72% 100%, oklch(0.58 0.14 228 / 0.18), transparent 72%);
+  --ambient-grid:
+    linear-gradient(oklch(0.85 0.06 272 / 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, oklch(0.85 0.06 272 / 0.07) 1px, transparent 1px);
+  --ambient-starfield-hero:
+    radial-gradient(1.5px 1.5px at 20% 26%, oklch(0.86 0.09 288 / 0.5), transparent 50%),
+    radial-gradient(1.5px 1.5px at 62% 16%, oklch(0.88 0.08 258 / 0.45), transparent 50%),
+    radial-gradient(2px 2px at 81% 60%, oklch(0.9 0.07 228 / 0.4), transparent 50%),
+    radial-gradient(1.5px 1.5px at 38% 70%, oklch(0.86 0.09 288 / 0.38), transparent 50%),
+    radial-gradient(1.5px 1.5px at 91% 36%, oklch(0.88 0.08 258 / 0.42), transparent 50%),
+    radial-gradient(1.5px 1.5px at 8% 64%, oklch(0.9 0.07 228 / 0.35), transparent 50%);
+  --ambient-starfield-band:
+    radial-gradient(1.5px 1.5px at 24% 38%, oklch(0.86 0.09 288 / 0.35), transparent 50%),
+    radial-gradient(1.5px 1.5px at 68% 22%, oklch(0.88 0.08 258 / 0.3), transparent 50%),
+    radial-gradient(1.5px 1.5px at 88% 64%, oklch(0.9 0.07 228 / 0.28), transparent 50%);
+}
+
+@theme inline {
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-surface-sunken: var(--surface-sunken);
+  --color-band: var(--band);
+  --color-band-fg: var(--band-fg);
+  --color-band-fg-muted: var(--band-fg-muted);
+
+  --color-fg: var(--fg);
+  --color-fg-muted: var(--fg-muted);
+  --color-fg-subtle: var(--fg-subtle);
+  --color-fg-inverse: var(--fg-inverse);
+
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+
+  --color-ink: var(--ink);
+  --color-ink-fg: var(--ink-fg);
+  --color-ink-hover: var(--ink-hover);
+
+  --color-brand: var(--brand);
+  --color-brand-solid: var(--brand-solid);
+  --color-brand-fg: var(--brand-fg);
+  --color-brand-subtle: var(--brand-subtle);
+  --color-brand-subtle-fg: var(--brand-subtle-fg);
+
+  --color-success: var(--success);
+  --color-success-subtle: var(--success-subtle);
+  --color-success-subtle-fg: var(--success-subtle-fg);
+  --color-warn: var(--warn);
+  --color-warn-subtle: var(--warn-subtle);
+  --color-warn-subtle-fg: var(--warn-subtle-fg);
+  --color-danger: var(--danger);
+  --color-danger-subtle: var(--danger-subtle);
+  --color-danger-subtle-fg: var(--danger-subtle-fg);
+  --color-info: var(--info);
+  --color-info-subtle: var(--info-subtle);
+  --color-info-subtle-fg: var(--info-subtle-fg);
+
+  --shadow-soft: var(--shadow-soft);
+  --shadow-raised: var(--shadow-raised);
+
+  /* Radii. `control` = inputs/selects, `card` = every elevated surface,
+     `canvas` = the big inset hero panels. Pills stay rounded-full. */
+  --radius-control: 0.75rem;
+  --radius-card: 1rem;
+  --radius-canvas: 2rem;
+
+  /* Self-hosted via next/font (app/layout.tsx) — no external request, so the
+     `font-src 'self' data:` CSP in next.config.ts is unchanged. */
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-archivo), var(--font-inter), ui-sans-serif, sans-serif;
 }
 
 @layer base {
   html {
-    color-scheme: light;
     /* Base paint behind the fixed ambient backdrop (overscroll, pre-paint). */
-    background: #fff;
+    background: var(--canvas);
   }
   body {
     margin: 0;
-    color: #171717;
+    color: var(--fg);
     /* Transparent so the fixed -z-10 ambient canvas in layout.tsx shows
        through; opaque surfaces (cards, tables, glass chrome) sit on top. */
     background: transparent;
-    font-family:
-      -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
   }
 
-  /* Typographic defaults for raw elements on not-yet-migrated content pages.
-     Tailwind utilities live in a later layer, so migrated components that set
-     e.g. text-2xl / m-0 still override these. */
+  /* Typographic defaults for raw elements on content pages (legal, about).
+     Tailwind utilities live in a later layer, so components that set e.g.
+     text-2xl / m-0 still override these. */
   h1 {
     font-size: 1.875rem;
     line-height: 1.2;
@@ -67,16 +306,32 @@
     list-style: decimal;
   }
   a {
-    color: #4338ca;
+    color: var(--brand);
+  }
+
+  /* Honour the OS setting everywhere. The cobe globe additionally parks its
+     rAF loop (components/globe.tsx) — a canvas animation can't be reached
+     from CSS. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 }
 
 @layer components {
   /* Editorial display headline (marketing heroes, page titles that want
-     weight): heavy, tight, balanced. Pair with a size utility at the call
-     site (text-4xl…text-7xl). System font stack — no webfont cost. */
+     weight). Pair with a size utility at the call site (text-4xl…text-7xl).
+     Archivo carries the weight; next/font generates the metric-matched
+     system fallback so swapping costs no layout shift. */
   .display {
-    font-weight: 900;
+    font-family: var(--font-display);
+    font-weight: 800;
     letter-spacing: -0.03em;
     text-wrap: balance;
   }
@@ -90,13 +345,25 @@
     font-weight: 700;
     letter-spacing: 0.18em;
     text-transform: uppercase;
-    color: var(--color-brand);
+    color: var(--brand);
   }
 
-  /* Frosted glass surface (header, floating hero cards). Pair with a border
-     class at the call site when a hairline is wanted. */
+  /* Small-caps caption under a stat value or above a card group. Was
+     duplicated inline at three call sites with two different tracking values
+     before extraction. */
+  .caption {
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--fg-subtle);
+  }
+
+  /* Frosted glass surface (header, floating hero cards, kanban columns).
+     Pair with `border` at the call site when a hairline is wanted. */
   .glass {
-    background: rgb(255 255 255 / 0.7);
+    background: var(--glass-bg);
+    border-color: var(--glass-border);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
   }

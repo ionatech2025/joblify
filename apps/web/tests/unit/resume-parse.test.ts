@@ -42,7 +42,9 @@ vi.mock('@/lib/storage/blob', () => ({
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
   ],
 }));
-vi.mock('@/lib/observability/logger', () => ({ logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } }));
+vi.mock('@/lib/observability/logger', () => ({
+  logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+}));
 
 import { runResumeParse } from '@/workflows/resume-parse.workflow';
 

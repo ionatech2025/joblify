@@ -74,7 +74,14 @@ export async function GET(req: Request) {
 
   const sweep = await sweepStrandedAiDerivations(deadline);
 
-  return NextResponse.json({ ok, fail, scanned: recent.length, outbox, sweep, at: new Date().toISOString() });
+  return NextResponse.json({
+    ok,
+    fail,
+    scanned: recent.length,
+    outbox,
+    sweep,
+    at: new Date().toISOString(),
+  });
 }
 
 // Bounded recovery sweep. Oldest first so nothing starves; each resume attempt
@@ -167,7 +174,10 @@ async function sweepStrandedAiDerivations(deadline: number): Promise<SweepSummar
   }
 
   if (s.stoppedEarly) {
-    logger.warn({ ...s }, 'sweep: stopped early at the wall-clock deadline; remainder picked up next run');
+    logger.warn(
+      { ...s },
+      'sweep: stopped early at the wall-clock deadline; remainder picked up next run',
+    );
   }
 
   return s;

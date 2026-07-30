@@ -98,7 +98,10 @@ describe('updateApplicantStatus', () => {
 
   it('writes the status and notifies the jobseeker on the happy path', async () => {
     await updateApplicantStatus(APP_ID, 'SHORTLISTED');
-    expect(m.appUpdate).toHaveBeenCalledWith({ where: { id: APP_ID }, data: { status: 'SHORTLISTED' } });
+    expect(m.appUpdate).toHaveBeenCalledWith({
+      where: { id: APP_ID },
+      data: { status: 'SHORTLISTED' },
+    });
     const notif = m.notifCreate.mock.calls[0]![0].data;
     expect(notif.userId).toBe('seeker1');
     expect(notif.kind).toBe('APPLICATION_STATUS_CHANGED');
@@ -129,7 +132,9 @@ describe('updateApplicantStatus', () => {
     m.areaFindUnique.mockResolvedValue({ id: 'area1', title: 'Engineer' });
     await updateApplicantStatus(APP_ID, 'SHORTLISTED');
     expect(m.partCreate).toHaveBeenCalledWith({ data: { chatAreaId: 'area1', userId: 'seeker1' } });
-    const chatNotif = m.notifCreate.mock.calls.map((c) => c[0].data).find((d) => d.kind === 'CHAT_AREA_ADDED');
+    const chatNotif = m.notifCreate.mock.calls
+      .map((c) => c[0].data)
+      .find((d) => d.kind === 'CHAT_AREA_ADDED');
     expect(chatNotif?.userId).toBe('seeker1');
     expect(chatNotif?.payload.chatAreaId).toBe('area1');
   });

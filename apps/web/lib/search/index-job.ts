@@ -43,7 +43,10 @@ export async function syncJobToAlgolia(jobId: string): Promise<void> {
 
 async function enqueueRetry(jobId: string, err: unknown): Promise<void> {
   const message = err instanceof Error ? err.message : String(err);
-  logger.error({ jobId, err }, 'Algolia sync failed; queued in index_outbox for the reconcile cron');
+  logger.error(
+    { jobId, err },
+    'Algolia sync failed; queued in index_outbox for the reconcile cron',
+  );
   Sentry.captureException(err, { tags: { jobId } });
   try {
     await db.indexOutbox.upsert({
@@ -79,7 +82,10 @@ export async function drainIndexOutbox(
       if (row.attempts + 1 >= MAX_INDEX_ATTEMPTS) {
         await db.indexOutbox.delete({ where: { id: row.id } });
         dropped++;
-        logger.error({ entityId: row.entityId, attempts: row.attempts + 1 }, 'index_outbox row dropped after max attempts');
+        logger.error(
+          { entityId: row.entityId, attempts: row.attempts + 1 },
+          'index_outbox row dropped after max attempts',
+        );
       } else {
         await db.indexOutbox.update({
           where: { id: row.id },

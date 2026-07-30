@@ -3,7 +3,6 @@ import { PrismaClient } from '@prisma/client';
 // Singleton Prisma client. Reused across Fluid Compute invocations to avoid
 // pool exhaustion. Do NOT instantiate a new PrismaClient anywhere else.
 declare global {
-   
   var __prisma: PrismaClient | undefined;
 }
 

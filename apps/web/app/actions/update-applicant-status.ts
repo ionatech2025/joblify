@@ -159,8 +159,17 @@ export async function saveApplicantNote(applicationId: string, notes: string): P
   await withAudit(
     { actorId: user.id, ip, ua },
     // Audit the event but not the (sensitive) note text — store only its length.
-    { action: 'APPLICATION_NOTE_SAVED', entity: 'job_application', entityId: applicationId, after: () => ({ length: text.length }) },
-    (tx) => tx.jobApplication.update({ where: { id: application.id }, data: { recruiterNotes: text || null } }),
+    {
+      action: 'APPLICATION_NOTE_SAVED',
+      entity: 'job_application',
+      entityId: applicationId,
+      after: () => ({ length: text.length }),
+    },
+    (tx) =>
+      tx.jobApplication.update({
+        where: { id: application.id },
+        data: { recruiterNotes: text || null },
+      }),
   );
 
   updateTag(tags.jobApplicants(application.jobPostId));

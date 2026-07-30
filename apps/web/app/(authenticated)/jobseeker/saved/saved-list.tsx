@@ -2,48 +2,67 @@
 
 import { useState, useTransition } from 'react';
 import Link from 'next/link';
+import { Bookmark } from 'lucide-react';
 import { toggleSavedJob } from '@/app/actions/saved-jobs';
-import { Button } from '@/app/components/ui/button';
+import { Button, buttonClasses } from '@/app/components/ui/button';
+import { EmptyState } from '@/app/components/ui/empty-state';
+import { toast } from '@/lib/stores/ui';
 
-type SavedRow = { id: string; slug: string; title: string; company: string; location: string | null };
+type SavedRow = {
+  id: string;
+  slug: string;
+  title: string;
+  company: string;
+  location: string | null;
+};
 
 export function SavedList({ initial }: { initial: SavedRow[] }) {
   const [jobs, setJobs] = useState(initial);
   const [, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(null);
 
-  function remove(jobId: string) {
+  function remove(jobId: string, title: string) {
     const prev = jobs;
-    setError(null);
     setJobs((j) => j.filter((x) => x.id !== jobId)); // optimistic
     startTransition(async () => {
       try {
         await toggleSavedJob(jobId);
+        toast.success('Removed from saved jobs', title);
       } catch {
+        // The row reappears; the toast explains why, which the previous inline
+        // error line above the list did not reliably do once it scrolled away.
         setJobs(prev);
-        setError('Could not remove that job. Try again.');
+        toast.error("Couldn't remove that job", 'Try again in a moment.');
       }
     });
   }
 
   if (jobs.length === 0) {
     return (
-      <p className="mt-6 text-neutral-500">No saved jobs yet. Tap “Save job” on any listing to keep it here.</p>
+      <EmptyState
+        className="mt-6"
+        icon={<Bookmark />}
+        title="No saved jobs yet"
+        description="Tap “Save job” on any listing and it will wait for you here."
+        action={
+          <Link href="/jobs" className={`${buttonClasses()} no-underline`}>
+            Browse jobs
+          </Link>
+        }
+      />
     );
   }
 
   return (
     <>
-      {error && <p className="text-red-700">{error}</p>}
       <ul className="mt-6 flex list-none flex-col gap-3 p-0">
         {jobs.map((j) => (
           <li
             key={j.id}
-            className="flex items-center justify-between gap-4 rounded-2xl border border-neutral-200/80 bg-white p-4 shadow-soft"
+            className="flex items-center justify-between gap-4 rounded-card border border-border bg-surface p-4 shadow-soft"
           >
-            <Link href={`/jobs/${j.slug}`} className="min-w-0 text-neutral-900 no-underline">
+            <Link href={`/jobs/${j.slug}`} className="min-w-0 text-fg no-underline">
               <strong>{j.title}</strong>
-              <span className="text-neutral-600">
+              <span className="text-fg-muted">
                 {' — '}
                 {j.company}
                 {j.location ? ` · ${j.location}` : ''}
@@ -53,7 +72,7 @@ export function SavedList({ initial }: { initial: SavedRow[] }) {
               variant="danger"
               size="sm"
               type="button"
-              onClick={() => remove(j.id)}
+              onClick={() => remove(j.id, j.title)}
               aria-label={`Remove ${j.title} from saved`}
             >
               Remove

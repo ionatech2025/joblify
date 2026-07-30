@@ -21,7 +21,8 @@ type ResendEvent = {
 
 export async function POST(req: Request) {
   const secret = process.env.RESEND_WEBHOOK_SECRET;
-  if (!secret) return NextResponse.json({ error: 'RESEND_WEBHOOK_SECRET missing' }, { status: 500 });
+  if (!secret)
+    return NextResponse.json({ error: 'RESEND_WEBHOOK_SECRET missing' }, { status: 500 });
 
   const headerPayload = await headers();
   const svixId = headerPayload.get('svix-id');

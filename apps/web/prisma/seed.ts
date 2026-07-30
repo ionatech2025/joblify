@@ -296,7 +296,13 @@ async function upsertSeeker(opts: {
 async function seedSkillsAndExperience(
   jobSeekerUserId: string,
   skillSlugs: string[],
-  experience: Array<{ company: string; title: string; startDate: string; endDate: string; description: string }>,
+  experience: Array<{
+    company: string;
+    title: string;
+    startDate: string;
+    endDate: string;
+    description: string;
+  }>,
 ): Promise<void> {
   const profile = await prisma.jobSeekerProfile.findUniqueOrThrow({
     where: { userId: jobSeekerUserId },
@@ -370,7 +376,8 @@ async function seedWorkflows(companyId: string): Promise<void> {
         title: 'Full-Stack Engineer',
         startDate: 'Jun 2018',
         endDate: 'Dec 2021',
-        description: 'Built and scaled a Node.js/PostgreSQL API serving millions of monthly requests.',
+        description:
+          'Built and scaled a Node.js/PostgreSQL API serving millions of monthly requests.',
       },
     ],
   );
@@ -405,7 +412,8 @@ async function seedWorkflows(companyId: string): Promise<void> {
         title: 'Data Analysis Projects (self-directed)',
         startDate: '2025',
         endDate: 'Present',
-        description: 'Built small ETL pipelines and dashboards using Python and SQL as self-directed learning projects.',
+        description:
+          'Built small ETL pipelines and dashboards using Python and SQL as self-directed learning projects.',
       },
     ],
   );
@@ -556,8 +564,14 @@ async function seedJobseekerActivity(
   companyName: string,
 ): Promise<void> {
   const [reactJob, rustJob] = await Promise.all([
-    prisma.jobPost.findUnique({ where: { slug: 'frontend-engineer-react' }, select: { id: true, title: true } }),
-    prisma.jobPost.findUnique({ where: { slug: 'senior-rust-engineer' }, select: { id: true, title: true } }),
+    prisma.jobPost.findUnique({
+      where: { slug: 'frontend-engineer-react' },
+      select: { id: true, title: true },
+    }),
+    prisma.jobPost.findUnique({
+      where: { slug: 'senior-rust-engineer' },
+      select: { id: true, title: true },
+    }),
   ]);
   if (!reactJob || !rustJob) return;
 
@@ -569,7 +583,8 @@ async function seedJobseekerActivity(
       id: 'c3c3c3c3-0000-4000-8000-000000000001',
       userId: ada.id,
       title: 'Ada Lovelace — Resume.pdf',
-      fileBlobUrl: 'https://demo-blob.public.blob.vercel-storage.com/resumes/ada-lovelace-resume.pdf',
+      fileBlobUrl:
+        'https://demo-blob.public.blob.vercel-storage.com/resumes/ada-lovelace-resume.pdf',
       fileMime: 'application/pdf',
       fileSizeBytes: 214_300,
       isDefault: true,
@@ -582,7 +597,8 @@ async function seedJobseekerActivity(
       id: 'c3c3c3c3-0000-4000-8000-000000000002',
       userId: grace.id,
       title: 'Grace Hopper — Resume.pdf',
-      fileBlobUrl: 'https://demo-blob.public.blob.vercel-storage.com/resumes/grace-hopper-resume.pdf',
+      fileBlobUrl:
+        'https://demo-blob.public.blob.vercel-storage.com/resumes/grace-hopper-resume.pdf',
       fileMime: 'application/pdf',
       fileSizeBytes: 198_700,
       isDefault: true,
@@ -604,7 +620,8 @@ async function seedJobseekerActivity(
       jobSeekerId: ada.id,
       resumeId: adaResume.id,
       status: 'SHORTLISTED',
-      coverLetter: "I've shipped production React/TypeScript UIs for six years and would love to help here.",
+      coverLetter:
+        "I've shipped production React/TypeScript UIs for six years and would love to help here.",
       recruiterNotes: 'Strong portfolio; scheduling a call.',
       matchScore: 0.82,
     },
@@ -656,10 +673,12 @@ async function seedJobseekerActivity(
       userId: ada.id,
       kind: 'APPLICATION_STATUS_CHANGED',
       payload: {
-        applicationId: (await prisma.jobApplication.findUniqueOrThrow({
-          where: { jobPostId_jobSeekerId: { jobPostId: reactJob.id, jobSeekerId: ada.id } },
-          select: { id: true },
-        })).id,
+        applicationId: (
+          await prisma.jobApplication.findUniqueOrThrow({
+            where: { jobPostId_jobSeekerId: { jobPostId: reactJob.id, jobSeekerId: ada.id } },
+            select: { id: true },
+          })
+        ).id,
         jobTitle: reactJob.title,
         companyName,
         status: 'SHORTLISTED',
@@ -668,7 +687,10 @@ async function seedJobseekerActivity(
     },
     update: {},
   });
-  const jobArea = await prisma.chatArea.findUnique({ where: { jobPostId: reactJob.id }, select: { id: true, title: true } });
+  const jobArea = await prisma.chatArea.findUnique({
+    where: { jobPostId: reactJob.id },
+    select: { id: true, title: true },
+  });
   if (jobArea) {
     await prisma.notification.upsert({
       where: { id: 'b2b2b2b2-0000-4000-8000-000000000004' },
@@ -676,7 +698,10 @@ async function seedJobseekerActivity(
         id: 'b2b2b2b2-0000-4000-8000-000000000004',
         userId: ada.id,
         kind: 'CHAT_AREA_ADDED',
-        payload: { chatAreaId: jobArea.id, message: `You were added to the chat area "${jobArea.title}".` },
+        payload: {
+          chatAreaId: jobArea.id,
+          message: `You were added to the chat area "${jobArea.title}".`,
+        },
       },
       update: {},
     });
@@ -700,10 +725,30 @@ async function seedJobViews(
   const now = Date.now();
   const SEED_IP_HASH = 'seed0000000000000000000000000000';
   const views = [
-    { id: 'e5e5e5e5-0000-4000-8000-000000000001', userId: ada.id, jobPostId: reactJobId, daysAgo: 4 },
-    { id: 'e5e5e5e5-0000-4000-8000-000000000002', userId: ada.id, jobPostId: rustJobId, daysAgo: 3 },
-    { id: 'e5e5e5e5-0000-4000-8000-000000000003', userId: ada.id, jobPostId: reactJobId, daysAgo: 1 },
-    { id: 'e5e5e5e5-0000-4000-8000-000000000004', userId: grace.id, jobPostId: reactJobId, daysAgo: 2 },
+    {
+      id: 'e5e5e5e5-0000-4000-8000-000000000001',
+      userId: ada.id,
+      jobPostId: reactJobId,
+      daysAgo: 4,
+    },
+    {
+      id: 'e5e5e5e5-0000-4000-8000-000000000002',
+      userId: ada.id,
+      jobPostId: rustJobId,
+      daysAgo: 3,
+    },
+    {
+      id: 'e5e5e5e5-0000-4000-8000-000000000003',
+      userId: ada.id,
+      jobPostId: reactJobId,
+      daysAgo: 1,
+    },
+    {
+      id: 'e5e5e5e5-0000-4000-8000-000000000004',
+      userId: grace.id,
+      jobPostId: reactJobId,
+      daysAgo: 2,
+    },
   ];
   for (const v of views) {
     await prisma.jobView.upsert({
@@ -787,7 +832,10 @@ async function seedEmbeddings(resumeId: string, jobPostId: string): Promise<void
         where: { id: jobPostId },
         select: { title: true, description: true, requirements: true },
       });
-      const text = `${job.title}\n\n${job.description}\n\n${job.requirements ?? ''}`.slice(0, 30_000);
+      const text = `${job.title}\n\n${job.description}\n\n${job.requirements ?? ''}`.slice(
+        0,
+        30_000,
+      );
       const { embedding } = await embed({
         model: gateway.textEmbeddingModel(MODELS.embeddingLarge),
         value: text,

@@ -31,8 +31,8 @@ export function ExportButton() {
       <Button onClick={start} disabled={isPending}>
         {isPending ? 'Building export…' : 'Request data export'}
       </Button>
-      {message && <p className="mt-4 break-all text-green-700">{message}</p>}
-      {error && <p className="mt-4 text-red-700">{error}</p>}
+      {message && <p className="mt-4 break-all text-success">{message}</p>}
+      {error && <p className="mt-4 text-danger">{error}</p>}
     </div>
   );
 }

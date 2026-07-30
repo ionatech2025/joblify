@@ -69,14 +69,14 @@ In the Vercel dashboard for the `joblify-web` project → **Integrations** →
 install each of the following. Each install auto-injects its env vars into
 Production + Preview + Development scopes; no manual copy-paste required.
 
-| Order | Integration | Plan to start | Env vars injected |
-|---|---|---|---|
-| 1 | **Neon Postgres** | Free (Scale plan when going to prod) | `DATABASE_URL`, `DATABASE_URL_UNPOOLED` |
-| 2 | **Upstash Redis** | Pay-as-you-go | `KV_REST_API_URL`, `KV_REST_API_TOKEN`, `KV_REST_API_READ_ONLY_TOKEN` |
-| 3 | **Clerk** | Free → Pro at GA | `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, `CLERK_WEBHOOK_SECRET` |
-| 4 | **Sentry** | Team | `SENTRY_DSN`, `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_PROJECT` |
-| 5 | **Resend** | Free → Pro at email volume | `RESEND_API_KEY` |
-| 6 | **Algolia** | Build → Grow at 100K MAU | `ALGOLIA_APP_ID`, `ALGOLIA_ADMIN_API_KEY`, `NEXT_PUBLIC_ALGOLIA_APP_ID`, `NEXT_PUBLIC_ALGOLIA_SEARCH_API_KEY` |
+| Order | Integration       | Plan to start                        | Env vars injected                                                                                             |
+| ----- | ----------------- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------- |
+| 1     | **Neon Postgres** | Free (Scale plan when going to prod) | `DATABASE_URL`, `DATABASE_URL_UNPOOLED`                                                                       |
+| 2     | **Upstash Redis** | Pay-as-you-go                        | `KV_REST_API_URL`, `KV_REST_API_TOKEN`, `KV_REST_API_READ_ONLY_TOKEN`                                         |
+| 3     | **Clerk**         | Free → Pro at GA                     | `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, `CLERK_WEBHOOK_SECRET`                               |
+| 4     | **Sentry**        | Team                                 | `SENTRY_DSN`, `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_PROJECT`                                             |
+| 5     | **Resend**        | Free → Pro at email volume           | `RESEND_API_KEY`                                                                                              |
+| 6     | **Algolia**       | Build → Grow at 100K MAU             | `ALGOLIA_APP_ID`, `ALGOLIA_ADMIN_API_KEY`, `NEXT_PUBLIC_ALGOLIA_APP_ID`, `NEXT_PUBLIC_ALGOLIA_SEARCH_API_KEY` |
 
 Neon + Upstash + Clerk are required for Week 2. The rest can wait until their
 respective weeks.

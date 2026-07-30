@@ -17,8 +17,13 @@ vi.mock('@/lib/db', () => ({
   },
 }));
 vi.mock('ai', () => ({ embed: m.embed }));
-vi.mock('@/lib/ai/gateway', () => ({ gateway: { textEmbeddingModel: () => ({}) }, MODELS: { embeddingLarge: 'e' } }));
-vi.mock('@/lib/observability/logger', () => ({ logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } }));
+vi.mock('@/lib/ai/gateway', () => ({
+  gateway: { textEmbeddingModel: () => ({}) },
+  MODELS: { embeddingLarge: 'e' },
+}));
+vi.mock('@/lib/observability/logger', () => ({
+  logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+}));
 
 import { cosine, runMatchScore, embedJobPost } from '@/workflows/match-score.workflow';
 

@@ -2,8 +2,9 @@ import { Suspense } from 'react';
 import Link from 'next/link';
 import { auth } from '@clerk/nextjs/server';
 import { UserButton } from '@clerk/nextjs';
+import { Skeleton } from '@/app/components/ui/skeleton';
 
-const navLink = 'text-neutral-700 transition-colors hover:text-neutral-900';
+const navLink = 'text-fg-muted transition-colors hover:text-fg';
 
 // The only part of the header that reads the Clerk session on the server.
 // auth() reads request headers (uncached), so it streams inside its own
@@ -32,7 +33,7 @@ async function HeaderAuthState() {
         </Link>
         <Link
           href="/sign-up"
-          className="rounded-full bg-neutral-900 px-4 py-1.5 font-semibold text-white no-underline transition-colors hover:bg-neutral-700"
+          className="rounded-full bg-ink px-4 py-1.5 font-semibold text-ink-fg no-underline transition-colors hover:bg-ink-hover"
         >
           Sign up
         </Link>
@@ -55,8 +56,8 @@ async function HeaderAuthState() {
 function HeaderAuthFallback() {
   return (
     <>
-      <span aria-hidden="true" className="h-4 w-11 animate-pulse rounded bg-neutral-200" />
-      <span aria-hidden="true" className="h-8 w-[4.75rem] animate-pulse rounded-full bg-neutral-200" />
+      <Skeleton className="h-4 w-11 rounded" />
+      <Skeleton className="h-8 w-[4.75rem]" />
     </>
   );
 }

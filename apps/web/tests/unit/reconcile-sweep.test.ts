@@ -25,11 +25,19 @@ vi.mock('@/lib/db', () => ({
     $queryRaw: m.queryRaw,
   },
 }));
-vi.mock('@/lib/search/index-job', () => ({ reindexJob: m.reindexJob, drainIndexOutbox: m.drainIndexOutbox }));
+vi.mock('@/lib/search/index-job', () => ({
+  reindexJob: m.reindexJob,
+  drainIndexOutbox: m.drainIndexOutbox,
+}));
 vi.mock('@/workflows/resume-parse.workflow', () => ({ runResumeParse: m.runResumeParse }));
 vi.mock('@/workflows/match-score.workflow', () => ({ embedJobPost: m.embedJobPost }));
-vi.mock('@sentry/nextjs', () => ({ captureException: m.captureException, captureMessage: m.captureMessage }));
-vi.mock('@/lib/observability/logger', () => ({ logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } }));
+vi.mock('@sentry/nextjs', () => ({
+  captureException: m.captureException,
+  captureMessage: m.captureMessage,
+}));
+vi.mock('@/lib/observability/logger', () => ({
+  logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+}));
 
 import { GET } from '@/app/api/v1/cron/algolia-reconcile/route';
 
@@ -112,7 +120,9 @@ describe('algolia-reconcile sweep', () => {
     m.queryRaw.mockResolvedValueOnce([{ id: 'r1', parseAttempts: 1 }]).mockResolvedValueOnce([]);
     m.runResumeParse.mockRejectedValue(new Error('gateway down'));
     const res = await GET(req());
-    expect(m.captureException).toHaveBeenCalledWith(expect.any(Error), { tags: { resumeId: 'r1' } });
+    expect(m.captureException).toHaveBeenCalledWith(expect.any(Error), {
+      tags: { resumeId: 'r1' },
+    });
     expect(m.captureMessage).not.toHaveBeenCalled(); // 2 of 5 attempts — not poisoned yet
     expect((await res.json()).sweep.resumesFailed).toBe(1);
   });

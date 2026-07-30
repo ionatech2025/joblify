@@ -1,7 +1,13 @@
 'use client';
 
 import Link from 'next/link';
-import { useNotifications, useMarkNotificationRead, type NotificationItem } from '@/lib/query/notifications';
+import { BellOff } from 'lucide-react';
+import {
+  useNotifications,
+  useMarkNotificationRead,
+  type NotificationItem,
+} from '@/lib/query/notifications';
+import { EmptyState } from '@/app/components/ui/empty-state';
 
 const KIND_LABEL: Record<string, string> = {
   APPLICATION_SUBMITTED: 'Application submitted',
@@ -23,7 +29,13 @@ export function NotificationsList({ initial }: { initial: NotificationItem[] }) 
   const items = data ?? initial;
 
   if (items.length === 0) {
-    return <p className="text-neutral-600">No notifications yet.</p>;
+    return (
+      <EmptyState
+        icon={<BellOff />}
+        title="You're all caught up"
+        description="Application updates, invitations and new messages will land here."
+      />
+    );
   }
 
   return (
@@ -33,37 +45,48 @@ export function NotificationsList({ initial }: { initial: NotificationItem[] }) 
         return (
           <li
             key={n.id}
-            className={`flex justify-between gap-4 rounded-2xl border px-4 py-3 shadow-soft ${
-              isRead ? 'border-neutral-200/80 bg-white' : 'border-indigo-100 bg-indigo-50/40'
+            className={`flex justify-between gap-4 rounded-card border px-4 py-3 shadow-soft ${
+              isRead ? 'border-border bg-surface' : 'border-border bg-brand-subtle'
             }`}
           >
             <div>
-              <p className={`mb-1 text-neutral-900 ${isRead ? 'font-normal' : 'font-semibold'}`}>
+              <p className={`mb-1 text-fg ${isRead ? 'font-normal' : 'font-semibold'}`}>
                 {KIND_LABEL[n.kind] ?? n.kind}
               </p>
-              <p className="m-0 text-sm text-neutral-600">{summarize(n.payload)}</p>
+              <p className="m-0 text-sm text-fg-muted">{summarize(n.payload)}</p>
               {typeof n.payload.jobSlug === 'string' && (
-                <Link href={`/jobs/${n.payload.jobSlug}`} className="text-sm text-indigo-700 hover:underline">
+                <Link
+                  href={`/jobs/${n.payload.jobSlug}`}
+                  className="text-sm text-brand hover:underline"
+                >
                   View job →
                 </Link>
               )}
               {typeof n.payload.chatAreaId === 'string' && (
-                <Link href={`/jobseeker/chats/${n.payload.chatAreaId}`} className="text-sm text-indigo-700 hover:underline">
+                <Link
+                  href={`/jobseeker/chats/${n.payload.chatAreaId}`}
+                  className="text-sm text-brand hover:underline"
+                >
                   Open chat →
                 </Link>
               )}
               {typeof n.payload.invitationId === 'string' && n.kind === 'INVITATION_RECEIVED' && (
-                <Link href="/jobseeker/subscriptions" className="text-sm text-indigo-700 hover:underline">
+                <Link
+                  href="/jobseeker/subscriptions"
+                  className="text-sm text-brand hover:underline"
+                >
                   View invitation →
                 </Link>
               )}
-              <p className="mt-1 mb-0 text-xs text-neutral-500">{new Date(n.createdAt).toLocaleString()}</p>
+              <p className="mt-1 mb-0 text-xs text-fg-subtle">
+                {new Date(n.createdAt).toLocaleString()}
+              </p>
             </div>
             {!isRead && (
               <button
                 onClick={() => mark.mutate(n.id)}
                 disabled={mark.isPending}
-                className="self-start text-sm text-indigo-700 hover:underline disabled:opacity-50"
+                className="self-start text-sm text-brand hover:underline disabled:opacity-50"
               >
                 Mark read
               </button>

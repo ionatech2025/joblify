@@ -51,12 +51,21 @@ beforeEach(() => {
     certifications: 'AWS Certified',
     skills: [{ skill: { label: 'TypeScript' } }, { skill: { label: 'React' } }],
     workExperiences: [
-      { company: 'Acme', title: 'Engineer', startDate: 'Jan 2022', endDate: 'Present', description: 'Shipped stuff.' },
+      {
+        company: 'Acme',
+        title: 'Engineer',
+        startDate: 'Jan 2022',
+        endDate: 'Present',
+        description: 'Shipped stuff.',
+      },
     ],
   });
   m.renderToBuffer.mockResolvedValue(Buffer.from('%PDF-1.4 fake'));
   m.put.mockResolvedValue({ url: 'https://blob.example.com/resumes/seeker1/generated-123.pdf' });
-  m.resumeCreate.mockResolvedValue({ id: 'resume1', fileBlobUrl: 'https://blob.example.com/resumes/seeker1/generated-123.pdf' });
+  m.resumeCreate.mockResolvedValue({
+    id: 'resume1',
+    fileBlobUrl: 'https://blob.example.com/resumes/seeker1/generated-123.pdf',
+  });
 });
 
 describe('generateResume', () => {
@@ -76,7 +85,15 @@ describe('generateResume', () => {
       headline: 'Backend Engineer',
       email: 'ada@example.com',
       skills: ['TypeScript', 'React'],
-      experience: [{ company: 'Acme', title: 'Engineer', startDate: 'Jan 2022', endDate: 'Present', description: 'Shipped stuff.' }],
+      experience: [
+        {
+          company: 'Acme',
+          title: 'Engineer',
+          startDate: 'Jan 2022',
+          endDate: 'Present',
+          description: 'Shipped stuff.',
+        },
+      ],
     });
 
     expect(m.put).toHaveBeenCalledWith(
@@ -88,12 +105,22 @@ describe('generateResume', () => {
     const created = m.resumeCreate.mock.calls[0]![0];
     expect(created.data.userId).toBe('seeker1');
     expect(created.data.fileMime).toBe('application/pdf');
-    expect(created.data.fileBlobUrl).toBe('https://blob.example.com/resumes/seeker1/generated-123.pdf');
-    expect(result).toEqual({ id: 'resume1', fileBlobUrl: 'https://blob.example.com/resumes/seeker1/generated-123.pdf' });
+    expect(created.data.fileBlobUrl).toBe(
+      'https://blob.example.com/resumes/seeker1/generated-123.pdf',
+    );
+    expect(result).toEqual({
+      id: 'resume1',
+      fileBlobUrl: 'https://blob.example.com/resumes/seeker1/generated-123.pdf',
+    });
   });
 
   it('falls back to email as the name when first/last name are missing', async () => {
-    m.requireRole.mockResolvedValue({ id: 'seeker1', email: 'ada@example.com', firstName: null, lastName: null });
+    m.requireRole.mockResolvedValue({
+      id: 'seeker1',
+      email: 'ada@example.com',
+      firstName: null,
+      lastName: null,
+    });
     await generateResume();
     const [element] = m.renderToBuffer.mock.calls[0]!;
     expect(element.props.data.name).toBe('ada@example.com');

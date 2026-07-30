@@ -26,13 +26,18 @@ export function DeleteForm({ expectedConfirmation }: { expectedConfirmation: str
 
   return (
     <form onSubmit={onSubmit} className="mt-6 flex flex-col gap-4">
-      <label className="flex flex-col gap-2 text-sm text-neutral-700">
+      <label className="flex flex-col gap-2 text-sm text-fg-muted">
         <span>
           Type your email <strong>({expectedConfirmation})</strong> to confirm:
         </span>
-        <Input type="email" value={confirmation} onChange={(e) => setConfirmation(e.target.value)} autoComplete="off" />
+        <Input
+          type="email"
+          value={confirmation}
+          onChange={(e) => setConfirmation(e.target.value)}
+          autoComplete="off"
+        />
       </label>
-      {error && <p className="m-0 text-red-700">{error}</p>}
+      {error && <p className="m-0 text-danger">{error}</p>}
       <Button type="submit" variant="danger" disabled={!ready || isPending} className="self-start">
         {isPending ? 'Deleting…' : 'Delete my account permanently'}
       </Button>

@@ -53,13 +53,13 @@ Uploaded automatically by the Sentry Vercel integration on every deploy. `SENTRY
 
 Configured in the Sentry dashboard:
 
-| Trigger | Severity |
-|---|---|
-| New issue in production | P1 |
-| Error rate > 2% over 10 min | P0 |
-| Error rate > 5% over 5 min | P0 page-out |
-| Replay containing a 500 status | P1 |
-| New regression on a previously-resolved issue | P1 |
+| Trigger                                       | Severity    |
+| --------------------------------------------- | ----------- |
+| New issue in production                       | P1          |
+| Error rate > 2% over 10 min                   | P0          |
+| Error rate > 5% over 5 min                    | P0 page-out |
+| Replay containing a 500 status                | P1          |
+| New regression on a previously-resolved issue | P1          |
 
 Page-out via PagerDuty integration. Configure on-call rotation in PagerDuty during Week 11.
 
@@ -175,25 +175,25 @@ Tune from here:
 
 ## Alerts cheat sheet
 
-| Symptom | Where to look |
-|---|---|
-| 500s on apply | Sentry + Vercel Observability function logs |
-| Slow searches | Vercel Observability traces for `/api/v1/jobs/search` |
-| Bounce-rate spike on /jobs/[slug] | Speed Insights LCP regression |
-| AI cost runaway | AI Gateway dashboard |
-| Bot signups | BotID dashboard + Clerk users dashboard |
-| Email bouncing | Resend dashboard + Sentry warnings |
-| DB CPU pegged | Neon console → metrics |
+| Symptom                           | Where to look                                         |
+| --------------------------------- | ----------------------------------------------------- |
+| 500s on apply                     | Sentry + Vercel Observability function logs           |
+| Slow searches                     | Vercel Observability traces for `/api/v1/jobs/search` |
+| Bounce-rate spike on /jobs/[slug] | Speed Insights LCP regression                         |
+| AI cost runaway                   | AI Gateway dashboard                                  |
+| Bot signups                       | BotID dashboard + Clerk users dashboard               |
+| Email bouncing                    | Resend dashboard + Sentry warnings                    |
+| DB CPU pegged                     | Neon console → metrics                                |
 
 ## SLOs (V1)
 
-| SLO | Target |
-|---|---|
-| Availability | 99.5% monthly |
-| API p95 latency (search, applications, notifications) | < 300ms |
-| LCP p75 on `/jobs/[slug]` (4G) | < 2.0s |
-| Sentry error rate | < 0.5% monthly avg |
-| Cron success rate | 100% on retention, 99% on others |
+| SLO                                                   | Target                           |
+| ----------------------------------------------------- | -------------------------------- |
+| Availability                                          | 99.5% monthly                    |
+| API p95 latency (search, applications, notifications) | < 300ms                          |
+| LCP p75 on `/jobs/[slug]` (4G)                        | < 2.0s                           |
+| Sentry error rate                                     | < 0.5% monthly avg               |
+| Cron success rate                                     | 100% on retention, 99% on others |
 
 Below SLO → blameless postmortem.
 

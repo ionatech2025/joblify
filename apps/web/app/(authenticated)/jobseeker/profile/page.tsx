@@ -24,31 +24,31 @@ export default async function JobseekerProfilePage() {
         width="max-w-3xl"
       />
       <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
-      <ProfileForm
-        allSkills={allSkills}
-        initial={{
-          profileType: profile?.profileType ?? 'EMPLOYABLE',
-          headline: profile?.headline ?? '',
-          bio: profile?.bio ?? '',
-          yearsExperience: profile?.yearsExperience ?? null,
-          location: profile?.location ?? '',
-          desiredSalaryMin: profile?.desiredSalaryMin ?? null,
-          desiredSalaryMax: profile?.desiredSalaryMax ?? null,
-          desiredWorkMode: profile?.desiredWorkMode ?? null,
-          visibility: (profile?.visibility as 'PUBLIC' | 'PRIVATE') ?? 'PRIVATE',
-          careerInterest: profile?.careerInterest ?? '',
-          availabilityHoursPerWeek: profile?.availabilityHoursPerWeek ?? null,
-          learningGoal: profile?.learningGoal ?? '',
-          education: profile?.education ?? '',
-          certifications: profile?.certifications ?? '',
-          portfolioUrl: profile?.portfolioUrl ?? '',
-          skillSlugs: profile?.skills.map((s) => s.skill.slug) ?? [],
-        }}
-      />
+        <ProfileForm
+          allSkills={allSkills}
+          initial={{
+            profileType: profile?.profileType ?? 'EMPLOYABLE',
+            headline: profile?.headline ?? '',
+            bio: profile?.bio ?? '',
+            yearsExperience: profile?.yearsExperience ?? null,
+            location: profile?.location ?? '',
+            desiredSalaryMin: profile?.desiredSalaryMin ?? null,
+            desiredSalaryMax: profile?.desiredSalaryMax ?? null,
+            desiredWorkMode: profile?.desiredWorkMode ?? null,
+            visibility: (profile?.visibility as 'PUBLIC' | 'PRIVATE') ?? 'PRIVATE',
+            careerInterest: profile?.careerInterest ?? '',
+            availabilityHoursPerWeek: profile?.availabilityHoursPerWeek ?? null,
+            learningGoal: profile?.learningGoal ?? '',
+            education: profile?.education ?? '',
+            certifications: profile?.certifications ?? '',
+            portfolioUrl: profile?.portfolioUrl ?? '',
+            skillSlugs: profile?.skills.map((s) => s.skill.slug) ?? [],
+          }}
+        />
 
-      <div className="mt-8">
-        <BioCoach currentBio={profile?.bio ?? ''} />
-      </div>
+        <div className="mt-8">
+          <BioCoach currentBio={profile?.bio ?? ''} />
+        </div>
       </div>
     </main>
   );

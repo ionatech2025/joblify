@@ -1,7 +1,10 @@
 import Link from 'next/link';
 import { requireRole } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { MessagesSquare } from 'lucide-react';
 import { PageHeader } from '@/app/components/ui/ambient';
+import { EmptyState } from '@/app/components/ui/empty-state';
+import { buttonClasses } from '@/app/components/ui/button';
 
 export const metadata = { title: 'My chats' };
 
@@ -33,26 +36,42 @@ export default async function JobseekerChatsPage() {
       />
       <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
         {memberships.length === 0 ? (
-          <p className="text-neutral-600">
-            No chats yet. Apply to jobs or subscribe to companies — once a company shortlists or invites you,
-            the conversation shows up here.
-          </p>
+          <EmptyState
+            icon={<MessagesSquare />}
+            title="No conversations yet"
+            description="Apply to jobs or subscribe to companies. Once a company shortlists or invites you, the conversation opens here."
+            action={
+              <Link href="/jobs" className={`${buttonClasses()} no-underline`}>
+                Find a role
+              </Link>
+            }
+          />
         ) : (
           <ul className="grid list-none grid-cols-1 gap-3 p-0">
             {memberships.map(({ chatArea: a }) => (
-              <li key={a.id} className="rounded-2xl border border-neutral-200/80 bg-white p-4 shadow-soft">
+              <li
+                key={a.id}
+                className="rounded-card border border-border bg-surface p-4 shadow-soft"
+              >
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
-                    <Link href={`/jobseeker/chats/${a.id}`} className="font-semibold text-neutral-900 hover:underline">
+                    <Link
+                      href={`/jobseeker/chats/${a.id}`}
+                      className="font-semibold text-fg hover:underline"
+                    >
                       {a.title}
                     </Link>
-                    <p className="mt-1 mb-0 text-xs text-neutral-500">
+                    <p className="mt-1 mb-0 text-xs text-fg-subtle">
                       {a.company.companyProfile?.companyName ?? 'Company'}
-                      {a.jobPost ? ` · ${a.jobPost.title}` : ' · Virtual interns'} · {a._count.messages} message
+                      {a.jobPost ? ` · ${a.jobPost.title}` : ' · Virtual interns'} ·{' '}
+                      {a._count.messages} message
                       {a._count.messages === 1 ? '' : 's'}
                     </p>
                   </div>
-                  <Link href={`/jobseeker/chats/${a.id}`} className="text-sm text-indigo-700 hover:underline">
+                  <Link
+                    href={`/jobseeker/chats/${a.id}`}
+                    className="text-sm text-brand hover:underline"
+                  >
                     Open →
                   </Link>
                 </div>

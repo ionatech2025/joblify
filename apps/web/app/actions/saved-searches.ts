@@ -29,7 +29,10 @@ export async function saveSearch(input: { query: string; label?: string }): Prom
 export async function deleteSavedSearch(id: string): Promise<void> {
   const user = await requireRole('JOB_SEEKER');
   // Tenancy: only your own.
-  const existing = await db.savedSearch.findFirst({ where: { id, userId: user.id }, select: { id: true } });
+  const existing = await db.savedSearch.findFirst({
+    where: { id, userId: user.id },
+    select: { id: true },
+  });
   if (!existing) throw new AuthError('FORBIDDEN');
   await db.savedSearch.delete({ where: { id: existing.id } });
 

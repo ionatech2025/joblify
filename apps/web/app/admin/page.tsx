@@ -46,8 +46,8 @@ export default async function AdminPage() {
           </StatRow>
         </Card>
 
-        <h2 className="text-lg font-semibold text-neutral-900">Company verification queue</h2>
-        <p className="mt-1 text-sm text-neutral-600">
+        <h2 className="text-lg font-semibold text-fg">Company verification queue</h2>
+        <p className="mt-1 text-sm text-fg-muted">
           Unverified companies don&apos;t appear in the public directory or job search. Review and
           decide below.
         </p>

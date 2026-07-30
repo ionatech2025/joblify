@@ -18,7 +18,10 @@ type MatchRow = { id: string; similarity: number };
 // query instead — "jobs like what you're good at" rather than a 1:1 score.
 // Returns [] gracefully when the jobseeker has no resume with an embedding
 // yet (the LATERAL join simply yields no rows).
-export async function getRecommendedJobs(jobSeekerUserId: string, limit = 10): Promise<RecommendedJob[]> {
+export async function getRecommendedJobs(
+  jobSeekerUserId: string,
+  limit = 10,
+): Promise<RecommendedJob[]> {
   const ranked = await db.$queryRaw<MatchRow[]>`
     SELECT jp.id, 1 - (jp.embedding <=> r.embedding) AS similarity
       FROM job_posts jp

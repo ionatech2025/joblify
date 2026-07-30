@@ -52,29 +52,32 @@ export default async function JobseekerChatAreaPage({ params }: { params: Params
         }
         width="max-w-3xl"
         actions={
-          <Link href="/jobseeker/chats" className="text-sm text-indigo-700 hover:underline">
+          <Link href="/jobseeker/chats" className="text-sm text-brand hover:underline">
             ← All chats
           </Link>
         }
       />
       <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
         {area.jobPost && (
-          <p className="mb-6 text-sm text-neutral-600">
+          <p className="mb-6 text-sm text-fg-muted">
             Job post:{' '}
-            <Link href={`/jobs/${area.jobPost.slug}`} className="text-indigo-700 hover:underline">
+            <Link href={`/jobs/${area.jobPost.slug}`} className="text-brand hover:underline">
               {area.jobPost.title}
             </Link>
           </p>
         )}
         {truncated && (
-          <p className="mt-0 mb-3 text-xs text-neutral-500">Showing the latest {LATEST_MESSAGES_TAKE} messages.</p>
+          <p className="mt-0 mb-3 text-xs text-fg-subtle">
+            Showing the latest {LATEST_MESSAGES_TAKE} messages.
+          </p>
         )}
         <ChatThread
           currentUserId={user.id}
           messages={messages.map((m) => ({
             id: m.id,
             senderId: m.senderId,
-            senderName: [m.sender.firstName, m.sender.lastName].filter(Boolean).join(' ') || companyName,
+            senderName:
+              [m.sender.firstName, m.sender.lastName].filter(Boolean).join(' ') || companyName,
             kind: m.kind,
             body: m.body,
             attachmentUrl: m.attachmentUrl,

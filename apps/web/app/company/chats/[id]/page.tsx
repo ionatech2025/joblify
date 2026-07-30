@@ -63,7 +63,7 @@ export default async function CompanyChatAreaPage({ params }: { params: Params }
         }
         width="max-w-4xl"
         actions={
-          <Link href="/company/chats" className="text-sm text-indigo-700 hover:underline">
+          <Link href="/company/chats" className="text-sm text-brand hover:underline">
             ← All chat areas
           </Link>
         }
@@ -71,7 +71,9 @@ export default async function CompanyChatAreaPage({ params }: { params: Params }
       <div className="mx-auto grid max-w-4xl grid-cols-1 gap-8 px-4 py-8 sm:px-6 lg:grid-cols-[1fr_260px]">
         <section>
           {truncated && (
-            <p className="mt-0 mb-3 text-xs text-neutral-500">Showing the latest {LATEST_MESSAGES_TAKE} messages.</p>
+            <p className="mt-0 mb-3 text-xs text-fg-subtle">
+              Showing the latest {LATEST_MESSAGES_TAKE} messages.
+            </p>
           )}
           <ChatThread
             currentUserId={user.id}
@@ -90,19 +92,28 @@ export default async function CompanyChatAreaPage({ params }: { params: Params }
         </section>
 
         <aside>
-          <h2 className="mt-0 text-sm font-semibold tracking-wide text-neutral-500 uppercase">Participants</h2>
+          <h2 className="mt-0 text-sm font-semibold tracking-wide text-fg-subtle uppercase">
+            Participants
+          </h2>
           <ul className="grid list-none grid-cols-1 gap-2 p-0">
             {area.participants.map((p) => (
-              <li key={p.userId} className="rounded-2xl border border-neutral-200/80 bg-white px-3 py-2 text-sm shadow-soft">
-                <span className="font-medium text-neutral-900">
+              <li
+                key={p.userId}
+                className="rounded-card border border-border bg-surface px-3 py-2 text-sm shadow-soft"
+              >
+                <span className="font-medium text-fg">
                   {p.userId === user.id
                     ? 'You'
                     : [p.user.firstName, p.user.lastName].filter(Boolean).join(' ') || 'Job seeker'}
                 </span>
                 {p.user.jobSeekerProfile && (
-                  <span className="block text-xs text-neutral-500">
-                    {p.user.jobSeekerProfile.profileType === 'VIRTUAL_INTERN' ? 'Virtual intern' : 'Employable'}
-                    {p.user.jobSeekerProfile.headline ? ` · ${p.user.jobSeekerProfile.headline}` : ''}
+                  <span className="block text-xs text-fg-subtle">
+                    {p.user.jobSeekerProfile.profileType === 'VIRTUAL_INTERN'
+                      ? 'Virtual intern'
+                      : 'Employable'}
+                    {p.user.jobSeekerProfile.headline
+                      ? ` · ${p.user.jobSeekerProfile.headline}`
+                      : ''}
                   </span>
                 )}
               </li>
@@ -111,16 +122,16 @@ export default async function CompanyChatAreaPage({ params }: { params: Params }
 
           {candidates.length > 0 && (
             <>
-              <h2 className="mt-6 text-sm font-semibold tracking-wide text-neutral-500 uppercase">
+              <h2 className="mt-6 text-sm font-semibold tracking-wide text-fg-subtle uppercase">
                 {area.kind === 'VIRTUAL_INTERN' ? 'Add virtual interns' : 'Add applicants'}
               </h2>
               <ul className="grid list-none grid-cols-1 gap-2 p-0">
                 {candidates.map((c) => (
                   <li
                     key={c.userId}
-                    className="flex items-center justify-between gap-2 rounded-2xl border border-neutral-200/80 bg-white px-3 py-2 text-sm shadow-soft"
+                    className="flex items-center justify-between gap-2 rounded-card border border-border bg-surface px-3 py-2 text-sm shadow-soft"
                   >
-                    <span className="text-neutral-900">{c.name}</span>
+                    <span className="text-fg">{c.name}</span>
                     <form action={addChatParticipant.bind(null, area.id, c.userId)}>
                       <Button type="submit" variant="secondary" size="sm">
                         Add
@@ -156,12 +167,17 @@ async function getAddableSeekers(
       .filter((a) => !participantIds.has(a.jobSeeker.id))
       .map((a) => ({
         userId: a.jobSeeker.id,
-        name: [a.jobSeeker.firstName, a.jobSeeker.lastName].filter(Boolean).join(' ') || 'Job seeker',
+        name:
+          [a.jobSeeker.firstName, a.jobSeeker.lastName].filter(Boolean).join(' ') || 'Job seeker',
       }));
   }
 
   const subscriptions = await db.companySubscription.findMany({
-    where: { companyId: companyUserId, profileType: 'VIRTUAL_INTERN', jobSeeker: { deletedAt: null } },
+    where: {
+      companyId: companyUserId,
+      profileType: 'VIRTUAL_INTERN',
+      jobSeeker: { deletedAt: null },
+    },
     orderBy: { createdAt: 'desc' },
     take: 50,
     select: { jobSeeker: { select: { id: true, firstName: true, lastName: true } } },

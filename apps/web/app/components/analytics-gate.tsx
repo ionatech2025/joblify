@@ -12,8 +12,7 @@ export function AnalyticsGate() {
   const [allowed, setAllowed] = useState(false);
 
   useEffect(() => {
-    const check = () =>
-      setAllowed(document.cookie.split('; ').includes('joblify_consent=all'));
+    const check = () => setAllowed(document.cookie.split('; ').includes('joblify_consent=all'));
     check();
     window.addEventListener('joblify:consent', check);
     return () => window.removeEventListener('joblify:consent', check);

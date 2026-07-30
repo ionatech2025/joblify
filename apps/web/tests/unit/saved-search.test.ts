@@ -51,6 +51,8 @@ describe('defaultSearchLabel', () => {
   });
 
   it('summarizes query + location + work mode', () => {
-    expect(defaultSearchLabel('q=react&location=Berlin&workMode=REMOTE')).toBe('"react" in Berlin remote');
+    expect(defaultSearchLabel('q=react&location=Berlin&workMode=REMOTE')).toBe(
+      '"react" in Berlin remote',
+    );
   });
 });
