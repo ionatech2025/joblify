@@ -1,0 +1,71 @@
+name: Deploy Preview (Vercel CLI)
+
+# Vercel's native Git integration deploys automatically on every push/PR, but
+# its checks have been failing since #45 with no detail beyond "Deployment
+# has failed" — the dashboard for this project lives under a Vercel scope
+# this environment can't reach, so there was no way to read the real build
+# log. This workflow deploys the same commit through the Vercel CLI instead,
+# authenticated with the VERCEL_TOKEN/VERCEL_ORG_ID/PROJECT_ID repo secrets,
+# which puts the full build output (including `prisma migrate deploy`,
+# apps/web/vercel.ts's buildCommand) into a readable GitHub Actions log.
+#
+# Preview only — never --prod. Deploys tied to the linked repo/commit still
+# register as a normal GitHub deployment_status event, so the existing axe +
+# Lighthouse gates in lighthouse.yml pick it up the same as a native deploy.
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: deploy-preview-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Vercel preview deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: apps/web
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      # Repo secret is named PROJECT_ID; the Vercel CLI specifically looks
+      # for VERCEL_PROJECT_ID.
+      VERCEL_PROJECT_ID: ${{ secrets.PROJECT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Pull Vercel project settings + env (preview)
+        run: bunx vercel@latest pull --yes --environment=preview
+
+      - name: Build via Vercel (runs vercel.ts buildCommand, incl. prisma migrate deploy)
+        run: bunx vercel@latest build
+
+      - name: Deploy prebuilt output
+        id: deploy
+        run: |
+          url=$(bunx vercel@latest deploy --prebuilt)
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "### Vercel preview deploy"
+            if [ -n "${{ steps.deploy.outputs.url }}" ]; then
+              echo "${{ steps.deploy.outputs.url }}"
+            else
+              echo "Deploy failed — see the build/deploy step logs above."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
