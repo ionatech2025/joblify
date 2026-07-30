@@ -55,7 +55,7 @@ export default async function JobseekerChatAreaPage({ params }: { params: Params
         actions={
           <Link
             href="/jobseeker/chats"
-            className="inline-flex items-center gap-1 text-sm text-brand hover:underline"
+            className="inline-flex items-center gap-1 text-sm text-brand underline"
           >
             <ArrowLeft aria-hidden className="size-3.5" />
             All chats
@@ -66,7 +66,7 @@ export default async function JobseekerChatAreaPage({ params }: { params: Params
         {area.jobPost && (
           <p className="mb-6 text-sm text-fg-muted">
             Job post:{' '}
-            <Link href={`/jobs/${area.jobPost.slug}`} className="text-brand hover:underline">
+            <Link href={`/jobs/${area.jobPost.slug}`} className="text-brand underline">
               {area.jobPost.title}
             </Link>
           </p>

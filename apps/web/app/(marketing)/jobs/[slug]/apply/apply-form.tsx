@@ -53,7 +53,7 @@ export function ApplyForm({
             You need a resume first.{' '}
             <Link
               href="/jobseeker/resumes"
-              className="inline-flex items-center gap-1 font-semibold text-brand hover:underline"
+              className="inline-flex items-center gap-1 font-semibold text-brand underline"
             >
               Upload one
               <ArrowRight aria-hidden className="size-3.5" />

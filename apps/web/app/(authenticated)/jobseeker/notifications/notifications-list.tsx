@@ -69,7 +69,7 @@ export function NotificationsList({ initial }: { initial: NotificationItem[] }) 
                 {typeof n.payload.jobSlug === 'string' && (
                   <Link
                     href={`/jobs/${n.payload.jobSlug}`}
-                    className="inline-flex items-center gap-1 text-sm text-brand hover:underline"
+                    className="inline-flex items-center gap-1 text-sm text-brand underline"
                   >
                     View job
                     <ArrowRight aria-hidden className="size-3.5" />
@@ -78,7 +78,7 @@ export function NotificationsList({ initial }: { initial: NotificationItem[] }) 
                 {typeof n.payload.chatAreaId === 'string' && (
                   <Link
                     href={`/jobseeker/chats/${n.payload.chatAreaId}`}
-                    className="inline-flex items-center gap-1 text-sm text-brand hover:underline"
+                    className="inline-flex items-center gap-1 text-sm text-brand underline"
                   >
                     Open chat
                     <ArrowRight aria-hidden className="size-3.5" />
@@ -87,7 +87,7 @@ export function NotificationsList({ initial }: { initial: NotificationItem[] }) 
                 {typeof n.payload.invitationId === 'string' && n.kind === 'INVITATION_RECEIVED' && (
                   <Link
                     href="/jobseeker/subscriptions"
-                    className="inline-flex items-center gap-1 text-sm text-brand hover:underline"
+                    className="inline-flex items-center gap-1 text-sm text-brand underline"
                   >
                     View invitation
                     <ArrowRight aria-hidden className="size-3.5" />
@@ -101,7 +101,7 @@ export function NotificationsList({ initial }: { initial: NotificationItem[] }) 
                 <button
                   onClick={() => mark.mutate(n.id)}
                   disabled={mark.isPending}
-                  className="self-start text-sm text-brand hover:underline disabled:opacity-50"
+                  className="self-start text-sm text-brand underline disabled:opacity-50"
                 >
                   Mark read
                 </button>

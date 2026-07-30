@@ -80,7 +80,7 @@ export function VerificationQueue({ initial }: { initial: PendingCompany[] }) {
                       href={c.website}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-brand hover:underline"
+                      className="text-brand underline"
                     >
                       {c.website}
                     </a>

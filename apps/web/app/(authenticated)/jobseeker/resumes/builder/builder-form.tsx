@@ -82,7 +82,7 @@ export function ResumeBuilderForm({ initialEntries }: { initialEntries: FormValu
     <div className="flex flex-col gap-6">
       <p className="m-0 text-sm text-fg-muted">
         Your headline, bio, skills, education, and certifications come from{' '}
-        <Link href="/jobseeker/profile" className="text-brand hover:underline">
+        <Link href="/jobseeker/profile" className="text-brand underline">
           your profile
         </Link>
         . Add work history below, then generate a PDF.

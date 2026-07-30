@@ -66,7 +66,7 @@ export default async function CompanyChatAreaPage({ params }: { params: Params }
         actions={
           <Link
             href="/company/chats"
-            className="inline-flex items-center gap-1 text-sm text-brand hover:underline"
+            className="inline-flex items-center gap-1 text-sm text-brand underline"
           >
             <ArrowLeft aria-hidden className="size-3.5" />
             All chat areas

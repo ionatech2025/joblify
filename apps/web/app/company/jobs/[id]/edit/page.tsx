@@ -55,7 +55,7 @@ export default async function EditJobPage({
           job.status === 'PUBLISHED' ? (
             <Link
               href={`/jobs/${job.slug}`}
-              className="inline-flex items-center gap-1 text-brand hover:underline"
+              className="inline-flex items-center gap-1 text-brand underline"
             >
               View public page
               <ExternalLink aria-hidden className="size-3.5" />

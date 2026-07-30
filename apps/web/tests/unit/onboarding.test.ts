@@ -99,18 +99,18 @@ describe('completeJobSeekerOnboarding', () => {
   // that accept once the profile exists, or the original "Accept" click is
   // silently lost.
   it('resumes a pending invitation accept after the profile is created', async () => {
-    await expect(
-      completeJobSeekerOnboarding(form('EMPLOYABLE', 'inv1')),
-    ).rejects.toThrow('/jobseeker/profile');
+    await expect(completeJobSeekerOnboarding(form('EMPLOYABLE', 'inv1'))).rejects.toThrow(
+      '/jobseeker/profile',
+    );
     expect(m.profileUpsert).toHaveBeenCalled();
     expect(m.respondToInvitation).toHaveBeenCalledWith('inv1', 'ACCEPT');
   });
 
   it('still completes onboarding if the resumed invitation accept fails', async () => {
     m.respondToInvitation.mockRejectedValue(new Error('invitation expired'));
-    await expect(
-      completeJobSeekerOnboarding(form('EMPLOYABLE', 'inv1')),
-    ).rejects.toThrow('/jobseeker/profile');
+    await expect(completeJobSeekerOnboarding(form('EMPLOYABLE', 'inv1'))).rejects.toThrow(
+      '/jobseeker/profile',
+    );
     expect(m.redirect).toHaveBeenCalledWith('/jobseeker/profile');
   });
 });

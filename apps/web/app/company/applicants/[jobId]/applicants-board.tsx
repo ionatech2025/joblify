@@ -180,13 +180,13 @@ function ApplicantCard({
           href={row.resumeUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 text-brand hover:underline"
+          className="inline-flex items-center gap-1 text-brand underline"
         >
           Résumé
           <ExternalLink aria-hidden className="size-3" />
         </a>
         {row.coverLetter && (
-          <button onClick={() => setOpenCover((o) => !o)} className="text-brand hover:underline">
+          <button onClick={() => setOpenCover((o) => !o)} className="text-brand underline">
             {openCover ? 'Hide cover letter' : 'Cover letter'}
           </button>
         )}

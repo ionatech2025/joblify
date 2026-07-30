@@ -35,6 +35,11 @@ test.beforeAll(async () => {
 });
 test.beforeEach(async ({ page }) => {
   await setupClerkTestingToken({ page });
+  // Unsubscribe and rejecting an applicant both confirm() now (2026-07-31) —
+  // an unhandled dialog is auto-dismissed by Playwright, which silently
+  // no-ops the action instead of erroring, so every test in this file needs
+  // to accept it rather than just the ones that happen to trigger one today.
+  page.on('dialog', (dialog) => dialog.accept());
 });
 
 test.describe('jobseeker workflows', () => {
@@ -104,7 +109,11 @@ test.describe('jobseeker workflows', () => {
     await expect(page.locator('button:visible', { hasText: /^Accept$/ })).toHaveCount(0, {
       timeout: 10_000,
     });
-    const unsubscribe = page.locator('button:visible', { hasText: /^Unsubscribe$/i });
+    // .first(): subscriptions/page.tsx orders by createdAt desc, so the one
+    // just created by accepting above sorts first — scoped rather than a bare
+    // match, since re-running this test against persistent fixture data can
+    // leave more than one subscription present.
+    const unsubscribe = page.locator('button:visible', { hasText: /^Unsubscribe$/i }).first();
     await expect(unsubscribe).toBeVisible();
     await Promise.all([waitForAppMutation(page), unsubscribe.click()]);
   });

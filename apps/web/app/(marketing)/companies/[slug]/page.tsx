@@ -110,7 +110,7 @@ async function CompanyDetailBody({ slug }: { slug: string }) {
               href={company.website}
               rel="noopener noreferrer"
               target="_blank"
-              className="text-brand hover:underline"
+              className="text-brand underline"
             >
               {company.website}
             </a>

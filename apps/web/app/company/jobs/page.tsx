@@ -84,10 +84,7 @@ export default async function CompanyJobsPage() {
                         <Badge tone={JOB_STATUS_TONE[j.status]}>{JOB_STATUS_LABEL[j.status]}</Badge>
                       </td>
                       <td className="px-4 py-3">
-                        <Link
-                          href={`/company/applicants/${j.id}`}
-                          className="text-brand hover:underline"
-                        >
+                        <Link href={`/company/applicants/${j.id}`} className="text-brand underline">
                           {j._count.applications}
                         </Link>
                       </td>
@@ -95,10 +92,7 @@ export default async function CompanyJobsPage() {
                         {(j.publishedAt ?? j.createdAt).toLocaleDateString()}
                       </td>
                       <td className="px-4 py-3">
-                        <Link
-                          href={`/company/jobs/${j.id}/edit`}
-                          className="text-brand hover:underline"
-                        >
+                        <Link href={`/company/jobs/${j.id}/edit`} className="text-brand underline">
                           Edit
                         </Link>
                       </td>

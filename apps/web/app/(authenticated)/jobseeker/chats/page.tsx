@@ -70,7 +70,7 @@ export default async function JobseekerChatsPage() {
                   </div>
                   <Link
                     href={`/jobseeker/chats/${a.id}`}
-                    className="inline-flex items-center gap-1 text-sm text-brand hover:underline"
+                    className="inline-flex items-center gap-1 text-sm text-brand underline"
                   >
                     Open
                     <ArrowRight aria-hidden className="size-3.5" />

@@ -127,7 +127,13 @@ export default async function CompanyJobseekersPage({
                         action={shareJobFromForm.bind(null, s.userId)}
                         className="flex items-center gap-2"
                       >
-                        <Select name="jobPostId" required className="w-48" defaultValue="">
+                        <Select
+                          name="jobPostId"
+                          required
+                          className="w-48"
+                          defaultValue=""
+                          aria-label="Choose a job to share"
+                        >
                           <option value="" disabled>
                             Share a job…
                           </option>
