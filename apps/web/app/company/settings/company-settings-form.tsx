@@ -16,6 +16,7 @@ import { updateCompanyProfile } from '@/app/actions/company';
 import { registerLogo } from '@/app/actions/uploads';
 import { Field, Input, Select, Textarea } from '@/app/components/ui/form';
 import { Button } from '@/app/components/ui/button';
+import { toast } from '@/lib/stores/ui';
 
 function titleCase(s: string): string {
   return s.charAt(0) + s.slice(1).toLowerCase();
@@ -54,8 +55,11 @@ export function CompanySettingsForm({
         await updateCompanyProfile(values);
         setSaved(true);
         router.refresh();
+        toast.success('Company profile saved');
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Could not save. Try again.');
+        const message = err instanceof Error ? err.message : 'Could not save. Try again.';
+        setError(message);
+        toast.error("Couldn't save", message);
       }
     });
   }
@@ -76,8 +80,12 @@ export function CompanySettingsForm({
       await registerLogo({ url: blob.url });
       setLogo(blob.url);
       router.refresh();
+      toast.success('Logo updated');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Logo upload failed. Use a PNG/JPG under 2MB.');
+      const message =
+        err instanceof Error ? err.message : 'Logo upload failed. Use a PNG/JPG under 2MB.';
+      setError(message);
+      toast.error('Logo upload failed', message);
     } finally {
       setLogoBusy(false);
     }

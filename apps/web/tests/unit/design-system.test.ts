@@ -1,7 +1,7 @@
 import { describe, expect, it, beforeEach } from 'vitest';
 import { cn } from '@/lib/cn';
 import { useUiStore, persistedUiState } from '@/lib/stores/ui';
-import { nextTheme, resolvesDark, themeActionLabel } from '@/lib/ui/theme';
+import { resolvesDark } from '@/lib/ui/theme';
 import { COMMANDS, filterCommands, withSectionHeaders, type Command } from '@/lib/ui/commands';
 import {
   applicationStatusLabel,
@@ -29,47 +29,13 @@ describe('cn', () => {
   });
 });
 
-describe('theme cycle', () => {
-  it('leaves system for whichever value is visibly different', () => {
-    // The default is 'system'. A plain light→dark→system rotation would make
-    // the first click land on the value already on screen and appear inert.
-    expect(nextTheme('system', false)).toBe('dark');
-    expect(nextTheme('system', true)).toBe('light');
-  });
-
-  it('rotates through explicit values back to system', () => {
-    expect(nextTheme('light', false)).toBe('dark');
-    expect(nextTheme('dark', false)).toBe('system');
-  });
-
-  it('always produces a different theme than the current one', () => {
-    for (const prefersDark of [true, false]) {
-      for (const theme of ['light', 'dark', 'system'] as const) {
-        expect(nextTheme(theme, prefersDark)).not.toBe(theme);
-      }
-    }
-  });
-
-  it('leaving system always changes what is on screen', () => {
-    // The property that matters to the user: one click, one visible change.
-    for (const prefersDark of [true, false]) {
-      const before = resolvesDark('system', prefersDark);
-      const after = resolvesDark(nextTheme('system', prefersDark), prefersDark);
-      expect(after).not.toBe(before);
-    }
-  });
-
+describe('theme resolution', () => {
   it('resolves system against the OS preference', () => {
     expect(resolvesDark('system', true)).toBe(true);
     expect(resolvesDark('system', false)).toBe(false);
     // Explicit choices ignore the OS.
     expect(resolvesDark('dark', false)).toBe(true);
     expect(resolvesDark('light', true)).toBe(false);
-  });
-
-  it('labels the action, not the current state', () => {
-    expect(themeActionLabel('dark')).toBe('Switch to dark theme');
-    expect(themeActionLabel('system')).toBe('Use the system theme');
   });
 });
 

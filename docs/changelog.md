@@ -1,5 +1,52 @@
 # Changelog
 
+## 2026-07-30 — Icon sweep + Radix theme switcher; a real contrast bug found by the axe gate
+
+Two asks: remove every Unicode glyph standing in for an icon and replace with a proper icon
+library, and give the header theme control the explicit Light/Dark/System pattern most current
+apps use (GitHub, the Vercel dashboard, shadcn/ui) instead of a single button that silently
+cycles. lucide-react was already the app's icon set (design system v2, below) — kept it rather
+than introducing Material UI icons, which would read as a different product next to Lucide's
+stroke-line style. Reached for [Radix UI Primitives](https://www.radix-ui.com/primitives)
+specifically for the dropdown's accessible menu mechanics — `docs/FRONTEND.md` had already named
+Radix as the intended tool "if you reach for them in the future"; this is that.
+
+**Icon sweep.** 12 sites across 10 files were using `→`/`←`/`↗`/`✓` in JSX text — "Open →",
+"Parsed ✓", "Résumé ↗", pagination "← Prev"/"Next →" — replaced with `ArrowRight`/`ArrowLeft`/
+`ExternalLink`/`CheckCircle2`, matching the direction each glyph was already standing in for
+(chevrons for repeated pagination, arrows for one-off "go to X"). Left alone, deliberately: the
+command palette's `Kbd` footer legend (`↑↓ navigate`, `↵ open`) — those represent literal keyboard
+keys, which is how every app with a command palette shows a shortcut legend, not an icon-shaped
+gap.
+
+**Theme switcher.** `ThemeToggle` was a single button that cycled light → dark → system on click
+— functional, but every other place in the app already offered the three choices explicitly (the
+command palette's `theme-light`/`theme-dark`/`theme-system` commands predate this change). Now a
+Radix `DropdownMenu`: trigger shows the resolved icon, content lists Light/Dark/System with a
+checkmark on the active one. Radix supplies roving focus, Escape, typeahead, and focus return to
+the trigger — none of that is hand-rolled. `lib/ui/theme.ts`'s `nextTheme`/`themeActionLabel`
+existed only to serve the cycle interaction; removed along with their unit tests once the
+dropdown made them unreachable, rather than leaving them as dead exports.
+
+**A real bug, found along the way.** The axe a11y gate flagged a serious color-contrast violation
+on the home page — 128 nodes at a 1.04:1 ratio against a 4.5:1 requirement, `#fafafa` text on
+`#ffffff` background. Root cause: `Badge`'s `dark` tone (the salary chip in the ticket-card
+register) referenced `bg-surface-inverse text-fg-inverse` — `surface-inverse` was never a token
+defined anywhere in `globals.css`'s `@theme` block. Tailwind drops unknown utility classes
+silently rather than erroring, so the badge rendered with no background at all: near-white text
+on the page's white canvas. Fixed to `bg-ink text-ink-fg` — the token pair that already means
+"inverts with the theme, maximum contrast," which is exactly what the component's own comment
+said this tone was for. Confirms the value of running the real axe gate rather than trusting the
+token-naming convention by inspection alone.
+
+Verified: typecheck · lint (0 errors) · **vitest 239/239** (244 − 5 for the removed cycle tests)
+· `next build` green at 58/58 pages, 40 PPR / 3 static / 16 dynamic (unchanged) · local Chromium
+e2e: the two theme-toggle-specific tests and the palette theme-switch test all pass; the home-page
+tests flake intermittently on this branch's sandbox, traced to a pre-existing, already-documented
+`P1001` Neon connectivity issue specific to this environment's network egress on port 5432 — not
+a regression, and unrelated to any change in this entry. The axe home-page contrast failure did
+**not** recur across repeated runs once the badge fix landed.
+
 ## 2026-07-30 — Design system v2: semantic tokens, dark mode, command palette, flow audit
 
 Second pass over the four reference designs. The 2026-07 refresh (`d3ff7ad`→`e0ed167`)

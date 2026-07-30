@@ -1,13 +1,13 @@
 import Link from 'next/link';
 import { requireRole } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { respondToInvitation } from '@/app/actions/invitations';
-import { unsubscribeFromCompany } from '@/app/actions/subscriptions';
 import { Building2 } from 'lucide-react';
 import { PageHeader } from '@/app/components/ui/ambient';
 import { Badge } from '@/app/components/ui/badge';
-import { Button, buttonClasses } from '@/app/components/ui/button';
+import { buttonClasses } from '@/app/components/ui/button';
 import { EmptyState } from '@/app/components/ui/empty-state';
+import { InvitationActions } from './invitation-actions';
+import { UnsubscribeButton } from './unsubscribe-button';
 
 export const metadata = { title: 'My subscriptions' };
 
@@ -68,18 +68,7 @@ export default async function JobseekerSubscriptionsPage() {
                         {inv.expiresAt.toLocaleDateString()}
                       </p>
                     </div>
-                    <div className="flex gap-2">
-                      <form action={respondToInvitation.bind(null, inv.id, 'ACCEPT')}>
-                        <Button type="submit" size="sm">
-                          Accept
-                        </Button>
-                      </form>
-                      <form action={respondToInvitation.bind(null, inv.id, 'DECLINE')}>
-                        <Button type="submit" variant="secondary" size="sm">
-                          Decline
-                        </Button>
-                      </form>
-                    </div>
+                    <InvitationActions invitationId={inv.id} />
                   </div>
                 </li>
               ))}
@@ -123,11 +112,11 @@ export default async function JobseekerSubscriptionsPage() {
                       {typeLabel(sub.profileType)}
                     </Badge>
                   </div>
-                  <form action={unsubscribeFromCompany.bind(null, sub.companyId, sub.profileType)}>
-                    <Button type="submit" variant="ghost" size="sm">
-                      Unsubscribe
-                    </Button>
-                  </form>
+                  <UnsubscribeButton
+                    companyId={sub.companyId}
+                    profileType={sub.profileType}
+                    companyName={sub.company.companyProfile?.companyName ?? 'this company'}
+                  />
                 </li>
               ))}
             </ul>

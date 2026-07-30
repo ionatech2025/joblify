@@ -57,6 +57,18 @@ export default defineConfig({
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     ...(loopbackTarget ? { storageState: anonClerkState } : {}),
+    // Preview deployments sit behind Vercel's Deployment Protection (SSO) —
+    // every request needs this header or Playwright just sees Vercel's own
+    // auth-gate page, not the app. Sent on every request rather than relying
+    // on the bypass-cookie flow, so it survives even if something clears
+    // cookies mid-run. No-op locally: unset unless CI wires it in.
+    ...(process.env.VERCEL_AUTOMATION_BYPASS_SECRET
+      ? {
+          extraHTTPHeaders: {
+            'x-vercel-protection-bypass': process.env.VERCEL_AUTOMATION_BYPASS_SECRET,
+          },
+        }
+      : {}),
   },
   projects: [
     ...(hasClerkCreds ? [{ name: 'setup', testMatch: /auth\.setup\.ts/ }] : []),

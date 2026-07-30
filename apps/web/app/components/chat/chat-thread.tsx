@@ -1,5 +1,5 @@
 import type { ChatMessageKind } from '@prisma/client';
-import { MessageSquare } from 'lucide-react';
+import { ExternalLink, MessageSquare } from 'lucide-react';
 import { Badge } from '@/app/components/ui/badge';
 import { EmptyState } from '@/app/components/ui/empty-state';
 import { Card } from '@/app/components/ui/card';
@@ -72,11 +72,12 @@ export function ChatThread({
                     href={m.attachmentUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className={`mt-1 inline-block text-sm hover:underline ${
+                    className={`mt-1 inline-flex items-center gap-1 text-sm hover:underline ${
                       own ? 'text-ink-fg/80' : 'text-brand'
                     }`}
                   >
-                    View attachment ↗
+                    View attachment
+                    <ExternalLink aria-hidden className="size-3.5" />
                   </a>
                 )}
                 <p className="mt-1 mb-0 text-xs text-fg-subtle">{m.createdAt.toLocaleString()}</p>

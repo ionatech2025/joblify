@@ -69,7 +69,7 @@ I can't do these for you.
   `/api/v1/webhooks/resend` → `User.emailSuppressedAt` set → digest skips.
 - **[owner]** e2e: with Clerk dev users + `E2E_TEST_*` env, `bun run test:e2e`
   (5 critical paths on Chromium/Firefox/WebKit).
-- **[owner]** Lighthouse budgets are report-only (`lighthouserc.json`) — enforce
+- **[owner]** Lighthouse budgets are report-only (`lighthouserc.js`) — enforce
   once the preview is stable. Book a pen test; run a k6 load test on `/jobs`.
 
 ## 6. Cutover

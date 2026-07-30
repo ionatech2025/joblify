@@ -49,6 +49,16 @@ function themeToggle(page: Page) {
 }
 
 /**
+ * Opens the header theme dropdown and picks an explicit option. The trigger
+ * is a Radix DropdownMenu — clicking it only opens the menu (role="menu"),
+ * unlike the old single-button cycle it replaced.
+ */
+async function selectTheme(page: Page, choice: 'Light' | 'Dark' | 'System') {
+  await themeToggle(page).click();
+  await page.getByRole('menuitem', { name: choice }).click();
+}
+
+/**
  * A content page with no database-backed islands. Chrome-level assertions
  * (tokens, fonts, theme, footer) belong here rather than on `/`: the header and
  * footer are identical on every route, and the home page's streamed job/stat
@@ -202,7 +212,7 @@ test.describe('dark mode', () => {
     const lightSurface = await readToken(page, '--surface');
     const lightFg = await readToken(page, '--fg');
 
-    await themeToggle(page).click();
+    await selectTheme(page, 'Dark');
 
     expect(await isDark(page)).toBe(true);
     const darkSurface = await readToken(page, '--surface');
@@ -224,7 +234,7 @@ test.describe('dark mode', () => {
     const footer = page.getByRole('contentinfo');
     expectNearBlack(await footer.evaluate((el) => getComputedStyle(el).backgroundColor));
 
-    await themeToggle(page).click();
+    await selectTheme(page, 'Dark');
     expect(await isDark(page)).toBe(true);
     // --band is deliberately NOT an inverting token: a dark editorial band is a
     // register, not "the opposite of the page". Regression guard for that call.

@@ -8,6 +8,7 @@ import { updateJob, archiveJob } from '@/app/actions/post-job';
 import { JobFormFields } from '@/app/company/jobs/job-form-fields';
 import { PostJobFormSchema, type PostJobFormValues } from '@/app/company/jobs/job-form-schema';
 import { Button } from '@/app/components/ui/button';
+import { toast } from '@/lib/stores/ui';
 
 export function EditJobForm({ jobId, initial }: { jobId: string; initial: PostJobFormValues }) {
   const router = useRouter();
@@ -28,9 +29,12 @@ export function EditJobForm({ jobId, initial }: { jobId: string; initial: PostJo
     startDelete(async () => {
       try {
         await archiveJob(jobId);
+        toast.success('Job post deleted');
         router.push('/company/jobs');
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to delete job post.');
+        const message = err instanceof Error ? err.message : 'Failed to delete job post.';
+        setError(message);
+        toast.error("Couldn't delete job post", message);
       }
     });
   }
@@ -52,8 +56,11 @@ export function EditJobForm({ jobId, initial }: { jobId: string; initial: PostJo
         await updateJob(jobId, values);
         setSaved(true);
         router.refresh();
+        toast.success('Job post updated');
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to save changes.');
+        const message = err instanceof Error ? err.message : 'Failed to save changes.';
+        setError(message);
+        toast.error("Couldn't save changes", message);
       }
     });
   }

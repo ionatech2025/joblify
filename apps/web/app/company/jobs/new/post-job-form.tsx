@@ -8,6 +8,7 @@ import { postJob } from '@/app/actions/post-job';
 import { JobFormFields } from '@/app/company/jobs/job-form-fields';
 import { PostJobFormSchema, type PostJobFormValues } from '@/app/company/jobs/job-form-schema';
 import { Button } from '@/app/components/ui/button';
+import { toast } from '@/lib/stores/ui';
 
 export function PostJobForm() {
   const router = useRouter();
@@ -38,9 +39,12 @@ export function PostJobForm() {
     startTransition(async () => {
       try {
         const id = await postJob(values);
+        toast.success('Job posted');
         router.push(`/company/jobs/${id}/edit?just_posted=1`);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to post job.');
+        const message = err instanceof Error ? err.message : 'Failed to post job.';
+        setError(message);
+        toast.error("Couldn't post job", message);
       }
     });
   }

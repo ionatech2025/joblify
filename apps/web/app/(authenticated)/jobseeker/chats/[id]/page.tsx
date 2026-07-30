@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requireRole } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { ArrowLeft } from 'lucide-react';
 import { ChatThread } from '@/app/components/chat/chat-thread';
 import { ChatComposer } from '@/app/components/chat/chat-composer';
 import { LATEST_MESSAGES_TAKE, toThreadDisplay } from '@/app/components/chat/latest-messages';
@@ -52,8 +53,12 @@ export default async function JobseekerChatAreaPage({ params }: { params: Params
         }
         width="max-w-3xl"
         actions={
-          <Link href="/jobseeker/chats" className="text-sm text-brand hover:underline">
-            ← All chats
+          <Link
+            href="/jobseeker/chats"
+            className="inline-flex items-center gap-1 text-sm text-brand hover:underline"
+          >
+            <ArrowLeft aria-hidden className="size-3.5" />
+            All chats
           </Link>
         }
       />

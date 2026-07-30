@@ -2,6 +2,13 @@ name: Lighthouse
 
 # Runs against the Vercel preview deployment once it reports success, so LHCI
 # measures the real app (live DB/Clerk/Algolia) rather than a CI-spun server.
+#
+# Both jobs open with a readiness-wait step: deployment_status can fire
+# fractionally before target_url is actually routable at Vercel's edge — seen
+# on PR #49, where the axe scan hit Vercel's own branded "deployment not
+# found" page (distinct from Joblify's own 404) moments before the same URL,
+# checked by hand seconds later, served the real app. Without the wait this
+# fails intermittently and unfixably by retrying the job.
 on:
   deployment_status
 
@@ -18,14 +25,33 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+      - name: Wait for the preview URL to actually be routable
+        run: |
+          url="${{ github.event.deployment_status.target_url }}"
+          for i in $(seq 1 15); do
+            body=$(curl -sS -H "x-vercel-protection-bypass: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}" "$url")
+            if echo "$body" | grep -q "Joblify" && ! echo "$body" | grep -q "data-not-found"; then
+              echo "Preview is live (attempt $i)."
+              exit 0
+            fi
+            echo "Attempt $i: preview not routable yet, retrying in 4s…"
+            sleep 4
+          done
+          echo "::error::Preview URL never became routable after 15 attempts."
+          exit 1
       - name: Run Lighthouse CI
         uses: treosh/lighthouse-ci-action@v12
+        env:
+          # lighthouserc.js reads this to set collect.settings.extraHeaders —
+          # without it, Lighthouse scores Vercel's Deployment Protection (SSO)
+          # redirect page instead of the app: a deceptive pass, not a real one.
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
         with:
           urls: |
             ${{ github.event.deployment_status.target_url }}
             ${{ github.event.deployment_status.target_url }}/jobs
             ${{ github.event.deployment_status.target_url }}/sign-up
-          configPath: ./apps/web/lighthouserc.json
+          configPath: ./apps/web/lighthouserc.js
           temporaryPublicStorage: true
 
   # Blocking axe gate: runs the Playwright axe spec against the preview URL
@@ -49,6 +75,20 @@ jobs:
       DATABASE_URL_UNPOOLED: 'postgresql://user:pass@localhost:5432/joblify?schema=public'
     steps:
       - uses: actions/checkout@v4
+      - name: Wait for the preview URL to actually be routable
+        run: |
+          url="${{ github.event.deployment_status.target_url }}"
+          for i in $(seq 1 15); do
+            body=$(curl -sS -H "x-vercel-protection-bypass: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}" "$url")
+            if echo "$body" | grep -q "Joblify" && ! echo "$body" | grep -q "data-not-found"; then
+              echo "Preview is live (attempt $i)."
+              exit 0
+            fi
+            echo "Attempt $i: preview not routable yet, retrying in 4s…"
+            sleep 4
+          done
+          echo "::error::Preview URL never became routable after 15 attempts."
+          exit 1
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:

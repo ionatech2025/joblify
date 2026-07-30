@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
+import { ExternalLink } from 'lucide-react';
 import { requireRole } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { EditJobForm } from './edit-job-form';
@@ -52,8 +53,12 @@ export default async function EditJobPage({
         width="max-w-3xl"
         actions={
           job.status === 'PUBLISHED' ? (
-            <Link href={`/jobs/${job.slug}`} className="text-brand hover:underline">
-              View public page ↗
+            <Link
+              href={`/jobs/${job.slug}`}
+              className="inline-flex items-center gap-1 text-brand hover:underline"
+            >
+              View public page
+              <ExternalLink aria-hidden className="size-3.5" />
             </Link>
           ) : undefined
         }

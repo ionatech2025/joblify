@@ -14,6 +14,7 @@ import {
 import { createCompanyProfile } from '@/app/actions/company';
 import { Field, Input, Select, Textarea } from '@/app/components/ui/form';
 import { Button } from '@/app/components/ui/button';
+import { toast } from '@/lib/stores/ui';
 
 function titleCase(s: string): string {
   return s.charAt(0) + s.slice(1).toLowerCase();
@@ -44,10 +45,14 @@ export function EmployerSetupForm() {
     start(async () => {
       try {
         await createCompanyProfile(values);
+        toast.success('Company created', "Let's post your first job.");
         router.push('/company/jobs');
         router.refresh();
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Could not create your company. Try again.');
+        const message =
+          err instanceof Error ? err.message : 'Could not create your company. Try again.';
+        setError(message);
+        toast.error("Couldn't create your company", message);
       }
     });
   }

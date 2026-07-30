@@ -9,6 +9,7 @@ import { saveWorkExperiences } from '@/app/actions/work-experience';
 import { generateResume } from '@/app/actions/generate-resume';
 import { Field, Input, Textarea } from '@/app/components/ui/form';
 import { Button } from '@/app/components/ui/button';
+import { toast } from '@/lib/stores/ui';
 
 const EntrySchema = z.object({
   company: z.string().trim().min(1, 'Company is required').max(200),
@@ -52,8 +53,11 @@ export function ResumeBuilderForm({ initialEntries }: { initialEntries: FormValu
         // "Generate resume PDF" never re-enables.
         reset(values, { keepValues: true });
         setSaved(true);
+        toast.success('Work experience saved');
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Save failed.');
+        const message = err instanceof Error ? err.message : 'Save failed.';
+        setError(message);
+        toast.error("Couldn't save", message);
       }
     });
   }
@@ -65,8 +69,11 @@ export function ResumeBuilderForm({ initialEntries }: { initialEntries: FormValu
       try {
         const resume = await generateResume();
         setResumeUrl(resume.fileBlobUrl);
+        toast.success('Resume generated', 'Your PDF is ready.');
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Could not generate a resume.');
+        const message = err instanceof Error ? err.message : 'Could not generate a resume.';
+        setError(message);
+        toast.error("Couldn't generate resume", message);
       }
     });
   }

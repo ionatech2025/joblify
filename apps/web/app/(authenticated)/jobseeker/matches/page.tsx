@@ -6,6 +6,7 @@ import { PageHeader } from '@/app/components/ui/ambient';
 import { Badge } from '@/app/components/ui/badge';
 import { EmptyState } from '@/app/components/ui/empty-state';
 import { buttonClasses } from '@/app/components/ui/button';
+import { matchTone } from '@/lib/ui/status';
 
 export const metadata = { title: 'Matches' };
 
@@ -49,7 +50,7 @@ export default async function JobMatchesPage() {
                     {j.location ? ` · ${j.location}` : ''}
                   </span>
                 </Link>
-                <Badge tone={j.similarity >= 0.7 ? 'success' : 'neutral'} className="shrink-0">
+                <Badge tone={matchTone(j.similarity)} className="shrink-0">
                   {Math.round(j.similarity * 100)}% match
                 </Badge>
               </li>

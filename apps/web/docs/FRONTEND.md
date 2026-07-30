@@ -167,7 +167,7 @@ Patterns:
 - Form fields use proper `<label>` association (`htmlFor` or wrapped).
 - Color contrast ≥ 4.5:1 for body text.
 - Focus rings visible (`focus-visible:ring`).
-- Dialogs / popovers use Radix primitives if you reach for them in the future.
+- Dialogs / popovers use Radix primitives — the header `ThemeToggle` (`@radix-ui/react-dropdown-menu`) is the first call site; reach for the same library rather than hand-rolling another one.
 - Skip-to-content link in `app/layout.tsx` (TODO when a header lands).
 - Tab order matches DOM order.
 
@@ -212,7 +212,7 @@ Next 16 + Turbopack handles route-level splitting automatically. Push for compon
 
 ## Performance budgets
 
-Enforced via `lighthouserc.json` in CI:
+Enforced via `lighthouserc.js` in CI:
 
 - Performance ≥ 85
 - A11y ≥ 95

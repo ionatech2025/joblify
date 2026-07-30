@@ -29,9 +29,12 @@ jobs:
     name: Vercel preview deploy
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    defaults:
-      run:
-        working-directory: apps/web
+    # Deliberately NOT scoped to apps/web: the project's rootDirectory setting
+    # (fixed 2026-07-30 — it had drifted to a path from an unrelated project)
+    # is what maps the checked-out repo root to the Next.js app now, exactly
+    # as the native Git integration's own clone+cd does. Combining that with a
+    # working-directory here doubles the path (apps/web/apps/web) and every
+    # step fails at ENOENT before it reaches the real build.
     env:
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}

@@ -3,7 +3,7 @@
 import { useMemo, useState, useTransition } from 'react';
 import { updateApplicantStatus, saveApplicantNote } from '@/app/actions/update-applicant-status';
 import type { ApplicationStatus } from '@prisma/client';
-import { Users } from 'lucide-react';
+import { ExternalLink, Users } from 'lucide-react';
 import { Badge } from '@/app/components/ui/badge';
 import { EmptyState } from '@/app/components/ui/empty-state';
 import {
@@ -148,8 +148,10 @@ function ApplicantCard({
       await saveApplicantNote(row.id, notes);
       setBaseline(notes);
       setNoteState('saved');
-    } catch {
+    } catch (err) {
       setNoteState('idle');
+      const message = err instanceof Error ? err.message : 'Note failed to save.';
+      toast.error("Couldn't save note", message);
     }
   }
 
@@ -178,9 +180,10 @@ function ApplicantCard({
           href={row.resumeUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-brand hover:underline"
+          className="inline-flex items-center gap-1 text-brand hover:underline"
         >
-          Résumé ↗
+          Résumé
+          <ExternalLink aria-hidden className="size-3" />
         </a>
         {row.coverLetter && (
           <button onClick={() => setOpenCover((o) => !o)} className="text-brand hover:underline">
@@ -197,7 +200,18 @@ function ApplicantCard({
 
       <Select
         value={row.status}
-        onChange={(e) => onStatus(row.id, e.target.value as ApplicationStatus)}
+        onChange={(e) => {
+          const next = e.target.value as ApplicationStatus;
+          // Rejecting emails the applicant with no undo — every other
+          // transition is freely reversible, so only this one gates.
+          if (
+            next === 'REJECTED' &&
+            !window.confirm(`Reject ${name}? They'll be emailed, and this can't be undone.`)
+          ) {
+            return;
+          }
+          onStatus(row.id, next);
+        }}
         className="mt-2"
         aria-label={`Change status for ${name}`}
       >

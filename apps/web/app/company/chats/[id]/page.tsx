@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requireRole } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { ArrowLeft } from 'lucide-react';
 import { addChatParticipant } from '@/app/actions/chat';
 import { ChatThread } from '@/app/components/chat/chat-thread';
 import { ChatComposer } from '@/app/components/chat/chat-composer';
@@ -63,8 +64,12 @@ export default async function CompanyChatAreaPage({ params }: { params: Params }
         }
         width="max-w-4xl"
         actions={
-          <Link href="/company/chats" className="text-sm text-brand hover:underline">
-            ← All chat areas
+          <Link
+            href="/company/chats"
+            className="inline-flex items-center gap-1 text-sm text-brand hover:underline"
+          >
+            <ArrowLeft aria-hidden className="size-3.5" />
+            All chat areas
           </Link>
         }
       />

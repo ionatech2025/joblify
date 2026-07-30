@@ -8,9 +8,16 @@ import { Button, buttonClasses } from '@/app/components/ui/button';
 
 export const metadata = { title: 'Get started' };
 
+type SearchParams = Promise<{ invitationId?: string }>;
+
 // First stop after sign-up (flowchart: "Company or Job seeker?"). Users who
 // already picked a path are routed straight to their dashboard.
-export default async function OnboardingPage() {
+//
+// invitationId: set when respondToInvitation sent an ACCEPT here because no
+// profile existed yet — carried through the form below so
+// completeJobSeekerOnboarding can finish that accept instead of losing it.
+export default async function OnboardingPage({ searchParams }: { searchParams: SearchParams }) {
+  const { invitationId } = await searchParams;
   const user = await requireUser();
 
   if (user.userType === 'COMPANY') redirect('/company/jobs');
@@ -41,6 +48,7 @@ export default async function OnboardingPage() {
             </p>
           </div>
           <form action={completeJobSeekerOnboarding} className="mt-auto flex flex-col gap-2">
+            {invitationId && <input type="hidden" name="invitationId" value={invitationId} />}
             <Button type="submit" name="profileType" value="EMPLOYABLE">
               I&apos;m employable — looking for a role
             </Button>

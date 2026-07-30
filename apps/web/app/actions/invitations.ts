@@ -132,7 +132,7 @@ export async function respondToInvitation(
       where: { userId: user.id },
       select: { id: true },
     });
-    if (!profile) redirect('/onboarding');
+    if (!profile) redirect(`/onboarding?invitationId=${invitation.id}`);
   }
 
   const seekerName = [user.firstName, user.lastName].filter(Boolean).join(' ') || 'A job seeker';
