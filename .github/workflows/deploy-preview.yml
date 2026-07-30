@@ -1,0 +1,101 @@
+name: Deploy Preview (Vercel CLI)
+
+# Vercel's native Git integration deploys automatically on every push/PR, but
+# its checks have been failing since #45 with no detail beyond "Deployment
+# has failed" — the dashboard for this project lives under a Vercel scope
+# this environment can't reach, so there was no way to read the real build
+# log. This workflow deploys the same commit through the Vercel CLI instead,
+# authenticated with the VERCEL_TOKEN/VERCEL_ORG_ID/PROJECT_ID repo secrets,
+# which puts the full build output (including `prisma migrate deploy`,
+# apps/web/vercel.ts's buildCommand) into a readable GitHub Actions log.
+#
+# Preview only — never --prod. Deploys tied to the linked repo/commit still
+# register as a normal GitHub deployment_status event, so the existing axe +
+# Lighthouse gates in lighthouse.yml pick it up the same as a native deploy.
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: deploy-preview-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Vercel preview deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: apps/web
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      # Repo secret is named PROJECT_ID; the Vercel CLI specifically looks
+      # for VERCEL_PROJECT_ID.
+      VERCEL_PROJECT_ID: ${{ secrets.PROJECT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      # One-time remediation, not a recurring pipeline step: the project's
+      # dashboard has a Framework Preset / Build Command override left over
+      # from something unrelated to this repo (evidence: a CLI build of this
+      # exact commit ran `vite build` — there is no Vite anywhere in this
+      # codebase). A dashboard override always wins over vercel.ts, so no
+      # amount of repo-side change fixes this; it has to be corrected via the
+      # Vercel API with the token that's already a repo secret. Runs only on
+      # manual dispatch so routine PR runs don't re-PATCH project settings on
+      # every push.
+      - name: Fix misconfigured Framework Preset / Build Command override
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          echo "Current project settings:"
+          curl -sS "https://api.vercel.com/v9/projects/${VERCEL_PROJECT_ID}?teamId=${VERCEL_ORG_ID}" \
+            -H "Authorization: Bearer ${VERCEL_TOKEN}" \
+          | jq '{framework, buildCommand, devCommand, installCommand, outputDirectory, rootDirectory}'
+
+          echo "Correcting framework + clearing the buildCommand override so apps/web/vercel.ts is honored…"
+          http_code=$(curl -sS -o /tmp/vercel-patch-response.json -w '%{http_code}' -X PATCH \
+            "https://api.vercel.com/v9/projects/${VERCEL_PROJECT_ID}?teamId=${VERCEL_ORG_ID}" \
+            -H "Authorization: Bearer ${VERCEL_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d '{"framework":"nextjs","buildCommand":null}')
+          echo "HTTP $http_code"
+          jq '{framework, buildCommand, devCommand, installCommand, outputDirectory, rootDirectory}' /tmp/vercel-patch-response.json 2>/dev/null || cat /tmp/vercel-patch-response.json
+          if [ "$http_code" -ge 300 ]; then
+            echo "::error::Vercel API PATCH failed with HTTP $http_code — the token may lack project-write scope. See response body above."
+            exit 1
+          fi
+
+      - name: Pull Vercel project settings + env (preview)
+        run: bunx vercel@latest pull --yes --environment=preview
+
+      - name: Build via Vercel (runs vercel.ts buildCommand, incl. prisma migrate deploy)
+        run: bunx vercel@latest build
+
+      - name: Deploy prebuilt output
+        id: deploy
+        run: |
+          url=$(bunx vercel@latest deploy --prebuilt)
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "### Vercel preview deploy"
+            if [ -n "${{ steps.deploy.outputs.url }}" ]; then
+              echo "${{ steps.deploy.outputs.url }}"
+            else
+              echo "Deploy failed — see the build/deploy step logs above."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
