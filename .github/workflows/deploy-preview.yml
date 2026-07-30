@@ -46,6 +46,36 @@ jobs:
         with:
           bun-version: latest
 
+      # One-time remediation, not a recurring pipeline step: the project's
+      # dashboard has a Framework Preset / Build Command override left over
+      # from something unrelated to this repo (evidence: a CLI build of this
+      # exact commit ran `vite build` — there is no Vite anywhere in this
+      # codebase). A dashboard override always wins over vercel.ts, so no
+      # amount of repo-side change fixes this; it has to be corrected via the
+      # Vercel API with the token that's already a repo secret. Runs only on
+      # manual dispatch so routine PR runs don't re-PATCH project settings on
+      # every push.
+      - name: Fix misconfigured Framework Preset / Build Command override
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          echo "Current project settings:"
+          curl -sS "https://api.vercel.com/v9/projects/${VERCEL_PROJECT_ID}?teamId=${VERCEL_ORG_ID}" \
+            -H "Authorization: Bearer ${VERCEL_TOKEN}" \
+          | jq '{framework, buildCommand, devCommand, installCommand, outputDirectory, rootDirectory}'
+
+          echo "Correcting framework + clearing the buildCommand override so apps/web/vercel.ts is honored…"
+          http_code=$(curl -sS -o /tmp/vercel-patch-response.json -w '%{http_code}' -X PATCH \
+            "https://api.vercel.com/v9/projects/${VERCEL_PROJECT_ID}?teamId=${VERCEL_ORG_ID}" \
+            -H "Authorization: Bearer ${VERCEL_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d '{"framework":"nextjs","buildCommand":null}')
+          echo "HTTP $http_code"
+          jq '{framework, buildCommand, devCommand, installCommand, outputDirectory, rootDirectory}' /tmp/vercel-patch-response.json 2>/dev/null || cat /tmp/vercel-patch-response.json
+          if [ "$http_code" -ge 300 ]; then
+            echo "::error::Vercel API PATCH failed with HTTP $http_code — the token may lack project-write scope. See response body above."
+            exit 1
+          fi
+
       - name: Pull Vercel project settings + env (preview)
         run: bunx vercel@latest pull --yes --environment=preview
 
