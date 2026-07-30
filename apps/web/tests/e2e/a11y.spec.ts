@@ -67,13 +67,21 @@ async function expectNoViolations(page: Page, path: string) {
     // up as 128 "serious" color-contrast violations on every page (PR #49),
     // all traced to elements with Vercel's own --ds-* design tokens and a
     // /legal/privacy-policy link that doesn't exist in this app (real route
-    // is /legal/privacy). An include() allowlist is robust against Vercel
-    // changing that toolbar's markup/classes in the future, where an
-    // exclude() of today's specific selector would not be.
-    .include('header')
+    // is /legal/privacy).
+    //
+    // A first attempt scoped with bare tag selectors (header/footer/aside)
+    // and still caught the toolbar — axe's include() runs querySelectorAll
+    // against the whole document, and Vercel's widget apparently uses the
+    // same semantic tags for its own floating UI. `body > x` restricts to
+    // direct children of <body>, which a probe against the exact failing
+    // deployment confirmed is where this app's own header/footer/cookie-
+    // banner actually live (see app/layout.tsx) — an injected widget wrapper
+    // is not a direct body child, so this excludes it without needing to
+    // know its markup.
+    .include('body > header')
     .include('#main-content')
-    .include('footer')
-    .include('aside')
+    .include('body > footer')
+    .include('body > aside')
     .analyze();
 
   const critical = results.violations.filter(
@@ -81,6 +89,26 @@ async function expectNoViolations(page: Page, path: string) {
   );
   if (critical.length > 0) {
     console.warn(JSON.stringify(critical, null, 2));
+    // The include() scoping above was tuned against a failure this suite
+    // couldn't reproduce outside CI (PR #49) — two guesses, two pushes, two
+    // ~2-minute CI round trips to find out either was wrong. If this still
+    // fires, print the ancestor chain of the first violation's own target
+    // right here instead of repeating that cycle a third time.
+    const target = critical[0]?.nodes[0]?.target[0];
+    if (typeof target === 'string') {
+      const chain = await page.evaluate((sel) => {
+        let el = document.querySelector(sel);
+        const path: string[] = [];
+        while (el && el !== document.body) {
+          path.push(
+            `${el.tagName.toLowerCase()}${el.id ? `#${el.id}` : ''}.${String(el.className).slice(0, 60)}`,
+          );
+          el = el.parentElement;
+        }
+        return path;
+      }, target);
+      console.warn('Ancestor chain of first violation target:', JSON.stringify(chain, null, 2));
+    }
   }
   expect(critical, `axe violations on ${path}`).toEqual([]);
 }
