@@ -19,9 +19,28 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   const { slug } = await params;
   const company = await getCompanyBySlug(slug);
   if (!company) return { title: 'Company not found' };
+  const description = company.description.slice(0, 200);
+  // `images` points at the opengraph-image/route.ts Route Handler in this
+  // segment — see the comment in opengraph-image/route.tsx for why this
+  // isn't the opengraph-image.tsx special-file convention.
+  const image = `/companies/${company.slug}/opengraph-image`;
   return {
     title: company.companyName,
     description: company.description.slice(0, 160),
+    openGraph: {
+      title: company.companyName,
+      description,
+      type: 'website',
+      url: `/companies/${company.slug}`,
+      siteName: 'Joblify',
+      images: [image],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: company.companyName,
+      description,
+      images: [image],
+    },
   };
 }
 
@@ -129,7 +148,9 @@ async function CompanyDetailBody({ slug }: { slug: string }) {
   );
 }
 
-async function getCompanyBySlug(slug: string) {
+// Exported so opengraph-image.tsx can reuse the same cached query rather
+// than duplicating it.
+export async function getCompanyBySlug(slug: string) {
   'use cache';
   const { cacheTag, cacheLife } = await import('next/cache');
   cacheLife('hours');

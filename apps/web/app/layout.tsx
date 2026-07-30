@@ -40,6 +40,25 @@ export const metadata: Metadata = {
   applicationName: 'Joblify',
   appleWebApp: { capable: true, title: 'Joblify', statusBarStyle: 'default' },
   icons: { apple: '/apple-touch-icon.png' },
+  // Per-page opengraph-image.tsx (job posts, company profiles) supplies its
+  // own `images`; everything else inherits app/opengraph-image.tsx via the
+  // filesystem convention, so no `images` array is set here. `siteName` and
+  // `locale` are what WhatsApp/Facebook show as the small caption line above
+  // the title on a shared card — worth setting even though nothing here
+  // overrides the image, since the whole openGraph object is otherwise
+  // absent as of today (checked before this change).
+  openGraph: {
+    siteName: 'Joblify',
+    locale: 'en_US',
+    type: 'website',
+  },
+  // WhatsApp's own preview crawler reads Open Graph tags, not Twitter Card
+  // ones — but Slack, Discord, and X/Twitter's crawlers prefer this block
+  // when both are present, so both stay in sync rather than relying on a
+  // fallback chain.
+  twitter: {
+    card: 'summary_large_image',
+  },
 };
 
 // Per-scheme browser chrome. Must track --canvas in globals.css.

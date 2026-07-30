@@ -43,14 +43,31 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   if (!job) return { title: 'Job not found' };
 
   const company = job.company.companyProfile?.companyName ?? 'Company';
+  const title = `${job.title} at ${company}`;
+  const description = job.description.slice(0, 200);
+  // `images` points at the opengraph-image/route.ts Route Handler in this
+  // segment rather than relying on the opengraph-image.tsx special-file
+  // convention's auto-detection: that convention isn't routed correctly
+  // when nested inside a route group under Next 16.2.7 + Turbopack (see the
+  // comment in opengraph-image/route.tsx), so this route handler generates
+  // the same image and the URL is wired in explicitly here instead.
+  const image = `/jobs/${job.slug}/opengraph-image`;
   return {
-    title: `${job.title} at ${company}`,
+    title,
     description: job.description.slice(0, 160),
     openGraph: {
-      title: `${job.title} at ${company}`,
-      description: job.description.slice(0, 200),
+      title,
+      description,
       type: 'website',
       url: `/jobs/${job.slug}`,
+      siteName: 'Joblify',
+      images: [image],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images: [image],
     },
   };
 }
@@ -119,11 +136,14 @@ async function JobDetailBody({ slug }: { slug: string }) {
             <Badge tone="neutral" className={metaChip}>
               {JOB_TYPE_LABELS[job.jobType]}
             </Badge>
-            {(job.workMode === 'REMOTE' || job.workMode === 'HYBRID') && (
-              <Badge tone="neutral" className={metaChip}>
-                {job.workMode === 'REMOTE' ? 'Remote' : 'Hybrid'}
-              </Badge>
-            )}
+            {/* Skip when job.location already reads "Remote"/"Hybrid" (common
+                when the poster fills it in that way) — avoids a duplicate pill. */}
+            {(job.workMode === 'REMOTE' || job.workMode === 'HYBRID') &&
+              job.location?.trim().toLowerCase() !== job.workMode.toLowerCase() && (
+                <Badge tone="neutral" className={metaChip}>
+                  {job.workMode === 'REMOTE' ? 'Remote' : 'Hybrid'}
+                </Badge>
+              )}
             {job.salaryMin && job.salaryMax && (
               <Badge tone="dark">
                 {job.salaryCurrency} {job.salaryMin.toLocaleString('en-US')} –{' '}
@@ -192,7 +212,9 @@ async function JobDetailBody({ slug }: { slug: string }) {
 }
 
 // PPR: cached JD shell, dynamic apply panel.
-async function getJobBySlug(slug: string) {
+// Exported so opengraph-image.tsx can reuse the same cached query rather
+// than duplicating it — one source of truth for what a JD's OG card shows.
+export async function getJobBySlug(slug: string) {
   'use cache';
   // cache helpers resolve from next/cache (Next 16)
   const { cacheTag, cacheLife } = await import('next/cache');
