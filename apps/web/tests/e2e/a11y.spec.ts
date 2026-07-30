@@ -58,6 +58,22 @@ const hasCompany = Boolean(process.env.E2E_TEST_PASSWORD && process.env.E2E_TEST
 async function expectNoViolations(page: Page, path: string) {
   const results = await new AxeBuilder({ page })
     .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+    // Scoped to the regions this app actually renders (header, page content,
+    // footer, cookie banner) rather than the whole document. On a preview
+    // deployment reached via the SSO bypass header, Vercel appears to treat
+    // the session as an authorized team preview and injects its own feedback
+    // toolbar client-side — not present in a plain fetch, not present for a
+    // real anonymous visitor, and not something app code controls. It showed
+    // up as 128 "serious" color-contrast violations on every page (PR #49),
+    // all traced to elements with Vercel's own --ds-* design tokens and a
+    // /legal/privacy-policy link that doesn't exist in this app (real route
+    // is /legal/privacy). An include() allowlist is robust against Vercel
+    // changing that toolbar's markup/classes in the future, where an
+    // exclude() of today's specific selector would not be.
+    .include('header')
+    .include('#main-content')
+    .include('footer')
+    .include('aside')
     .analyze();
 
   const critical = results.violations.filter(
