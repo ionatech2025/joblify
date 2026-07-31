@@ -4,7 +4,7 @@ import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { upload } from '@vercel/blob/client';
 import Link from 'next/link';
-import { CheckCircle2, FileText } from 'lucide-react';
+import { CheckCircle2, FileText, TriangleAlert } from 'lucide-react';
 import { registerResume, deleteResume } from '@/app/actions/uploads';
 import { Button, buttonClasses } from '@/app/components/ui/button';
 import { EmptyState } from '@/app/components/ui/empty-state';
@@ -15,6 +15,7 @@ type ResumeRow = {
   title: string;
   fileBlobUrl: string;
   parsed: boolean;
+  parseFailed: boolean;
   createdAt: string;
 };
 
@@ -54,7 +55,7 @@ export function ResumeManager({
         contentType: file.type || undefined,
         sizeBytes: file.size,
       });
-      setResumes((prev) => [{ ...created, parsed: false }, ...prev]);
+      setResumes((prev) => [{ ...created, parsed: false, parseFailed: false }, ...prev]);
       router.refresh();
       // Parsing is asynchronous, so say so — otherwise the row appears
       // unparsed and reads as a half-failed upload.
@@ -147,11 +148,23 @@ export function ResumeManager({
                       <CheckCircle2 aria-hidden className="size-3.5 text-success" />
                       Parsed
                     </span>
+                  ) : r.parseFailed ? (
+                    <span className="inline-flex items-center gap-1 text-danger">
+                      <TriangleAlert aria-hidden className="size-3.5" />
+                      Couldn’t parse this file
+                    </span>
                   ) : (
                     'Processing…'
                   )}{' '}
                   · added {new Date(r.createdAt).toLocaleDateString()}
                 </p>
+                {r.parseFailed && (
+                  <p className="mt-1 mb-0 text-sm text-fg-muted">
+                    We couldn’t extract text from this file after several tries — it may be a
+                    scanned image, corrupted, or password-protected. Match scores and autofill won’t
+                    work with it; delete it and upload a different file.
+                  </p>
+                )}
               </div>
               <Button
                 variant="danger"

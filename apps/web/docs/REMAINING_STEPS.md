@@ -162,26 +162,48 @@ Grep: `git grep "TODO(week-"` to see them all in context.
 | ------------------------- | --------------------------------------------------------------------------------------------------------------------- |
 | `lib/search/index-job.ts` | Implement a real `index_outbox` table + writer; cron drains it. Current behavior is fire-and-forget + reconcile-only. |
 
-### Week 12 — Phase 4 UX-completeness audit (2026-07-31)
+### Week 12 — Phase 4 UX-completeness audit (2026-07-31, closed out 2026-07-31)
 
 Four flows audited end-to-end (jobseeker core loop + resume, company/hiring,
 subscribe→invite→chat, GDPR + notifications) against a 7-point checklist
 (toasts, empty states, destructive confirms, inline error surfacing, skeleton
-parity, back/forward state, `aria-current`). ~110 findings; the design/UX-layer
-ones (toast wiring on ~15 mutations, 3 real bugs, a match-score tone
-inconsistency, an unread-notification badge) are fixed — see
-[changelog.md](./changelog.md) for the full findings table. What's left:
+parity, back/forward state, `aria-current`). ~110 findings; see
+[changelog.md](./changelog.md) for the full findings table. Every item this
+table originally tracked is now fixed:
 
-| Item                                     | What                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
-| ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Withdraw application                     | **Structural.** `ApplicationStatus.WITHDRAWN` is fully modeled (`lib/ui/status.ts` has the label + tone already wired) but no writer exists anywhere — `applications-list.tsx` renders each row read-only. Needs a new server action + a confirm gate before the UI has anything to call.                                                                                                                                                                                                                                                                        |
-| Resume parse failure UX                  | **Structural.** `runResumeParse` throws on permanent failure (corrupt file, unsupported format) with no `parseStatus`/`parseError` column on `Resume` — a resume that never parses shows "Processing…" forever with no recovery path. Needs a schema field + a workflow write + a UI branch, not a UI-only patch.                                                                                                                                                                                                                                                |
-| PlanTier gating inconsistency            | **Observation, not fixed.** `prisma/schema.prisma`'s `PlanTier` comment names "invite/share/add-to-chat" as gated; `share-job.ts` and `addChatParticipant` (`chat.ts`) enforce it via `assertPlan`, but `inviteJobseeker` (`invitations.ts`), `openJobChatArea`, and `openVirtualInternChatArea` (`chat.ts`) don't. No live effect while every account defaults to `PRO` — see `schema.prisma`'s own note and issue #52.                                                                                                                                         |
-| Remaining bare-form mutations            | Converted the highest-traffic ones (subscribe/unsubscribe, invitation accept/decline) to client components with toast + pending state. Still bare `<form action>` with no feedback: chat-area creation (`company/chats/page.tsx`, both buttons), `addChatParticipant` (`company/chats/[id]/page.tsx`), and invite/share/add-to-VI-chat (`company/jobseekers/page.tsx`). Same conversion pattern as `subscribe-toggle.tsx` / `invitation-actions.tsx` applies directly.                                                                                           |
-| Draft persistence                        | `lib/stores/apply-draft.ts` (localStorage, per-job) is the established pattern for "survive accidental navigation." Not yet applied to `post-job-form.tsx` (10+ fields, highest-value target), `profile-form.tsx`, `employer-setup-form.tsx`, or `company-settings-form.tsx`.                                                                                                                                                                                                                                                                                    |
-| Skeleton shape mismatches                | Several routes fall through to a generic dashboard skeleton (title + stat-card + list) that doesn't resemble the real page: `/employer-setup` (no nav, single form), `/company/jobs/new`, `/company/jobs/[id]/edit`, `/company/settings`, `/company/applicants/[jobId]` (kanban board), `/company/chats/[id]` and `/jobseeker/chats/[id]` (2-column thread+sidebar), `/onboarding` (two-card picker), `/jobseeker/profile` and resume builder (long single-column forms). `app/admin/loading.tsx` and `job-detail-skeleton.tsx` are the good references to copy. |
-| `applicants-board.tsx` sort/filter state | Plain `useState`, not URL-synced — resets on back/forward or remount. `company/jobseekers/page.tsx` in the same flow already does this correctly via `searchParams`; copy that pattern.                                                                                                                                                                                                                                                                                                                                                                          |
-| Sign-up/sign-in Suspense fallback        | `fallback={null}` around the Clerk widget — a blank flash while its JS loads. Low severity (third-party widget), a `SkeletonCard`-shaped fallback is a trivial add.                                                                                                                                                                                                                                                                                                                                                                                              |
+- **Withdraw application** — `withdrawApplication` (`app/actions/apply.ts`) +
+  `useWithdrawApplication` mutation hook + a confirm-gated button on
+  `applications-list.tsx`.
+- **Resume parse failure UX** — `Resume.parseFailedAt`/`parseError` columns
+  (migration `20260730234110_resume_parse_failure_tracking`), written by the
+  algolia-reconcile cron once `MAX_PARSE_ATTEMPTS` is hit, surfaced in
+  `resume-manager.tsx` as a real "couldn't parse" state with recovery
+  guidance instead of infinite "Processing…".
+- **PlanTier gating inconsistency** — `assertPlan(user, 'PRO')` added to
+  `inviteJobseeker`, `openJobChatArea`, `openVirtualInternChatArea`, matching
+  `share-job.ts`/`addChatParticipant`'s existing enforcement. No live effect
+  today (every account still defaults to `PRO`). Note this is narrower than
+  issue #52, which is specifically about *application tracking* having no
+  gate — that's still open, unrelated to this fix.
+- **Remaining bare-form mutations** — chat-area creation, `addChatParticipant`,
+  and invite/share/add-to-VI-chat all converted to client components with
+  toast + pending state (`chat-area-button.tsx`, `add-participant-button.tsx`,
+  `share-job-form.tsx`, `invite-buttons.tsx`).
+- **Draft persistence** — added to `post-job-form.tsx`, `profile-form.tsx`,
+  `employer-setup-form.tsx`, `company-settings-form.tsx`, mirroring
+  `apply-draft.ts` but with a flat (non-keyed) store per form and RHF
+  `watch`/`reset` wiring instead of controlled inputs.
+- **Skeleton shape mismatches** — dedicated `loading.tsx` added for all 10
+  routes originally listed (employer-setup, post-job, edit-job, company
+  settings, applicants board, both chat-detail routes, onboarding, profile,
+  resume builder), reusing shared skeleton components where the real page
+  itself reuses a component (`job-form-fields-skeleton.tsx`,
+  `chat-thread-skeleton.tsx`, `applicants-board-skeleton.tsx`).
+- **`applicants-board.tsx` sort/filter state** — now URL-synced via
+  `useSearchParams`/`router.replace`, matching `company/jobseekers/page.tsx`'s
+  existing pattern.
+- **Sign-up/sign-in Suspense fallback** — replaced `fallback={null}` with a
+  shared `AuthFormSkeleton`.
 
 ### Week 11 — hardening (remaining)
 

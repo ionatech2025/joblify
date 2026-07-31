@@ -1,5 +1,41 @@
 # Changelog
 
+## 2026-07-31 — Phase 4 audit: remaining items closed out
+
+Fixed every item the flow-completeness audit below had left tracked in
+[REMAINING_STEPS.md](./REMAINING_STEPS.md) (that doc's "Week 12" section has
+the full per-item detail; this is the short version):
+
+- **Withdraw application** — new `withdrawApplication` server action, mutation
+  hook, and a confirm-gated button on the applications list. The status was
+  fully modeled but had no writer anywhere.
+- **Resume parse failure UX** — `Resume` gained `parseFailedAt`/`parseError`
+  columns; the algolia-reconcile cron now writes them once a resume's retry
+  count hits the cap, and the resumes page shows a real "couldn't parse"
+  state with recovery guidance instead of "Processing…" forever. This is the
+  one item here that touched the database directly — see the migration's own
+  header comment for why it was hand-authored and applied via `migrate
+  deploy` rather than `migrate dev` (a pre-existing, already-documented
+  shadow-database drift issue on an unrelated older migration made `migrate
+  dev` unsafe to run in this environment).
+- **PlanTier gating** — `assertPlan` added to the three actions
+  (`inviteJobseeker`, `openJobChatArea`, `openVirtualInternChatArea`) the
+  schema's own comment named as gated but weren't. No live behavior change
+  while every account defaults to PRO.
+- **Remaining bare-form mutations** — chat-area creation, adding a chat
+  participant, and invite/share/add-to-VI-chat all converted from inert
+  `<form action>` elements to client components with toast + pending state.
+- **Draft persistence** — added to the post-job, profile, employer-setup, and
+  company-settings forms, mirroring the existing apply-draft pattern.
+- **Skeleton shape mismatches** — dedicated loading states for all 10 routes
+  the audit flagged as falling back to a generic, wrong-shaped skeleton.
+- **Applicants board sort/filter** — now URL-synced instead of resetting on
+  back/forward.
+- **Sign-in/sign-up blank flash** — replaced with a real skeleton.
+
+Verification: typecheck, lint, and the full unit suite (247 tests) all clean;
+production build 58/58 pages.
+
 ## 2026-07-31 — Phase 4: flow completeness audit
 
 Four flows walked end-to-end against a 7-point checklist (every mutation

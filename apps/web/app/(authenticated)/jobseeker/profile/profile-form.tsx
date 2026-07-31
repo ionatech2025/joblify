@@ -3,10 +3,11 @@
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useTransition, useState } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 import { saveProfile } from '@/app/actions/profile';
 import { Field, Input, Select, Textarea } from '@/app/components/ui/form';
 import { Button } from '@/app/components/ui/button';
+import { useProfileDraftStore } from '@/lib/stores/profile-draft';
 import { toast } from '@/lib/stores/ui';
 
 const ProfileFormSchema = z.object({
@@ -40,11 +41,14 @@ export function ProfileForm({
   const [isPending, startTransition] = useTransition();
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const draftStore = useProfileDraftStore();
 
   const {
     register,
     handleSubmit,
     control,
+    watch,
+    reset,
     formState: { errors, isDirty },
   } = useForm<ProfileFormValues>({
     resolver: zodResolver(ProfileFormSchema),
@@ -53,6 +57,21 @@ export function ProfileForm({
 
   const isVirtualIntern = useWatch({ control, name: 'profileType' }) === 'VIRTUAL_INTERN';
 
+  // Restore a saved draft once on mount (draft wins over the server-loaded
+  // profile for any field it has a value for). An empty draft is a no-op.
+  useEffect(() => {
+    if (Object.keys(draftStore.draft).length > 0) {
+      reset({ ...initial, ...draftStore.draft });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Persist on every change so accidental navigation doesn't lose the draft.
+  useEffect(() => {
+    const sub = watch((values) => draftStore.update(values));
+    return () => sub.unsubscribe();
+  }, [watch, draftStore]);
+
   function onSubmit(values: ProfileFormValues) {
     setError(null);
     setSaved(false);
@@ -60,6 +79,7 @@ export function ProfileForm({
       try {
         await saveProfile(values);
         setSaved(true);
+        draftStore.clear();
         toast.success('Profile saved');
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Save failed.';

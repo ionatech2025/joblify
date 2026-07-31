@@ -1,9 +1,11 @@
+import { Suspense } from 'react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requireRole } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { openJobChatArea } from '@/app/actions/chat';
 import { ApplicantsBoard } from './applicants-board';
+import { ApplicantsBoardSkeleton } from './applicants-board-skeleton';
 import { PageHeader } from '@/app/components/ui/ambient';
 import { Button, buttonClasses } from '@/app/components/ui/button';
 
@@ -51,24 +53,29 @@ export default async function ApplicantsPage({ params }: { params: Promise<{ job
         }
       />
       <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
-        <ApplicantsBoard
-          applications={applications.map((a) => ({
-            id: a.id,
-            status: a.status,
-            appliedAt: a.appliedAt.toISOString(),
-            matchScore: a.matchScore,
-            coverLetter: a.coverLetter,
-            recruiterNotes: a.recruiterNotes,
-            resumeUrl: a.resume.fileBlobUrl,
-            seeker: {
-              id: a.jobSeekerId,
-              firstName: a.jobSeeker.firstName ?? null,
-              lastName: a.jobSeeker.lastName ?? null,
-              email: a.jobSeeker.email,
-              headline: a.jobSeeker.jobSeekerProfile?.headline ?? null,
-            },
-          }))}
-        />
+        {/* ApplicantsBoard reads useSearchParams() — must sit inside a Suspense
+            boundary. Fallback shares the shape with this route's loading.tsx —
+            see applicants-board-skeleton.tsx. */}
+        <Suspense fallback={<ApplicantsBoardSkeleton />}>
+          <ApplicantsBoard
+            applications={applications.map((a) => ({
+              id: a.id,
+              status: a.status,
+              appliedAt: a.appliedAt.toISOString(),
+              matchScore: a.matchScore,
+              coverLetter: a.coverLetter,
+              recruiterNotes: a.recruiterNotes,
+              resumeUrl: a.resume.fileBlobUrl,
+              seeker: {
+                id: a.jobSeekerId,
+                firstName: a.jobSeeker.firstName ?? null,
+                lastName: a.jobSeeker.lastName ?? null,
+                email: a.jobSeeker.email,
+                headline: a.jobSeeker.jobSeekerProfile?.headline ?? null,
+              },
+            }))}
+          />
+        </Suspense>
       </div>
     </main>
   );

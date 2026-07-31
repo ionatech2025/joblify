@@ -1,4 +1,5 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest';
+import type * as AuthModule from '@/lib/auth';
 
 // Typed invitations (JOB_UC_10): a company invites a seeker to subscribe as
 // EMPLOYABLE or VIRTUAL_INTERN; the seeker accepts (which also subscribes) or
@@ -41,7 +42,10 @@ const m = vi.hoisted(() => {
   };
 });
 
-vi.mock('@/lib/auth', () => ({ requireRole: m.requireRole, AuthError: m.AuthError }));
+vi.mock('@/lib/auth', async (importOriginal) => {
+  const actual = await importOriginal<typeof AuthModule>();
+  return { ...actual, requireRole: m.requireRole, AuthError: m.AuthError };
+});
 vi.mock('@/lib/ratelimit', () => ({ inviteLimit: m.inviteLimit }));
 vi.mock('@/lib/db', () => ({
   db: {
@@ -75,7 +79,12 @@ const past = () => new Date(Date.now() - 24 * 60 * 60 * 1000);
 
 beforeEach(() => {
   vi.clearAllMocks();
-  m.requireRole.mockResolvedValue({ id: 'company1', firstName: 'Sam', lastName: 'Lee' });
+  m.requireRole.mockResolvedValue({
+    id: 'company1',
+    firstName: 'Sam',
+    lastName: 'Lee',
+    plan: 'PRO',
+  });
   m.inviteLimit.mockResolvedValue({ success: true });
   m.userFindFirst.mockResolvedValue({ id: 'seeker1' });
   m.companyFindUnique.mockResolvedValue({ companyName: 'Acme' });
@@ -96,6 +105,12 @@ describe('inviteJobseeker', () => {
   it('rejects when the target is not a job seeker', async () => {
     m.userFindFirst.mockResolvedValue(null);
     await expect(inviteJobseeker('seeker1', 'EMPLOYABLE')).rejects.toThrow('Job seeker not found');
+    expect(m.invCreate).not.toHaveBeenCalled();
+  });
+
+  it('requires a Pro plan to invite', async () => {
+    m.requireRole.mockResolvedValue({ id: 'company1', plan: 'FREE' });
+    await expect(inviteJobseeker('seeker1', 'EMPLOYABLE')).rejects.toThrow('UPGRADE_REQUIRED');
     expect(m.invCreate).not.toHaveBeenCalled();
   });
 

@@ -3,12 +3,11 @@ import { notFound } from 'next/navigation';
 import { requireRole } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { ArrowLeft } from 'lucide-react';
-import { addChatParticipant } from '@/app/actions/chat';
 import { ChatThread } from '@/app/components/chat/chat-thread';
 import { ChatComposer } from '@/app/components/chat/chat-composer';
 import { LATEST_MESSAGES_TAKE, toThreadDisplay } from '@/app/components/chat/latest-messages';
 import { PageHeader } from '@/app/components/ui/ambient';
-import { Button } from '@/app/components/ui/button';
+import { AddParticipantButton } from './add-participant-button';
 
 export const metadata = { title: 'Chat area' };
 
@@ -137,11 +136,7 @@ export default async function CompanyChatAreaPage({ params }: { params: Params }
                     className="flex items-center justify-between gap-2 rounded-card border border-border bg-surface px-3 py-2 text-sm shadow-soft"
                   >
                     <span className="text-fg">{c.name}</span>
-                    <form action={addChatParticipant.bind(null, area.id, c.userId)}>
-                      <Button type="submit" variant="secondary" size="sm">
-                        Add
-                      </Button>
-                    </form>
+                    <AddParticipantButton chatAreaId={area.id} jobSeekerUserId={c.userId} />
                   </li>
                 ))}
               </ul>

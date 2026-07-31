@@ -137,6 +137,12 @@ describe('algolia-reconcile sweep', () => {
       expect.stringContaining('permanently failed'),
       expect.objectContaining({ level: 'error', tags: { resumeId: 'r1' } }),
     );
+    // parseFailedAt makes the terminal state visible to the UI — otherwise
+    // "still retrying" and "never will" look identical (parsedJson null).
+    expect(m.resumeUpdate).toHaveBeenNthCalledWith(2, {
+      where: { id: 'r1' },
+      data: { parseFailedAt: expect.any(Date), parseError: 'always fails' },
+    });
   });
 
   it('reports failed job embeds to Sentry with the job id and keeps sweeping', async () => {

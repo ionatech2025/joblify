@@ -25,6 +25,7 @@ async function auditCtx(actorId: string) {
 // on first use. Redirects into the area.
 export async function openJobChatArea(jobPostId: string): Promise<void> {
   const user = await requireRole('COMPANY');
+  assertPlan(user, 'PRO');
 
   const job = await db.jobPost.findFirst({
     where: { id: jobPostId, companyId: user.id, deletedAt: null },
@@ -69,6 +70,7 @@ export async function openJobChatArea(jobPostId: string): Promise<void> {
 // use (flowchart: "create virtual intern chat area"). Redirects into it.
 export async function openVirtualInternChatArea(): Promise<void> {
   const user = await requireRole('COMPANY');
+  assertPlan(user, 'PRO');
   const area = await ensureVirtualInternChatArea(user.id);
   redirect(`/company/chats/${area.id}`);
 }

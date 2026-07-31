@@ -4,7 +4,7 @@ import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { updateTag } from 'next/cache';
 import { Prisma, type ProfileType } from '@prisma/client';
-import { requireRole, AuthError } from '@/lib/auth';
+import { requireRole, assertPlan, AuthError } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { withAudit } from '@/lib/audit';
 import { tags } from '@/lib/cache';
@@ -29,6 +29,7 @@ export async function inviteJobseeker(
   profileType: ProfileType,
 ): Promise<void> {
   const user = await requireRole('COMPANY');
+  assertPlan(user, 'PRO');
 
   const rl = await inviteLimit(user.id);
   if (!rl.success) throw new Error('Daily invitation limit reached. Try again tomorrow.');

@@ -1,11 +1,10 @@
 import Link from 'next/link';
 import { requireRole } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { openJobChatArea, openVirtualInternChatArea } from '@/app/actions/chat';
 import { ArrowRight, MessagesSquare } from 'lucide-react';
 import { PageHeader } from '@/app/components/ui/ambient';
 import { EmptyState } from '@/app/components/ui/empty-state';
-import { Button } from '@/app/components/ui/button';
+import { ChatAreaButton } from './chat-area-button';
 
 export const metadata = { title: 'Chat areas' };
 
@@ -39,13 +38,7 @@ export default async function CompanyChatsPage() {
         title="Chat areas"
         subtitle="Job-specific rooms for shortlisted applicants, plus one room for your virtual interns."
         width="max-w-4xl"
-        actions={
-          !hasViArea ? (
-            <form action={openVirtualInternChatArea}>
-              <Button type="submit">Create virtual-intern chat area</Button>
-            </form>
-          ) : undefined
-        }
+        actions={!hasViArea ? <ChatAreaButton kind="virtual-intern" /> : undefined}
       />
       <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
         {areas.length === 0 ? (
@@ -100,11 +93,7 @@ export default async function CompanyChatsPage() {
                   className="flex flex-wrap items-center justify-between gap-3 rounded-card border border-border bg-surface px-4 py-3 shadow-soft"
                 >
                   <span className="text-sm font-medium text-fg">{j.title}</span>
-                  <form action={openJobChatArea.bind(null, j.id)}>
-                    <Button type="submit" variant="secondary" size="sm">
-                      Create chat area
-                    </Button>
-                  </form>
+                  <ChatAreaButton kind="job" jobPostId={j.id} />
                 </li>
               ))}
             </ul>

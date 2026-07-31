@@ -1,15 +1,12 @@
 import Link from 'next/link';
 import { requireRole } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { shareJobFromForm } from '@/app/actions/share-job';
-import { addVirtualInternToChat } from '@/app/actions/chat';
-import { inviteJobseeker } from '@/app/actions/invitations';
 import { Users } from 'lucide-react';
 import { PageHeader } from '@/app/components/ui/ambient';
 import { EmptyState } from '@/app/components/ui/empty-state';
 import { Badge } from '@/app/components/ui/badge';
-import { Button } from '@/app/components/ui/button';
-import { Select } from '@/app/components/ui/form';
+import { ShareJobForm } from './share-job-form';
+import { InviteButtons } from './invite-buttons';
 
 export const metadata = { title: 'Job seekers' };
 
@@ -123,45 +120,13 @@ export default async function CompanyJobseekersPage({
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
                     {publishedJobs.length > 0 && (
-                      <form
-                        action={shareJobFromForm.bind(null, s.userId)}
-                        className="flex items-center gap-2"
-                      >
-                        <Select
-                          name="jobPostId"
-                          required
-                          className="w-48"
-                          defaultValue=""
-                          aria-label="Choose a job to share"
-                        >
-                          <option value="" disabled>
-                            Share a job…
-                          </option>
-                          {publishedJobs.map((j) => (
-                            <option key={j.id} value={j.id}>
-                              {j.title}
-                            </option>
-                          ))}
-                        </Select>
-                        <Button type="submit" variant="secondary" size="sm">
-                          Share
-                        </Button>
-                      </form>
+                      <ShareJobForm jobSeekerUserId={s.userId} publishedJobs={publishedJobs} />
                     )}
-                    {s.profileType === 'VIRTUAL_INTERN' && (
-                      <form action={addVirtualInternToChat.bind(null, s.userId)}>
-                        <Button type="submit" variant="secondary" size="sm">
-                          Add to VI chat
-                        </Button>
-                      </form>
-                    )}
-                    {!s.subscribed && (
-                      <form action={inviteJobseeker.bind(null, s.userId, s.profileType)}>
-                        <Button type="submit" variant="secondary" size="sm">
-                          Invite as {s.profileType === 'VIRTUAL_INTERN' ? 'VI' : 'employable'}
-                        </Button>
-                      </form>
-                    )}
+                    <InviteButtons
+                      jobSeekerUserId={s.userId}
+                      profileType={s.profileType}
+                      subscribed={s.subscribed}
+                    />
                   </div>
                 </div>
               </li>

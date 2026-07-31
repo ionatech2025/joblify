@@ -1,8 +1,9 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from './client';
 import type { ApplicationStatus } from '@prisma/client';
+import { withdrawApplication } from '@/app/actions/apply';
 
 export type ApplicationListItem = {
   id: string;
@@ -30,5 +31,30 @@ export function useApplications(userId: string, initialData?: ApplicationListIte
     },
     initialData,
     staleTime: 60_000,
+  });
+}
+
+export function useWithdrawApplication(userId: string) {
+  const queryClient = useQueryClient();
+  const key = queryKeys.applications(userId);
+  return useMutation({
+    mutationFn: (applicationId: string) => withdrawApplication(applicationId),
+    onMutate: async (applicationId) => {
+      await queryClient.cancelQueries({ queryKey: key });
+      const previous = queryClient.getQueryData<ApplicationListItem[]>(key);
+      if (previous) {
+        queryClient.setQueryData<ApplicationListItem[]>(
+          key,
+          previous.map((a) => (a.id === applicationId ? { ...a, status: 'WITHDRAWN' } : a)),
+        );
+      }
+      return { previous };
+    },
+    onError: (_err, _id, ctx) => {
+      if (ctx?.previous) queryClient.setQueryData(key, ctx.previous);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: key });
+    },
   });
 }

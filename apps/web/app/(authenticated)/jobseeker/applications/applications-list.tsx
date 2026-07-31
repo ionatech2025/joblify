@@ -1,12 +1,22 @@
 'use client';
 
-import { useApplications, type ApplicationListItem } from '@/lib/query/applications';
+import {
+  useApplications,
+  useWithdrawApplication,
+  type ApplicationListItem,
+} from '@/lib/query/applications';
 import Link from 'next/link';
 import { Briefcase } from 'lucide-react';
 import { Badge } from '@/app/components/ui/badge';
 import { EmptyState } from '@/app/components/ui/empty-state';
 import { buttonClasses } from '@/app/components/ui/button';
-import { applicationStatusLabel, applicationStatusTone, matchTone } from '@/lib/ui/status';
+import {
+  applicationStatusLabel,
+  applicationStatusTone,
+  matchTone,
+  CLOSED_APPLICATION_STATUSES,
+} from '@/lib/ui/status';
+import { toast } from '@/lib/stores/ui';
 
 export function ApplicationsList({
   userId,
@@ -16,7 +26,26 @@ export function ApplicationsList({
   initialData: ApplicationListItem[];
 }) {
   const { data, isFetching } = useApplications(userId, initialData);
+  const withdraw = useWithdrawApplication(userId);
   const items = data ?? initialData;
+
+  function onWithdraw(a: ApplicationListItem) {
+    if (
+      !window.confirm(
+        `Withdraw your application for ${a.jobTitle}? This can't be undone — you'd need to re-apply to be considered again.`,
+      )
+    ) {
+      return;
+    }
+    withdraw.mutate(a.id, {
+      onSuccess: () => toast.success('Application withdrawn'),
+      onError: (err) =>
+        toast.error(
+          "Couldn't withdraw",
+          err instanceof Error ? err.message : 'Something went wrong.',
+        ),
+    });
+  }
 
   if (items.length === 0) {
     return (
@@ -57,6 +86,16 @@ export function ApplicationsList({
                     Match: {Math.round(a.matchScore * 100)}%
                   </Badge>
                 </p>
+              )}
+              {!CLOSED_APPLICATION_STATUSES.includes(a.status) && (
+                <button
+                  type="button"
+                  onClick={() => onWithdraw(a)}
+                  disabled={withdraw.isPending}
+                  className="mt-2 text-sm text-danger hover:underline disabled:opacity-50"
+                >
+                  Withdraw
+                </button>
               )}
             </div>
           </div>

@@ -18,6 +18,9 @@ const m = vi.hoisted(() => {
     jobFindFirst: vi.fn(),
     appFindUnique: vi.fn(),
     appCreate: vi.fn(),
+    appFindFirst: vi.fn(),
+    appUpdate: vi.fn(),
+    notifCreate: vi.fn(),
     isEmailSuppressed: vi.fn(),
     send: vi.fn(),
     runResumeParse: vi.fn(),
@@ -32,14 +35,27 @@ vi.mock('@/lib/db', () => ({
   db: {
     resume: { findFirst: m.resumeFindFirst },
     jobPost: { findFirst: m.jobFindFirst },
-    jobApplication: { findUnique: m.appFindUnique },
+    jobApplication: {
+      findUnique: m.appFindUnique,
+      findFirst: m.appFindFirst,
+      update: m.appUpdate,
+    },
   },
 }));
 vi.mock('@/lib/audit', () => ({
   withAudit: (_ctx: unknown, _meta: unknown, fn: (tx: unknown) => unknown) =>
-    fn({ jobApplication: { create: m.appCreate } }),
+    fn({
+      jobApplication: { create: m.appCreate, update: m.appUpdate },
+      notification: { create: m.notifCreate },
+    }),
 }));
-vi.mock('@/lib/cache', () => ({ tags: { userApplications: () => 'u', jobApplicants: () => 'j' } }));
+vi.mock('@/lib/cache', () => ({
+  tags: {
+    userApplications: () => 'u',
+    jobApplicants: () => 'j',
+    notifications: () => 'n',
+  },
+}));
 vi.mock('@/lib/email/resend', () => ({
   resend: () => ({ emails: { send: m.send } }),
   EMAIL_FROM: 'x@joblify.test',
@@ -55,7 +71,7 @@ vi.mock('next/server', () => ({ after: (_fn: () => unknown) => void 0 }));
 vi.mock('@/workflows/resume-parse.workflow', () => ({ runResumeParse: m.runResumeParse }));
 vi.mock('@/workflows/match-score.workflow', () => ({ runMatchScore: m.runMatchScore }));
 
-import { submitApplication } from '@/app/actions/apply';
+import { submitApplication, withdrawApplication } from '@/app/actions/apply';
 
 const JOB_ID = '11111111-1111-1111-1111-111111111111';
 const RESUME_ID = '22222222-2222-2222-2222-222222222222';
@@ -167,5 +183,53 @@ describe('submitApplication', () => {
     expect(data.resumeId).toBe(RESUME_ID);
     expect(data.coverLetter).toBe('hi');
     expect(data.status).toBe('SUBMITTED');
+  });
+});
+
+describe('withdrawApplication', () => {
+  const APP_ID = '33333333-3333-3333-3333-333333333333';
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    m.requireRole.mockResolvedValue({ id: 'user1', email: 'a@x.com', firstName: 'A' });
+    m.appFindFirst.mockResolvedValue({
+      id: APP_ID,
+      status: 'SUBMITTED',
+      jobPost: { id: JOB_ID, title: 'Engineer', companyId: 'company1' },
+    });
+    m.appUpdate.mockResolvedValue({});
+    m.notifCreate.mockResolvedValue({});
+  });
+
+  it('propagates the auth error for non-jobseekers', async () => {
+    m.requireRole.mockRejectedValue(new m.AuthError('FORBIDDEN'));
+    await expect(withdrawApplication(APP_ID)).rejects.toThrow();
+    expect(m.appUpdate).not.toHaveBeenCalled();
+  });
+
+  it("rejects an application that isn't the caller's own", async () => {
+    m.appFindFirst.mockResolvedValue(null);
+    await expect(withdrawApplication(APP_ID)).rejects.toThrow();
+    expect(m.appUpdate).not.toHaveBeenCalled();
+  });
+
+  it('rejects withdrawing an already-closed application', async () => {
+    m.appFindFirst.mockResolvedValue({
+      id: APP_ID,
+      status: 'HIRED',
+      jobPost: { id: JOB_ID, title: 'Engineer', companyId: 'company1' },
+    });
+    await expect(withdrawApplication(APP_ID)).rejects.toThrow(/already closed/i);
+    expect(m.appUpdate).not.toHaveBeenCalled();
+  });
+
+  it('sets WITHDRAWN and notifies the company on the happy path', async () => {
+    await withdrawApplication(APP_ID);
+    expect(m.appUpdate).toHaveBeenCalledWith({
+      where: { id: APP_ID },
+      data: { status: 'WITHDRAWN' },
+    });
+    expect(m.notifCreate).toHaveBeenCalledTimes(1);
+    expect(m.notifCreate.mock.calls[0]![0].data.userId).toBe('company1');
   });
 });

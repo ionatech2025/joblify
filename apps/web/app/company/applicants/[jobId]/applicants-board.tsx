@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState, useTransition } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { updateApplicantStatus, saveApplicantNote } from '@/app/actions/update-applicant-status';
 import type { ApplicationStatus } from '@prisma/client';
 import { ExternalLink, Users } from 'lucide-react';
@@ -37,8 +38,35 @@ export function ApplicantsBoard({ applications }: { applications: Row[] }) {
   const [rows, setRows] = useState(applications);
   const [, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const [sort, setSort] = useState<'recent' | 'match'>('recent');
-  const [showClosed, setShowClosed] = useState(false);
+
+  // Sort/filter live in the URL (not useState) so back/forward and a remount
+  // preserve what the user picked — same convention as jobs-search.tsx.
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const sort = (searchParams.get('sort') === 'match' ? 'match' : 'recent') as 'recent' | 'match';
+  const showClosed = searchParams.get('showClosed') === '1';
+
+  function updateParams(mutate: (params: URLSearchParams) => void) {
+    const params = new URLSearchParams(searchParams);
+    mutate(params);
+    const query = params.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+  }
+
+  function setSort(next: 'recent' | 'match') {
+    updateParams((params) => {
+      if (next === 'recent') params.delete('sort');
+      else params.set('sort', next);
+    });
+  }
+
+  function setShowClosed(next: boolean) {
+    updateParams((params) => {
+      if (next) params.set('showClosed', '1');
+      else params.delete('showClosed');
+    });
+  }
 
   function changeStatus(id: string, status: ApplicationStatus) {
     const prev = rows;

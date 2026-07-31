@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
@@ -14,37 +14,59 @@ import {
 import { createCompanyProfile } from '@/app/actions/company';
 import { Field, Input, Select, Textarea } from '@/app/components/ui/form';
 import { Button } from '@/app/components/ui/button';
+import { useEmployerSetupDraftStore } from '@/lib/stores/employer-setup-draft';
 import { toast } from '@/lib/stores/ui';
 
 function titleCase(s: string): string {
   return s.charAt(0) + s.slice(1).toLowerCase();
 }
 
+const initialValues: CompanyProfileInput = {
+  companyName: '',
+  industry: 'TECHNOLOGY',
+  companySize: 'SIZE_1_10',
+  description: '',
+  website: '',
+  linkedin: '',
+};
+
 export function EmployerSetupForm() {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const draftStore = useEmployerSetupDraftStore();
   const {
     register,
     handleSubmit,
+    watch,
+    reset,
     formState: { errors },
   } = useForm<CompanyProfileInput>({
     resolver: zodResolver(CompanyProfileSchema),
-    defaultValues: {
-      companyName: '',
-      industry: 'TECHNOLOGY',
-      companySize: 'SIZE_1_10',
-      description: '',
-      website: '',
-      linkedin: '',
-    },
+    defaultValues: initialValues,
   });
+
+  // Restore a saved draft once on mount (draft wins over defaults for any
+  // field it has a value for). An empty draft shouldn't touch the form.
+  useEffect(() => {
+    if (Object.keys(draftStore.draft).length > 0) {
+      reset({ ...initialValues, ...draftStore.draft });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Persist on every change so accidental navigation doesn't lose the draft.
+  useEffect(() => {
+    const sub = watch((values) => draftStore.update(values));
+    return () => sub.unsubscribe();
+  }, [watch, draftStore]);
 
   function onSubmit(values: CompanyProfileInput) {
     setError(null);
     start(async () => {
       try {
         await createCompanyProfile(values);
+        draftStore.clear();
         toast.success('Company created', "Let's post your first job.");
         router.push('/company/jobs');
         router.refresh();

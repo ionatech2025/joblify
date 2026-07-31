@@ -11,13 +11,21 @@ export default async function ResumesPage() {
   const rows = await db.resume.findMany({
     where: { userId: user.id, deletedAt: null },
     orderBy: { createdAt: 'desc' },
-    select: { id: true, title: true, fileBlobUrl: true, parsedJson: true, createdAt: true },
+    select: {
+      id: true,
+      title: true,
+      fileBlobUrl: true,
+      parsedJson: true,
+      parseFailedAt: true,
+      createdAt: true,
+    },
   });
   const resumes = rows.map((r) => ({
     id: r.id,
     title: r.title,
     fileBlobUrl: r.fileBlobUrl,
     parsed: r.parsedJson != null,
+    parseFailed: r.parseFailedAt != null,
     createdAt: r.createdAt.toISOString(),
   }));
 

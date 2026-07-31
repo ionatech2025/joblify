@@ -16,6 +16,7 @@ import { checkBotId } from 'botid/server';
 import { after } from 'next/server';
 import { runResumeParse } from '@/workflows/resume-parse.workflow';
 import { runMatchScore } from '@/workflows/match-score.workflow';
+import { CLOSED_APPLICATION_STATUSES } from '@/lib/ui/status';
 
 const ApplySchema = z.object({
   jobId: z.string().uuid(),
@@ -141,6 +142,60 @@ export async function submitApplication(formData: FormData): Promise<void> {
     { applicationId: application.id, userId: user.id, jobId: job.id },
     'application submitted',
   );
+}
+
+// JOB_UC_09.0: a jobseeker can withdraw their own application any time
+// before it reaches a terminal state. ApplicationStatus.WITHDRAWN was fully
+// modeled (lib/ui/status.ts already has its label + tone) but had no writer.
+export async function withdrawApplication(applicationId: string): Promise<void> {
+  const user = await requireRole('JOB_SEEKER');
+
+  const application = await db.jobApplication.findFirst({
+    where: { id: applicationId, jobSeekerId: user.id },
+    include: { jobPost: { select: { id: true, title: true, companyId: true } } },
+  });
+  if (!application) throw new AuthError('FORBIDDEN');
+  if (CLOSED_APPLICATION_STATUSES.includes(application.status)) {
+    throw new Error('This application is already closed and can’t be withdrawn.');
+  }
+
+  const h = await headers();
+  const ip = h.get('x-forwarded-for')?.split(',')[0]?.trim() ?? null;
+  const ua = h.get('user-agent') ?? null;
+
+  await withAudit(
+    { actorId: user.id, ip, ua },
+    {
+      action: 'APPLICATION_STATUS_CHANGED',
+      entity: 'job_application',
+      entityId: applicationId,
+      before: { status: application.status },
+      after: () => ({ status: 'WITHDRAWN' }),
+    },
+    async (tx) => {
+      await tx.jobApplication.update({
+        where: { id: applicationId },
+        data: { status: 'WITHDRAWN' },
+      });
+      await tx.notification.create({
+        data: {
+          userId: application.jobPost.companyId,
+          kind: 'APPLICATION_STATUS_CHANGED',
+          payload: {
+            applicationId,
+            jobTitle: application.jobPost.title,
+            message: `${user.firstName ?? user.email} withdrew their application for ${application.jobPost.title}.`,
+          },
+        },
+      });
+    },
+  );
+
+  updateTag(tags.userApplications(user.id));
+  updateTag(tags.jobApplicants(application.jobPost.id));
+  updateTag(tags.notifications(application.jobPost.companyId));
+
+  logger.info({ applicationId, userId: user.id }, 'application withdrawn');
 }
 
 function resendSafe(fn: () => Promise<unknown>): void {

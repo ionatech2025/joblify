@@ -131,6 +131,16 @@ async function sweepStrandedAiDerivations(deadline: number): Promise<SweepSummar
       Sentry.captureException(err, { tags: { resumeId: row.id } });
       if (attempts >= MAX_PARSE_ATTEMPTS) {
         // Fires exactly once: the attempts filter excludes this row from now on.
+        // parseFailedAt makes that terminal state visible to the UI, which
+        // otherwise has no way to distinguish "still retrying" from "never
+        // will" — both look identical (parsedJson still null).
+        await db.resume.update({
+          where: { id: row.id },
+          data: {
+            parseFailedAt: new Date(),
+            parseError: err instanceof Error ? err.message.slice(0, 500) : 'Unknown error',
+          },
+        });
         logger.error(
           { resumeId: row.id, attempts },
           'sweep: resume permanently failed — parse attempts cap reached',

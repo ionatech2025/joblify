@@ -532,6 +532,14 @@ model Resume {
   /// this resume. Capped (see MAX_PARSE_ATTEMPTS in the cron route) so a
   /// poison file can't burn AI budget forever.
   parseAttempts Int                          @default(0)
+  /// Set once parseAttempts hits the cap with parsedJson still null — the
+  /// cron's own retry filter already excludes it from future attempts once
+  /// this is set, so there's no spontaneous-recovery path; the UI uses this
+  /// to stop showing "Processing…" forever and offer a recovery action
+  /// (re-upload) instead.
+  parseFailedAt DateTime?
+  /// Short, user-facing reason captured alongside parseFailedAt.
+  parseError    String?
 
   isDefault Boolean   @default(false)
   deletedAt DateTime?

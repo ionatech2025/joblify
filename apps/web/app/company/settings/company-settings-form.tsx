@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, useTransition } from 'react';
+import { useEffect, useRef, useState, useTransition } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
@@ -16,6 +16,7 @@ import { updateCompanyProfile } from '@/app/actions/company';
 import { registerLogo } from '@/app/actions/uploads';
 import { Field, Input, Select, Textarea } from '@/app/components/ui/form';
 import { Button } from '@/app/components/ui/button';
+import { useCompanySettingsDraftStore } from '@/lib/stores/company-settings-draft';
 import { toast } from '@/lib/stores/ui';
 
 function titleCase(s: string): string {
@@ -38,14 +39,33 @@ export function CompanySettingsForm({
   const [logo, setLogo] = useState<string | null>(logoUrl);
   const [logoBusy, setLogoBusy] = useState(false);
   const logoInput = useRef<HTMLInputElement>(null);
+  const draftStore = useCompanySettingsDraftStore();
   const {
     register,
     handleSubmit,
+    watch,
+    reset,
     formState: { errors },
   } = useForm<CompanyProfileInput>({
     resolver: zodResolver(CompanyProfileSchema),
     defaultValues: initial,
   });
+
+  // Restore a saved draft once on mount (draft wins over the server-loaded
+  // profile for any field it has a value for). An empty draft is a no-op.
+  // (Logo upload is a separate useState-managed flow, not part of this draft.)
+  useEffect(() => {
+    if (Object.keys(draftStore.draft).length > 0) {
+      reset({ ...initial, ...draftStore.draft });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Persist on every change so accidental navigation doesn't lose the draft.
+  useEffect(() => {
+    const sub = watch((values) => draftStore.update(values));
+    return () => sub.unsubscribe();
+  }, [watch, draftStore]);
 
   function onSubmit(values: CompanyProfileInput) {
     setError(null);
@@ -54,6 +74,7 @@ export function CompanySettingsForm({
       try {
         await updateCompanyProfile(values);
         setSaved(true);
+        draftStore.clear();
         router.refresh();
         toast.success('Company profile saved');
       } catch (err) {
