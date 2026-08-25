@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation';
 import { requireUser } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { EmployerSetupForm } from './employer-setup-form';
-import { PageHeader } from '@/app/components/ui/ambient';
+import { Breadcrumb, ControlPanel } from '@/app/components/console/control-panel';
 
 export const metadata = { title: 'Set up your company' };
 
@@ -16,12 +16,11 @@ export default async function EmployerSetupPage() {
 
   return (
     <main>
-      <PageHeader
-        title="Set up your company"
-        subtitle="Create your company profile to start posting jobs and reviewing applicants. You can edit any of this later in Company settings."
-        width="max-w-2xl"
-      />
-      <div className="mx-auto max-w-2xl px-4 py-8 sm:px-6">
+      <ControlPanel breadcrumb={<Breadcrumb items={[{ label: 'Company setup' }]} />} />
+      <div className="mx-auto w-full max-w-3xl px-3 py-3 sm:px-4">
+        <p className="text-fg-muted mb-2 text-[13px]">
+          Create your company profile to start posting jobs and reviewing applicants.
+        </p>
         <EmployerSetupForm />
       </div>
     </main>

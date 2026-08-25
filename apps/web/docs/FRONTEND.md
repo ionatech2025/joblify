@@ -33,10 +33,27 @@ app/
 ├── (authenticated)/jobseeker/applications/
 │   ├── page.tsx                        Server: db query + initialData
 │   └── applications-list.tsx           'use client', TanStack Query useApplications
+├── company/                            Employer console (Odoo register)
+│   ├── layout.tsx                      ConsoleShell + ConsoleNav ("Recruitment")
+│   ├── jobs/page.tsx                   Server: ControlPanel + ListView | KanbanBoard
+│   └── jobs/job-form-fields.tsx        'use client', FormSheet + Notebook + Statusbar
+├── components/ui/                       Editorial primitives (Button, Card, Badge…)
+├── components/console/                  Console primitives (ControlPanel, ListView…)
 └── components/cookie-banner.tsx        'use client', global UI
 ```
 
 **Naming**: page files are `page.tsx`; client islands sit next to them named after the feature (`apply-form.tsx`, `applications-list.tsx`); never a giant `client.tsx` catch-all.
+
+**Two component families.** `components/ui/` is register-neutral and used everywhere;
+`components/console/` is the back-office structural vocabulary (control panel, list view,
+kanban, form sheet, notebook, statusbar) and is only meaningful inside a `ConsoleShell`.
+Console surfaces compose both — `ui/` for controls, `console/` for layout. See
+[DESIGN.md](./DESIGN.md#console-primitives).
+
+**Console list views stay server components.** Sort, paging, search and which view you are
+in all live in the URL, parsed by `lib/ui/list-params.ts`. That keeps the heaviest surfaces
+free of hydration cost and makes every view a shareable link — and it means sorting and
+paging happen in Postgres rather than over one already-truncated page of rows.
 
 ## State management
 
@@ -89,6 +106,17 @@ const parsed = PostJobFormSchema.parse(input);
 This is the single source of truth — adding a field changes one place; client and server both pick it up.
 
 For optimistic UI on form submit, use React's built-in `useOptimistic` paired with `startTransition`. Never roll your own setState mirror.
+
+**Console forms use a sheet plus a dirty bar.** `FormSheet` + `SheetGroups`/`SheetField`
+(two columns of label:value rows) and a sticky `DirtyBar` carrying save/discard and a
+`beforeunload` guard. Two things to get right when adding one:
+
+- `SheetField` takes the same `label`/`error`/`hint` props as `ui/form.tsx`'s `Field`, so
+  adopting the sheet layout is an import change, not a field-by-field rewrite.
+- After a successful save, `reset(values)` — that rebases react-hook-form's dirty baseline,
+  otherwise the bar reads "unsaved changes" forever. Where a draft is restored from a
+  Zustand `*-draft` store on mount, track that separately: `reset()` clears `isDirty`, but
+  restored draft content _is_ unsaved work and the bar has to say so.
 
 ## Server Actions
 
@@ -150,16 +178,22 @@ component:
 
 1. **Never write a literal palette class** (`neutral-700`, `white`, `indigo-600`). Use the
    semantic token — `bg-surface`, `text-fg-muted`, `border-border`, `bg-ink`,
-   `text-success` — and dark mode works with no extra annotation.
+   `text-success` — and dark mode works with no extra annotation. It is also what makes the
+   console register work: `.o-console` re-declares those same names, so a primitive written
+   this way re-skins in the back office with no change at the call site.
 2. **Compose classNames with `cn()`** (`lib/cn.ts`, `clsx` + `tailwind-merge`) so a
    caller's `className` overrides a primitive's default instead of appending to it.
+3. **Two registers, one token layer.** Editorial on the public funnel, Odoo-enterprise
+   inside `.o-console` (`/company`, `/jobseeker`, `/admin`). Never hard-code a radius or a
+   density that assumes one of them — use `rounded-card` / `rounded-control` /
+   `rounded-pill`, which resolve per register.
 
 Inline `style={{}}` is reserved for values Tailwind cannot express — currently only the
 ambient canvas gradients, which reference CSS custom properties directly.
 
 ## Accessibility
 
-We target **WCAG 2.2 Level AA**. Automated checks run in CI via `@axe-core/playwright` against five seed pages (`/`, `/jobs`, `/companies`, `/sign-in`, `/sign-up`). Critical / serious violations fail the build.
+We target **WCAG 2.2 Level AA**. Automated checks run in CI via `@axe-core/playwright` in **both themes**, against five public seed pages (`/`, `/jobs`, `/companies`, `/sign-in`, `/sign-up`) plus the authenticated console surfaces when Clerk creds are present (`tests/e2e/a11y.spec.ts`). Critical / serious violations fail the build. Every console foreground/background pair was contrast-checked before landing; the tightest is `--fg-subtle` on `--canvas` at 4.78:1.
 
 Patterns:
 

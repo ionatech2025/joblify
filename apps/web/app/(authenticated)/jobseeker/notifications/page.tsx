@@ -2,7 +2,7 @@ import { requireRole } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { NotificationsList } from './notifications-list';
 import type { NotificationItem } from '@/lib/query/notifications';
-import { PageHeader } from '@/app/components/ui/ambient';
+import { Breadcrumb, ControlPanel } from '@/app/components/console/control-panel';
 
 export const metadata = { title: 'Notifications' };
 
@@ -24,8 +24,8 @@ export default async function NotificationsPage() {
 
   return (
     <main>
-      <PageHeader title="Notifications" width="max-w-3xl" />
-      <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
+      <ControlPanel breadcrumb={<Breadcrumb items={[{ label: 'Notifications' }]} />} />
+      <div className="mx-auto w-full max-w-4xl px-3 py-3 sm:px-4">
         <NotificationsList initial={initial} />
       </div>
     </main>

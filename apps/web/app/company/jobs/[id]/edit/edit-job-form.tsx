@@ -4,18 +4,42 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
+import type { JobPostStatus } from '@prisma/client';
+import { Trash2 } from 'lucide-react';
 import { updateJob, archiveJob } from '@/app/actions/post-job';
 import { JobFormFields } from '@/app/company/jobs/job-form-fields';
 import { PostJobFormSchema, type PostJobFormValues } from '@/app/company/jobs/job-form-schema';
-import { Button } from '@/app/components/ui/button';
+import { FormSheet } from '@/app/components/console/sheet';
+import { DirtyBar } from '@/app/components/console/dirty-bar';
 import { toast } from '@/lib/stores/ui';
 
-export function EditJobForm({ jobId, initial }: { jobId: string; initial: PostJobFormValues }) {
+export function EditJobForm({
+  jobId,
+  initial,
+  status,
+}: {
+  jobId: string;
+  initial: PostJobFormValues;
+  status: JobPostStatus;
+}) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [isDeleting, startDelete] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const [saved, setSaved] = useState(false);
+
+  const {
+    register,
+    handleSubmit,
+    watch,
+    reset,
+    setValue,
+    formState: { errors, isDirty },
+  } = useForm<PostJobFormValues>({
+    resolver: zodResolver(PostJobFormSchema),
+    defaultValues: initial,
+  });
+
+  const publish = watch('publish') ?? false;
 
   function onDelete() {
     if (
@@ -39,22 +63,14 @@ export function EditJobForm({ jobId, initial }: { jobId: string; initial: PostJo
     });
   }
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<PostJobFormValues>({
-    resolver: zodResolver(PostJobFormSchema),
-    defaultValues: initial,
-  });
-
   function onSubmit(values: PostJobFormValues) {
     setError(null);
-    setSaved(false);
     startTransition(async () => {
       try {
         await updateJob(jobId, values);
-        setSaved(true);
+        // Rebase the dirty baseline onto what was just saved, so the bar flips
+        // back to "All changes saved" instead of staying dirty forever.
+        reset(values);
         router.refresh();
         toast.success('Job post updated');
       } catch (err) {
@@ -66,26 +82,39 @@ export function EditJobForm({ jobId, initial }: { jobId: string; initial: PostJo
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="mt-6 flex flex-col gap-4">
-      <JobFormFields register={register} errors={errors} />
+    <form onSubmit={handleSubmit(onSubmit)} noValidate>
+      <FormSheet>
+        <JobFormFields
+          register={register}
+          errors={errors}
+          publish={publish}
+          onPublishChange={(next) => setValue('publish', next, { shouldDirty: true })}
+          status={status}
+        />
 
-      {error && <p className="m-0 text-danger">{error}</p>}
-      {saved && <p className="m-0 text-success">Saved.</p>}
+        {error && (
+          <p role="alert" className="text-danger mt-4 text-[13px]">
+            {error}
+          </p>
+        )}
 
-      <div className="flex items-center gap-3">
-        <Button type="submit" disabled={isPending} className="self-start">
-          {isPending ? 'Saving…' : 'Save changes'}
-        </Button>
-        <Button
-          type="button"
-          variant="danger"
-          disabled={isDeleting}
-          onClick={onDelete}
-          className="self-start"
+        <DirtyBar
+          dirty={isDirty}
+          saving={isPending}
+          onDiscard={() => reset(initial)}
+          saveLabel="Save changes"
         >
-          {isDeleting ? 'Deleting…' : 'Delete job post'}
-        </Button>
-      </div>
+          <button
+            type="button"
+            disabled={isDeleting}
+            onClick={onDelete}
+            className="border-danger/30 text-danger hover:bg-danger-subtle focus-visible:ring-danger rounded-control inline-flex items-center gap-1.5 border px-3 py-1.5 text-[13px] font-medium transition-colors focus-visible:ring-2 focus-visible:outline-none disabled:opacity-50"
+          >
+            <Trash2 aria-hidden className="size-3.5" />
+            {isDeleting ? 'Deleting…' : 'Delete'}
+          </button>
+        </DirtyBar>
+      </FormSheet>
     </form>
   );
 }

@@ -2,9 +2,10 @@ import { requireRole } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { redirect } from 'next/navigation';
 import { PostJobForm } from './post-job-form';
-import { PageHeader } from '@/app/components/ui/ambient';
+import { ConsoleWidth } from '@/app/components/console/shell';
+import { Breadcrumb, ControlPanel } from '@/app/components/console/control-panel';
 
-export const metadata = { title: 'Post a job' };
+export const metadata = { title: 'New job' };
 
 export default async function PostJobPage() {
   const user = await requireRole('COMPANY');
@@ -13,14 +14,16 @@ export default async function PostJobPage() {
 
   return (
     <main>
-      <PageHeader
-        title="Post a job"
-        subtitle="Fill in the basics; AI extracts required skills automatically on save."
-        width="max-w-3xl"
+      {/* No `actions` slot: on a form view the save action lives in the sheet's
+          dirty bar, which is where an unsaved record's controls belong. */}
+      <ControlPanel
+        breadcrumb={
+          <Breadcrumb items={[{ label: 'Jobs', href: '/company/jobs' }, { label: 'New' }]} />
+        }
       />
-      <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
+      <ConsoleWidth className="max-w-5xl py-3">
         <PostJobForm />
-      </div>
+      </ConsoleWidth>
     </main>
   );
 }

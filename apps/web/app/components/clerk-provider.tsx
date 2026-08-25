@@ -21,7 +21,7 @@ const CLERK_BASE = { borderRadius: '0.75rem', fontFamily: 'var(--font-inter)' } 
 
 const CLERK_LIGHT = {
   ...CLERK_BASE,
-  colorPrimary: '#4f46e5',
+  colorPrimary: '#714b67',
   colorBackground: '#ffffff',
   colorText: '#171717',
   colorTextSecondary: '#525252',
@@ -35,7 +35,7 @@ const CLERK_LIGHT = {
 
 const CLERK_DARK = {
   ...CLERK_BASE,
-  colorPrimary: '#6366f1',
+  colorPrimary: '#8b5a7d',
   colorBackground: '#121215',
   colorText: '#f5f5f5',
   colorTextSecondary: '#a3a3a3',

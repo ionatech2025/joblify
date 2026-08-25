@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { requireRole } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { Building2 } from 'lucide-react';
-import { PageHeader } from '@/app/components/ui/ambient';
+import { Breadcrumb, ControlPanel } from '@/app/components/console/control-panel';
 import { Badge } from '@/app/components/ui/badge';
 import { buttonClasses } from '@/app/components/ui/button';
 import { EmptyState } from '@/app/components/ui/empty-state';
@@ -39,12 +39,11 @@ export default async function JobseekerSubscriptionsPage() {
 
   return (
     <main>
-      <PageHeader
-        title="My subscriptions"
-        subtitle="Companies you follow, and invitations from companies that want you on board."
-        width="max-w-3xl"
-      />
-      <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
+      <ControlPanel breadcrumb={<Breadcrumb items={[{ label: 'Following' }]} />} />
+      <div className="mx-auto w-full max-w-4xl px-3 py-3 sm:px-4">
+        <p className="text-fg-muted mb-2 text-[13px]">
+          Companies you follow, and invitations from companies that want you.
+        </p>
         {invitations.length > 0 && (
           <section className="mb-10">
             <h2 className="text-lg font-semibold text-fg">Invitations</h2>

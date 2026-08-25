@@ -1,6 +1,6 @@
 import { requireUser } from '@/lib/auth';
 import { ExportButton } from './export-button';
-import { PageHeader } from '@/app/components/ui/ambient';
+import { Breadcrumb, ControlPanel } from '@/app/components/console/control-panel';
 
 export const metadata = { title: 'Export my data' };
 
@@ -9,8 +9,14 @@ export default async function ExportPage() {
 
   return (
     <main>
-      <PageHeader title="Export my data" width="max-w-2xl" />
-      <div className="mx-auto max-w-2xl px-4 py-8 sm:px-6">
+      <ControlPanel
+        breadcrumb={
+          <Breadcrumb
+            items={[{ label: 'Account', href: '/dashboard' }, { label: 'Export data' }]}
+          />
+        }
+      />
+      <div className="mx-auto w-full max-w-3xl px-3 py-3 sm:px-4">
         <p>
           We&apos;ll bundle every row tied to your account — profile, applications, resumes,
           notifications, audit log entries — as a JSON file and email you a signed download link

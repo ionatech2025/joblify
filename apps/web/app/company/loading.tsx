@@ -1,26 +1,19 @@
-import { AmbientBand } from '@/app/components/ui/ambient';
-import { Skeleton, SkeletonCard, SkeletonList, SkeletonTitle } from '@/app/components/ui/skeleton';
+import { ConsoleListSkeleton, ControlPanelSkeleton } from '@/app/components/console/skeleton';
+import { ConsoleWidth } from '@/app/components/console/shell';
 
-// Route-level loading state for the company dashboard: pulse blocks in the
-// shape of a standard company page (PageHeader title band with an action +
-// a stat strip + a card list). Paints below the persistent company sub-nav
-// while page data streams in.
+// Route-level loading state for the employer console: the control-panel bar
+// plus dense list rows, at their real heights, so the swap to real content
+// costs no layout shift.
+//
+// Only the control panel is reserved here — the module nav belongs to the
+// layout, which has already resolved by the time a route-level fallback paints.
 export default function CompanyLoading() {
   return (
     <main>
-      <AmbientBand>
-        <div className="mx-auto flex max-w-5xl flex-wrap items-end justify-between gap-4 px-4 py-10 sm:px-6">
-          <div>
-            <SkeletonTitle />
-            <Skeleton className="mt-4 h-4 w-40" />
-          </div>
-          <Skeleton className="h-9 w-28" />
-        </div>
-      </AmbientBand>
-      <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
-        <SkeletonCard />
-        <SkeletonList count={4} className="mt-6" />
-      </div>
+      <ControlPanelSkeleton />
+      <ConsoleWidth className="py-3">
+        <ConsoleListSkeleton />
+      </ConsoleWidth>
     </main>
   );
 }

@@ -7,8 +7,14 @@ type Size = 'sm' | 'md' | 'lg';
 
 // Pill buttons. Primary is the ink register — near-black on light, near-white
 // on dark (the --ink token inverts), so it is always the highest-contrast
-// element on the page. Brand indigo stays the accent for focus rings, links
-// and badges rather than becoming a fill.
+// element on the page. Brand stays the accent for focus rings, links and
+// badges rather than becoming a fill.
+//
+// The corner is `rounded-pill`, not `rounded-full`: --r-pill is 9999px in the
+// editorial register and 4px inside .o-console, so the same Button renders as
+// an editorial capsule on marketing and as an Odoo control in the back office
+// with no per-call-site branching. Density in the console comes from picking
+// size="sm" at the call site, not from a second variant map.
 const variants: Record<Variant, string> = {
   primary: 'bg-ink text-ink-fg hover:bg-ink-hover',
   secondary: 'border border-border-strong bg-surface text-fg hover:bg-surface-sunken',
@@ -26,7 +32,7 @@ const sizes: Record<Size, string> = {
 // page rather than Tailwind's hardcoded white, which would read as a bright
 // halo in dark mode.
 const base =
-  'inline-flex items-center justify-center gap-2 rounded-full font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-canvas disabled:cursor-not-allowed disabled:opacity-50';
+  'inline-flex items-center justify-center gap-2 rounded-pill font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-canvas disabled:cursor-not-allowed disabled:opacity-50';
 
 export function Button({
   variant = 'primary',

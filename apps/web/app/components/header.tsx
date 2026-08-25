@@ -34,12 +34,15 @@ export function Header({ auth }: { auth?: ReactNode }) {
   // usePathname(), which is uncached data — reading it here, at root-layout
   // scope outside any Suspense boundary, fails the build with "Uncached data
   // was accessed outside of <Suspense>" on every route. It is the same trap
-  // that forced the custom clerk-provider.tsx wrapper (#38). The dashboard
-  // PillNavs can do it because they sit inside a Suspense-gated subtree.
+  // that forced the custom clerk-provider.tsx wrapper (#38). The console's
+  // ConsoleNav can do it because it sits inside a Suspense-gated subtree.
 
+  // The height is fixed (--o-header-h in globals.css) rather than derived from
+  // padding: the console's module nav and control panel are sticky bars that
+  // stack underneath and need an exact offset to sit flush against it.
   return (
     <header className="glass border-border sticky top-0 z-50 border-b">
-      <Container className="flex items-center justify-between gap-4 py-3">
+      <Container className="flex h-[var(--o-header-h)] items-center justify-between gap-4">
         <Link
           href="/"
           onClick={close}

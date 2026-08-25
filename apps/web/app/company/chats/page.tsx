@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { requireRole } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { ArrowRight, MessagesSquare } from 'lucide-react';
-import { PageHeader } from '@/app/components/ui/ambient';
+import { Breadcrumb, ControlPanel } from '@/app/components/console/control-panel';
 import { EmptyState } from '@/app/components/ui/empty-state';
 import { ChatAreaButton } from './chat-area-button';
 
@@ -34,13 +34,14 @@ export default async function CompanyChatsPage() {
 
   return (
     <main>
-      <PageHeader
-        title="Chat areas"
-        subtitle="Job-specific rooms for shortlisted applicants, plus one room for your virtual interns."
-        width="max-w-4xl"
+      <ControlPanel
+        breadcrumb={<Breadcrumb items={[{ label: 'Chats' }]} />}
         actions={!hasViArea ? <ChatAreaButton kind="virtual-intern" /> : undefined}
       />
-      <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
+      <div className="mx-auto w-full max-w-5xl px-3 py-3 sm:px-4">
+        <p className="text-fg-muted mb-2 text-[13px]">
+          Job-specific rooms for shortlisted applicants, plus one room for your virtual interns.
+        </p>
         {areas.length === 0 ? (
           <EmptyState
             icon={<MessagesSquare />}

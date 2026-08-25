@@ -5,6 +5,7 @@ import { verifyCompany } from '@/app/actions/admin';
 import { ShieldCheck } from 'lucide-react';
 import { Button } from '@/app/components/ui/button';
 import { EmptyState } from '@/app/components/ui/empty-state';
+import { ListView, type ListColumn } from '@/app/components/console/list-view';
 import { toast } from '@/lib/stores/ui';
 
 type PendingCompany = {
@@ -52,7 +53,6 @@ export function VerificationQueue({ initial }: { initial: PendingCompany[] }) {
   if (rows.length === 0) {
     return (
       <EmptyState
-        className="mt-6"
         icon={<ShieldCheck />}
         title="Verification queue is clear"
         description="Newly registered companies appear here for review before they show in search and the directory."
@@ -60,60 +60,94 @@ export function VerificationQueue({ initial }: { initial: PendingCompany[] }) {
     );
   }
 
-  return (
-    <div className="mt-6">
-      {error && <p className="mb-4 text-danger">{error}</p>}
-      <ul className="grid list-none grid-cols-1 gap-3 p-0">
-        {rows.map((c) => (
-          <li
-            key={c.id}
-            className="flex flex-wrap items-center justify-between gap-4 rounded-card border border-border bg-surface p-4 shadow-soft"
+  const columns: ListColumn<PendingCompany>[] = [
+    {
+      key: 'company',
+      header: 'Company',
+      cell: (c) => <span className="text-fg font-medium">{c.companyName}</span>,
+      aggregate: (r) => `${r.length} awaiting review`,
+    },
+    {
+      key: 'industry',
+      header: 'Industry',
+      hideBelow: 'sm',
+      cell: (c) => <span className="text-fg-muted">{titleCase(c.industry)}</span>,
+    },
+    {
+      key: 'size',
+      header: 'Size',
+      hideBelow: 'sm',
+      cell: (c) => <span className="text-fg-muted">{sizeLabel(c.companySize)}</span>,
+    },
+    {
+      key: 'website',
+      header: 'Website',
+      hideBelow: 'md',
+      cell: (c) =>
+        c.website ? (
+          <a
+            href={c.website}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-brand underline"
           >
-            <div>
-              <p className="m-0 font-semibold text-fg">{c.companyName}</p>
-              <p className="mt-1 mb-0 text-sm text-fg-subtle">
-                {titleCase(c.industry)} · {sizeLabel(c.companySize)}
-                {c.website && (
-                  <>
-                    {' · '}
-                    <a
-                      href={c.website}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-brand underline"
-                    >
-                      {c.website}
-                    </a>
-                  </>
-                )}
-              </p>
-              <p className="mt-1 mb-0 text-xs text-fg-subtle">
-                Applied {new Date(c.createdAt).toLocaleDateString()}
-              </p>
-            </div>
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                size="sm"
-                disabled={busyId === c.id}
-                onClick={() => decide(c.id, 'VERIFIED')}
-              >
-                Verify
-              </Button>
-              <Button
-                type="button"
-                variant="danger"
-                size="sm"
-                disabled={busyId === c.id}
-                onClick={() => decide(c.id, 'REJECTED')}
-              >
-                Reject
-              </Button>
-            </div>
-          </li>
-        ))}
-      </ul>
-    </div>
+            {c.website.replace(/^https?:\/\//, '')}
+          </a>
+        ) : (
+          <span className="text-fg-subtle">—</span>
+        ),
+    },
+    {
+      key: 'applied',
+      header: 'Applied',
+      align: 'end',
+      hideBelow: 'sm',
+      cell: (c) => (
+        <span className="text-fg-muted">{new Date(c.createdAt).toLocaleDateString()}</span>
+      ),
+    },
+    {
+      key: 'actions',
+      header: 'Decision',
+      align: 'end',
+      cell: (c) => (
+        <div className="flex justify-end gap-1.5">
+          <Button
+            type="button"
+            size="sm"
+            disabled={busyId === c.id}
+            onClick={() => decide(c.id, 'VERIFIED')}
+          >
+            Verify
+          </Button>
+          <Button
+            type="button"
+            variant="danger"
+            size="sm"
+            disabled={busyId === c.id}
+            onClick={() => decide(c.id, 'REJECTED')}
+          >
+            Reject
+          </Button>
+        </div>
+      ),
+    },
+  ];
+
+  return (
+    <>
+      {error && (
+        <p role="alert" className="text-danger mb-2 text-[13px]">
+          {error}
+        </p>
+      )}
+      <ListView
+        caption="Company verification queue"
+        rows={rows}
+        rowKey={(c) => c.id}
+        columns={columns}
+      />
+    </>
   );
 }
 

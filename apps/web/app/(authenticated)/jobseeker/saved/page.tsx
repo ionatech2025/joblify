@@ -2,7 +2,7 @@ import { requireRole } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { SavedList } from './saved-list';
 import { SavedSearchList } from './saved-search-list';
-import { PageHeader } from '@/app/components/ui/ambient';
+import { Breadcrumb, ControlPanel } from '@/app/components/console/control-panel';
 
 export const metadata = { title: 'Saved' };
 
@@ -41,8 +41,8 @@ export default async function SavedJobsPage() {
 
   return (
     <main>
-      <PageHeader title="Saved" width="max-w-3xl" />
-      <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
+      <ControlPanel breadcrumb={<Breadcrumb items={[{ label: 'Saved' }]} />} />
+      <div className="mx-auto w-full max-w-5xl px-3 py-3 sm:px-4">
         {savedSearches.length > 0 && (
           <section className="mt-0">
             <h2 className="text-lg font-semibold text-fg">Saved searches</h2>
