@@ -1,12 +1,10 @@
-import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requireRole } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { ArrowLeft } from 'lucide-react';
 import { ChatThread } from '@/app/components/chat/chat-thread';
 import { ChatComposer } from '@/app/components/chat/chat-composer';
 import { LATEST_MESSAGES_TAKE, toThreadDisplay } from '@/app/components/chat/latest-messages';
-import { PageHeader } from '@/app/components/ui/ambient';
+import { Breadcrumb, ControlPanel } from '@/app/components/console/control-panel';
 import { AddParticipantButton } from './add-participant-button';
 
 export const metadata = { title: 'Chat area' };
@@ -54,25 +52,22 @@ export default async function CompanyChatAreaPage({ params }: { params: Params }
 
   return (
     <main>
-      <PageHeader
-        title={area.title}
-        subtitle={
-          area.kind === 'VIRTUAL_INTERN'
-            ? 'Your virtual-intern chat area.'
-            : `Job-specific chat area for “${area.jobPost?.title ?? 'deleted job'}”.`
-        }
-        width="max-w-4xl"
-        actions={
-          <Link
-            href="/company/chats"
-            className="inline-flex items-center gap-1 text-sm text-brand underline"
-          >
-            <ArrowLeft aria-hidden className="size-3.5" />
-            All chat areas
-          </Link>
+      {/* The "All chat areas" back-link is gone: the breadcrumb's first crumb is
+          that link, and having both put two different affordances for the same
+          navigation on one bar. */}
+      <ControlPanel
+        breadcrumb={
+          <Breadcrumb items={[{ label: 'Chats', href: '/company/chats' }, { label: area.title }]} />
         }
       />
-      <div className="mx-auto grid max-w-4xl grid-cols-1 gap-8 px-4 py-8 sm:px-6 lg:grid-cols-[1fr_260px]">
+      <div className="mx-auto grid w-full max-w-6xl grid-cols-1 gap-4 px-3 py-3 sm:px-4 lg:grid-cols-[1fr_260px]">
+        <section className="lg:col-span-2">
+          <p className="text-fg-muted text-[13px]">
+            {area.kind === 'VIRTUAL_INTERN'
+              ? 'Your virtual-intern chat area.'
+              : `Job-specific chat area for “${area.jobPost?.title ?? 'deleted job'}”.`}
+          </p>
+        </section>
         <section>
           {truncated && (
             <p className="mt-0 mb-3 text-xs text-fg-subtle">

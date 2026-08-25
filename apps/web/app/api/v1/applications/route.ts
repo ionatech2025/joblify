@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { currentUser } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { APPLICATIONS_PAGE_CAP } from '@/lib/query/client';
 
 export async function GET() {
   const user = await currentUser();
@@ -10,7 +11,7 @@ export async function GET() {
   const rows = await db.jobApplication.findMany({
     where: { jobSeekerId: user.id },
     orderBy: { appliedAt: 'desc' },
-    take: 50,
+    take: APPLICATIONS_PAGE_CAP,
     include: {
       jobPost: { include: { company: { include: { companyProfile: true } } } },
     },

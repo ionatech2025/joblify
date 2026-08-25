@@ -55,6 +55,27 @@ const PAGES = process.env.A11Y_PATHS
 const hasJobseeker = Boolean(process.env.E2E_TEST_PASSWORD && process.env.E2E_TEST_EMAIL_JOBSEEKER);
 const hasCompany = Boolean(process.env.E2E_TEST_PASSWORD && process.env.E2E_TEST_EMAIL_COMPANY);
 
+/**
+ * Narrows the scope list to the regions this page actually rendered.
+ *
+ * `body > x` restricts to direct children of <body>, which is where this app's
+ * own header/footer/cookie-banner live (see app/layout.tsx) — an injected
+ * widget wrapper (Vercel's preview feedback toolbar) is not a direct body
+ * child, so this excludes it without needing to know its markup. See the block
+ * comment in expectNoViolations for the history.
+ */
+async function presentRegions(page: Page): Promise<string[]> {
+  const CANDIDATES = ['body > header', '#main-content', 'body > footer', 'body > aside'];
+  const present = await page.evaluate(
+    (sels) => sels.filter((s) => document.querySelector(s) !== null),
+    CANDIDATES,
+  );
+  // The content region is not optional: a page without it is broken, and
+  // scanning only the chrome would quietly pass.
+  expect(present, 'no #main-content on the page — nothing to scan').toContain('#main-content');
+  return present;
+}
+
 async function expectNoViolations(page: Page, path: string) {
   const results = await new AxeBuilder({ page })
     .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
@@ -78,10 +99,19 @@ async function expectNoViolations(page: Page, path: string) {
     // banner actually live (see app/layout.tsx) — an injected widget wrapper
     // is not a direct body child, so this excludes it without needing to
     // know its markup.
-    .include('body > header')
-    .include('#main-content')
-    .include('body > footer')
-    .include('body > aside')
+    // Only include regions that are actually present. axe's include() throws a
+    // bare `No elements found for include in page Context` when ANY selector
+    // matches nothing — it is not a violation, it aborts the whole scan — and
+    // two of these four are legitimately conditional:
+    //   body > aside   the cookie banner returns null unless the consent store
+    //                  says it is open (components/cookie-banner.tsx), so it is
+    //                  absent on any visit that already has a choice stored.
+    //   body > footer  hidden on console pages.
+    // That is why this gate had never passed on any branch: every page failed
+    // with the include error rather than on anything accessibility-related.
+    // #main-content is required — if the page has no content region that is a
+    // real bug, not a scoping problem, so it is asserted rather than filtered.
+    .include(await presentRegions(page))
     .analyze();
 
   const critical = results.violations.filter(

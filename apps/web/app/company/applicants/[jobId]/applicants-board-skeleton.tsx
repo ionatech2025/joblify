@@ -1,36 +1,45 @@
-import { Card } from '@/app/components/ui/card';
-import { Skeleton, SkeletonCard } from '@/app/components/ui/skeleton';
+import { Skeleton } from '@/app/components/ui/skeleton';
 
 /**
- * Placeholder for `ApplicantsBoard`: the sort/filter toolbar row, then five
- * stage-column cards (the open stages shown by default; the three closed
- * ones sit behind a toggle) each holding a couple of applicant-card
- * placeholders — a horizontally-scrolling kanban, not a list.
+ * Placeholder for `ApplicantsBoard`: five kanban stage columns (the open ones
+ * shown by default; the three closed stages sit behind a control-panel filter)
+ * each holding a couple of applicant-card placeholders.
  *
- * Shared by this route's `loading.tsx` and the inline `<Suspense>` boundary
- * `page.tsx` wraps `ApplicantsBoard` in (it reads `useSearchParams()` for its
- * sort/showClosed state, which requires a Suspense ancestor) — one shape
- * instead of two hand-copied ones.
+ * Matches the real column geometry — 270px wide, header with a title/count row
+ * and the match-strength progress bar — so the swap costs no layout shift.
  */
 export function ApplicantsBoardSkeleton() {
   return (
-    <>
-      <div className="my-4 flex flex-wrap items-center gap-5">
-        <Skeleton className="rounded-control h-11 w-44" />
-        <Skeleton className="h-4 w-40" />
-      </div>
-      <div className="flex items-start gap-4 overflow-x-auto pb-4">
-        {Array.from({ length: 5 }, (_, i) => (
-          <Card key={i} tone="glass" className="w-[280px] shrink-0">
-            <Skeleton className="mb-3 h-4 w-24" />
-            <div className="flex flex-col gap-2.5">
-              {Array.from({ length: i % 2 === 0 ? 3 : 2 }, (_, j) => (
-                <SkeletonCard key={j} className="h-32" />
-              ))}
+    <div className="flex items-start gap-2 overflow-x-auto pb-2">
+      {Array.from({ length: 5 }, (_, i) => (
+        <div
+          key={i}
+          className="border-border bg-surface-sunken rounded-card w-[270px] shrink-0 border"
+        >
+          <div className="border-border border-b px-2.5 py-2">
+            <div className="flex items-baseline justify-between gap-2">
+              <Skeleton className="h-3 w-20" />
+              <Skeleton className="h-3 w-4" />
             </div>
-          </Card>
-        ))}
-      </div>
-    </>
+            <Skeleton className="mt-1 h-2 w-24" />
+            <Skeleton className="rounded-pill mt-1.5 h-1 w-full" />
+          </div>
+          <div className="flex flex-col gap-1.5 p-1.5">
+            {Array.from({ length: i % 2 === 0 ? 3 : 2 }, (_, j) => (
+              <div key={j} className="border-border bg-surface rounded-card border px-2.5 py-2">
+                <div className="flex items-baseline justify-between gap-2">
+                  <Skeleton className="h-3 w-24" />
+                  <Skeleton className="h-3 w-8" />
+                </div>
+                <Skeleton className="mt-1 h-2 w-32" />
+                <Skeleton className="mt-1 h-2 w-20" />
+                <Skeleton className="rounded-control mt-2 h-6 w-full" />
+                <Skeleton className="rounded-control mt-1.5 h-8 w-full" />
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }

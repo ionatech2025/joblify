@@ -2,7 +2,7 @@
 
 Single source of truth for what's NOT done. Cross-references every `TODO(week-N)` in code, every manual provisioning item, and every deferred V1.5 / V2 scope item.
 
-Updated 2026-07-18.
+Updated 2026-08-26.
 
 ---
 
@@ -183,7 +183,7 @@ table originally tracked is now fixed:
   `inviteJobseeker`, `openJobChatArea`, `openVirtualInternChatArea`, matching
   `share-job.ts`/`addChatParticipant`'s existing enforcement. No live effect
   today (every account still defaults to `PRO`). Note this is narrower than
-  issue #52, which is specifically about *application tracking* having no
+  issue #52, which is specifically about _application tracking_ having no
   gate — that's still open, unrelated to this fix.
 - **Remaining bare-form mutations** — chat-area creation, `addChatParticipant`,
   and invite/share/add-to-VI-chat all converted to client components with
@@ -223,6 +223,28 @@ table originally tracked is now fixed:
 | Verify Clerk dark mode on a preview | `clerk-provider.tsx` now ships light + dark `appearance` variable sets (2026-07-30), but **this cannot be checked locally**: a no-vendor run uses a placeholder publishable key that clerk-js rejects, so no Clerk markup renders on `/sign-in` or `/sign-up` at all. On the next preview with a live key, eyeball `<SignIn>`, `<SignUp>` and the `<UserButton>` popover in dark mode and confirm the axe dark scan of those two routes still passes with the form actually present. The values are concrete hex duplicated from `globals.css` — see the token-coupling note in [DESIGN.md](./DESIGN.md).                                                                                                                                                                                                           |
 
 ---
+
+### Console (Odoo register) — deliberately not built, 2026-08-26
+
+Landed with the console design pass; each was skipped for a stated reason, not
+missed. See [DESIGN.md](./DESIGN.md#console-primitives).
+
+| Item                              | Why not now                                                                                                                                                      |
+| --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| List-view row selection           | Odoo's checkboxes exist to drive bulk actions. No bulk mutation exists server-side, so the control would render and do nothing. Add both together.               |
+| Chatter / activity log on records | `JobApplication.recruiterNotes` is a single overwritten string. A threaded log needs a model (`ApplicationNote`) plus a writer — a data change, not a component. |
+| Drag-and-drop kanban              | Skipped in favour of the one-click stage stepper, which is keyboard-operable without a parallel a11y implementation. Revisit only with a real keyboard story.    |
+| Clickable kanban progress bars    | Odoo's segments filter the column. Presentational here; needs URL plumbing per board.                                                                            |
+| Console surfaces in the axe gate  | `a11y.spec.ts` already lists them, but they only run where Clerk creds exist. Unverified locally — see the note below.                                           |
+
+**`tests/e2e/console-design.spec.ts` has not been run.** It is written (9 tests) but
+the Clerk `setup` project cannot complete in the local sandbox — `Clerk.loaded` never
+becomes true, and `setup` is a hard `dependencies` entry, so one failure means every
+spec reports "did not run". Needs a CI or preview-deploy run to be trusted. The
+unauthenticated `design-regression.spec.ts` was run serially against a local prod build:
+10 pass, 3 fail on the pre-existing PPR duplicate-DOM pattern (`.first()` resolving to
+the copy inside React's `<div hidden>` streaming placeholder) in spec code this pass did
+not touch.
 
 ## V1.5 — explicitly deferred features
 

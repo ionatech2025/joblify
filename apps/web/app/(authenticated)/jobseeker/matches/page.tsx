@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { requireRole } from '@/lib/auth';
 import { getRecommendedJobs } from '@/lib/search/semantic-match';
 import { Sparkles } from 'lucide-react';
-import { PageHeader } from '@/app/components/ui/ambient';
+import { Breadcrumb, ControlPanel } from '@/app/components/console/control-panel';
 import { Badge } from '@/app/components/ui/badge';
 import { EmptyState } from '@/app/components/ui/empty-state';
 import { buttonClasses } from '@/app/components/ui/button';
@@ -16,13 +16,11 @@ export default async function JobMatchesPage() {
 
   return (
     <main>
-      <PageHeader
-        eyebrow="For you"
-        title="Matches"
-        subtitle="Jobs ranked by how closely they match your resume — not just keywords, the whole picture."
-        width="max-w-3xl"
-      />
-      <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
+      <ControlPanel breadcrumb={<Breadcrumb items={[{ label: 'Matches' }]} />} />
+      <div className="mx-auto w-full max-w-5xl px-3 py-3 sm:px-4">
+        <p className="text-fg-muted mb-2 text-[13px]">
+          Jobs ranked by how closely they match your resume — not just keyword overlap.
+        </p>
         {jobs.length === 0 ? (
           <EmptyState
             className="mt-6"

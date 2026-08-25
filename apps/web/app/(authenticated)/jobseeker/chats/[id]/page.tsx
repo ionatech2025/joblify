@@ -2,11 +2,10 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requireRole } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { ArrowLeft } from 'lucide-react';
 import { ChatThread } from '@/app/components/chat/chat-thread';
 import { ChatComposer } from '@/app/components/chat/chat-composer';
 import { LATEST_MESSAGES_TAKE, toThreadDisplay } from '@/app/components/chat/latest-messages';
-import { PageHeader } from '@/app/components/ui/ambient';
+import { Breadcrumb, ControlPanel } from '@/app/components/console/control-panel';
 
 export const metadata = { title: 'Chat' };
 
@@ -44,33 +43,30 @@ export default async function JobseekerChatAreaPage({ params }: { params: Params
 
   return (
     <main>
-      <PageHeader
-        title={area.title}
-        subtitle={
-          area.jobPost
-            ? `${companyName} · about the “${area.jobPost.title}” role.`
-            : `${companyName} · virtual-intern chat area.`
-        }
-        width="max-w-3xl"
-        actions={
-          <Link
-            href="/jobseeker/chats"
-            className="inline-flex items-center gap-1 text-sm text-brand underline"
-          >
-            <ArrowLeft aria-hidden className="size-3.5" />
-            All chats
-          </Link>
+      {/* The "All chats" back-link is gone — the breadcrumb's first crumb is
+          that link. */}
+      <ControlPanel
+        breadcrumb={
+          <Breadcrumb
+            items={[{ label: 'Chats', href: '/jobseeker/chats' }, { label: area.title }]}
+          />
         }
       />
-      <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
-        {area.jobPost && (
-          <p className="mb-6 text-sm text-fg-muted">
-            Job post:{' '}
-            <Link href={`/jobs/${area.jobPost.slug}`} className="text-brand underline">
-              {area.jobPost.title}
-            </Link>
-          </p>
-        )}
+      <div className="mx-auto w-full max-w-4xl px-3 py-3 sm:px-4">
+        <p className="text-fg-muted mb-2 text-[13px]">
+          {companyName}
+          {area.jobPost ? (
+            <>
+              {' · about the '}
+              <Link href={`/jobs/${area.jobPost.slug}`} className="text-brand underline">
+                {area.jobPost.title}
+              </Link>
+              {' role.'}
+            </>
+          ) : (
+            ' · virtual-intern chat area.'
+          )}
+        </p>
         {truncated && (
           <p className="mt-0 mb-3 text-xs text-fg-subtle">
             Showing the latest {LATEST_MESSAGES_TAKE} messages.

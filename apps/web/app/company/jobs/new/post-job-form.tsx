@@ -7,7 +7,8 @@ import { useRouter } from 'next/navigation';
 import { postJob } from '@/app/actions/post-job';
 import { JobFormFields } from '@/app/company/jobs/job-form-fields';
 import { PostJobFormSchema, type PostJobFormValues } from '@/app/company/jobs/job-form-schema';
-import { Button } from '@/app/components/ui/button';
+import { FormSheet } from '@/app/components/console/sheet';
+import { DirtyBar } from '@/app/components/console/dirty-bar';
 import { usePostJobDraftStore } from '@/lib/stores/post-job-draft';
 import { toast } from '@/lib/stores/ui';
 
@@ -27,6 +28,10 @@ export function PostJobForm() {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  // A restored draft is unsaved work, but reset() rebases RHF's dirty baseline
+  // and would report the form as clean. Tracked separately so the dirty bar
+  // tells the truth after a reload.
+  const [restoredDraft, setRestoredDraft] = useState(false);
   const draftStore = usePostJobDraftStore();
 
   const {
@@ -34,7 +39,8 @@ export function PostJobForm() {
     handleSubmit,
     watch,
     reset,
-    formState: { errors },
+    setValue,
+    formState: { errors, isDirty },
   } = useForm<PostJobFormValues>({
     resolver: zodResolver(PostJobFormSchema),
     defaultValues: initialValues,
@@ -45,6 +51,7 @@ export function PostJobForm() {
   useEffect(() => {
     if (Object.keys(draftStore.draft).length > 0) {
       reset({ ...initialValues, ...draftStore.draft });
+      setRestoredDraft(true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -55,12 +62,18 @@ export function PostJobForm() {
     return () => sub.unsubscribe();
   }, [watch, draftStore]);
 
+  // `publish` has no input of its own any more — the statusbar is its control —
+  // so it is driven through setValue/watch against RHF's value store, which is
+  // seeded from defaultValues above.
+  const publish = watch('publish') ?? true;
+
   function onSubmit(values: PostJobFormValues) {
     setError(null);
     startTransition(async () => {
       try {
         const id = await postJob(values);
         draftStore.clear();
+        setRestoredDraft(false);
         toast.success('Job posted');
         router.push(`/company/jobs/${id}/edit?just_posted=1`);
       } catch (err) {
@@ -71,15 +84,37 @@ export function PostJobForm() {
     });
   }
 
+  function onDiscard() {
+    if (!window.confirm('Discard this draft? The fields will be emptied.')) return;
+    draftStore.clear();
+    reset(initialValues as PostJobFormValues);
+    setRestoredDraft(false);
+  }
+
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="mt-6 flex flex-col gap-4">
-      <JobFormFields register={register} errors={errors} />
+    <form onSubmit={handleSubmit(onSubmit)} noValidate>
+      <FormSheet>
+        <JobFormFields
+          register={register}
+          errors={errors}
+          publish={publish}
+          onPublishChange={(next) => setValue('publish', next, { shouldDirty: true })}
+        />
 
-      {error && <p className="m-0 text-danger">{error}</p>}
+        {error && (
+          <p role="alert" className="text-danger mt-4 text-[13px]">
+            {error}
+          </p>
+        )}
 
-      <Button type="submit" disabled={isPending} className="self-start">
-        {isPending ? 'Saving…' : 'Post job'}
-      </Button>
+        <DirtyBar
+          dirty={isDirty || restoredDraft}
+          saving={isPending}
+          onDiscard={onDiscard}
+          saveLabel={publish ? 'Post job' : 'Save as draft'}
+          savingLabel="Saving…"
+        />
+      </FormSheet>
     </form>
   );
 }

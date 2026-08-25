@@ -3,7 +3,9 @@ import { cn } from '@/lib/cn';
 
 type Tone = 'brand' | 'neutral' | 'success' | 'warn' | 'danger' | 'info' | 'dark';
 
-// Chip/badge. `brand` is the historical default (most existing call sites);
+// Chip/badge. `rounded-pill` (not `rounded-full`) so the chip flattens to a
+// 4px Odoo tag inside .o-console — see globals.css.
+// `brand` is the historical default (most existing call sites);
 // `dark` is the inverted price/salary chip from the ticket-card register.
 // Every tone is a subtle-bg + readable-fg pair that flips with the theme.
 const tones: Record<Tone, string> = {
@@ -34,7 +36,7 @@ export function Badge({
   return (
     <span
       className={cn(
-        'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium',
+        'inline-flex items-center rounded-pill px-2 py-0.5 text-xs font-medium',
         tones[tone],
         corner && 'absolute top-3 right-3 z-10 shadow-sm',
         className,

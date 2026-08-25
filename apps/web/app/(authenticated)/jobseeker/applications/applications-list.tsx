@@ -1,15 +1,17 @@
 'use client';
 
+import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
+import { Briefcase } from 'lucide-react';
 import {
   useApplications,
   useWithdrawApplication,
   type ApplicationListItem,
 } from '@/lib/query/applications';
-import Link from 'next/link';
-import { Briefcase } from 'lucide-react';
 import { Badge } from '@/app/components/ui/badge';
 import { EmptyState } from '@/app/components/ui/empty-state';
 import { buttonClasses } from '@/app/components/ui/button';
+import { ListView, type ListColumn } from '@/app/components/console/list-view';
 import {
   applicationStatusLabel,
   applicationStatusTone,
@@ -18,16 +20,34 @@ import {
 } from '@/lib/ui/status';
 import { toast } from '@/lib/stores/ui';
 
+/**
+ * The jobseeker's application pipeline, as a dense list rather than a stack of
+ * cards — one row per application instead of one 100px card, so a real history
+ * fits on a screen.
+ *
+ * Filtering is read from the URL, and *written* by the control-panel filter
+ * menu the page renders server-side. The rows themselves stay in the react-query
+ * cache because this list refetches in the background and withdraws
+ * optimistically; the filter is applied over that cache rather than refetched,
+ * since it is one user's own applications and already all in memory.
+ */
 export function ApplicationsList({
   userId,
   initialData,
+  total,
 }: {
   userId: string;
   initialData: ApplicationListItem[];
+  /** Total the user actually has, so a truncated load can say so. */
+  total: number;
 }) {
   const { data, isFetching } = useApplications(userId, initialData);
   const withdraw = useWithdrawApplication(userId);
-  const items = data ?? initialData;
+  const searchParams = useSearchParams();
+  const loaded = data ?? initialData;
+
+  const statusFilter = searchParams.get('status') ?? '';
+  const items = statusFilter ? loaded.filter((a) => a.status === statusFilter) : loaded;
 
   function onWithdraw(a: ApplicationListItem) {
     if (
@@ -47,7 +67,7 @@ export function ApplicationsList({
     });
   }
 
-  if (items.length === 0) {
+  if (loaded.length === 0) {
     return (
       <EmptyState
         icon={<Briefcase />}
@@ -62,46 +82,94 @@ export function ApplicationsList({
     );
   }
 
+  const columns: ListColumn<ApplicationListItem>[] = [
+    {
+      key: 'role',
+      header: 'Role',
+      cell: (a) => (
+        <Link href={`/jobs/${a.slug}`} className="text-fg font-medium no-underline hover:underline">
+          {a.jobTitle}
+        </Link>
+      ),
+      aggregate: () => `${items.length} shown`,
+    },
+    {
+      key: 'company',
+      header: 'Company',
+      hideBelow: 'sm',
+      cell: (a) => <span className="text-fg-muted">{a.companyName}</span>,
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      cell: (a) => (
+        <Badge tone={applicationStatusTone(a.status)}>{applicationStatusLabel(a.status)}</Badge>
+      ),
+    },
+    {
+      key: 'match',
+      header: 'Match',
+      align: 'end',
+      hideBelow: 'md',
+      cell: (a) =>
+        a.matchScore === null ? (
+          <span className="text-fg-subtle">—</span>
+        ) : (
+          <Badge tone={matchTone(a.matchScore)}>{Math.round(a.matchScore * 100)}%</Badge>
+        ),
+    },
+    {
+      key: 'applied',
+      header: 'Applied',
+      align: 'end',
+      hideBelow: 'sm',
+      cell: (a) => (
+        <span className="text-fg-muted">{new Date(a.appliedAt).toLocaleDateString()}</span>
+      ),
+    },
+    {
+      key: 'actions',
+      header: 'Actions',
+      align: 'end',
+      cell: (a) =>
+        CLOSED_APPLICATION_STATUSES.includes(a.status) ? null : (
+          <button
+            type="button"
+            onClick={() => onWithdraw(a)}
+            disabled={withdraw.isPending}
+            className="text-danger hover:underline disabled:opacity-50"
+          >
+            Withdraw
+          </button>
+        ),
+    },
+  ];
+
   return (
-    <ul className="grid list-none grid-cols-1 gap-3 p-0">
-      {items.map((a) => (
-        <li key={a.id} className="rounded-card border border-border bg-surface p-4 shadow-soft">
-          <div className="flex items-baseline justify-between gap-4">
-            <div className="min-w-0">
-              <Link href={`/jobs/${a.slug}`} className="font-semibold text-fg hover:underline">
-                {a.jobTitle}
-              </Link>
-              <p className="mt-1 mb-0 text-fg-muted">{a.companyName}</p>
-            </div>
-            <div className="shrink-0 text-right">
-              <Badge tone={applicationStatusTone(a.status)}>
-                {applicationStatusLabel(a.status)}
-              </Badge>
-              <p className="mt-1 mb-0 text-sm text-fg-subtle">
-                {new Date(a.appliedAt).toLocaleDateString()}
-              </p>
-              {a.matchScore !== null && (
-                <p className="mt-1 mb-0">
-                  <Badge tone={matchTone(a.matchScore)}>
-                    Match: {Math.round(a.matchScore * 100)}%
-                  </Badge>
-                </p>
-              )}
-              {!CLOSED_APPLICATION_STATUSES.includes(a.status) && (
-                <button
-                  type="button"
-                  onClick={() => onWithdraw(a)}
-                  disabled={withdraw.isPending}
-                  className="mt-2 text-sm text-danger hover:underline disabled:opacity-50"
-                >
-                  Withdraw
-                </button>
-              )}
-            </div>
-          </div>
-        </li>
-      ))}
-      {isFetching && <li className="text-sm text-fg-subtle">Refreshing…</li>}
-    </ul>
+    <>
+      {total > loaded.length && (
+        <p className="text-warn bg-warn-subtle rounded-card border-warn/25 mb-2 border px-2.5 py-1.5 text-[12px]">
+          Showing your {loaded.length} most recent applications of {total}. Filter by status to
+          narrow the list.
+        </p>
+      )}
+      {items.length === 0 ? (
+        <EmptyState
+          icon={<Briefcase />}
+          title="No applications at this status"
+          description="Nothing in your history matches that filter yet."
+          action={
+            <Link href="/jobseeker/applications" className={`${buttonClasses()} no-underline`}>
+              Clear filter
+            </Link>
+          }
+        />
+      ) : (
+        <ListView caption="My applications" rows={items} rowKey={(a) => a.id} columns={columns} />
+      )}
+      <p aria-live="polite" className="text-fg-subtle mt-1 h-4 text-[12px]">
+        {isFetching ? 'Refreshing…' : ''}
+      </p>
+    </>
   );
 }

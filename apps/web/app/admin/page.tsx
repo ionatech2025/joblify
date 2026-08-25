@@ -1,9 +1,7 @@
 import { requireRole } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { PageHeader } from '@/app/components/ui/ambient';
-import { Card } from '@/app/components/ui/card';
-import { Container } from '@/app/components/ui/container';
-import { Stat, StatRow } from '@/app/components/ui/stat';
+import { ConsoleWidth } from '@/app/components/console/shell';
+import { Breadcrumb, ControlPanel } from '@/app/components/console/control-panel';
 import { VerificationQueue } from './verification-queue';
 
 export const metadata = { title: 'Admin' };
@@ -31,25 +29,21 @@ export default async function AdminPage() {
 
   return (
     <main>
-      <PageHeader
-        eyebrow="Operations"
-        title="Admin"
-        subtitle="Trust &amp; safety and platform overview."
-        width="max-w-4xl"
+      <ControlPanel
+        breadcrumb={<Breadcrumb items={[{ label: 'Company verification' }]} />}
+        // Platform totals as control-panel context rather than a stat card
+        // above the queue: they are reference figures, not the work on the page.
+        pager={
+          <dl className="text-fg-muted m-0 flex flex-wrap items-center gap-x-4 gap-y-1 text-[12px]">
+            <Metric label="Jobseekers" value={jobSeekerCount} />
+            <Metric label="Companies" value={companyCount} />
+            <Metric label="Published jobs" value={publishedJobCount} />
+          </dl>
+        }
       />
-      <Container className="max-w-4xl py-8">
-        <Card className="mb-8 p-6">
-          <StatRow>
-            <Stat value={jobSeekerCount.toLocaleString()} label="Jobseekers" />
-            <Stat value={companyCount.toLocaleString()} label="Companies" />
-            <Stat value={publishedJobCount.toLocaleString()} label="Published jobs" />
-          </StatRow>
-        </Card>
-
-        <h2 className="text-lg font-semibold text-fg">Company verification queue</h2>
-        <p className="mt-1 text-sm text-fg-muted">
-          Unverified companies don&apos;t appear in the public directory or job search. Review and
-          decide below.
+      <ConsoleWidth className="max-w-6xl py-3">
+        <p className="text-fg-muted mb-2 text-[13px]">
+          Unverified companies don&apos;t appear in the public directory or job search.
         </p>
         <VerificationQueue
           initial={pending.map((p) => ({
@@ -61,7 +55,17 @@ export default async function AdminPage() {
             createdAt: p.createdAt.toISOString(),
           }))}
         />
-      </Container>
+      </ConsoleWidth>
     </main>
+  );
+}
+
+// A <dl> only permits dt/dd/div as children, so the pair is wrapped in a div.
+function Metric({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="inline-flex items-baseline gap-1">
+      <dd className="text-fg m-0 font-semibold tabular-nums">{value.toLocaleString()}</dd>
+      <dt>{label}</dt>
+    </div>
   );
 }

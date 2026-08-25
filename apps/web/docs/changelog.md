@@ -1,5 +1,88 @@
 # Changelog
 
+## 2026-08-26 — Odoo-enterprise console: flows + design register
+
+The first two design passes applied one visual language to the whole product.
+That serves the public funnel and fights the back office, where the job is
+scanning and mutating records. This pass gives the authenticated surfaces
+(`/company`, `/jobseeker`, `/admin`, onboarding, account tools) their own
+register and, more importantly, Odoo's structural vocabulary. The public funnel
+keeps the editorial language, retuned to the shared palette.
+
+**Token layer** — `.o-console` re-declares the *same* semantic token names with
+enterprise values (13px base, 4px corners, hairline borders, plum ink, opaque
+sticky chrome), so `Card`/`Badge`/`Input`/`Select`/`Button` re-skin inside it
+with zero call-site changes. Radii moved to raw `--r-*` vars *referenced* from
+`@theme inline` — an inline literal bakes into the emitted utility and no scope
+class can override it, which is why `rounded-card` can now mean 16px on
+marketing and 4px in the console. `--brand` retuned from indigo to the Odoo plum
+family (7.23:1 on `--surface`). Every console fg/bg pair contrast-checked before
+landing; tightest is `--fg-subtle` on `--canvas` at 4.78:1.
+
+**New primitives** (`app/components/console/`) — `ConsoleShell`/`ConsoleNav`,
+`ControlPanel`/`Breadcrumb`/`RecordPager`/`ViewSwitcher`, `ListView`/`Pager`,
+`KanbanBoard`/`KanbanColumn`/`KanbanCard`, `FormSheet`/`SheetGroups`/`SheetField`,
+`Notebook`, `Statusbar`, `SearchBox`/`FacetChips`, `FilterMenu`, `DirtyBar`, and
+console-shaped skeletons. URL state for every list is parsed/built by
+`lib/ui/list-params.ts` (18 unit tests).
+
+**Flow fixes** — these are the substantive part; the restyle is the vehicle:
+
+- **Navigational dead ends.** Opening a job's applicants or edit form had no way
+  to reach the next job — every drill-down needed a round trip through the list.
+  Both now carry a breadcrumb (with working ancestor links) and a record pager
+  (`4 / 12`, prev/next) that preserves the board's own sort across a hop.
+- **Unbounded and silently-truncated queries.** `/company/jobs` fetched *every*
+  post the company had ever created and rendered them on one page, with no sort
+  and no paging. It now sorts in Postgres over an allow-listed key set and pages
+  20 at a time. `/jobseeker/applications` capped at 50 with nothing on screen
+  admitting rows existed past it — the cap is now a shared constant used by both
+  the page and `/api/v1/applications`, and the UI states "50 of 137" when it
+  bites. Same for the talent directory (60) and the jobs kanban (200).
+- **"Post a job" was a nav item, not an action.** It sat in the section menu,
+  which is what forced pill-nav's longest-prefix hack so `/company/jobs/new`
+  wouldn't light "Jobs". It is now a `New` button on the list it creates into.
+- **Filters you could not read or clear.** The talent directory expressed its
+  query as two rows of five toggle pills; the applicants board hid sort and
+  "show closed" inside the board body. Both are now control-panel menus plus
+  removable facet chips with a "Clear all".
+- **Advancing an applicant took three interactions.** A `<select>` of all eight
+  statuses in every card, to express "move forward by one". Now one click, with a
+  dropdown for skips and rejection (still confirm-gated — it emails, with no undo).
+- **Forms were multi-screen single columns with no save in reach and no dirty
+  signal.** The job, company-settings forms became sheets: two columns of
+  label:value rows, long-form blocks behind notebook tabs, and a sticky
+  `DirtyBar` with discard and a `beforeunload` guard. These forms already
+  persisted drafts to `localStorage` — silently, which is worse than not
+  persisting, since the user had no idea there was pending work.
+- **The publish checkbox became the statusbar.** "Published (uncheck to move to
+  draft)" is now the stage pipeline; only Draft/Published are clickable because
+  `publish` is a boolean the action maps to exactly those two states, and any
+  other persisted status renders as a read-only stage rather than implying the
+  form can set it.
+- **Kanban columns said only how many.** They now carry an aggregate (avg match)
+  and a progress bar segmented by match strength, so "9 shortlisted" also tells
+  you whether they are any good.
+
+**Removed** — `PillNav`, `JobseekerPillNav`, `ShellSkeleton`, `SkeletonPillNav`,
+and the applicants board's `useSearchParams()` dependency (its state is read on
+the server now, so the inline `<Suspense>` that existed only to satisfy it went
+too). Console pages no longer render the editorial footer, hidden via `:has()`
+rather than a route check — the root layout can't read the pathname without
+collapsing every route's PPR shell.
+
+**Gotcha worth remembering** — lucide icons cannot be passed from a server
+layout to `ConsoleNav`: a component is a function, and that fails the build with
+"Functions cannot be passed directly to Client Components". Icons are string
+names into a local map, matching what `lib/ui/commands.ts` already did for the
+command palette. It only surfaced on `/admin`, which prerenders further than the
+dynamic `/company/*` routes.
+
+Verification: typecheck clean, lint 0 errors (7 pre-existing warnings), 265 unit
+tests + 18 new `list-params` tests green, production build 58/58 pages with every
+console route still partial-prerendering (`◐`). New e2e guard:
+`tests/e2e/console-design.spec.ts`.
+
 ## 2026-07-31 — Phase 4 audit: remaining items closed out
 
 Fixed every item the flow-completeness audit below had left tracked in

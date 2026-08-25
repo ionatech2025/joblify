@@ -2,7 +2,7 @@ import { requireRole } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { ProfileForm } from './profile-form';
 import { BioCoach } from './bio-coach';
-import { PageHeader } from '@/app/components/ui/ambient';
+import { Breadcrumb, ControlPanel } from '@/app/components/console/control-panel';
 
 export const metadata = { title: 'My profile' };
 
@@ -18,12 +18,11 @@ export default async function JobseekerProfilePage() {
 
   return (
     <main>
-      <PageHeader
-        title="My profile"
-        subtitle="These fields show up to recruiters when you apply. Keep your headline and skills sharp."
-        width="max-w-3xl"
-      />
-      <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
+      <ControlPanel breadcrumb={<Breadcrumb items={[{ label: 'Profile' }]} />} />
+      <div className="mx-auto w-full max-w-5xl px-3 py-3 sm:px-4">
+        <p className="text-fg-muted mb-2 text-[13px]">
+          These fields show up to recruiters when you apply. Keep your headline and skills current.
+        </p>
         <ProfileForm
           allSkills={allSkills}
           initial={{

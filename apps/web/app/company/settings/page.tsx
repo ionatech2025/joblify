@@ -2,7 +2,8 @@ import { redirect } from 'next/navigation';
 import { requireRole } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { CompanySettingsForm } from './company-settings-form';
-import { PageHeader } from '@/app/components/ui/ambient';
+import { ConsoleWidth } from '@/app/components/console/shell';
+import { Breadcrumb, ControlPanel } from '@/app/components/console/control-panel';
 
 export const metadata = { title: 'Company settings' };
 
@@ -13,12 +14,8 @@ export default async function CompanySettingsPage() {
 
   return (
     <main>
-      <PageHeader
-        title="Company settings"
-        subtitle="This is what jobseekers see on your company page and job posts."
-        width="max-w-2xl"
-      />
-      <div className="mx-auto max-w-2xl px-4 py-8 sm:px-6">
+      <ControlPanel breadcrumb={<Breadcrumb items={[{ label: 'Settings' }]} />} />
+      <ConsoleWidth className="max-w-5xl py-3">
         <CompanySettingsForm
           userId={user.id}
           logoUrl={profile.logoUrl ?? null}
@@ -31,7 +28,7 @@ export default async function CompanySettingsPage() {
             linkedin: profile.linkedin ?? '',
           }}
         />
-      </div>
+      </ConsoleWidth>
     </main>
   );
 }

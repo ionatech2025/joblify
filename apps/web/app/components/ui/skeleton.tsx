@@ -68,14 +68,3 @@ export function SkeletonList({ count = 3, className }: { count?: number; classNa
     </div>
   );
 }
-
-/** Pill-nav placeholder — the sub-nav strip shared by both dashboard shells. */
-export function SkeletonPillNav({ count = 5, className }: { count?: number; className?: string }) {
-  return (
-    <div className={cn('flex flex-wrap gap-2', className)}>
-      {Array.from({ length: count }, (_, i) => (
-        <Skeleton key={i} className="h-8 w-24" />
-      ))}
-    </div>
-  );
-}

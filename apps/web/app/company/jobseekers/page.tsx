@@ -1,12 +1,26 @@
 import Link from 'next/link';
 import { requireRole } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { Users } from 'lucide-react';
-import { PageHeader } from '@/app/components/ui/ambient';
+import { Filter, Users } from 'lucide-react';
 import { EmptyState } from '@/app/components/ui/empty-state';
 import { Badge } from '@/app/components/ui/badge';
+import { buttonClasses } from '@/app/components/ui/button';
+import { ConsoleWidth } from '@/app/components/console/shell';
+import { Breadcrumb, ControlPanel } from '@/app/components/console/control-panel';
+import { FacetChips, type Facet } from '@/app/components/console/search-view';
+import { FilterMenu } from '@/app/components/console/filter-menu';
+import { ListView, type ListColumn } from '@/app/components/console/list-view';
+import { makeHref } from '@/lib/ui/list-params';
 import { ShareJobForm } from './share-job-form';
 import { InviteButtons } from './invite-buttons';
+
+const PATH = '/company/jobseekers';
+const TYPE_LABEL = { EMPLOYABLE: 'Employable', VIRTUAL_INTERN: 'Virtual intern' } as const;
+
+// The directory is a browse surface, not a search index — it shows the most
+// recently active profiles rather than paging the whole seeker table. Stated in
+// the UI when it bites, rather than truncating silently.
+const DIRECTORY_CAP = 60;
 
 export const metadata = { title: 'Job seekers' };
 
@@ -46,43 +60,140 @@ export default async function CompanyJobseekersPage({
     }),
   ]);
 
-  const tab = (href: string, label: string, active: boolean) => (
-    <Link
-      href={href}
-      // Not "page" — these toggle a filtered view of the same page rather
-      // than navigating to a different one, so the generic "true" token is
-      // the correct aria-current value here (mirrors pill-nav.tsx's pattern
-      // without misusing "page" for what's actually a filter selection).
-      aria-current={active ? 'true' : undefined}
-      className={`rounded-full px-3.5 py-1.5 text-sm font-medium no-underline transition-colors ${
-        active
-          ? 'bg-ink text-ink-fg hover:bg-ink-hover'
-          : 'bg-surface-sunken text-fg-muted hover:bg-border'
-      }`}
-    >
-      {label}
-    </Link>
-  );
+  const href = makeHref(PATH, params);
 
-  const qs = (f: string, t?: string) => `/company/jobseekers?filter=${f}${t ? `&type=${t}` : ''}`;
+  // Every filter that was a pill-tab row is now a control-panel menu plus a
+  // removable facet: the previous UI expressed the query as two rows of five
+  // toggles whose combined state you had to read off the buttons themselves,
+  // and offered no way to clear it.
+  const facets: Facet[] = [
+    ...(filter === 'subscribed'
+      ? [{ group: 'Audience', label: 'Subscribed to you', removeHref: href({ filter: null }) }]
+      : []),
+    ...(type ? [{ group: 'Type', label: TYPE_LABEL[type], removeHref: href({ type: null }) }] : []),
+  ];
+
+  const columns: ListColumn<SeekerRow>[] = [
+    {
+      key: 'name',
+      header: 'Name',
+      cell: (s) => (
+        <div className="min-w-0">
+          <span className="text-fg font-medium">{s.name}</span>
+          {s.subscribed && (
+            <Badge tone="brand" className="ml-2">
+              Subscriber
+            </Badge>
+          )}
+          {s.headline && (
+            <p className="text-fg-subtle mt-0.5 truncate text-[12px]" title={s.headline}>
+              {s.headline}
+            </p>
+          )}
+        </div>
+      ),
+      aggregate: (rows) => `${rows.length} profile${rows.length === 1 ? '' : 's'}`,
+    },
+    {
+      key: 'type',
+      header: 'Type',
+      cell: (s) => <Badge tone="neutral">{TYPE_LABEL[s.profileType]}</Badge>,
+    },
+    {
+      key: 'location',
+      header: 'Location',
+      hideBelow: 'sm',
+      cell: (s) => <span className="text-fg-muted">{s.location ?? '—'}</span>,
+    },
+    {
+      key: 'skills',
+      header: 'Skills',
+      hideBelow: 'lg',
+      cell: (s) =>
+        s.skills.length === 0 ? (
+          <span className="text-fg-subtle">—</span>
+        ) : (
+          <span className="text-fg-muted" title={s.skills.join(', ')}>
+            {s.skills.slice(0, 4).join(', ')}
+            {s.skills.length > 4 ? ` +${s.skills.length - 4}` : ''}
+          </span>
+        ),
+    },
+    {
+      key: 'actions',
+      header: 'Actions',
+      align: 'end',
+      cell: (s) => (
+        <div className="flex flex-wrap items-center justify-end gap-1.5">
+          {publishedJobs.length > 0 && (
+            <ShareJobForm jobSeekerUserId={s.userId} publishedJobs={publishedJobs} />
+          )}
+          <InviteButtons
+            jobSeekerUserId={s.userId}
+            profileType={s.profileType}
+            subscribed={s.subscribed}
+          />
+        </div>
+      ),
+    },
+  ];
 
   return (
     <main>
-      <PageHeader
-        title="Job seekers"
-        subtitle="Browse public profiles and your subscribers. Share a job post or bring virtual interns into your chat area."
-        width="max-w-5xl"
+      <ControlPanel
+        breadcrumb={<Breadcrumb items={[{ label: 'Talent' }]} />}
+        search={
+          <>
+            <FilterMenu
+              label="Audience"
+              icon={Users}
+              activeCount={filter === 'subscribed' ? 1 : 0}
+              groups={[
+                {
+                  items: [
+                    { label: 'On site', href: href({ filter: null }), active: filter === 'all' },
+                    {
+                      label: 'Subscribed to you',
+                      href: href({ filter: 'subscribed' }),
+                      active: filter === 'subscribed',
+                    },
+                  ],
+                },
+              ]}
+            />
+            <FilterMenu
+              label="Type"
+              icon={Filter}
+              activeCount={type ? 1 : 0}
+              groups={[
+                {
+                  items: [
+                    { label: 'All types', href: href({ type: null }), active: !type },
+                    {
+                      label: 'Employable',
+                      href: href({ type: 'EMPLOYABLE' }),
+                      active: type === 'EMPLOYABLE',
+                    },
+                    {
+                      label: 'Virtual interns',
+                      href: href({ type: 'VIRTUAL_INTERN' }),
+                      active: type === 'VIRTUAL_INTERN',
+                    },
+                  ],
+                },
+              ]}
+            />
+            <FacetChips facets={facets} clearHref={href({ filter: null, type: null })} />
+          </>
+        }
       />
-      <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
-        <div className="mb-6 flex flex-wrap items-center gap-2">
-          {tab(qs('all', type), 'On site', filter === 'all')}
-          {tab(qs('subscribed', type), 'Subscribed to you', filter === 'subscribed')}
-          <span className="mx-2 h-4 w-px bg-surface-sunken" aria-hidden />
-          {tab(qs(filter), 'All types', !type)}
-          {tab(qs(filter, 'EMPLOYABLE'), 'Employable', type === 'EMPLOYABLE')}
-          {tab(qs(filter, 'VIRTUAL_INTERN'), 'Virtual interns', type === 'VIRTUAL_INTERN')}
-        </div>
-
+      <ConsoleWidth className="py-3">
+        {seekers.length === DIRECTORY_CAP && (
+          <p className="text-fg-subtle mb-2 text-[12px]">
+            Showing the {DIRECTORY_CAP} most recently active profiles. Narrow with the filters above
+            to see different ones.
+          </p>
+        )}
         {seekers.length === 0 ? (
           <EmptyState
             icon={<Users />}
@@ -92,48 +203,23 @@ export default async function CompanyJobseekersPage({
                 ? 'Seekers who subscribe to your company appear here, and you can invite them to roles directly.'
                 : 'Try a different profile type, or check back as more seekers make their profiles public.'
             }
+            action={
+              facets.length > 0 ? (
+                <Link href={PATH} className={`${buttonClasses('secondary')} no-underline`}>
+                  Clear filters
+                </Link>
+              ) : undefined
+            }
           />
         ) : (
-          <ul className="grid list-none grid-cols-1 gap-3 p-0">
-            {seekers.map((s) => (
-              <li
-                key={s.userId}
-                className="rounded-card border border-border bg-surface p-4 shadow-soft"
-              >
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <p className="m-0 font-semibold text-fg">
-                      {s.name}
-                      <Badge tone="neutral" className="ml-2">
-                        {s.profileType === 'VIRTUAL_INTERN' ? 'Virtual intern' : 'Employable'}
-                      </Badge>
-                      {s.subscribed && (
-                        <Badge tone="brand" className="ml-2">
-                          Subscriber
-                        </Badge>
-                      )}
-                    </p>
-                    {s.headline && <p className="mt-1 mb-0 text-sm text-fg-muted">{s.headline}</p>}
-                    <p className="mt-1 mb-0 text-xs text-fg-subtle">
-                      {[s.location, s.skills.slice(0, 6).join(', ')].filter(Boolean).join(' · ')}
-                    </p>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    {publishedJobs.length > 0 && (
-                      <ShareJobForm jobSeekerUserId={s.userId} publishedJobs={publishedJobs} />
-                    )}
-                    <InviteButtons
-                      jobSeekerUserId={s.userId}
-                      profileType={s.profileType}
-                      subscribed={s.subscribed}
-                    />
-                  </div>
-                </div>
-              </li>
-            ))}
-          </ul>
+          <ListView
+            caption="Job seeker directory"
+            rows={seekers}
+            rowKey={(s) => s.userId}
+            columns={columns}
+          />
         )}
-      </div>
+      </ConsoleWidth>
     </main>
   );
 }
@@ -150,7 +236,7 @@ async function getPublicSeekers(
         user: { deletedAt: null, userType: 'JOB_SEEKER' },
       },
       orderBy: { updatedAt: 'desc' },
-      take: 60,
+      take: DIRECTORY_CAP,
       include: {
         user: { select: { id: true, firstName: true, lastName: true } },
         skills: { include: { skill: { select: { label: true } } } },
@@ -181,7 +267,7 @@ async function getSubscribedSeekers(
   const subscriptions = await db.companySubscription.findMany({
     where: { companyId: companyUserId, ...(type ? { profileType: type } : {}) },
     orderBy: { createdAt: 'desc' },
-    take: 60,
+    take: DIRECTORY_CAP,
     include: {
       jobSeeker: {
         select: {

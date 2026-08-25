@@ -48,3 +48,18 @@ export const queryKeys = {
   jobMatchScore: (userId: string, jobId: string) => ['match-score', userId, jobId] as const,
   searchJobs: (filters: unknown) => ['search', 'jobs', filters] as const,
 } as const;
+
+/**
+ * How many applications either side of `/jobseeker/applications` will load.
+ * The server component that seeds the list and `/api/v1/applications` that
+ * refetches it must agree, or a background refetch silently changes how much of
+ * the history is on screen.
+ *
+ * Lives here, not in `query/applications.ts`, because that module is
+ * `'use client'` — a route handler importing a value from it would receive a
+ * client-reference proxy rather than the number.
+ *
+ * The cap is *stated* in the UI when it bites (see `applications-list.tsx`); it
+ * used to truncate at 50 with nothing on screen admitting more rows existed.
+ */
+export const APPLICATIONS_PAGE_CAP = 50;
