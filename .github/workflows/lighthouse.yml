@@ -101,3 +101,11 @@ jobs:
         run: bunx playwright test tests/e2e/a11y.spec.ts --project=chromium
         env:
           PLAYWRIGHT_BASE_URL: ${{ github.event.deployment_status.target_url }}
+          # Without this, playwright.config.ts omits the
+          # `x-vercel-protection-bypass` header and every scan measures
+          # Vercel's Deployment Protection (SSO) page instead of the app — no
+          # #main-content, no `dark` class, and axe's include() aborts with
+          # "No elements found for include". That is why this gate had never
+          # passed on any branch. The readiness curl above already sends the
+          # secret, which masked it. Same reason the lhci job sets it.
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
