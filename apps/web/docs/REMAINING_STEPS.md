@@ -237,10 +237,24 @@ missed. See [DESIGN.md](./DESIGN.md#console-primitives).
 | Clickable kanban progress bars    | Odoo's segments filter the column. Presentational here; needs URL plumbing per board.                                                                            |
 | Console surfaces in the axe gate  | `a11y.spec.ts` already lists them, but they only run where Clerk creds exist. Unverified locally — see the note below.                                           |
 
-**`tests/e2e/console-design.spec.ts` has not been run.** It is written (9 tests) but
-the Clerk `setup` project cannot complete in the local sandbox — `Clerk.loaded` never
-becomes true, and `setup` is a hard `dependencies` entry, so one failure means every
-spec reports "did not run". Needs a CI or preview-deploy run to be trusted. The
+**`tests/e2e/console-design.spec.ts` has still never executed.** It is written (9
+tests) and now wired into the `e2e` job in `.github/workflows/lighthouse.yml`, but that
+job — and the 20 authenticated scans in the `axe` job — self-skip until these repo
+secrets exist:
+
+| Secret                              | Needed by                                                                                                                                    |
+| ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `E2E_TEST_PASSWORD`                 | `auth.setup.ts` password sign-in                                                                                                             |
+| `E2E_TEST_EMAIL_JOBSEEKER`          | jobseeker fixture account (must be a `+clerk_test` address)                                                                                  |
+| `E2E_TEST_EMAIL_COMPANY`            | company fixture account (same)                                                                                                               |
+| `CLERK_SECRET_KEY`                  | `clerkSetup()` minting the dev-instance testing token                                                                                        |
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | same                                                                                                                                         |
+| `E2E_DATABASE_URL`(`_UNPOOLED`)     | `fixtures.ts` seeding cross-account rows — **must be the database the preview deployment reads**, or the fixtures aren't the rows under test |
+| `BLOB_READ_WRITE_TOKEN`             | optional; only the GDPR-export test needs it                                                                                                 |
+
+Locally the `setup` project cannot complete at all — `Clerk.loaded` never becomes true,
+and `setup` is a hard `dependencies` entry, so one failure means every spec reports "did
+not run". The
 unauthenticated `design-regression.spec.ts` was run serially against a local prod build:
 10 pass, 3 fail on the pre-existing PPR duplicate-DOM pattern (`.first()` resolving to
 the copy inside React's `<div hidden>` streaming placeholder) in spec code this pass did

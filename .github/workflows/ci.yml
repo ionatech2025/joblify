@@ -67,8 +67,13 @@ jobs:
   #   - Lighthouse CI: the accessibility category asserts `error` at 0.90
   #     (ratchet to 0.95 as the remaining polish items land); other categories
   #     stay warn until their own gaps close.
-  # Authenticated surfaces are still unmeasured — tracked in REMAINING_STEPS.md
-  # (Clerk E2E fixture follow-up).
+  # Authenticated surfaces are wired in the same workflow and gated on secrets:
+  #   - the `axe` job's a11y scans for /company/* and /jobseeker/*
+  #   - the `e2e` job: console-design + authenticated + workflows specs
+  # Both self-skip (green, with a ::warning:: saying so) until E2E_TEST_PASSWORD,
+  # E2E_TEST_EMAIL_JOBSEEKER, E2E_TEST_EMAIL_COMPANY, CLERK_SECRET_KEY,
+  # NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY and E2E_DATABASE_URL(_UNPOOLED) exist as
+  # repo secrets. Until then they measure nothing — see REMAINING_STEPS.md.
 
   gitleaks:
     name: gitleaks

@@ -69,10 +69,13 @@ jobs:
       run:
         working-directory: apps/web
     env:
-      # Placeholders so `bun install`'s prisma-generate postinstall runs; the
-      # spec itself only talks to the remote preview URL.
-      DATABASE_URL: 'postgresql://user:pass@localhost:5432/joblify?schema=public'
-      DATABASE_URL_UNPOOLED: 'postgresql://user:pass@localhost:5432/joblify?schema=public'
+      # Real when the secret exists, placeholder otherwise. `bun install`'s
+      # prisma-generate postinstall needs *a* value; tests/e2e/fixtures.ts
+      # (driven by auth.setup.ts) needs a real one, and it must point at the
+      # database the preview deployment itself uses or the fixtures it seeds
+      # won't be the rows the preview serves.
+      DATABASE_URL: ${{ secrets.E2E_DATABASE_URL || 'postgresql://user:pass@localhost:5432/joblify?schema=public' }}
+      DATABASE_URL_UNPOOLED: ${{ secrets.E2E_DATABASE_URL_UNPOOLED || 'postgresql://user:pass@localhost:5432/joblify?schema=public' }}
     steps:
       - uses: actions/checkout@v4
       - name: Wait for the preview URL to actually be routable
@@ -97,10 +100,22 @@ jobs:
         run: bun install --frozen-lockfile
       - name: Install Playwright Chromium
         run: bunx playwright install --with-deps chromium
-      - name: Axe scan (public pages; critical/serious violations block)
+      - name: Axe scan (public + authenticated pages; critical/serious violations block)
         run: bunx playwright test tests/e2e/a11y.spec.ts --project=chromium
         env:
           PLAYWRIGHT_BASE_URL: ${{ github.event.deployment_status.target_url }}
+          # a11y.spec.ts already defines scans for /company/* and /jobseeker/*;
+          # they self-skip without these, which is why 20 of its 30 tests never
+          # ran. `--project=chromium` is deliberate: playwright.config.ts only
+          # declares the `setup` project when the creds are present, so naming
+          # it explicitly would hard-fail whenever they aren't. As a dependency
+          # of chromium it runs automatically when it exists.
+          E2E_TEST_PASSWORD: ${{ secrets.E2E_TEST_PASSWORD }}
+          E2E_TEST_EMAIL_JOBSEEKER: ${{ secrets.E2E_TEST_EMAIL_JOBSEEKER }}
+          E2E_TEST_EMAIL_COMPANY: ${{ secrets.E2E_TEST_EMAIL_COMPANY }}
+          # clerkSetup() mints the dev-instance testing token from these.
+          CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
           # Without this, playwright.config.ts omits the
           # `x-vercel-protection-bypass` header and every scan measures
           # Vercel's Deployment Protection (SSO) page instead of the app — no
@@ -109,3 +124,83 @@ jobs:
           # passed on any branch. The readiness curl above already sends the
           # secret, which masked it. Same reason the lhci job sets it.
           VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+
+  e2e:
+    name: E2E — console + authenticated flows (preview)
+    if: >
+      github.event.deployment_status.state == 'success' &&
+      github.event.deployment_status.environment != 'Production'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: apps/web
+    env:
+      # auth.setup.ts seeds cross-account fixtures through Prisma
+      # (tests/e2e/fixtures.ts), so this needs to be the database the preview
+      # deployment itself reads. The placeholder only keeps `bun install`'s
+      # prisma-generate postinstall happy while the secret is unset.
+      DATABASE_URL: ${{ secrets.E2E_DATABASE_URL || 'postgresql://user:pass@localhost:5432/joblify?schema=public' }}
+      DATABASE_URL_UNPOOLED: ${{ secrets.E2E_DATABASE_URL_UNPOOLED || 'postgresql://user:pass@localhost:5432/joblify?schema=public' }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Wait for the preview URL to actually be routable
+        run: |
+          url="${{ github.event.deployment_status.target_url }}"
+          for i in $(seq 1 15); do
+            body=$(curl -sS -H "x-vercel-protection-bypass: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}" "$url")
+            if echo "$body" | grep -q "Joblify" && ! echo "$body" | grep -q "data-not-found"; then
+              echo "Preview is live (attempt $i)."
+              exit 0
+            fi
+            echo "Attempt $i: preview not routable yet, retrying in 4s…"
+            sleep 4
+          done
+          echo "::error::Preview URL never became routable after 15 attempts."
+          exit 1
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - name: Install
+        run: bun install --frozen-lockfile
+      - name: Install Playwright Chromium
+        run: bunx playwright install --with-deps chromium
+      - name: Report whether the authenticated suites can actually run
+        # Without the Clerk creds every spec here self-skips and the job goes
+        # green having measured nothing. That is a safe default, but a silent
+        # one — say so in the log rather than letting a skipped run read as
+        # coverage.
+        run: |
+          if [ -z "${{ secrets.E2E_TEST_PASSWORD }}" ]; then
+            echo "::warning::E2E_TEST_PASSWORD is unset — every authenticated spec will SKIP. Add E2E_TEST_PASSWORD, E2E_TEST_EMAIL_JOBSEEKER, E2E_TEST_EMAIL_COMPANY, CLERK_SECRET_KEY, NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY and E2E_DATABASE_URL(_UNPOOLED) to give this job something to do."
+          else
+            echo "Clerk creds present — running the authenticated suites."
+          fi
+      - name: Console design + authenticated flows
+        # console-design.spec.ts locks the Odoo register (the .o-console scope
+        # actually flattening the radii, the same Button landing under 6px here
+        # while marketing stays >= 24px, the editorial footer staying hidden);
+        # authenticated.spec.ts and workflows.spec.ts cover the flows through it.
+        run: |
+          bunx playwright test \
+            tests/e2e/console-design.spec.ts \
+            tests/e2e/authenticated.spec.ts \
+            tests/e2e/workflows.spec.ts \
+            --project=chromium
+        env:
+          PLAYWRIGHT_BASE_URL: ${{ github.event.deployment_status.target_url }}
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+          E2E_TEST_PASSWORD: ${{ secrets.E2E_TEST_PASSWORD }}
+          E2E_TEST_EMAIL_JOBSEEKER: ${{ secrets.E2E_TEST_EMAIL_JOBSEEKER }}
+          E2E_TEST_EMAIL_COMPANY: ${{ secrets.E2E_TEST_EMAIL_COMPANY }}
+          CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+          BLOB_READ_WRITE_TOKEN: ${{ secrets.BLOB_READ_WRITE_TOKEN }}
+      - name: Upload the report when something fails
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: apps/web/playwright-report/
+          retention-days: 7
