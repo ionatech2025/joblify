@@ -8,10 +8,10 @@ export const metadata = { title: 'Set up your company' };
 
 export default async function EmployerSetupPage() {
   const user = await requireUser();
-  const existing = await db.companyProfile.findUnique({
-    where: { userId: user.id },
-    select: { id: true },
-  });
+  const [existing, jobSeekerProfile] = await Promise.all([
+    db.companyProfile.findUnique({ where: { userId: user.id }, select: { id: true } }),
+    db.jobSeekerProfile.findUnique({ where: { userId: user.id }, select: { id: true } }),
+  ]);
   if (existing) redirect('/company/jobs');
 
   return (
@@ -21,7 +21,7 @@ export default async function EmployerSetupPage() {
         <p className="text-fg-muted mb-2 text-[13px]">
           Create your company profile to start posting jobs and reviewing applicants.
         </p>
-        <EmployerSetupForm />
+        <EmployerSetupForm hasJobSeekerIdentity={Boolean(jobSeekerProfile)} />
       </div>
     </main>
   );

@@ -30,7 +30,7 @@ const initialValues: CompanyProfileInput = {
   linkedin: '',
 };
 
-export function EmployerSetupForm() {
+export function EmployerSetupForm({ hasJobSeekerIdentity }: { hasJobSeekerIdentity: boolean }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -62,6 +62,21 @@ export function EmployerSetupForm() {
   }, [watch, draftStore]);
 
   function onSubmit(values: CompanyProfileInput) {
+    // createCompanyProfile flips the account's userType to COMPANY (see
+    // app/actions/company.ts) — a one-way switch with no undo path. A
+    // jobseeker who already has a profile could reach this page via the
+    // header's always-visible "Post a job" link or the command palette
+    // without meaning to give up their jobseeker identity, so make that cost
+    // explicit before the irreversible submit, matching this app's existing
+    // confirm-gate convention for other one-way actions.
+    if (
+      hasJobSeekerIdentity &&
+      !window.confirm(
+        'Creating a company switches your account to an employer — you will lose access to your jobseeker profile, applications, and saved jobs. Continue?',
+      )
+    ) {
+      return;
+    }
     setError(null);
     start(async () => {
       try {
@@ -81,6 +96,14 @@ export function EmployerSetupForm() {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="mt-6 flex flex-col gap-4">
+      {hasJobSeekerIdentity && (
+        <p className="text-warn bg-warn-subtle rounded-card border-warn/25 m-0 border px-4 py-3 text-sm">
+          You already have a jobseeker profile. Creating a company switches your account to an
+          employer — you&apos;ll lose access to your jobseeker profile, applications, and saved
+          jobs.
+        </p>
+      )}
+
       <Field label="Company name" error={errors.companyName?.message}>
         <Input {...register('companyName')} placeholder="Acme Inc." />
       </Field>
