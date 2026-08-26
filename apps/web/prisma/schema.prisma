@@ -192,7 +192,11 @@ enum AuditAction {
 model User {
   id                     String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   clerkUserId            String    @unique
-  email                  String    @unique @db.Citext
+  /// Unique among active rows only — enforced by a partial unique index
+  /// (users_email_active_unique, see the users_email_partial_unique
+  /// migration), not by @unique here, so Prisma can't express the WHERE.
+  /// A soft-deleted row's email must not block a new signup from reusing it.
+  email                  String    @db.Citext
   userType               UserType  @default(JOB_SEEKER)
   plan                   PlanTier  @default(PRO)
   firstName              String?
@@ -237,6 +241,7 @@ model User {
 
   @@index([userType, deletedAt])
   @@index([deletedAt])
+  @@index([email])
   @@map("users")
 }
 

@@ -6,8 +6,7 @@ Clerk is the auth provider. Postgres mirrors users. Every protected route is gat
 
 - Native Vercel Marketplace integration auto-injects keys + webhooks.
 - Email/password + Google + LinkedIn OAuth + TOTP MFA + passkeys out of the box.
-- Organizations API maps 1:1 to companies; org roles drive RBAC.
-- Stepped-up authentication for sensitive operations (e.g. require MFA before status change).
+- Organizations API was the original plan for company RBAC; V1 shipped self-serve `userType` instead (see Roles below) — nothing here provisions an Org today.
 - SOC 2 Type II, SAML-ready, GDPR DPA available.
 
 We deliberately did not roll our own. The audit burden is too high for a 1-2 person team.
@@ -34,7 +33,7 @@ Three layers, by intent:
 
 ### 1. Middleware (`middleware.ts`)
 
-Coarse gate — redirects unauthenticated traffic away from protected paths before any layout renders.
+Coarse gate — redirects unauthenticated traffic away from protected paths before any layout renders. Signed-in-or-not only; it doesn't check role.
 
 ```ts
 const isProtected = createRouteMatcher([
@@ -42,11 +41,13 @@ const isProtected = createRouteMatcher([
   '/jobseeker(.*)',
   '/company(.*)',
   '/account(.*)',
+  '/employer-setup(.*)',
+  '/onboarding(.*)',
+  '/admin(.*)',
 ]);
 
 export default clerkMiddleware(async (auth, req) => {
   if (isProtected(req)) await auth.protect();
-  if (isCompanyOnly(req)) await auth.protect((c) => c.org_role === 'org:company');
 });
 ```
 
@@ -84,39 +85,30 @@ Use these in Server Components, Server Actions, Route Handlers. Same surface, sa
 
 ## Roles
 
-| `userType`   | Granted                                      | Maps to                                 |
-| ------------ | -------------------------------------------- | --------------------------------------- |
-| `JOB_SEEKER` | Default on signup                            | Personal dashboards, apply flow         |
-| `COMPANY`    | When user joins/creates a Clerk Organization | Company dashboards, post-job            |
-| `ADMIN`      | Manually set in DB                           | Future admin tooling (deferred to V1.5) |
+| `userType`   | Granted                                     | Maps to                                        |
+| ------------ | ------------------------------------------- | ---------------------------------------------- |
+| `JOB_SEEKER` | Default on signup                           | Personal dashboards, apply flow                |
+| `COMPANY`    | Self-serve, on completing `/employer-setup` | Company dashboards, post-job                   |
+| `ADMIN`      | Manually set in DB                          | `/admin` — verification queue, platform counts |
 
-Clerk Organizations represent companies. Each Org has roles `org:company` (members) and `org:admin` (org owner — distinct from our `User.userType: ADMIN`). The webhook handler flips `userType: COMPANY` when a user joins an org.
+`userType` lives entirely in Postgres — role is _not_ driven by Clerk Organizations (nothing in this app provisions one). `requireRole('COMPANY')` / `requireRole('ADMIN')` in each route-group layout and Server Action is what actually enforces it; middleware only checks "signed in."
 
 ## Adding a company
 
-V1 flow (manual, MVP):
+Self-serve (current):
 
-1. User signs up via Clerk as a jobseeker (default).
-2. In the Clerk dashboard, manually create an Org and add the user.
-3. Webhook fires `organizationMembership.created` → handler updates `User.userType = 'COMPANY'`.
-4. User refreshes → middleware now grants `company` route access.
+1. User signs up via Clerk as a jobseeker (default) and lands on `/onboarding`.
+2. Picks "I'm hiring" → `/employer-setup`, fills out the company form.
+3. `createCompanyProfile` (`app/actions/company.ts`) writes the `CompanyProfile` row and flips `User.userType = 'COMPANY'` in the same transaction — no webhook round-trip, no Clerk Organization involved.
+4. `employer-setup-form.tsx` confirm-gates this when the account already has a `JobSeekerProfile`, since the flip is a one-way switch away from the jobseeker workspace.
 
-V1.5: build a `/onboard/company` flow that creates the Org via `clerkClient().organizations.createOrganization()` and bootstraps the `CompanyProfile`.
+The webhook's `organizationMembership.created` case (also sets `userType: COMPANY`) predates this flow and is now a dormant fallback — it only fires if something starts provisioning Clerk Organizations again, which nothing here does today.
 
 ## MFA
 
-Enforced for `org:company` and `org:admin` via Clerk's authentication strength policy. Step-up flow (require fresh MFA inside the last 5 min for sensitive ops) is configured per-action via:
+Not app-enforced today — this section previously described an `org:company`/`org:admin` step-up policy that depended on Clerk Organizations, which (per the Roles section above) nothing in this app provisions, so it was never actually reachable. What's real: Clerk's account-level TOTP/passkey MFA (users can turn it on for their own sign-in if enabled in the Clerk dashboard), same as the "Why Clerk" bullets above.
 
-```ts
-import { auth } from '@clerk/nextjs/server';
-
-const { has } = await auth();
-if (!has({ permission: 'org:admin:billing' })) {
-  return new Response('reauth required', { status: 403 });
-}
-```
-
-Used today on the `org:company` gate only; expand as new sensitive ops appear (payouts, bulk applicant export, account delete).
+There's no per-action step-up (require fresh MFA inside the last N minutes) on any sensitive operation yet — payouts, bulk applicant export, account delete. If one is needed, `auth()`'s `has()` check works against Clerk permissions attached to a real role (`User.userType`-backed, not `org:*`, since we don't have Organizations) — wire it per-action when a concrete sensitive op needs it, don't reintroduce the org-role assumption.
 
 ## OAuth providers
 

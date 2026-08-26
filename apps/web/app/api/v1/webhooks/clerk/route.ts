@@ -42,7 +42,14 @@ export async function POST(req: Request) {
     switch (evt.type) {
       case 'user.created':
       case 'user.updated': {
-        const email = evt.data.email_addresses?.[0]?.email_address;
+        // Array order isn't guaranteed to put the primary address first (e.g.
+        // once an account links a second address/provider — a Google sign-up
+        // adding a work email, say) — resolve it by id like lib/auth.ts's
+        // provisionFromClerk does via primaryEmailAddress, or every later
+        // user.updated mirrors the wrong email into Postgres.
+        const email =
+          evt.data.email_addresses?.find((e) => e.id === evt.data.primary_email_address_id)
+            ?.email_address ?? evt.data.email_addresses?.[0]?.email_address;
         if (!email) {
           logger.warn({ clerkUserId: evt.data.id }, 'clerk user has no primary email');
           break;
