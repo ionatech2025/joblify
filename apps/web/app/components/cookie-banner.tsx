@@ -41,7 +41,10 @@ export function CookieBanner() {
 
   return (
     <aside
-      role="dialog"
+      // No role="dialog" here: <aside>'s implicit role is `complementary`, and
+      // ARIA forbids overriding it with `dialog` (aria-allowed-role) — this
+      // banner doesn't trap focus or block the page like a real dialog does,
+      // so `complementary` is also the more accurate role.
       aria-label="Cookie preferences"
       className="rounded-card bg-band text-band-fg shadow-raised fixed inset-x-4 bottom-4 z-[1000] mx-auto flex max-w-3xl flex-col gap-3 px-5 py-4"
     >

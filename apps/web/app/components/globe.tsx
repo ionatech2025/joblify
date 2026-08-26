@@ -48,6 +48,13 @@ export function Globe() {
     let raf = 0;
     let globe: ReturnType<typeof createGlobe> | null = null;
 
+    // Capped rather than the raw value: a hardcoded 2 renders 4x the pixels a
+    // standard (dPR 1) display needs — pure wasted per-frame GPU work on the
+    // most common desktop/external-monitor case — while still giving retina
+    // screens their usual 2x. Uncapped would also let very-high-dPR phones
+    // (3+) push the per-frame cost even higher for no visible gain here.
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+
     const motion = window.matchMedia('(prefers-reduced-motion: reduce)');
     // Guard the rebuild on the value that actually matters. The MutationObserver
     // below watches <html class>, which React also rewrites during hydration
@@ -55,6 +62,11 @@ export function Globe() {
     // record spins up a fresh WebGL context each time, exhausts the browser's
     // context limit and starves the main thread.
     let builtDark: boolean | null = null;
+    // The rAF loop keeps recomputing the globe's rotation every frame even
+    // while the tab is backgrounded, burning CPU/battery for no visible
+    // result. Skip the actual update work (but keep the loop scheduled, so it
+    // resumes instantly) whenever the tab is hidden.
+    let hidden = document.hidden;
 
     // Rebuilt (not just re-styled) on theme or motion-preference change; both
     // are baked into the instance. Doing it imperatively rather than through
@@ -69,9 +81,9 @@ export function Globe() {
 
       let phi = 0;
       globe = createGlobe(canvas, {
-        devicePixelRatio: 2,
-        width: width * 2,
-        height: width * 2,
+        devicePixelRatio: dpr,
+        width: width * dpr,
+        height: width * dpr,
         phi: 0,
         theta: 0.25,
         mapSamples: 12000,
@@ -83,11 +95,13 @@ export function Globe() {
         // Reduced motion: render one frame at a slight rotation so it still
         // reads as a globe, and never start the rAF loop. CSS can't reach a
         // canvas animation, so this is the only place it can be honoured.
-        globe.update({ phi: 0.6, width: width * 2, height: width * 2 });
+        globe.update({ phi: 0.6, width: width * dpr, height: width * dpr });
       } else {
         const tick = () => {
-          phi += 0.0035;
-          globe?.update({ phi, width: width * 2, height: width * 2 });
+          if (!hidden) {
+            phi += 0.0035;
+            globe?.update({ phi, width: width * dpr, height: width * dpr });
+          }
           raf = requestAnimationFrame(tick);
         };
         raf = requestAnimationFrame(tick);
@@ -100,9 +114,13 @@ export function Globe() {
     const onResize = () => {
       width = canvas.offsetWidth;
       // The rAF loop picks the new size up on its own; the static frame can't.
-      if (motion.matches) globe?.update({ phi: 0.6, width: width * 2, height: width * 2 });
+      if (motion.matches) globe?.update({ phi: 0.6, width: width * dpr, height: width * dpr });
     };
     window.addEventListener('resize', onResize);
+    const onVisibilityChange = () => {
+      hidden = document.hidden;
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
     width = canvas.offsetWidth;
 
     build(true);
@@ -121,6 +139,7 @@ export function Globe() {
       cancelAnimationFrame(raf);
       globe?.destroy();
       window.removeEventListener('resize', onResize);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
       motion.removeEventListener('change', onMotionChange);
       themeObserver.disconnect();
     };

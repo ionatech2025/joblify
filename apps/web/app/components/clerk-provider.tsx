@@ -90,6 +90,17 @@ export function ClerkClientProvider({ children }: { children: ReactNode }) {
   return (
     <ClerkProvider
       publishableKey={process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ?? ''}
+      // Pinned to an exact clerk-js release. Without this, the SDK resolves
+      // the CDN script URL from the major version alone (e.g. ".../clerk-js@5/
+      // ...") and the Clerk-hosted CDN 307-redirects that to the concrete
+      // latest 5.x build. Chrome's CSP enforcement refuses to follow a
+      // redirect for a script whose *original* URL matched a script-src
+      // allow-list entry, so with no pin Clerk never loads on the deployed
+      // app at all — sign-in/up and every gated page silently fail. Re-verify
+      // and re-pin (`curl -I https://<frontend-api>/npm/@clerk/clerk-js@5/
+      // dist/clerk.browser.js` and follow the `location` header) whenever
+      // @clerk/clerk-react is upgraded.
+      clerkJSVersion="5.127.2"
       signInUrl={process.env.NEXT_PUBLIC_CLERK_SIGN_IN_URL}
       signUpUrl={process.env.NEXT_PUBLIC_CLERK_SIGN_UP_URL}
       routerPush={(to: string) => router.push(to)}
