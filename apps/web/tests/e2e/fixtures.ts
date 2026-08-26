@@ -18,9 +18,12 @@ export async function ensureE2eFixtures(
   jobseekerEmail: string,
   companyEmail: string,
 ): Promise<void> {
+  // findFirst, not findUnique: email is only unique among active rows (see
+  // the users_email_partial_unique migration), so deletedAt: null pins this
+  // to the live test account rather than any stale soft-deleted row.
   const [jobseeker, company] = await Promise.all([
-    db.user.findUnique({ where: { email: jobseekerEmail }, select: { id: true } }),
-    db.user.findUnique({ where: { email: companyEmail }, select: { id: true } }),
+    db.user.findFirst({ where: { email: jobseekerEmail, deletedAt: null }, select: { id: true } }),
+    db.user.findFirst({ where: { email: companyEmail, deletedAt: null }, select: { id: true } }),
   ]);
   if (!jobseeker || !company) return; // sign-in above didn't complete; nothing to provision
 
