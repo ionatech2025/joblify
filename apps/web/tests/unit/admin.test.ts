@@ -63,7 +63,10 @@ describe('verifyCompany', () => {
 
   it('rejects an unknown company profile', async () => {
     m.profileFindUnique.mockResolvedValue(null);
-    await expect(verifyCompany(PROFILE_ID, 'VERIFIED')).rejects.toThrow('not found');
+    expect(await verifyCompany(PROFILE_ID, 'VERIFIED')).toMatchObject({
+      ok: false,
+      error: expect.stringMatching('not found'),
+    });
     expect(m.profileUpdate).not.toHaveBeenCalled();
   });
 

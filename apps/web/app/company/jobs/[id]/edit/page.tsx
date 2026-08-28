@@ -32,6 +32,10 @@ export default async function EditJobPage({
     db.jobPost.findMany({
       where: { companyId: user.id, deletedAt: null },
       orderBy: [{ publishedAt: { sort: 'desc', nulls: 'last' } }, { createdAt: 'desc' }],
+      // Ids only, but still unbounded. Past the ceiling the pager's `position`
+      // resolves to -1 and it simply doesn't render — better than a pager that
+      // silently skips jobs.
+      take: 200,
       select: { id: true },
     }),
   ]);

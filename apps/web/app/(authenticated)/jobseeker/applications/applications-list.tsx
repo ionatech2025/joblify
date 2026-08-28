@@ -19,6 +19,7 @@ import {
   CLOSED_APPLICATION_STATUSES,
 } from '@/lib/ui/status';
 import { toast } from '@/lib/stores/ui';
+import { TimeStamp } from '@/app/components/ui/timestamp';
 
 /**
  * The jobseeker's application pipeline, as a dense list rather than a stack of
@@ -123,9 +124,7 @@ export function ApplicationsList({
       header: 'Applied',
       align: 'end',
       hideBelow: 'sm',
-      cell: (a) => (
-        <span className="text-fg-muted">{new Date(a.appliedAt).toLocaleDateString()}</span>
-      ),
+      cell: (a) => <TimeStamp value={a.appliedAt} className="text-fg-muted" />,
     },
     {
       key: 'actions',

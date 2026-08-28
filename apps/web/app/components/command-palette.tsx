@@ -81,6 +81,7 @@ function PaletteDialog() {
   const [active, setActive] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
   const restoreFocusTo = useRef<Element | null>(null);
   const baseId = useId();
 
@@ -120,6 +121,30 @@ function PaletteDialog() {
   );
 
   const onKeyDown = (e: React.KeyboardEvent) => {
+    // Focus containment. aria-modal="true" tells assistive tech the rest of the
+    // page isn't there — but it does nothing to Tab, so without this a keyboard
+    // user tabbed straight out of the dialog into content their screen reader
+    // insists does not exist. Everything else about this dialog was already
+    // right (focus restore, scroll lock, Escape, the combobox pattern); this
+    // was the one missing piece.
+    if (e.key === 'Tab') {
+      const focusables = dialogRef.current?.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      );
+      if (!focusables || focusables.length === 0) return;
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      if (!first || !last) return;
+      const active = document.activeElement;
+      if (e.shiftKey && active === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && active === last) {
+        e.preventDefault();
+        first.focus();
+      }
+      return;
+    }
     if (e.key === 'Escape') {
       e.preventDefault();
       setOpen(false);
@@ -152,6 +177,7 @@ function PaletteDialog() {
           it, and it is inert to AT via aria-hidden. */}
       <div aria-hidden className="absolute inset-0 bg-black/40" onClick={() => setOpen(false)} />
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-label="Command palette"

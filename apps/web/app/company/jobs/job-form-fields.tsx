@@ -90,7 +90,11 @@ export function JobFormFields({
 
         <SheetGroup title="Location & compensation">
           <SheetField label="Location">
-            <Input {...register('location')} placeholder="Berlin, DE" />
+            <Input
+              {...register('location')}
+              autoComplete="address-level2"
+              placeholder="Berlin, DE"
+            />
           </SheetField>
           <SheetField label="Salary range" hint="Leave blank to omit from the posting.">
             <span className="grid grid-cols-[1fr_1fr_4.5rem] gap-1.5">

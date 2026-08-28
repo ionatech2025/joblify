@@ -11,6 +11,7 @@ import { withAudit } from '@/lib/audit';
 import { tags } from '@/lib/cache';
 import { chatMessageLimit } from '@/lib/ratelimit';
 import { logger } from '@/lib/observability/logger';
+import { type ActionResult, fail, succeed } from '@/lib/action-result';
 
 async function auditCtx(actorId: string) {
   const h = await headers();
@@ -126,7 +127,7 @@ async function ensureVirtualInternChatArea(companyUserId: string): Promise<{ id:
 export async function addChatParticipant(
   chatAreaId: string,
   jobSeekerUserId: string,
-): Promise<void> {
+): Promise<ActionResult> {
   const user = await requireRole('COMPANY');
   assertPlan(user, 'PRO');
 
@@ -140,16 +141,16 @@ export async function addChatParticipant(
     where: { id: jobSeekerUserId, userType: 'JOB_SEEKER', deletedAt: null },
     select: { id: true, jobSeekerProfile: { select: { profileType: true } } },
   });
-  if (!seeker) throw new Error('Job seeker not found.');
+  if (!seeker) return fail('Job seeker not found.');
   if (area.kind === 'VIRTUAL_INTERN' && seeker.jobSeekerProfile?.profileType !== 'VIRTUAL_INTERN') {
-    throw new Error('Only virtual-intern profiles can join a virtual-intern chat area.');
+    return fail('Only virtual-intern profiles can join a virtual-intern chat area.');
   }
 
   const already = await db.chatParticipant.findUnique({
     where: { chatAreaId_userId: { chatAreaId: area.id, userId: seeker.id } },
     select: { chatAreaId: true },
   });
-  if (already) return;
+  if (already) return succeed();
 
   await withAudit(
     await auditCtx(user.id),
@@ -175,6 +176,7 @@ export async function addChatParticipant(
   );
 
   updateTag(tags.notifications(seeker.id));
+  return succeed();
 }
 
 // Directory shortcut: put a virtual intern straight into the company's VI

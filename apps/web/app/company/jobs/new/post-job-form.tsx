@@ -1,8 +1,8 @@
 'use client';
 
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useEffect, useState, useTransition } from 'react';
+import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { postJob } from '@/app/actions/post-job';
 import { JobFormFields } from '@/app/company/jobs/job-form-fields';
@@ -10,7 +10,9 @@ import { PostJobFormSchema, type PostJobFormValues } from '@/app/company/jobs/jo
 import { FormSheet } from '@/app/components/console/sheet';
 import { DirtyBar } from '@/app/components/console/dirty-bar';
 import { usePostJobDraftStore } from '@/lib/stores/post-job-draft';
+import { useFormDraft } from '@/lib/use-form-draft';
 import { toast } from '@/lib/stores/ui';
+import { unwrap } from '@/lib/action-result';
 
 const initialValues: Partial<PostJobFormValues> = {
   industry: 'TECHNOLOGY',
@@ -32,11 +34,12 @@ export function PostJobForm() {
   // and would report the form as clean. Tracked separately so the dirty bar
   // tells the truth after a reload.
   const [restoredDraft, setRestoredDraft] = useState(false);
-  const draftStore = usePostJobDraftStore();
+  const clearDraft = usePostJobDraftStore((s) => s.clear);
 
   const {
     register,
     handleSubmit,
+    control,
     watch,
     reset,
     setValue,
@@ -46,33 +49,28 @@ export function PostJobForm() {
     defaultValues: initialValues,
   });
 
-  // Restore a saved draft once on mount (draft wins over defaults for any
-  // field it has a value for). An empty draft shouldn't touch the form.
-  useEffect(() => {
-    if (Object.keys(draftStore.draft).length > 0) {
-      reset({ ...initialValues, ...draftStore.draft });
-      setRestoredDraft(true);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Persist on every change so accidental navigation doesn't lose the draft.
-  useEffect(() => {
-    const sub = watch((values) => draftStore.update(values));
-    return () => sub.unsubscribe();
-  }, [watch, draftStore]);
+  // Restore on mount, then persist on a debounce. See lib/use-form-draft.ts.
+  useFormDraft({
+    store: usePostJobDraftStore,
+    watch,
+    reset,
+    initial: initialValues as PostJobFormValues,
+    onRestore: () => setRestoredDraft(true),
+  });
 
   // `publish` has no input of its own any more — the statusbar is its control —
-  // so it is driven through setValue/watch against RHF's value store, which is
-  // seeded from defaultValues above.
-  const publish = watch('publish') ?? true;
+  // so it is driven through setValue against RHF's value store, which is
+  // seeded from defaultValues above. Read with useWatch rather than watch():
+  // watch() returns a fresh function React Compiler cannot memoize, which was
+  // bailing the whole component out of compilation.
+  const publish = useWatch({ control, name: 'publish' }) ?? true;
 
   function onSubmit(values: PostJobFormValues) {
     setError(null);
     startTransition(async () => {
       try {
-        const id = await postJob(values);
-        draftStore.clear();
+        const id = unwrap(await postJob(values));
+        clearDraft();
         setRestoredDraft(false);
         toast.success('Job posted');
         router.push(`/company/jobs/${id}/edit?just_posted=1`);
@@ -86,7 +84,7 @@ export function PostJobForm() {
 
   function onDiscard() {
     if (!window.confirm('Discard this draft? The fields will be emptied.')) return;
-    draftStore.clear();
+    clearDraft();
     reset(initialValues as PostJobFormValues);
     setRestoredDraft(false);
   }

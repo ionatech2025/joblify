@@ -16,3 +16,6 @@ out/
 .DS_Store
 .vercel
 .env*
+
+# vitest coverage output
+coverage/

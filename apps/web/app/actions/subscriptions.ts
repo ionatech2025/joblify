@@ -8,6 +8,7 @@ import { requireRole } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { withAudit } from '@/lib/audit';
 import { tags } from '@/lib/cache';
+import { type ActionResult, fail, succeed } from '@/lib/action-result';
 
 async function auditCtx(actorId: string) {
   const h = await headers();
@@ -25,7 +26,7 @@ async function auditCtx(actorId: string) {
 export async function subscribeToCompany(
   companyUserId: string,
   profileType: ProfileType,
-): Promise<void> {
+): Promise<ActionResult> {
   const user = await requireRole('JOB_SEEKER');
 
   const profile = await db.jobSeekerProfile.findUnique({
@@ -41,7 +42,7 @@ export async function subscribeToCompany(
     where: { userId: companyUserId },
     select: { userId: true, companyName: true },
   });
-  if (!company) throw new Error('Company not found.');
+  if (!company) return fail('Company not found.');
 
   const seekerName = [user.firstName, user.lastName].filter(Boolean).join(' ') || 'A job seeker';
 
@@ -78,11 +79,13 @@ export async function subscribeToCompany(
     );
   } catch (err) {
     // Already subscribed with this type (double submit) — idempotent no-op.
-    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') return;
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002')
+      return succeed();
     throw err;
   }
 
   updateTag(tags.notifications(company.userId));
+  return succeed();
 }
 
 export async function unsubscribeFromCompany(

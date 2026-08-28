@@ -8,10 +8,13 @@ import { withAudit } from '@/lib/audit';
 import { deleteJob } from '@/lib/search/algolia';
 import { logger } from '@/lib/observability/logger';
 import { redirect } from 'next/navigation';
+// deleteMyAccount ends in redirect(), which never returns — so the only
+// reachable result is the expected-failure one. No succeed() needed.
+import { type ActionResult, fail } from '@/lib/action-result';
 
-export async function deleteMyAccount(confirmation: string): Promise<void> {
+export async function deleteMyAccount(confirmation: string): Promise<ActionResult> {
   const user = await requireUser();
-  if (confirmation !== user.email) throw new Error('Confirmation does not match your email.');
+  if (confirmation !== user.email) return fail('Confirmation does not match your email.');
 
   const h = await headers();
   const ip = h.get('x-forwarded-for')?.split(',')[0]?.trim() ?? null;

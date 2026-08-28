@@ -15,6 +15,7 @@ export default async function JobseekerChatsPage() {
 
   const memberships = await db.chatParticipant.findMany({
     where: { userId: user.id },
+    take: 100,
     include: {
       chatArea: {
         include: {

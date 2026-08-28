@@ -8,6 +8,7 @@ import { buttonClasses } from '@/app/components/ui/button';
 import { EmptyState } from '@/app/components/ui/empty-state';
 import { InvitationActions } from './invitation-actions';
 import { UnsubscribeButton } from './unsubscribe-button';
+import { TimeStamp } from '@/app/components/ui/timestamp';
 
 export const metadata = { title: 'My subscriptions' };
 
@@ -24,6 +25,7 @@ export default async function JobseekerSubscriptionsPage() {
     db.invitation.findMany({
       where: { jobSeekerId: user.id, status: 'PENDING', expiresAt: { gt: new Date() } },
       orderBy: { createdAt: 'desc' },
+      take: 100,
       include: {
         company: { select: { companyProfile: { select: { companyName: true, slug: true } } } },
       },
@@ -31,6 +33,7 @@ export default async function JobseekerSubscriptionsPage() {
     db.companySubscription.findMany({
       where: { jobSeekerId: user.id },
       orderBy: { createdAt: 'desc' },
+      take: 100,
       include: {
         company: { select: { companyProfile: { select: { companyName: true, slug: true } } } },
       },
@@ -63,8 +66,8 @@ export default async function JobseekerSubscriptionsPage() {
                         <p className="mt-1 mb-0 text-sm text-fg-muted">{inv.message}</p>
                       )}
                       <p className="mt-1 mb-0 text-xs text-fg-subtle">
-                        Sent {inv.createdAt.toLocaleDateString()} · expires{' '}
-                        {inv.expiresAt.toLocaleDateString()}
+                        Sent <TimeStamp value={inv.createdAt} /> · expires{' '}
+                        <TimeStamp value={inv.expiresAt} />
                       </p>
                     </div>
                     <InvitationActions invitationId={inv.id} />

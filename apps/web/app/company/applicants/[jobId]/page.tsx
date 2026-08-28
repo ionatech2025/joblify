@@ -14,6 +14,11 @@ import { ArrowDownWideNarrow, EyeOff } from 'lucide-react';
 
 export const metadata = { title: 'Applicants' };
 
+// The board is a kanban across five stage columns and has no paging of its own,
+// so it needs a ceiling instead. Past this the banner below says so; deeper
+// review belongs to a filtered view, not to one enormous board.
+const BOARD_CAP = 200;
+
 export default async function ApplicantsPage({
   params,
   searchParams,
@@ -37,7 +42,8 @@ export default async function ApplicantsPage({
   });
   if (!job) notFound();
 
-  const [applications, siblings] = await Promise.all([
+  const [applicantCount, applications, siblings] = await Promise.all([
+    db.jobApplication.count({ where: { jobPostId: jobId } }),
     db.jobApplication.findMany({
       where: { jobPostId: jobId },
       orderBy:
@@ -46,9 +52,30 @@ export default async function ApplicantsPage({
             // which is what `(b.matchScore ?? -1)` used to approximate client-side.
             [{ matchScore: { sort: 'desc', nulls: 'last' } }, { appliedAt: 'desc' }]
           : [{ appliedAt: 'desc' }],
-      include: {
-        jobSeeker: { include: { jobSeekerProfile: true } },
-        resume: true,
+      // Previously unbounded, with three joins per row: a job with two thousand
+      // applicants fetched and rendered two thousand full user + profile +
+      // resume records. The board is a kanban and has no paging of its own, so
+      // it takes a ceiling — the same answer /company/jobs already uses for its
+      // kanban view (KANBAN_CAP there).
+      take: BOARD_CAP,
+      // `include` pulled every column of three tables to paint five fields.
+      select: {
+        id: true,
+        status: true,
+        appliedAt: true,
+        matchScore: true,
+        coverLetter: true,
+        recruiterNotes: true,
+        jobSeekerId: true,
+        resume: { select: { fileBlobUrl: true } },
+        jobSeeker: {
+          select: {
+            firstName: true,
+            lastName: true,
+            email: true,
+            jobSeekerProfile: { select: { headline: true } },
+          },
+        },
       },
     }),
     // Ids only, in the same order the jobs list defaults to, so the record
@@ -58,6 +85,11 @@ export default async function ApplicantsPage({
     db.jobPost.findMany({
       where: { companyId: user.id, deletedAt: null },
       orderBy: [{ publishedAt: { sort: 'desc', nulls: 'last' } }, { createdAt: 'desc' }],
+      // Ids only, so cheap — but still unbounded, and the pager needs the whole
+      // ordered window to locate this job in it. Past the ceiling `position`
+      // comes back -1 and the pager simply doesn't render, which is the right
+      // degradation: no pager beats a pager that skips jobs.
+      take: BOARD_CAP,
       select: { id: true },
     }),
   ]);
@@ -169,6 +201,12 @@ export default async function ApplicantsPage({
             useSearchParams() for its own sort/showClosed state, which required
             a boundary. Those are now read on the server and passed down, so the
             board is a plain client island over already-ordered rows. */}
+        {applicantCount > BOARD_CAP ? (
+          <p className="text-warn bg-warn-subtle rounded-card border-warn/25 mb-2 border px-2.5 py-1.5 text-[12px]">
+            Showing the first {BOARD_CAP} of {applicantCount} applicants, ordered by{' '}
+            {sort === 'match' ? 'match score' : 'most recent'}.
+          </p>
+        ) : null}
         <ApplicantsBoard
           showClosed={showClosed}
           applications={applications.map((a) => ({

@@ -182,7 +182,10 @@ describe('addChatParticipant', () => {
 
   it('rejects when the target is not a job seeker', async () => {
     m.userFindFirst.mockResolvedValue(null);
-    await expect(addChatParticipant('area1', 'seeker1')).rejects.toThrow('Job seeker not found');
+    expect(await addChatParticipant('area1', 'seeker1')).toMatchObject({
+      ok: false,
+      error: expect.stringMatching('Job seeker not found'),
+    });
     expect(m.partCreate).not.toHaveBeenCalled();
   });
 
@@ -192,7 +195,10 @@ describe('addChatParticipant', () => {
       id: 'seeker1',
       jobSeekerProfile: { profileType: 'EMPLOYABLE' },
     });
-    await expect(addChatParticipant('vi1', 'seeker1')).rejects.toThrow('virtual-intern');
+    expect(await addChatParticipant('vi1', 'seeker1')).toMatchObject({
+      ok: false,
+      error: expect.stringMatching('virtual-intern'),
+    });
     expect(m.partCreate).not.toHaveBeenCalled();
   });
 

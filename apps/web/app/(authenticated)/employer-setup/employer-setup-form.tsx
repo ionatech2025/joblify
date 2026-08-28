@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useTransition } from 'react';
+import { useState, useTransition } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
@@ -15,6 +15,7 @@ import { createCompanyProfile } from '@/app/actions/company';
 import { Field, Input, Select, Textarea } from '@/app/components/ui/form';
 import { Button } from '@/app/components/ui/button';
 import { useEmployerSetupDraftStore } from '@/lib/stores/employer-setup-draft';
+import { useFormDraft } from '@/lib/use-form-draft';
 import { toast } from '@/lib/stores/ui';
 
 function titleCase(s: string): string {
@@ -34,7 +35,7 @@ export function EmployerSetupForm({ hasJobSeekerIdentity }: { hasJobSeekerIdenti
   const router = useRouter();
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const draftStore = useEmployerSetupDraftStore();
+  const clearDraft = useEmployerSetupDraftStore((s) => s.clear);
   const {
     register,
     handleSubmit,
@@ -46,20 +47,8 @@ export function EmployerSetupForm({ hasJobSeekerIdentity }: { hasJobSeekerIdenti
     defaultValues: initialValues,
   });
 
-  // Restore a saved draft once on mount (draft wins over defaults for any
-  // field it has a value for). An empty draft shouldn't touch the form.
-  useEffect(() => {
-    if (Object.keys(draftStore.draft).length > 0) {
-      reset({ ...initialValues, ...draftStore.draft });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Persist on every change so accidental navigation doesn't lose the draft.
-  useEffect(() => {
-    const sub = watch((values) => draftStore.update(values));
-    return () => sub.unsubscribe();
-  }, [watch, draftStore]);
+  // Restore on mount, then persist on a debounce. See lib/use-form-draft.ts.
+  useFormDraft({ store: useEmployerSetupDraftStore, watch, reset, initial: initialValues });
 
   function onSubmit(values: CompanyProfileInput) {
     // createCompanyProfile flips the account's userType to COMPANY (see
@@ -81,7 +70,7 @@ export function EmployerSetupForm({ hasJobSeekerIdentity }: { hasJobSeekerIdenti
     start(async () => {
       try {
         await createCompanyProfile(values);
-        draftStore.clear();
+        clearDraft();
         toast.success('Company created', "Let's post your first job.");
         router.push('/company/jobs');
         router.refresh();
@@ -105,7 +94,7 @@ export function EmployerSetupForm({ hasJobSeekerIdentity }: { hasJobSeekerIdenti
       )}
 
       <Field label="Company name" error={errors.companyName?.message}>
-        <Input {...register('companyName')} placeholder="Acme Inc." />
+        <Input {...register('companyName')} autoComplete="organization" placeholder="Acme Inc." />
       </Field>
 
       <Field label="Industry">
@@ -137,7 +126,12 @@ export function EmployerSetupForm({ hasJobSeekerIdentity }: { hasJobSeekerIdenti
       </Field>
 
       <Field label="Website (optional)" error={errors.website?.message}>
-        <Input {...register('website')} placeholder="https://acme.com" />
+        <Input
+          type="url"
+          {...register('website')}
+          autoComplete="url"
+          placeholder="https://acme.com"
+        />
       </Field>
 
       {error && <p className="m-0 text-danger">{error}</p>}

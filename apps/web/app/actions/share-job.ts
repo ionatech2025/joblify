@@ -7,6 +7,7 @@ import { requireRole, assertPlan, AuthError } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { withAudit } from '@/lib/audit';
 import { tags } from '@/lib/cache';
+import { type ActionResult, fail, succeed } from '@/lib/action-result';
 
 // FormData adapter for the jobseeker-directory share form (job picked from a
 // <select>, seeker id bound).
@@ -21,7 +22,7 @@ export async function shareJobFromForm(jobSeekerUserId: string, formData: FormDa
 export async function shareJobWithJobseeker(
   jobPostId: string,
   jobSeekerUserId: string,
-): Promise<void> {
+): Promise<ActionResult> {
   const user = await requireRole('COMPANY');
   assertPlan(user, 'PRO');
 
@@ -35,7 +36,7 @@ export async function shareJobWithJobseeker(
     where: { id: jobSeekerUserId, userType: 'JOB_SEEKER', deletedAt: null },
     select: { id: true },
   });
-  if (!seeker) throw new Error('Job seeker not found.');
+  if (!seeker) return fail('Job seeker not found.');
 
   const profile = await db.companyProfile.findUnique({
     where: { userId: user.id },
@@ -69,4 +70,5 @@ export async function shareJobWithJobseeker(
   );
 
   updateTag(tags.notifications(seeker.id));
+  return succeed();
 }

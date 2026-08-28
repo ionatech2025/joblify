@@ -5,6 +5,7 @@ import { Star } from 'lucide-react';
 import { toggleSavedJob } from '@/app/actions/saved-jobs';
 import { toast } from '@/lib/stores/ui';
 import { cn } from '@/lib/cn';
+import { unwrap } from '@/lib/action-result';
 
 export function SaveButton({ jobId, initialSaved }: { jobId: string; initialSaved: boolean }) {
   const [saved, setSaved] = useState(initialSaved);
@@ -15,7 +16,7 @@ export function SaveButton({ jobId, initialSaved }: { jobId: string; initialSave
     setSaved(next); // optimistic
     startTransition(async () => {
       try {
-        const r = await toggleSavedJob(jobId);
+        const r = unwrap(await toggleSavedJob(jobId));
         setSaved(r.saved);
         toast.success(r.saved ? 'Job saved' : 'Removed from saved jobs');
       } catch {

@@ -87,6 +87,7 @@ export function SheetGroup({
 }
 
 type FieldControlProps = {
+  id?: string;
   'aria-invalid'?: boolean;
   'aria-describedby'?: string;
   'aria-required'?: boolean;
@@ -120,11 +121,19 @@ export function SheetField({
   wide?: boolean;
   children: ReactNode;
 }) {
+  // htmlFor/id rather than a wrapping <label> — see the note in
+  // app/components/ui/form.tsx's Field: a wrapping label folds the hint and the
+  // error into the control's accessible name.
   const base = useId();
   const errorId = `${base}-error`;
   const hintId = `${base}-hint`;
+  const fallbackId = `${base}-control`;
+  const controlId = isValidElement<FieldControlProps>(children)
+    ? (children.props.id ?? fallbackId)
+    : fallbackId;
   const control = isValidElement<FieldControlProps>(children)
     ? cloneElement(children, {
+        id: controlId,
         'aria-invalid': error ? true : undefined,
         'aria-required': required || undefined,
         'aria-describedby':
@@ -139,7 +148,7 @@ export function SheetField({
     : children;
 
   return (
-    <label
+    <div
       className={cn(
         'gap-x-3 gap-y-1',
         wide
@@ -147,14 +156,14 @@ export function SheetField({
           : 'grid grid-cols-1 items-baseline sm:grid-cols-[minmax(0,9.5rem)_minmax(0,1fr)]',
       )}
     >
-      <span className="text-fg-muted pt-1.5 text-[13px] font-medium">
+      <label htmlFor={controlId} className="text-fg-muted pt-1.5 text-[13px] font-medium">
         {label}
         {required ? (
           <span aria-hidden className="text-danger ml-0.5">
             *
           </span>
         ) : null}
-      </span>
+      </label>
       <span className="flex min-w-0 flex-col gap-1">
         {control}
         {hint ? (
@@ -168,6 +177,6 @@ export function SheetField({
           </span>
         ) : null}
       </span>
-    </label>
+    </div>
   );
 }

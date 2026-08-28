@@ -96,10 +96,18 @@ export function ResumeBuilderForm({ initialEntries }: { initialEntries: FormValu
           >
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Field label="Company" error={errors.entries?.[index]?.company?.message}>
-                <Input {...register(`entries.${index}.company`)} placeholder="Acme Inc." />
+                <Input
+                  {...register(`entries.${index}.company`)}
+                  autoComplete="organization"
+                  placeholder="Acme Inc."
+                />
               </Field>
               <Field label="Title" error={errors.entries?.[index]?.title?.message}>
-                <Input {...register(`entries.${index}.title`)} placeholder="Software Engineer" />
+                <Input
+                  {...register(`entries.${index}.title`)}
+                  autoComplete="organization-title"
+                  placeholder="Software Engineer"
+                />
               </Field>
             </div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">

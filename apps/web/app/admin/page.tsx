@@ -12,7 +12,10 @@ export default async function AdminPage() {
   const [pending, jobSeekerCount, companyCount, publishedJobCount] = await Promise.all([
     db.companyProfile.findMany({
       where: { verificationStatus: 'PENDING' },
+      // Oldest first, so a ceiling here trims the newest arrivals rather than
+      // the ones that have been waiting longest.
       orderBy: { createdAt: 'asc' },
+      take: 100,
       select: {
         id: true,
         companyName: true,
@@ -64,7 +67,7 @@ export default async function AdminPage() {
 function Metric({ label, value }: { label: string; value: number }) {
   return (
     <div className="inline-flex items-baseline gap-1">
-      <dd className="text-fg m-0 font-semibold tabular-nums">{value.toLocaleString()}</dd>
+      <dd className="text-fg m-0 font-semibold tabular-nums">{value.toLocaleString('en-US')}</dd>
       <dt>{label}</dt>
     </div>
   );

@@ -41,9 +41,14 @@ async function ApplyContent({ slug }: { slug: string }) {
   });
   if (existing) redirect(`/jobseeker/applications`);
 
+  // id + title only. This used to select every column — including parsedJson
+  // and `embedding`, a 1536-dimension vector — per resume, to render a <Select>
+  // of titles, and shipped all of it across the RSC boundary.
   const resumes = await db.resume.findMany({
     where: { userId: user.id, deletedAt: null },
     orderBy: { createdAt: 'desc' },
+    take: 50,
+    select: { id: true, title: true },
   });
 
   return (

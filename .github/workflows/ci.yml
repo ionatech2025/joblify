@@ -53,8 +53,11 @@ jobs:
       - name: Typecheck
         run: bun run typecheck
 
+      # Coverage-gated: vitest.config.ts carries a floor that ratchets, so a
+      # change that deletes tests fails here rather than in review. Same tests
+      # as `bun run test`, plus instrumentation.
       - name: Unit tests
-        run: bun run test
+        run: bun run test:coverage
 
       - name: Build
         run: bun run build

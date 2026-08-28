@@ -5,13 +5,14 @@ import { requireRole, AuthError } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { defaultSearchLabel } from '@/lib/search/saved-search';
 import { logger } from '@/lib/observability/logger';
+import { type ActionResult, fail, succeed } from '@/lib/action-result';
 
 const SaveSchema = z.object({
   query: z.string().max(2000),
   label: z.string().max(120).optional(),
 });
 
-export async function saveSearch(input: { query: string; label?: string }): Promise<void> {
+export async function saveSearch(input: { query: string; label?: string }): Promise<ActionResult> {
   const user = await requireRole('JOB_SEEKER');
   const parsed = SaveSchema.parse(input);
   const query = parsed.query.replace(/^\?+/, '').trim();
@@ -19,11 +20,12 @@ export async function saveSearch(input: { query: string; label?: string }): Prom
 
   // Cap per user so the daily digest stays bounded.
   const count = await db.savedSearch.count({ where: { userId: user.id } });
-  if (count >= 20) throw new Error('You can save up to 20 searches.');
+  if (count >= 20) return fail('You can save up to 20 searches.');
 
   await db.savedSearch.create({ data: { userId: user.id, label, query } });
 
   logger.info({ userId: user.id }, 'saved search created');
+  return succeed();
 }
 
 export async function deleteSavedSearch(id: string): Promise<void> {

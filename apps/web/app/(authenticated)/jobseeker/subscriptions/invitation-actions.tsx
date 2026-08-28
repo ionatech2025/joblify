@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { respondToInvitation } from '@/app/actions/invitations';
 import { Button } from '@/app/components/ui/button';
 import { toast } from '@/lib/stores/ui';
+import { unwrap } from '@/lib/action-result';
 
 export function InvitationActions({ invitationId }: { invitationId: string }) {
   const router = useRouter();
@@ -13,7 +14,7 @@ export function InvitationActions({ invitationId }: { invitationId: string }) {
   function respond(response: 'ACCEPT' | 'DECLINE') {
     startTransition(async () => {
       try {
-        await respondToInvitation(invitationId, response);
+        unwrap(await respondToInvitation(invitationId, response));
         toast.success(response === 'ACCEPT' ? 'Invitation accepted' : 'Invitation declined');
         router.refresh();
       } catch (err) {

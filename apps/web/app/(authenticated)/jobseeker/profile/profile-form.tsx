@@ -3,11 +3,12 @@
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useEffect, useState, useTransition } from 'react';
+import { useState, useTransition } from 'react';
 import { saveProfile } from '@/app/actions/profile';
 import { Field, Input, Select, Textarea } from '@/app/components/ui/form';
 import { Button } from '@/app/components/ui/button';
 import { useProfileDraftStore } from '@/lib/stores/profile-draft';
+import { useFormDraft } from '@/lib/use-form-draft';
 import { toast } from '@/lib/stores/ui';
 
 const ProfileFormSchema = z.object({
@@ -41,7 +42,9 @@ export function ProfileForm({
   const [isPending, startTransition] = useTransition();
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const draftStore = useProfileDraftStore();
+  // Selectors, not the whole store: a bare useProfileDraftStore() subscribes
+  // the form to its own writes and re-renders it on every keystroke.
+  const clearDraft = useProfileDraftStore((s) => s.clear);
 
   const {
     register,
@@ -57,20 +60,8 @@ export function ProfileForm({
 
   const isVirtualIntern = useWatch({ control, name: 'profileType' }) === 'VIRTUAL_INTERN';
 
-  // Restore a saved draft once on mount (draft wins over the server-loaded
-  // profile for any field it has a value for). An empty draft is a no-op.
-  useEffect(() => {
-    if (Object.keys(draftStore.draft).length > 0) {
-      reset({ ...initial, ...draftStore.draft });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Persist on every change so accidental navigation doesn't lose the draft.
-  useEffect(() => {
-    const sub = watch((values) => draftStore.update(values));
-    return () => sub.unsubscribe();
-  }, [watch, draftStore]);
+  // Restore on mount, then persist on a debounce. See lib/use-form-draft.ts.
+  useFormDraft({ store: useProfileDraftStore, watch, reset, initial });
 
   function onSubmit(values: ProfileFormValues) {
     setError(null);
@@ -79,7 +70,7 @@ export function ProfileForm({
       try {
         await saveProfile(values);
         setSaved(true);
-        draftStore.clear();
+        clearDraft();
         toast.success('Profile saved');
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Save failed.';
@@ -120,7 +111,11 @@ export function ProfileForm({
       )}
 
       <Field label="Headline" error={errors.headline?.message}>
-        <Input {...register('headline')} placeholder="Senior Backend Engineer · Berlin" />
+        <Input
+          {...register('headline')}
+          autoComplete="organization-title"
+          placeholder="Senior Backend Engineer · Berlin"
+        />
       </Field>
 
       <Field label="Bio" error={errors.bio?.message}>
@@ -167,11 +162,16 @@ export function ProfileForm({
       </Field>
 
       <Field label="Portfolio / GitHub link" error={errors.portfolioUrl?.message}>
-        <Input {...register('portfolioUrl')} placeholder="https://github.com/yourname" />
+        <Input
+          type="url"
+          {...register('portfolioUrl')}
+          autoComplete="url"
+          placeholder="https://github.com/yourname"
+        />
       </Field>
 
       <Field label="Location" error={errors.location?.message}>
-        <Input {...register('location')} placeholder="Berlin, DE" />
+        <Input {...register('location')} autoComplete="address-level2" placeholder="Berlin, DE" />
       </Field>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

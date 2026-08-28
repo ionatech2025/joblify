@@ -18,6 +18,7 @@ export default async function CompanyChatsPage() {
     db.chatArea.findMany({
       where: { companyId: user.id },
       orderBy: { updatedAt: 'desc' },
+      take: 100,
       include: {
         jobPost: { select: { title: true } },
         _count: { select: { participants: true, messages: true } },
@@ -26,6 +27,7 @@ export default async function CompanyChatsPage() {
     db.jobPost.findMany({
       where: { companyId: user.id, deletedAt: null, chatArea: { is: null } },
       orderBy: { createdAt: 'desc' },
+      take: 100,
       select: { id: true, title: true },
     }),
   ]);

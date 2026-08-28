@@ -1,4 +1,19 @@
 import { init, captureRouterTransitionStart } from '@sentry/nextjs';
+import { initBotId } from 'botid/client/core';
+
+// BotID's client half. `checkBotId()` in app/actions/apply.ts has been asking
+// for a verdict since the apply funnel shipped, but nothing ever served the
+// challenge script it classifies on — that needs BOTH `withBotId()` in
+// next.config.ts (which installs the proxy rewrites) and this call (which
+// requests the script for the listed paths). A missing integration throws
+// nothing and logs nothing, so the funnel read as protected while the verdict
+// was formed on no signal at all.
+//
+// Server Actions POST to the URL of the page hosting them, so the path here is
+// the apply page's route, not an API endpoint.
+initBotId({
+  protect: [{ path: '/jobs/*/apply', method: 'POST' }],
+});
 
 // Browser Sentry — errors + masked Session Replay. DSN-gated like the server
 // side; uses the public DSN so it can ship in the client bundle. Next.js loads

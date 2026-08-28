@@ -5,6 +5,7 @@ import { deleteMyAccount } from '@/app/actions/account';
 import { Button } from '@/app/components/ui/button';
 import { Input } from '@/app/components/ui/form';
 import { toast } from '@/lib/stores/ui';
+import { unwrap } from '@/lib/action-result';
 
 export function DeleteForm({ expectedConfirmation }: { expectedConfirmation: string }) {
   const [confirmation, setConfirmation] = useState('');
@@ -19,7 +20,7 @@ export function DeleteForm({ expectedConfirmation }: { expectedConfirmation: str
         // On success this redirects server-side (see deleteMyAccount) and
         // never returns to this component, so only the failure path needs
         // handling here.
-        await deleteMyAccount(confirmation);
+        unwrap(await deleteMyAccount(confirmation));
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Delete failed';
         setError(message);

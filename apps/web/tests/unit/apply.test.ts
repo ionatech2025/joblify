@@ -109,7 +109,10 @@ describe('submitApplication', () => {
 
   it('rejects detected bots before creating anything', async () => {
     m.checkBotId.mockResolvedValue({ isBot: true });
-    await expect(submitApplication(fd())).rejects.toThrow(/suspicious/i);
+    expect(await submitApplication(fd())).toMatchObject({
+      ok: false,
+      error: expect.stringMatching(/suspicious/i),
+    });
     expect(m.appCreate).not.toHaveBeenCalled();
   });
 
@@ -121,17 +124,26 @@ describe('submitApplication', () => {
 
   it('enforces the per-user daily rate limit', async () => {
     m.applyLimit.mockResolvedValue({ success: false });
-    await expect(submitApplication(fd())).rejects.toThrow(/limit/i);
+    expect(await submitApplication(fd())).toMatchObject({
+      ok: false,
+      error: expect.stringMatching(/limit/i),
+    });
     expect(m.appCreate).not.toHaveBeenCalled();
   });
 
   it('rejects invalid input (non-uuid resume id)', async () => {
-    await expect(submitApplication(fd({ resumeId: 'nope' }))).rejects.toThrow(/invalid/i);
+    expect(await submitApplication(fd({ resumeId: 'nope' }))).toMatchObject({
+      ok: false,
+      error: expect.stringMatching(/invalid/i),
+    });
     expect(m.appCreate).not.toHaveBeenCalled();
   });
 
   it('rejects a missing data-use acknowledgement', async () => {
-    await expect(submitApplication(fd({ acknowledgedDataUse: null }))).rejects.toThrow(/invalid/i);
+    expect(await submitApplication(fd({ acknowledgedDataUse: null }))).toMatchObject({
+      ok: false,
+      error: expect.stringMatching(/invalid/i),
+    });
   });
 
   it('rejects a resume the user does not own', async () => {
@@ -142,7 +154,10 @@ describe('submitApplication', () => {
 
   it('rejects a job that is not live', async () => {
     m.jobFindFirst.mockResolvedValue(null);
-    await expect(submitApplication(fd())).rejects.toThrow(/not available/i);
+    expect(await submitApplication(fd())).toMatchObject({
+      ok: false,
+      error: expect.stringMatching(/not available/i),
+    });
     expect(m.appCreate).not.toHaveBeenCalled();
   });
 
@@ -153,7 +168,10 @@ describe('submitApplication', () => {
       applicationDeadline: new Date('2020-01-01T00:00:00Z'),
       company: { companyProfile: { companyName: 'Acme' } },
     });
-    await expect(submitApplication(fd())).rejects.toThrow(/deadline/i);
+    expect(await submitApplication(fd())).toMatchObject({
+      ok: false,
+      error: expect.stringMatching(/deadline/i),
+    });
     expect(m.appCreate).not.toHaveBeenCalled();
   });
 
@@ -164,13 +182,16 @@ describe('submitApplication', () => {
       applicationDeadline: new Date('2099-01-01T00:00:00Z'),
       company: { companyProfile: { companyName: 'Acme' } },
     });
-    await expect(submitApplication(fd())).resolves.toBeUndefined();
+    await expect(submitApplication(fd())).resolves.toEqual({ ok: true, data: undefined });
     expect(m.appCreate).toHaveBeenCalledTimes(1);
   });
 
   it('rejects a second application to the same job', async () => {
     m.appFindUnique.mockResolvedValue({ id: 'existing-app' });
-    await expect(submitApplication(fd())).rejects.toThrow(/already applied/i);
+    expect(await submitApplication(fd())).toMatchObject({
+      ok: false,
+      error: expect.stringMatching(/already applied/i),
+    });
     expect(m.appCreate).not.toHaveBeenCalled();
   });
 
@@ -219,7 +240,10 @@ describe('withdrawApplication', () => {
       status: 'HIRED',
       jobPost: { id: JOB_ID, title: 'Engineer', companyId: 'company1' },
     });
-    await expect(withdrawApplication(APP_ID)).rejects.toThrow(/already closed/i);
+    expect(await withdrawApplication(APP_ID)).toMatchObject({
+      ok: false,
+      error: expect.stringMatching(/already closed/i),
+    });
     expect(m.appUpdate).not.toHaveBeenCalled();
   });
 

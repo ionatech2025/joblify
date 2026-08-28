@@ -10,6 +10,7 @@ import { withAudit } from '@/lib/audit';
 import { tags } from '@/lib/cache';
 import { inviteLimit } from '@/lib/ratelimit';
 import { logger } from '@/lib/observability/logger';
+import { type ActionResult, fail, succeed } from '@/lib/action-result';
 
 const INVITATION_TTL_DAYS = 30;
 
@@ -27,18 +28,18 @@ async function auditCtx(actorId: string) {
 export async function inviteJobseeker(
   jobSeekerUserId: string,
   profileType: ProfileType,
-): Promise<void> {
+): Promise<ActionResult> {
   const user = await requireRole('COMPANY');
   assertPlan(user, 'PRO');
 
   const rl = await inviteLimit(user.id);
-  if (!rl.success) throw new Error('Daily invitation limit reached. Try again tomorrow.');
+  if (!rl.success) return fail('Daily invitation limit reached. Try again tomorrow.');
 
   const seeker = await db.user.findFirst({
     where: { id: jobSeekerUserId, userType: 'JOB_SEEKER', deletedAt: null },
     select: { id: true },
   });
-  if (!seeker) throw new Error('Job seeker not found.');
+  if (!seeker) return fail('Job seeker not found.');
 
   const profile = await db.companyProfile.findUnique({
     where: { userId: user.id },
@@ -58,7 +59,7 @@ export async function inviteJobseeker(
   });
   // A live or already-answered invitation stands; re-inviting only makes sense
   // after a decline or expiry, where we refresh the existing row below.
-  if (existing && existing.status === 'PENDING') return;
+  if (existing && existing.status === 'PENDING') return succeed();
 
   const expiresAt = new Date(Date.now() + INVITATION_TTL_DAYS * 24 * 60 * 60 * 1000);
 
@@ -97,13 +98,15 @@ export async function inviteJobseeker(
     );
   } catch (err) {
     // Concurrent duplicate — the other invitation stands.
-    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') return;
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002')
+      return succeed();
     throw err;
   }
 
   updateTag(tags.notifications(seeker.id));
 
   logger.info({ companyId: user.id, jobSeekerId: seeker.id, profileType }, 'invitation sent');
+  return succeed();
 }
 
 // Seeker accepts or declines a pending invitation (JOB_UC_10.1). Accepting
@@ -111,7 +114,7 @@ export async function inviteJobseeker(
 export async function respondToInvitation(
   invitationId: string,
   response: 'ACCEPT' | 'DECLINE',
-): Promise<void> {
+): Promise<ActionResult> {
   const user = await requireRole('JOB_SEEKER');
 
   const invitation = await db.invitation.findFirst({
@@ -121,10 +124,10 @@ export async function respondToInvitation(
     },
   });
   if (!invitation) throw new AuthError('FORBIDDEN');
-  if (invitation.status !== 'PENDING') return; // already answered
+  if (invitation.status !== 'PENDING') return succeed(); // already answered
   if (invitation.expiresAt < new Date()) {
     await db.invitation.update({ where: { id: invitation.id }, data: { status: 'EXPIRED' } });
-    throw new Error('This invitation has expired.');
+    return fail('This invitation has expired.');
   }
 
   // UC_10.1: a base profile is required before accepting a subscription invite.
@@ -191,4 +194,5 @@ export async function respondToInvitation(
     { invitationId: invitation.id, jobSeekerId: user.id, status },
     'invitation responded to',
   );
+  return succeed();
 }
