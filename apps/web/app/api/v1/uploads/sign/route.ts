@@ -10,6 +10,7 @@ import {
   logoPathPrefix,
 } from '@/lib/storage/blob';
 import { logger } from '@/lib/observability/logger';
+import { uploadSignLimit } from '@/lib/ratelimit';
 
 // Signs scoped upload tokens for Vercel Blob client uploads. Path prefix is
 // always derived server-side from the authenticated user — the client cannot
@@ -20,6 +21,11 @@ type Kind = 'resume' | 'logo';
 export async function POST(request: Request): Promise<Response> {
   const user = await currentUser();
   if (!user) return NextResponse.json({ error: 'unauthenticated' }, { status: 401 });
+
+  const rl = await uploadSignLimit(user.id);
+  if (!rl.success) {
+    return NextResponse.json({ error: 'too many upload requests' }, { status: 429 });
+  }
 
   const body = (await request.json()) as HandleUploadBody;
 

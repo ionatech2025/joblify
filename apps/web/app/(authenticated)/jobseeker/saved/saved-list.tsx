@@ -7,6 +7,7 @@ import { toggleSavedJob } from '@/app/actions/saved-jobs';
 import { Button, buttonClasses } from '@/app/components/ui/button';
 import { EmptyState } from '@/app/components/ui/empty-state';
 import { toast } from '@/lib/stores/ui';
+import { unwrap } from '@/lib/action-result';
 
 type SavedRow = {
   id: string;
@@ -25,7 +26,7 @@ export function SavedList({ initial }: { initial: SavedRow[] }) {
     setJobs((j) => j.filter((x) => x.id !== jobId)); // optimistic
     startTransition(async () => {
       try {
-        await toggleSavedJob(jobId);
+        unwrap(await toggleSavedJob(jobId));
         toast.success('Removed from saved jobs', title);
       } catch {
         // The row reappears; the toast explains why, which the previous inline

@@ -14,6 +14,7 @@ import { logger } from '@/lib/observability/logger';
 import * as Sentry from '@sentry/nextjs';
 import { checkBotId } from 'botid/server';
 import { after } from 'next/server';
+import { type ActionResult, fail, succeed } from '@/lib/action-result';
 import { runResumeParse } from '@/workflows/resume-parse.workflow';
 import { runMatchScore } from '@/workflows/match-score.workflow';
 import { CLOSED_APPLICATION_STATUSES } from '@/lib/ui/status';
@@ -26,17 +27,17 @@ const ApplySchema = z.object({
   acknowledgedDataUse: z.literal('on'),
 });
 
-export async function submitApplication(formData: FormData): Promise<void> {
+export async function submitApplication(formData: FormData): Promise<ActionResult> {
   // 1. BotID Pro on the apply funnel.
   const verdict = await checkBotId();
-  if (verdict.isBot) throw new Error('Suspicious traffic. Please try again.');
+  if (verdict.isBot) return fail('Suspicious traffic. Please try again.');
 
   // 2. Auth.
   const user = await requireRole('JOB_SEEKER');
 
   // 3. Rate limit per user (20/day).
   const rl = await applyLimit(user.id);
-  if (!rl.success) throw new Error('Daily application limit reached. Try again tomorrow.');
+  if (!rl.success) return fail('Daily application limit reached. Try again tomorrow.');
 
   // 4. Validate.
   const parsed = ApplySchema.safeParse({
@@ -46,7 +47,7 @@ export async function submitApplication(formData: FormData): Promise<void> {
     coverLetter: formData.get('coverLetter') || undefined,
     acknowledgedDataUse: formData.get('acknowledgedDataUse'),
   });
-  if (!parsed.success) throw new Error('Invalid application data.');
+  if (!parsed.success) return fail('Invalid application data.');
 
   // 5. Ownership: resume must belong to this user.
   const resume = await db.resume.findFirst({
@@ -60,9 +61,9 @@ export async function submitApplication(formData: FormData): Promise<void> {
     where: { id: parsed.data.jobId, status: 'PUBLISHED', deletedAt: null },
     include: { company: { include: { companyProfile: true } } },
   });
-  if (!job) throw new Error('Job not available for application.');
+  if (!job) return fail('Job not available for application.');
   if (job.applicationDeadline && job.applicationDeadline < new Date()) {
-    throw new Error('The application deadline for this job has passed.');
+    return fail('The application deadline for this job has passed.');
   }
 
   // The UI already blocks re-applying, but check here too — the compound
@@ -71,7 +72,7 @@ export async function submitApplication(formData: FormData): Promise<void> {
     where: { jobPostId_jobSeekerId: { jobPostId: job.id, jobSeekerId: user.id } },
     select: { id: true },
   });
-  if (existing) throw new Error('You already applied to this job.');
+  if (existing) return fail('You already applied to this job.');
 
   // 7. Capture audit context.
   const h = await headers();
@@ -142,12 +143,13 @@ export async function submitApplication(formData: FormData): Promise<void> {
     { applicationId: application.id, userId: user.id, jobId: job.id },
     'application submitted',
   );
+  return succeed();
 }
 
 // JOB_UC_09.0: a jobseeker can withdraw their own application any time
 // before it reaches a terminal state. ApplicationStatus.WITHDRAWN was fully
 // modeled (lib/ui/status.ts already has its label + tone) but had no writer.
-export async function withdrawApplication(applicationId: string): Promise<void> {
+export async function withdrawApplication(applicationId: string): Promise<ActionResult> {
   const user = await requireRole('JOB_SEEKER');
 
   const application = await db.jobApplication.findFirst({
@@ -156,7 +158,7 @@ export async function withdrawApplication(applicationId: string): Promise<void> 
   });
   if (!application) throw new AuthError('FORBIDDEN');
   if (CLOSED_APPLICATION_STATUSES.includes(application.status)) {
-    throw new Error('This application is already closed and can’t be withdrawn.');
+    return fail('This application is already closed and can’t be withdrawn.');
   }
 
   const h = await headers();
@@ -196,6 +198,7 @@ export async function withdrawApplication(applicationId: string): Promise<void> 
   updateTag(tags.notifications(application.jobPost.companyId));
 
   logger.info({ applicationId, userId: user.id }, 'application withdrawn');
+  return succeed();
 }
 
 function resendSafe(fn: () => Promise<unknown>): void {

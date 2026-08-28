@@ -118,19 +118,56 @@ For optimistic UI on form submit, use React's built-in `useOptimistic` paired wi
   Zustand `*-draft` store on mount, track that separately: `reset()` clears `isDirty`, but
   restored draft content _is_ unsaved work and the bar has to say so.
 
+**Draft persistence goes through `lib/use-form-draft.ts`. Do not hand-roll it.**
+
+```tsx
+const clearDraft = useProfileDraftStore((s) => s.clear); // selector, always
+useFormDraft({ store: useProfileDraftStore, watch, reset, initial });
+```
+
+Four forms each had their own copy of this, and each copy had the same three
+problems: a selector-less `useXDraftStore()` subscribed the form to its own
+write so it re-rendered on every keystroke; that re-render changed the store
+object's identity, and the persist effect listed it as a dependency, so
+react-hook-form's subscription was **torn down and rebuilt on every keystroke**;
+and zustand's `persist` runs `JSON.stringify` + `localStorage.setItem`
+synchronously on the main thread, once per keystroke. The hook takes the store
+itself (a module singleton, so a stable dep), debounces the write, and flushes
+it on unmount so accidental navigation still saves.
+
+**Never wrap a control in its `<label>`.** `Field` and `SheetField` associate via
+`htmlFor`/`id`, because a wrapping label contributes _all_ of its text to the
+control's accessible name — with a hint and an error on screen, a screen reader
+announced the field as "Website Annual, before tax. Enter a valid URL." and then
+read the error again from `aria-describedby`. Both primitives did this until
+2026-08-28; the first component test written in this repo found it.
+
+**Every field about the user needs an `autoComplete` token** (WCAG 2.2 SC 1.3.5,
+Level AA — and the single biggest mobile-funnel win available). axe cannot catch
+a _missing_ one: its `autocomplete-valid` rule only checks tokens that are
+present. `tests/unit/components.test.tsx` asserts the contract instead.
+
+**Dates render through `app/components/ui/timestamp.tsx`**, never a bare
+`toLocaleDateString()`. Without an explicit locale that call resolves to the
+server's locale and UTC on the server and the viewer's on the client — a
+hydration mismatch in a client component, and a wrong date for everyone else.
+
 ## Server Actions
 
 Pattern:
 
 ```ts
 'use server';
-export async function doThing(input: Z): Promise<R> {
-  const user = await requireRole('JOB_SEEKER');
-  const rl = await someLimit(user.id);
-  if (!rl.success) throw new Error('rate limit');
-  const parsed = SomeSchema.parse(input);
+import { type ActionResult, fail, succeed } from '@/lib/action-result';
 
-  // tenancy / ownership check
+export async function doThing(input: Z): Promise<ActionResult<R>> {
+  const user = await requireRole('JOB_SEEKER');       // throws AuthError
+  const rl = await someLimit(user.id);
+  if (!rl.success) return fail('Daily limit reached. Try again tomorrow.');
+  const parsed = SomeSchema.safeParse(input);
+  if (!parsed.success) return fail('Check the highlighted fields.');
+
+  // tenancy / ownership check -> throw new AuthError('FORBIDDEN')
 
   const result = await withAudit(
     { actorId: user.id, ip, ua },
@@ -139,11 +176,42 @@ export async function doThing(input: Z): Promise<R> {
   );
 
   updateTag(tags.foo(...));
-  return result;
+  return succeed(result);
 }
 ```
 
 Six steps, in this order: auth → rate-limit → validate → ownership → mutate-with-audit → invalidate. Skipping any one is a bug. See [BACKEND.md](./BACKEND.md) for the full Server Action contract.
+
+### Expected failures RETURN. Faults THROW.
+
+This is not a style preference, it is the only thing that works. **React does not
+forward a thrown error's message to the client in a production build** — it
+replaces it with a fixed paragraph beginning "An error occurred in the Server
+Components render. The specific message is omitted in production builds…".
+So a `throw new Error('You already applied to this job.')` renders _that
+paragraph_ into the user's toast, in production only. It looks correct in dev
+(no redaction) and passes unit tests (which call the action directly and see the
+real string).
+
+| Kind             | Example                                                                       | How                                                                              |
+| ---------------- | ----------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| Expected failure | rate limit, validation, "already applied", expired invitation, plan gate copy | `return fail('…')`                                                               |
+| Fault            | not signed in, not the owner, DB down, programmer error                       | `throw` — `AuthError`, `assertPlan`, or let it propagate to `error.tsx` + Sentry |
+
+Client side, `unwrap()` re-throws an expected failure **on the client**, where
+nothing redacts it — so an existing `try/catch` + `err.message` handler keeps
+working and now shows the real text:
+
+```tsx
+try {
+  const id = unwrap(await postJob(values));
+} catch (err) {
+  toast.error("Couldn't post", err instanceof Error ? err.message : 'Try again.');
+}
+```
+
+Use `useActionState` instead where the failure should render inline and the form
+must keep its draft — `sendChatMessage` + `chat-composer.tsx` is the example.
 
 ## Calling Server Actions from forms
 
@@ -252,7 +320,7 @@ Two live examples, both from the 2026-08-28 payload audit:
   visitors never make it.
 - `instrumentation-client.ts` loads Sentry's Session Replay recorder (37 KB
   gzip, rrweb) through a dynamic import at first idle rather than passing it to
-  `Sentry.init()`. Note it does *not* use `Sentry.lazyLoadIntegration()`, which
+  `Sentry.init()`. Note it does _not_ use `Sentry.lazyLoadIntegration()`, which
   would fetch from `browser.sentry-cdn.com` — an origin the CSP does not allow.
 
 ## Performance budgets
@@ -269,7 +337,7 @@ It runs on `/`, `/jobs`, `/sign-up`, `/sign-in` — public routes only. Lighthou
 has no session, so pointing it at a gated route would score the sign-in redirect
 and call it a pass.
 
-INP is deliberately *not* asserted here: it needs real interactions and a lab run
+INP is deliberately _not_ asserted here: it needs real interactions and a lab run
 never produces it. TBT is its lab proxy; field INP comes from Speed Insights.
 
 **First-load JS budget** (`bun run perf:budget`, wired into `ci.yml` after the

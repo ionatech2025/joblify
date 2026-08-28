@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { addChatParticipant } from '@/app/actions/chat';
 import { Button } from '@/app/components/ui/button';
 import { toast } from '@/lib/stores/ui';
+import { unwrap } from '@/lib/action-result';
 
 export function AddParticipantButton({
   chatAreaId,
@@ -19,7 +20,7 @@ export function AddParticipantButton({
   function onClick() {
     startTransition(async () => {
       try {
-        await addChatParticipant(chatAreaId, jobSeekerUserId);
+        unwrap(await addChatParticipant(chatAreaId, jobSeekerUserId));
         toast.success('Added to chat');
         // Server-rendered participant/candidate lists — refresh to move this
         // seeker from one to the other.

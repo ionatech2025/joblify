@@ -66,15 +66,32 @@ function makeLimit(prefix: string, limit: ReturnType<typeof Ratelimit.slidingWin
 
 // Per-route limits — tune from observability. Identifier is typically
 // `${userId}` for authenticated routes or `${ip}` for public ones.
-export const signupLimit: Limiter = makeLimit('signup', Ratelimit.slidingWindow(3, '1 h'));
-export const signinLimit: Limiter = makeLimit('signin', Ratelimit.slidingWindow(10, '15 m'));
+//
+// Everything here is CALLED. `signupLimit`, `signinLimit` and `globalLimit` used
+// to sit in this file, configured and commented, with zero call sites — so the
+// file told the next reader that sign-up and sign-in were throttled when they
+// were not. Sign-up/sign-in are Clerk-hosted (Clerk applies its own bot and
+// brute-force protection and this app never sees the request), and a global
+// per-IP ceiling belongs at the edge, not in a route handler that has already
+// done its database work. Both were removed rather than left as decoration; if
+// either is wanted later, add the call site in the same commit as the limiter.
 export const applyLimit: Limiter = makeLimit('apply', Ratelimit.slidingWindow(20, '1 d'));
 export const accountExportLimit: Limiter = makeLimit(
   'account-export',
   Ratelimit.slidingWindow(2, '1 d'),
 );
 export const searchLimit: Limiter = makeLimit('search', Ratelimit.slidingWindow(100, '1 m'));
-export const globalLimit: Limiter = makeLimit('global', Ratelimit.slidingWindow(600, '15 m'));
+// Every call is a paid AI Gateway completion. Was borrowing applyLimit under a
+// different identifier — a separate bucket in practice, but governed by a
+// ceiling named and tuned for job applications, which is not a number anyone
+// would pick for inference spend.
+export const bioCoachLimit: Limiter = makeLimit('bio-coach', Ratelimit.slidingWindow(30, '1 h'));
+// Minting a scoped Blob upload token is cheap for us and cheap to repeat; size
+// and MIME are already constrained, request count was not.
+export const uploadSignLimit: Limiter = makeLimit(
+  'upload-sign',
+  Ratelimit.slidingWindow(40, '1 h'),
+);
 // Each post/update triggers a paid AI Gateway skill-extraction call + an
 // Algolia reindex — unthrottled writes are a direct cost-abuse vector, not
 // just a spam nuisance.

@@ -10,6 +10,7 @@ import {
 } from '@/lib/query/notifications';
 import { EmptyState } from '@/app/components/ui/empty-state';
 import { buttonClasses } from '@/app/components/ui/button';
+import { TimeStamp } from '@/app/components/ui/timestamp';
 
 const KIND_LABEL: Record<string, string> = {
   APPLICATION_SUBMITTED: 'Application submitted',
@@ -95,7 +96,7 @@ export function NotificationsList({ initial }: { initial: NotificationItem[] }) 
                   </Link>
                 )}
                 <p className="mt-1 mb-0 text-xs text-fg-subtle">
-                  {new Date(n.createdAt).toLocaleString()}
+                  <TimeStamp value={n.createdAt} mode="datetime" />
                 </p>
               </div>
               {!isRead && (

@@ -1,6 +1,6 @@
 'use client';
 
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
@@ -12,6 +12,7 @@ import { PostJobFormSchema, type PostJobFormValues } from '@/app/company/jobs/jo
 import { FormSheet } from '@/app/components/console/sheet';
 import { DirtyBar } from '@/app/components/console/dirty-bar';
 import { toast } from '@/lib/stores/ui';
+import { unwrap } from '@/lib/action-result';
 
 export function EditJobForm({
   jobId,
@@ -30,7 +31,7 @@ export function EditJobForm({
   const {
     register,
     handleSubmit,
-    watch,
+    control,
     reset,
     setValue,
     formState: { errors, isDirty },
@@ -39,7 +40,10 @@ export function EditJobForm({
     defaultValues: initial,
   });
 
-  const publish = watch('publish') ?? false;
+  // useWatch, not watch(): watch() returns a fresh function on every render
+  // that React Compiler cannot memoize, which bailed this component out of
+  // compilation entirely.
+  const publish = useWatch({ control, name: 'publish' }) ?? false;
 
   function onDelete() {
     if (
@@ -67,7 +71,7 @@ export function EditJobForm({
     setError(null);
     startTransition(async () => {
       try {
-        await updateJob(jobId, values);
+        unwrap(await updateJob(jobId, values));
         // Rebase the dirty baseline onto what was just saved, so the bar flips
         // back to "All changes saved" instead of staying dirty forever.
         reset(values);

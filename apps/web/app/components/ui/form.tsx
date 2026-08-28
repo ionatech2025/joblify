@@ -9,6 +9,7 @@ import {
   type ReactNode,
   type SelectHTMLAttributes,
   type TextareaHTMLAttributes,
+  type WheelEvent,
 } from 'react';
 import { Check } from 'lucide-react';
 import { cn } from '@/lib/cn';
@@ -19,8 +20,24 @@ const controlBase =
   'w-full rounded-control border border-border-strong bg-surface px-3.5 py-2.5 text-sm text-fg placeholder:text-fg-subtle focus:border-brand focus:ring-2 focus:ring-brand/25 focus:outline-none disabled:bg-surface-sunken disabled:text-fg-subtle';
 
 export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(
-  function Input({ className, ...props }, ref) {
-    return <input ref={ref} className={cn(controlBase, className)} {...props} />;
+  function Input({ className, onWheel, ...props }, ref) {
+    // `type="number"` fields change value when the wheel scrolls over a focused
+    // control — so a recruiter scrolling past a salary field they had just
+    // tabbed into silently rewrites it, with no undo affordance and nothing on
+    // screen to say it happened. Blurring on wheel is the standard guard; the
+    // scroll itself is untouched, and any onWheel the call site passes still
+    // runs. Applied in the primitive so no numeric field can miss it.
+    const guardWheel =
+      props.type === 'number'
+        ? (e: WheelEvent<HTMLInputElement>) => {
+            onWheel?.(e);
+            e.currentTarget.blur();
+          }
+        : onWheel;
+
+    return (
+      <input ref={ref} className={cn(controlBase, className)} onWheel={guardWheel} {...props} />
+    );
   },
 );
 
@@ -43,6 +60,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectHTMLAttributes<HTMLSel
 
 // Aria props Field injects into its (single-element) control child.
 type FieldControlProps = {
+  id?: string;
   'aria-invalid'?: boolean;
   'aria-describedby'?: string;
 };
@@ -62,11 +80,23 @@ export function Field({
   // a stable id + role="alert" (announced on appearance), and the control gets
   // aria-invalid plus an aria-describedby pointing at it — appended after any
   // describedby the call site already set, which is preserved.
+  //
+  // htmlFor/id rather than wrapping the control in the <label>. A wrapping
+  // label contributes ALL of its text to the control's accessible name, so with
+  // a hint and an error on screen a screen reader announced the field as
+  // "Website Annual, before tax. Enter a valid URL." and then read the error a
+  // second time from aria-describedby. The label element now holds the label
+  // and nothing else.
   const base = useId();
   const errorId = `${base}-error`;
   const hintId = `${base}-hint`;
+  const fallbackId = `${base}-control`;
+  const controlId = isValidElement<FieldControlProps>(children)
+    ? (children.props.id ?? fallbackId)
+    : fallbackId;
   const control = isValidElement<FieldControlProps>(children)
     ? cloneElement(children, {
+        id: controlId,
         'aria-invalid': error ? true : undefined,
         'aria-describedby':
           [
@@ -80,8 +110,10 @@ export function Field({
     : children;
 
   return (
-    <label className="flex flex-col gap-1">
-      <span className="text-fg text-sm font-medium">{label}</span>
+    <div className="flex flex-col gap-1">
+      <label htmlFor={controlId} className="text-fg text-sm font-medium">
+        {label}
+      </label>
       {hint && (
         <span id={hintId} className="text-fg-subtle text-xs">
           {hint}
@@ -93,7 +125,7 @@ export function Field({
           {error}
         </span>
       )}
-    </label>
+    </div>
   );
 }
 

@@ -81,7 +81,10 @@ describe('shareJobWithJobseeker', () => {
 
   it('rejects when the target is not a job seeker', async () => {
     m.userFindFirst.mockResolvedValue(null);
-    await expect(shareJobWithJobseeker(JOB_ID, 'seeker1')).rejects.toThrow('Job seeker not found');
+    expect(await shareJobWithJobseeker(JOB_ID, 'seeker1')).toMatchObject({
+      ok: false,
+      error: expect.stringMatching('Job seeker not found'),
+    });
     expect(m.notifCreate).not.toHaveBeenCalled();
   });
 

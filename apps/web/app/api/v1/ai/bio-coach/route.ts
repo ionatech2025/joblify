@@ -2,14 +2,14 @@ import { streamText, type UIMessage, convertToModelMessages } from 'ai';
 import { requireRole } from '@/lib/auth';
 import { gateway, MODELS } from '@/lib/ai/gateway';
 import { BIO_COACH_SYSTEM } from '@/lib/ai/prompts/bio-coach';
-import { applyLimit } from '@/lib/ratelimit';
+import { bioCoachLimit } from '@/lib/ratelimit';
 
 export const maxDuration = 60;
 
 export async function POST(req: Request) {
   const user = await requireRole('JOB_SEEKER');
 
-  const rl = await applyLimit(`bio-coach:${user.id}`);
+  const rl = await bioCoachLimit(user.id);
   if (!rl.success) {
     return new Response('Rate limit exceeded', { status: 429 });
   }

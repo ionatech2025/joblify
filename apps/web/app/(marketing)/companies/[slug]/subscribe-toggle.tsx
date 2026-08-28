@@ -6,6 +6,7 @@ import type { ProfileType } from '@prisma/client';
 import { subscribeToCompany, unsubscribeFromCompany } from '@/app/actions/subscriptions';
 import { Button } from '@/app/components/ui/button';
 import { toast } from '@/lib/stores/ui';
+import { unwrap } from '@/lib/action-result';
 
 export function SubscribeToggle({
   companyUserId,
@@ -32,7 +33,7 @@ export function SubscribeToggle({
     startTransition(async () => {
       try {
         if (next) {
-          await subscribeToCompany(companyUserId, profileType);
+          unwrap(await subscribeToCompany(companyUserId, profileType));
           toast.success(`Subscribed as ${typeLabel}`);
         } else {
           await unsubscribeFromCompany(companyUserId, profileType);

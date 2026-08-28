@@ -17,6 +17,7 @@ import {
 } from '@/lib/ui/status';
 import { toast } from '@/lib/stores/ui';
 import { cn } from '@/lib/cn';
+import { TimeStamp } from '@/app/components/ui/timestamp';
 
 type Row = {
   id: string;
@@ -185,7 +186,7 @@ function ApplicantCard({
         </p>
       )}
       <p className="text-fg-subtle mt-0.5 text-[11px]">
-        Applied {new Date(row.appliedAt).toLocaleDateString()}
+        Applied <TimeStamp value={row.appliedAt} />
       </p>
 
       <div className="mt-1 flex gap-3 text-[11px]">

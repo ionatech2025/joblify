@@ -7,6 +7,8 @@ import { Button } from '@/app/components/ui/button';
 import { EmptyState } from '@/app/components/ui/empty-state';
 import { ListView, type ListColumn } from '@/app/components/console/list-view';
 import { toast } from '@/lib/stores/ui';
+import { unwrap } from '@/lib/action-result';
+import { TimeStamp } from '@/app/components/ui/timestamp';
 
 type PendingCompany = {
   id: string;
@@ -33,7 +35,7 @@ export function VerificationQueue({ initial }: { initial: PendingCompany[] }) {
     const name = prev.find((row) => row.id === id)?.companyName ?? 'Company';
     startTransition(async () => {
       try {
-        await verifyCompany(id, status);
+        unwrap(await verifyCompany(id, status));
         if (status === 'VERIFIED') {
           toast.success(`${name} verified`, 'They now appear in search and the directory.');
         } else {
@@ -102,9 +104,7 @@ export function VerificationQueue({ initial }: { initial: PendingCompany[] }) {
       header: 'Applied',
       align: 'end',
       hideBelow: 'sm',
-      cell: (c) => (
-        <span className="text-fg-muted">{new Date(c.createdAt).toLocaleDateString()}</span>
-      ),
+      cell: (c) => <TimeStamp value={c.createdAt} className="text-fg-muted" />,
     },
     {
       key: 'actions',

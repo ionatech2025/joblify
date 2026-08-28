@@ -11,6 +11,7 @@ export default async function ResumesPage() {
   const rows = await db.resume.findMany({
     where: { userId: user.id, deletedAt: null },
     orderBy: { createdAt: 'desc' },
+    take: 50,
     select: {
       id: true,
       title: true,

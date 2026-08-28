@@ -8,6 +8,7 @@ import { HeaderAuth } from './components/header-auth';
 import { Footer } from './components/footer';
 import { CookieBanner } from './components/cookie-banner';
 import { AnalyticsGate } from './components/analytics-gate';
+import { WebVitals } from './components/web-vitals';
 import { SwRegister } from './components/sw-register';
 import { AmbientCanvas } from './components/ui/ambient';
 import { Toaster } from './components/ui/toaster';
@@ -142,6 +143,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <Footer />
           <CookieBanner />
           <AnalyticsGate />
+          {/* Field Core Web Vitals -> Sentry. Metric name and number only; see
+              the module comment for why this sits outside the consent gate
+              AnalyticsGate applies to Vercel Analytics. */}
+          <WebVitals />
           {/* Global overlays. Both are client islands that render null until
               opened/populated, so they cost nothing to the static shell. */}
           <CommandPalette />

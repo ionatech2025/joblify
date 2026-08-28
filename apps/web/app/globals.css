@@ -105,6 +105,11 @@
      one edit moves all three. */
   --o-header-h: 3.5rem;
   --o-nav-h: 2.3125rem;
+  /* Ceiling, not an exact height: the control panel is one or two rows
+     depending on whether the page supplies actions/search/views. Only the
+     focus-scroll reserve below reads it, where over-reserving costs a little
+     extra scroll and under-reserving hides the focused control. */
+  --o-control-h: 4.75rem;
 
   /* Radii, raw. `control` = inputs/selects, `card` = every elevated surface,
      `canvas` = big inset hero panels, `pill` = the editorial capsule (buttons,
@@ -426,6 +431,22 @@
   html {
     /* Base paint behind the fixed ambient backdrop (overscroll, pre-paint). */
     background: var(--canvas);
+
+    /* WCAG 2.2 SC 2.4.11 (Focus Not Obscured, AA). Every sticky bar in this app
+       overlays the top of the viewport, which is exactly where the browser
+       parks a control it scrolled to on focus — so tabbing to a field below the
+       fold used to land it UNDER the chrome, being typed into unseen.
+       scroll-padding-top reserves that band for every scroll the browser
+       performs itself (focus, scrollIntoView, fragment navigation).
+       Not detectable by axe: it reads a static DOM and has no view of where
+       scrolling puts things. */
+    scroll-padding-top: calc(var(--o-header-h) + 1rem);
+  }
+  /* The console stacks two more sticky bars (module nav, control panel) under
+     the app header. `.o-console` is applied by ConsoleShell *inside* <body>,
+     and the scrolling element is <html> — :has() is the only way up. */
+  html:has(.o-console) {
+    scroll-padding-top: calc(var(--o-header-h) + var(--o-nav-h) + var(--o-control-h) + 1rem);
   }
   body {
     margin: 0;

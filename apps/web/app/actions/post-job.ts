@@ -17,6 +17,7 @@ import { logger } from '@/lib/observability/logger';
 import { postJobLimit } from '@/lib/ratelimit';
 import { embedJobPost } from '@/workflows/match-score.workflow';
 import { PostJobFormSchema } from '../company/jobs/job-form-schema';
+import { type ActionResult, fail, succeed } from '@/lib/action-result';
 
 function slugify(title: string): string {
   return title
@@ -32,13 +33,13 @@ function uniqueSlug(base: string): string {
 
 const Input = PostJobFormSchema;
 
-export async function postJob(input: z.infer<typeof Input>): Promise<string> {
+export async function postJob(input: z.infer<typeof Input>): Promise<ActionResult<string>> {
   const user = await requireRole('COMPANY');
 
   // Each post triggers a paid AI skill-extraction call + an Algolia reindex —
   // throttle before doing any other work.
   const rl = await postJobLimit(user.id);
-  if (!rl.success) throw new Error('Daily job-posting limit reached. Try again tomorrow.');
+  if (!rl.success) return fail('Daily job-posting limit reached. Try again tomorrow.');
 
   const parsed = Input.parse(input);
 
@@ -54,7 +55,7 @@ export async function postJob(input: z.infer<typeof Input>): Promise<string> {
     },
     select: { id: true },
   });
-  if (duplicate) throw new Error('You already have a job post with this title.');
+  if (duplicate) return fail('You already have a job post with this title.');
 
   const h = await headers();
   const ip = h.get('x-forwarded-for')?.split(',')[0]?.trim() ?? null;
@@ -149,14 +150,17 @@ export async function postJob(input: z.infer<typeof Input>): Promise<string> {
 
   logger.info({ jobId: job.id, companyId: user.id, status: job.status }, 'job posted');
 
-  return job.id;
+  return succeed(job.id);
 }
 
-export async function updateJob(jobId: string, input: z.infer<typeof Input>): Promise<void> {
+export async function updateJob(
+  jobId: string,
+  input: z.infer<typeof Input>,
+): Promise<ActionResult> {
   const user = await requireRole('COMPANY');
 
   const rl = await postJobLimit(user.id);
-  if (!rl.success) throw new Error('Daily job-posting limit reached. Try again tomorrow.');
+  if (!rl.success) return fail('Daily job-posting limit reached. Try again tomorrow.');
 
   const parsed = Input.parse(input);
 
@@ -188,7 +192,7 @@ export async function updateJob(jobId: string, input: z.infer<typeof Input>): Pr
     },
     select: { id: true },
   });
-  if (duplicate) throw new Error('You already have a job post with this title.');
+  if (duplicate) return fail('You already have a job post with this title.');
 
   const h = await headers();
   const ip = h.get('x-forwarded-for')?.split(',')[0]?.trim() ?? null;
@@ -286,6 +290,7 @@ export async function updateJob(jobId: string, input: z.infer<typeof Input>): Pr
   updateTag(tags.company(user.id));
 
   logger.info({ jobId, companyId: user.id }, 'job updated');
+  return succeed();
 }
 
 // JOB_UC_11.1: remove a job post the company no longer needs. Soft-delete

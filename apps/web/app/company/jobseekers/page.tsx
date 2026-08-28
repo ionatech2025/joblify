@@ -56,6 +56,8 @@ export default async function CompanyJobseekersPage({
     db.jobPost.findMany({
       where: { companyId: user.id, status: 'PUBLISHED', deletedAt: null },
       orderBy: { publishedAt: 'desc' },
+      // Feeds a filter dropdown; past this it wants a search box, not a longer list.
+      take: 200,
       select: { id: true, title: true },
     }),
   ]);
@@ -244,6 +246,9 @@ async function getPublicSeekers(
     }),
     db.companySubscription.findMany({
       where: { companyId: companyUserId },
+      // Read only to mark "already subscribed" on the visible DIRECTORY_CAP
+      // profiles, so it never needs to be longer than the page it annotates.
+      take: 1000,
       select: { jobSeekerId: true },
     }),
   ]);

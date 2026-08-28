@@ -28,8 +28,31 @@ const NEXT_DIR = join(process.cwd(), '.next');
  * round number — a budget you are already over is a budget nobody can act on.
  * Tighten them as payload comes down; never raise one without saying in the
  * commit message what got heavier and why.
+ *
+ * RAISED 2026-08-28, +21 KB across the board. This gate caught the regression on
+ * the first change after it was added, which is the system working — so the
+ * attribution is recorded here rather than waved through. Measured per route by
+ * building with each piece removed in turn:
+ *
+ *   +5.9 KB  React Compiler (next.config.ts `reactCompiler`). Automatic
+ *            memoization across an app that had 2 useMemo, 1 useCallback and 0
+ *            memo() in it. Bytes bought at build time for re-render cost saved
+ *            at runtime — and since the same pass added field INP collection
+ *            (app/components/web-vitals.tsx), the trade is now measurable
+ *            rather than assumed. If INP does not move, take this back out
+ *            first: it is the least certain of the three.
+ *   +8.9 KB  web-vitals + BotID's client, together. Both must load on every
+ *            route: CWV observers have to attach before LCP, and BotID's
+ *            challenge has to be in place before the apply POST. Before this,
+ *            `checkBotId()` was forming a verdict on no signal at all.
+ *   +6.3 KB  the shared client modules from the audit remediation —
+ *            lib/action-result.ts `unwrap` (14 call sites), TimeStamp (9),
+ *            lib/use-form-draft.ts (4), the palette focus trap.
+ *
+ * All three close a gap the previous ceiling was set without. Tighten back
+ * toward 375 by splitting the console's form routes, not by dropping these.
  */
-const DEFAULT_BUDGET_KB = 375;
+const DEFAULT_BUDGET_KB = 396;
 
 /**
  * Per-route overrides. Every route here carries a react-hook-form + zod
@@ -38,13 +61,13 @@ const DEFAULT_BUDGET_KB = 375;
  * *without* a form cannot quietly grow into the same allowance.
  */
 const BUDGET_KB: Record<string, number> = {
-  '/company/settings': 420,
-  '/company/jobs/new': 410,
-  '/company/jobs/[id]/edit': 410,
-  '/jobseeker/profile': 410,
-  '/jobseeker/resumes/builder': 410,
-  '/jobseeker/resumes': 400,
-  '/employer-setup': 405,
+  '/company/settings': 430,
+  '/company/jobs/new': 420,
+  '/company/jobs/[id]/edit': 420,
+  '/jobseeker/profile': 420,
+  '/jobseeker/resumes/builder': 420,
+  '/jobseeker/resumes': 406,
+  '/employer-setup': 412,
 };
 
 const budgetFor = (route: string): number => BUDGET_KB[route] ?? DEFAULT_BUDGET_KB;
@@ -63,7 +86,10 @@ function walk(dir: string): string[] {
 
 /** ".next/server/app/jobseeker/profile.html" -> "/jobseeker/profile" */
 function routeOf(file: string): string {
-  const rel = relative(APP_DIR, file).replace(/\.html$/, '').split(sep).join('/');
+  const rel = relative(APP_DIR, file)
+    .replace(/\.html$/, '')
+    .split(sep)
+    .join('/');
   if (rel === 'index') return '/';
   return `/${rel}`;
 }

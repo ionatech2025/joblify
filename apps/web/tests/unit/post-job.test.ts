@@ -134,19 +134,24 @@ describe('postJob', () => {
 
   it('enforces the daily posting rate limit', async () => {
     m.postJobLimit.mockResolvedValue({ success: false });
-    await expect(postJob(input())).rejects.toThrow(/limit/i);
+    expect(await postJob(input())).toMatchObject({
+      ok: false,
+      error: expect.stringMatching(/limit/i),
+    });
     expect(m.jobCreate).not.toHaveBeenCalled();
   });
 
   it("rejects a duplicate title among the company's other live posts", async () => {
     m.jobFindFirst.mockResolvedValue({ id: 'other-job' });
-    await expect(postJob(input())).rejects.toThrow(/already have a job post/i);
+    expect(await postJob(input())).toMatchObject({
+      ok: false,
+      error: expect.stringMatching(/already have a job post/i),
+    });
     expect(m.jobCreate).not.toHaveBeenCalled();
   });
 
   it('publishes with ownership, slug, and publishedAt on the happy path', async () => {
-    const id = await postJob(input());
-    expect(id).toBe(JOB_ID);
+    expect(await postJob(input())).toEqual({ ok: true, data: JOB_ID });
     const data = m.jobCreate.mock.calls[0]![0].data;
     expect(data.companyId).toBe('company1');
     expect(data.status).toBe('PUBLISHED');
@@ -209,7 +214,7 @@ describe('postJob', () => {
 
   it('still saves the job when AI skill extraction fails (best-effort), reporting to Sentry', async () => {
     m.generateObject.mockRejectedValue(new Error('gateway down'));
-    await expect(postJob(input())).resolves.toBe(JOB_ID);
+    expect(await postJob(input())).toEqual({ ok: true, data: JOB_ID });
     expect(m.jobCreate).toHaveBeenCalledTimes(1);
     await runAfterCallbacks(); // the failing extraction must not throw out of after()
     expect(m.captureException).toHaveBeenCalledWith(expect.any(Error), { tags: { jobId: JOB_ID } });
@@ -219,7 +224,7 @@ describe('postJob', () => {
 
   it('still saves the job when the Algolia push fails (best-effort)', async () => {
     m.reindexJob.mockRejectedValue(new Error('algolia down'));
-    await expect(postJob(input())).resolves.toBe(JOB_ID);
+    expect(await postJob(input())).toEqual({ ok: true, data: JOB_ID });
     await runAfterCallbacks();
     expect(m.captureException).toHaveBeenCalledWith(expect.any(Error), { tags: { jobId: JOB_ID } });
   });
@@ -329,7 +334,10 @@ describe('updateJob', () => {
     m.jobFindFirst
       .mockResolvedValueOnce({ id: JOB_ID, publishedAt: new Date() })
       .mockResolvedValueOnce({ id: 'other-job' });
-    await expect(updateJob(JOB_ID, input())).rejects.toThrow('already have a job post');
+    expect(await updateJob(JOB_ID, input())).toMatchObject({
+      ok: false,
+      error: expect.stringMatching('already have a job post'),
+    });
     expect(m.jobUpdate).not.toHaveBeenCalled();
   });
 
@@ -368,7 +376,10 @@ describe('updateJob', () => {
     m.jobFindFirst
       .mockResolvedValueOnce({ id: JOB_ID, publishedAt: new Date(), chatArea: { id: 'area1' } })
       .mockResolvedValueOnce(null);
-    await expect(updateJob(JOB_ID, input({ createChatArea: true }))).resolves.toBeUndefined();
+    await expect(updateJob(JOB_ID, input({ createChatArea: true }))).resolves.toEqual({
+      ok: true,
+      data: undefined,
+    });
   });
 });
 

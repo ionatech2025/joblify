@@ -2,10 +2,11 @@
 
 import { requireRole } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { type ActionResult, fail, succeed } from '@/lib/action-result';
 
 // Toggle a saved (bookmarked) job for the current jobseeker. Returns the new
 // state so the client can reflect it. Low-stakes bookmark — not audit-wrapped.
-export async function toggleSavedJob(jobPostId: string): Promise<{ saved: boolean }> {
+export async function toggleSavedJob(jobPostId: string): Promise<ActionResult<{ saved: boolean }>> {
   const user = await requireRole('JOB_SEEKER');
 
   const existing = await db.savedJob.findUnique({
@@ -15,7 +16,7 @@ export async function toggleSavedJob(jobPostId: string): Promise<{ saved: boolea
 
   if (existing) {
     await db.savedJob.delete({ where: { id: existing.id } });
-    return { saved: false };
+    return succeed({ saved: false });
   }
 
   // Only allow saving a real, live job.
@@ -23,8 +24,8 @@ export async function toggleSavedJob(jobPostId: string): Promise<{ saved: boolea
     where: { id: jobPostId, status: 'PUBLISHED', deletedAt: null },
     select: { id: true },
   });
-  if (!job) throw new Error('Job not available.');
+  if (!job) return fail('Job not available.');
 
   await db.savedJob.create({ data: { userId: user.id, jobPostId } });
-  return { saved: true };
+  return succeed({ saved: true });
 }

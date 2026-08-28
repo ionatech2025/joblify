@@ -12,6 +12,9 @@ export default async function SavedJobsPage() {
     db.savedJob.findMany({
       where: { userId: user.id, jobPost: { status: 'PUBLISHED', deletedAt: null } },
       orderBy: { createdAt: 'desc' },
+      // Ceiling rather than paging: this list has no pager, and a saved list
+      // long enough to hit 200 wants search, not a page 2.
+      take: 200,
       select: {
         jobPost: {
           select: {
@@ -27,6 +30,8 @@ export default async function SavedJobsPage() {
     db.savedSearch.findMany({
       where: { userId: user.id },
       orderBy: { createdAt: 'desc' },
+      // saveSearch caps a user at 20; this matches so the read can't outgrow it.
+      take: 20,
       select: { id: true, label: true, query: true },
     }),
   ]);

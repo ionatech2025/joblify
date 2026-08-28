@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from './client';
 import type { ApplicationStatus } from '@prisma/client';
 import { withdrawApplication } from '@/app/actions/apply';
+import { unwrap } from '@/lib/action-result';
 
 export type ApplicationListItem = {
   id: string;
@@ -38,7 +39,10 @@ export function useWithdrawApplication(userId: string) {
   const queryClient = useQueryClient();
   const key = queryKeys.applications(userId);
   return useMutation({
-    mutationFn: (applicationId: string) => withdrawApplication(applicationId),
+    // unwrap so an expected failure ("already closed") rejects the mutation
+    // with its real message — onError reads err.message, and a returned
+    // { ok: false } would otherwise resolve as a success and roll nothing back.
+    mutationFn: async (applicationId: string) => unwrap(await withdrawApplication(applicationId)),
     onMutate: async (applicationId) => {
       await queryClient.cancelQueries({ queryKey: key });
       const previous = queryClient.getQueryData<ApplicationListItem[]>(key);

@@ -6,6 +6,7 @@ import { addVirtualInternToChat } from '@/app/actions/chat';
 import { inviteJobseeker } from '@/app/actions/invitations';
 import { Button } from '@/app/components/ui/button';
 import { toast } from '@/lib/stores/ui';
+import { unwrap } from '@/lib/action-result';
 
 export function InviteButtons({
   jobSeekerUserId,
@@ -35,7 +36,7 @@ export function InviteButtons({
       try {
         // Daily rate-limit and plan-gate failures throw here and must reach
         // the user as a toast instead of the full-page error boundary.
-        await inviteJobseeker(jobSeekerUserId, profileType);
+        unwrap(await inviteJobseeker(jobSeekerUserId, profileType));
         toast.success('Invitation sent');
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Something went wrong.';

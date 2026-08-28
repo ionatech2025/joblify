@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, useTransition } from 'react';
+import { useRef, useState, useTransition } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
@@ -25,6 +25,7 @@ import {
 } from '@/app/components/console/sheet';
 import { DirtyBar } from '@/app/components/console/dirty-bar';
 import { useCompanySettingsDraftStore } from '@/lib/stores/company-settings-draft';
+import { useFormDraft } from '@/lib/use-form-draft';
 import { toast } from '@/lib/stores/ui';
 
 function titleCase(s: string): string {
@@ -49,7 +50,7 @@ export function CompanySettingsForm({
   const [logo, setLogo] = useState<string | null>(logoUrl);
   const [logoBusy, setLogoBusy] = useState(false);
   const logoInput = useRef<HTMLInputElement>(null);
-  const draftStore = useCompanySettingsDraftStore();
+  const clearDraft = useCompanySettingsDraftStore((s) => s.clear);
   const {
     register,
     handleSubmit,
@@ -61,29 +62,21 @@ export function CompanySettingsForm({
     defaultValues: initial,
   });
 
-  // Restore a saved draft once on mount (draft wins over the server-loaded
-  // profile for any field it has a value for). An empty draft is a no-op.
-  // (Logo upload is a separate useState-managed flow, not part of this draft.)
-  useEffect(() => {
-    if (Object.keys(draftStore.draft).length > 0) {
-      reset({ ...initial, ...draftStore.draft });
-      setRestoredDraft(true);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Persist on every change so accidental navigation doesn't lose the draft.
-  useEffect(() => {
-    const sub = watch((values) => draftStore.update(values));
-    return () => sub.unsubscribe();
-  }, [watch, draftStore]);
+  // Restore on mount, then persist on a debounce. See lib/use-form-draft.ts.
+  useFormDraft({
+    store: useCompanySettingsDraftStore,
+    watch,
+    reset,
+    initial,
+    onRestore: () => setRestoredDraft(true),
+  });
 
   function onSubmit(values: CompanyProfileInput) {
     setError(null);
     start(async () => {
       try {
         await updateCompanyProfile(values);
-        draftStore.clear();
+        clearDraft();
         setRestoredDraft(false);
         // Rebase the dirty baseline onto what was just saved, so the bar reads
         // "All changes saved" rather than staying dirty until a reload.
@@ -172,7 +165,7 @@ export function CompanySettingsForm({
         <SheetGroups>
           <SheetGroup title="Identity">
             <SheetField label="Company name" error={errors.companyName?.message} required>
-              <Input {...register('companyName')} />
+              <Input {...register('companyName')} autoComplete="organization" />
             </SheetField>
             <SheetField label="Industry">
               <Select {...register('industry')}>
@@ -196,10 +189,19 @@ export function CompanySettingsForm({
 
           <SheetGroup title="Links">
             <SheetField label="Website" error={errors.website?.message}>
-              <Input {...register('website')} placeholder="https://acme.com" />
+              <Input
+                type="url"
+                {...register('website')}
+                autoComplete="url"
+                placeholder="https://acme.com"
+              />
             </SheetField>
             <SheetField label="LinkedIn" error={errors.linkedin?.message}>
-              <Input {...register('linkedin')} placeholder="https://linkedin.com/company/acme" />
+              <Input
+                type="url"
+                {...register('linkedin')}
+                placeholder="https://linkedin.com/company/acme"
+              />
             </SheetField>
           </SheetGroup>
 
@@ -220,7 +222,7 @@ export function CompanySettingsForm({
           dirty={isDirty || restoredDraft}
           saving={pending}
           onDiscard={() => {
-            draftStore.clear();
+            clearDraft();
             reset(initial);
             setRestoredDraft(false);
           }}

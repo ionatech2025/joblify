@@ -4,6 +4,7 @@ import { Badge } from '@/app/components/ui/badge';
 import { EmptyState } from '@/app/components/ui/empty-state';
 import { Card } from '@/app/components/ui/card';
 import { CHAT_KIND_BADGE } from '@/lib/ui/status';
+import { TimeStamp } from '@/app/components/ui/timestamp';
 
 export type ChatThreadMessage = {
   id: string;
@@ -80,7 +81,9 @@ export function ChatThread({
                     <ExternalLink aria-hidden className="size-3.5" />
                   </a>
                 )}
-                <p className="mt-1 mb-0 text-xs text-fg-subtle">{m.createdAt.toLocaleString()}</p>
+                <p className="mt-1 mb-0 text-xs text-fg-subtle">
+                  <TimeStamp value={m.createdAt} mode="datetime" />
+                </p>
               </div>
             </li>
           );

@@ -104,7 +104,10 @@ describe('inviteJobseeker', () => {
 
   it('rejects when the target is not a job seeker', async () => {
     m.userFindFirst.mockResolvedValue(null);
-    await expect(inviteJobseeker('seeker1', 'EMPLOYABLE')).rejects.toThrow('Job seeker not found');
+    expect(await inviteJobseeker('seeker1', 'EMPLOYABLE')).toMatchObject({
+      ok: false,
+      error: expect.stringMatching('Job seeker not found'),
+    });
     expect(m.invCreate).not.toHaveBeenCalled();
   });
 
@@ -116,7 +119,10 @@ describe('inviteJobseeker', () => {
 
   it('enforces the daily invitation rate limit', async () => {
     m.inviteLimit.mockResolvedValue({ success: false });
-    await expect(inviteJobseeker('seeker1', 'EMPLOYABLE')).rejects.toThrow(/limit/i);
+    expect(await inviteJobseeker('seeker1', 'EMPLOYABLE')).toMatchObject({
+      ok: false,
+      error: expect.stringMatching(/limit/i),
+    });
     expect(m.invCreate).not.toHaveBeenCalled();
   });
 
@@ -184,7 +190,10 @@ describe('respondToInvitation', () => {
 
   it('marks an expired invitation EXPIRED and refuses it', async () => {
     m.invFindFirst.mockResolvedValue({ ...INVITATION, expiresAt: past() });
-    await expect(respondToInvitation('inv1', 'ACCEPT')).rejects.toThrow('expired');
+    expect(await respondToInvitation('inv1', 'ACCEPT')).toMatchObject({
+      ok: false,
+      error: expect.stringMatching('expired'),
+    });
     expect(m.invUpdateDirect).toHaveBeenCalledWith({
       where: { id: 'inv1' },
       data: { status: 'EXPIRED' },

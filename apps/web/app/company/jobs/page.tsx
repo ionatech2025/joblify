@@ -14,6 +14,7 @@ import { SearchBox, FacetChips, type Facet } from '@/app/components/console/sear
 import { FilterMenu } from '@/app/components/console/filter-menu';
 import { makeHref, orderParam, readListQuery } from '@/lib/ui/list-params';
 import { JOB_STATUS_LABEL, JOB_STATUS_TONE } from './job-status';
+import { TimeStamp } from '@/app/components/ui/timestamp';
 
 export const metadata = { title: 'Jobs' };
 
@@ -254,7 +255,7 @@ export default async function CompanyJobsPage({
                             {j.applicants} applicant{j.applicants === 1 ? '' : 's'}
                           </Link>
                           <span className="text-fg-subtle text-[11px]">
-                            {j.posted.toLocaleDateString()}
+                            <TimeStamp value={j.posted} />
                           </span>
                         </div>
                       </KanbanCard>
@@ -352,7 +353,7 @@ function COLUMNS(total: number): ListColumn<Row>[] {
       sort: 'posted',
       align: 'end',
       hideBelow: 'sm',
-      cell: (j) => <span className="text-fg-muted">{j.posted.toLocaleDateString()}</span>,
+      cell: (j) => <TimeStamp value={j.posted} className="text-fg-muted" />,
     },
     {
       key: 'actions',

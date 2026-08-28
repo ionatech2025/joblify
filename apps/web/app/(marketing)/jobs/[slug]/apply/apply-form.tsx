@@ -2,13 +2,13 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import type { Resume } from '@prisma/client';
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 import { useApplyDraftStore } from '@/lib/stores/apply-draft';
 import { submitApplication } from '@/app/actions/apply';
 import { Field, Select, Textarea } from '@/app/components/ui/form';
 import { Button } from '@/app/components/ui/button';
+import { unwrap } from '@/lib/action-result';
 
 export function ApplyForm({
   jobId,
@@ -17,7 +17,8 @@ export function ApplyForm({
 }: {
   jobId: string;
   jobSlug: string;
-  resumes: Resume[];
+  /** id + title only — see the query in page.tsx. */
+  resumes: Array<{ id: string; title: string }>;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -33,7 +34,7 @@ export function ApplyForm({
     setError(null);
     startTransition(async () => {
       try {
-        await submitApplication(formData);
+        unwrap(await submitApplication(formData));
         clear(jobId);
         router.push('/jobseeker/applications?just_applied=1');
       } catch (err) {

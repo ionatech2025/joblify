@@ -5,6 +5,7 @@ import { Star } from 'lucide-react';
 import { saveSearch } from '@/app/actions/saved-searches';
 import { Button } from '@/app/components/ui/button';
 import { toast } from '@/lib/stores/ui';
+import { unwrap } from '@/lib/action-result';
 
 export function SaveSearchButton({ query }: { query: string }) {
   const [pending, startTransition] = useTransition();
@@ -13,7 +14,7 @@ export function SaveSearchButton({ query }: { query: string }) {
   function save() {
     startTransition(async () => {
       try {
-        await saveSearch({ query });
+        unwrap(await saveSearch({ query }));
         setDone(true);
         toast.success('Search saved', 'Re-run it any time from Saved jobs & searches.');
       } catch (e) {

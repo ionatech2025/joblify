@@ -17,19 +17,16 @@ import { Skeleton } from '@/app/components/ui/skeleton';
 //
 // ssr:false because the panel is pure client state (a chat session); there is
 // nothing to prerender, and it can only ever mount from a click.
-const BioCoachPanel = dynamic(
-  () => import('./bio-coach-panel').then((m) => m.BioCoachPanel),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="rounded-card border-border bg-brand-subtle shadow-soft mt-4 border p-4">
-        <Skeleton className="h-5 w-28" />
-        <Skeleton className="mt-3 h-20 w-full" />
-        <Skeleton className="rounded-control mt-4 h-10 w-full" />
-      </div>
-    ),
-  },
-);
+const BioCoachPanel = dynamic(() => import('./bio-coach-panel').then((m) => m.BioCoachPanel), {
+  ssr: false,
+  loading: () => (
+    <div className="rounded-card border-border bg-brand-subtle shadow-soft mt-4 border p-4">
+      <Skeleton className="h-5 w-28" />
+      <Skeleton className="mt-3 h-20 w-full" />
+      <Skeleton className="rounded-control mt-4 h-10 w-full" />
+    </div>
+  ),
+});
 
 export function BioCoach({ currentBio }: { currentBio: string }) {
   const [open, setOpen] = useState(false);

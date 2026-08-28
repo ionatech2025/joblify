@@ -97,7 +97,10 @@ describe('subscribeToCompany', () => {
 
   it('rejects when the target company does not exist', async () => {
     m.companyFindUnique.mockResolvedValue(null);
-    await expect(subscribeToCompany('company1', 'EMPLOYABLE')).rejects.toThrow('Company not found');
+    expect(await subscribeToCompany('company1', 'EMPLOYABLE')).toMatchObject({
+      ok: false,
+      error: expect.stringMatching('Company not found'),
+    });
     expect(m.subCreate).not.toHaveBeenCalled();
   });
 
@@ -116,7 +119,10 @@ describe('subscribeToCompany', () => {
 
   it('is an idempotent no-op when already subscribed with this type (P2002)', async () => {
     m.subCreate.mockRejectedValue(P2002);
-    await expect(subscribeToCompany('company1', 'EMPLOYABLE')).resolves.toBeUndefined();
+    await expect(subscribeToCompany('company1', 'EMPLOYABLE')).resolves.toEqual({
+      ok: true,
+      data: undefined,
+    });
     expect(m.updateTag).not.toHaveBeenCalled();
   });
 });

@@ -9,10 +9,10 @@ scanning and mutating records. This pass gives the authenticated surfaces
 register and, more importantly, Odoo's structural vocabulary. The public funnel
 keeps the editorial language, retuned to the shared palette.
 
-**Token layer** — `.o-console` re-declares the *same* semantic token names with
+**Token layer** — `.o-console` re-declares the _same_ semantic token names with
 enterprise values (13px base, 4px corners, hairline borders, plum ink, opaque
 sticky chrome), so `Card`/`Badge`/`Input`/`Select`/`Button` re-skin inside it
-with zero call-site changes. Radii moved to raw `--r-*` vars *referenced* from
+with zero call-site changes. Radii moved to raw `--r-*` vars _referenced_ from
 `@theme inline` — an inline literal bakes into the emitted utility and no scope
 class can override it, which is why `rounded-card` can now mean 16px on
 marketing and 4px in the console. `--brand` retuned from indigo to the Odoo plum
@@ -32,7 +32,7 @@ console-shaped skeletons. URL state for every list is parsed/built by
   to reach the next job — every drill-down needed a round trip through the list.
   Both now carry a breadcrumb (with working ancestor links) and a record pager
   (`4 / 12`, prev/next) that preserves the board's own sort across a hop.
-- **Unbounded and silently-truncated queries.** `/company/jobs` fetched *every*
+- **Unbounded and silently-truncated queries.** `/company/jobs` fetched _every_
   post the company had ever created and rendered them on one page, with no sort
   and no paging. It now sorts in Postgres over an allow-listed key set and pages
   20 at a time. `/jobseeker/applications` capped at 50 with nothing on screen
@@ -98,9 +98,9 @@ the full per-item detail; this is the short version):
   state with recovery guidance instead of "Processing…" forever. This is the
   one item here that touched the database directly — see the migration's own
   header comment for why it was hand-authored and applied via `migrate
-  deploy` rather than `migrate dev` (a pre-existing, already-documented
+deploy` rather than `migrate dev` (a pre-existing, already-documented
   shadow-database drift issue on an unrelated older migration made `migrate
-  dev` unsafe to run in this environment).
+dev` unsafe to run in this environment).
 - **PlanTier gating** — `assertPlan` added to the three actions
   (`inviteJobseeker`, `openJobChatArea`, `openVirtualInternChatArea`) the
   schema's own comment named as gated but weren't. No live behavior change

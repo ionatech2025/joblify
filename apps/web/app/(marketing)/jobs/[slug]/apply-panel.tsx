@@ -3,6 +3,7 @@ import { currentUser } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { buttonClasses } from '@/app/components/ui/button';
 import { SaveButton } from './save-button';
+import { TimeStamp } from '@/app/components/ui/timestamp';
 
 const primaryLink = `${buttonClasses('primary')} no-underline`;
 const heading = 'm-0 mb-2 text-lg font-semibold text-fg';
@@ -45,7 +46,7 @@ export async function ApplyPanel({ jobId, slug }: { jobId: string; slug: string 
           <h3 className={heading}>You applied already</h3>
           <p className="m-0 text-fg-muted">
             Status: <strong>{existing.status}</strong> · applied{' '}
-            {existing.appliedAt.toLocaleDateString()}
+            <TimeStamp value={existing.appliedAt} />
           </p>
         </>
       ) : (

@@ -9,6 +9,7 @@ import { registerResume, deleteResume } from '@/app/actions/uploads';
 import { Button, buttonClasses } from '@/app/components/ui/button';
 import { EmptyState } from '@/app/components/ui/empty-state';
 import { toast } from '@/lib/stores/ui';
+import { TimeStamp } from '@/app/components/ui/timestamp';
 
 type ResumeRow = {
   id: string;
@@ -156,7 +157,7 @@ export function ResumeManager({
                   ) : (
                     'Processing…'
                   )}{' '}
-                  · added {new Date(r.createdAt).toLocaleDateString()}
+                  · added <TimeStamp value={r.createdAt} />
                 </p>
                 {r.parseFailed && (
                   <p className="mt-1 mb-0 text-sm text-fg-muted">

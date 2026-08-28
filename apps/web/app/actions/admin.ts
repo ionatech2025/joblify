@@ -7,6 +7,7 @@ import { db } from '@/lib/db';
 import { withAudit } from '@/lib/audit';
 import { tags } from '@/lib/cache';
 import { logger } from '@/lib/observability/logger';
+import { type ActionResult, fail, succeed } from '@/lib/action-result';
 
 // Trust & safety: an ADMIN reviews a company's self-submitted profile and
 // either verifies it (unlocks full visibility — see JOB_UC_06.0's "unverified
@@ -18,14 +19,14 @@ export async function verifyCompany(
   companyProfileId: string,
   status: 'VERIFIED' | 'REJECTED',
   reason?: string,
-): Promise<void> {
+): Promise<ActionResult> {
   const admin = await requireRole('ADMIN');
 
   const profile = await db.companyProfile.findUnique({
     where: { id: companyProfileId },
     select: { id: true, userId: true, companyName: true, verificationStatus: true },
   });
-  if (!profile) throw new Error('Company not found.');
+  if (!profile) return fail('Company not found.');
 
   const h = await headers();
   const ip = h.get('x-forwarded-for')?.split(',')[0]?.trim() ?? null;
@@ -69,4 +70,5 @@ export async function verifyCompany(
     { companyProfileId: profile.id, adminId: admin.id, status },
     'company verification status changed',
   );
+  return succeed();
 }

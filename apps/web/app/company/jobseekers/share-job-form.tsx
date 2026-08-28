@@ -5,6 +5,7 @@ import { shareJobWithJobseeker } from '@/app/actions/share-job';
 import { Button } from '@/app/components/ui/button';
 import { Select } from '@/app/components/ui/form';
 import { toast } from '@/lib/stores/ui';
+import { unwrap } from '@/lib/action-result';
 
 export function ShareJobForm({
   jobSeekerUserId,
@@ -20,7 +21,7 @@ export function ShareJobForm({
     if (!jobPostId) return;
     startTransition(async () => {
       try {
-        await shareJobWithJobseeker(jobPostId, jobSeekerUserId);
+        unwrap(await shareJobWithJobseeker(jobPostId, jobSeekerUserId));
         toast.success('Job shared');
         setJobPostId('');
       } catch (err) {

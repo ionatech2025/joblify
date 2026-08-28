@@ -21,7 +21,13 @@ const eslintConfig = [
     },
   },
   {
-    ignores: ['.next/**', 'node_modules/**', 'prisma/migrations/**', 'playwright-report/**'],
+    ignores: [
+      '.next/**',
+      'node_modules/**',
+      'prisma/migrations/**',
+      'playwright-report/**',
+      'coverage/**',
+    ],
   },
 ];
 
