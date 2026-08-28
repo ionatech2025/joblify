@@ -13,7 +13,8 @@ export type ChatThreadMessage = {
   kind: ChatMessageKind;
   body: string;
   attachmentUrl: string | null;
-  createdAt: Date;
+  /** ISO string from the DTO, or a Date from a direct server render. */
+  createdAt: string | Date;
 };
 
 // Presentational thread. The page decides access and supplies the messages

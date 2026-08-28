@@ -1,9 +1,9 @@
 import { notFound } from 'next/navigation';
 import { requireRole } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { ChatThread } from '@/app/components/chat/chat-thread';
+import { ChatThreadLive } from '@/app/components/chat/chat-thread-live';
 import { ChatComposer } from '@/app/components/chat/chat-composer';
-import { LATEST_MESSAGES_TAKE, toThreadDisplay } from '@/app/components/chat/latest-messages';
+import { LATEST_MESSAGES_TAKE, toChatMessages } from '@/app/components/chat/latest-messages';
 import { Breadcrumb, ControlPanel } from '@/app/components/console/control-panel';
 import { AddParticipantButton } from './add-participant-button';
 
@@ -48,7 +48,9 @@ export default async function CompanyChatAreaPage({ params }: { params: Params }
 
   const participantIds = new Set(area.participants.map((p) => p.userId));
   const candidates = await getAddableSeekers(area, user.id, participantIds);
-  const { messages, truncated } = toThreadDisplay(area.messages);
+  // A candidate with no name on file still has to be identifiable to the
+  // recruiter reading the thread.
+  const initial = toChatMessages(area.messages, (m) => m.sender.email);
 
   return (
     <main>
@@ -69,24 +71,7 @@ export default async function CompanyChatAreaPage({ params }: { params: Params }
           </p>
         </section>
         <section>
-          {truncated && (
-            <p className="mt-0 mb-3 text-xs text-fg-subtle">
-              Showing the latest {LATEST_MESSAGES_TAKE} messages.
-            </p>
-          )}
-          <ChatThread
-            currentUserId={user.id}
-            messages={messages.map((m) => ({
-              id: m.id,
-              senderId: m.senderId,
-              senderName:
-                [m.sender.firstName, m.sender.lastName].filter(Boolean).join(' ') || m.sender.email,
-              kind: m.kind,
-              body: m.body,
-              attachmentUrl: m.attachmentUrl,
-              createdAt: m.createdAt,
-            }))}
-          />
+          <ChatThreadLive chatAreaId={area.id} currentUserId={user.id} initial={initial} />
           <ChatComposer chatAreaId={area.id} />
         </section>
 
