@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import type { JobPostStatus, Prisma } from '@prisma/client';
-import { Briefcase, Filter, LayoutGrid, List, Plus } from 'lucide-react';
+import { Briefcase, LayoutGrid, List, Plus } from 'lucide-react';
 import { requireRole } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { EmptyState } from '@/app/components/ui/empty-state';
@@ -165,7 +165,7 @@ export default async function CompanyJobsPage({
             />
             <FilterMenu
               label="Status"
-              icon={Filter}
+              icon="Filter"
               activeCount={status ? 1 : 0}
               groups={[
                 {

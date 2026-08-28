@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { requireRole } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { Filter, Users } from 'lucide-react';
+import { Users } from 'lucide-react';
 import { EmptyState } from '@/app/components/ui/empty-state';
 import { Badge } from '@/app/components/ui/badge';
 import { buttonClasses } from '@/app/components/ui/button';
@@ -148,7 +148,7 @@ export default async function CompanyJobseekersPage({
           <>
             <FilterMenu
               label="Audience"
-              icon={Users}
+              icon="Users"
               activeCount={filter === 'subscribed' ? 1 : 0}
               groups={[
                 {
@@ -165,7 +165,7 @@ export default async function CompanyJobseekersPage({
             />
             <FilterMenu
               label="Type"
-              icon={Filter}
+              icon="Filter"
               activeCount={type ? 1 : 0}
               groups={[
                 {
