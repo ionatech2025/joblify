@@ -2,9 +2,9 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requireRole } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { ChatThread } from '@/app/components/chat/chat-thread';
+import { ChatThreadLive } from '@/app/components/chat/chat-thread-live';
 import { ChatComposer } from '@/app/components/chat/chat-composer';
-import { LATEST_MESSAGES_TAKE, toThreadDisplay } from '@/app/components/chat/latest-messages';
+import { LATEST_MESSAGES_TAKE, toChatMessages } from '@/app/components/chat/latest-messages';
 import { Breadcrumb, ControlPanel } from '@/app/components/console/control-panel';
 
 export const metadata = { title: 'Chat' };
@@ -39,7 +39,9 @@ export default async function JobseekerChatAreaPage({ params }: { params: Params
 
   const area = membership.chatArea;
   const companyName = area.company.companyProfile?.companyName ?? 'Company';
-  const { messages, truncated } = toThreadDisplay(area.messages);
+  // The company account may have no first/last name; its messages should read
+  // as the company rather than as a blank sender.
+  const initial = toChatMessages(area.messages, () => companyName);
 
   return (
     <main>
@@ -67,24 +69,7 @@ export default async function JobseekerChatAreaPage({ params }: { params: Params
             ' · virtual-intern chat area.'
           )}
         </p>
-        {truncated && (
-          <p className="mt-0 mb-3 text-xs text-fg-subtle">
-            Showing the latest {LATEST_MESSAGES_TAKE} messages.
-          </p>
-        )}
-        <ChatThread
-          currentUserId={user.id}
-          messages={messages.map((m) => ({
-            id: m.id,
-            senderId: m.senderId,
-            senderName:
-              [m.sender.firstName, m.sender.lastName].filter(Boolean).join(' ') || companyName,
-            kind: m.kind,
-            body: m.body,
-            attachmentUrl: m.attachmentUrl,
-            createdAt: m.createdAt,
-          }))}
-        />
+        <ChatThreadLive chatAreaId={area.id} currentUserId={user.id} initial={initial} />
         <ChatComposer chatAreaId={area.id} />
       </div>
     </main>

@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from 'react';
 import { sendChatMessage, type SendMessageResult } from '@/app/actions/chat';
+import { useRefreshChatMessages } from '@/lib/query/chat';
 import { Field, Input, Select, Textarea } from '@/app/components/ui/form';
 import { Button } from '@/app/components/ui/button';
 
@@ -16,6 +17,11 @@ export function ChatComposer({ chatAreaId }: { chatAreaId: string }) {
     sendChatMessage.bind(null, chatAreaId),
     null,
   );
+  // The thread renders from React Query now. A Server Action revalidates the
+  // *route*, which no longer reaches that cache — so without this your own
+  // message would wait up to CHAT_POLL_MS to appear, which is worse than the
+  // behaviour polling was added to fix.
+  const refreshThread = useRefreshChatMessages(chatAreaId);
 
   // Controlled values: React 19 resets uncontrolled fields after every form
   // action — success or failure — which is exactly the data loss this
@@ -34,6 +40,7 @@ export function ChatComposer({ chatAreaId }: { chatAreaId: string }) {
       setBody('');
       setKind('TEXT');
       setAttachmentUrl('');
+      refreshThread();
     }
   }
 

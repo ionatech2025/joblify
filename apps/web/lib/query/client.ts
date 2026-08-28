@@ -43,6 +43,7 @@ export function getQueryClient(): QueryClient {
 // Centralized query keys so refetch / invalidate stay in sync across the app.
 export const queryKeys = {
   notifications: () => ['notifications'] as const,
+  chatMessages: (chatAreaId: string) => ['chat-messages', chatAreaId] as const,
   applications: (userId: string) => ['applications', userId] as const,
   application: (id: string) => ['application', id] as const,
   jobMatchScore: (userId: string, jobId: string) => ['match-score', userId, jobId] as const,
