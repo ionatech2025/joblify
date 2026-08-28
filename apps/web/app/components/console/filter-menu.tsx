@@ -2,7 +2,15 @@
 
 import Link from 'next/link';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
-import { Check, ChevronDown, type LucideIcon } from 'lucide-react';
+import {
+  ArrowDownWideNarrow,
+  Check,
+  ChevronDown,
+  EyeOff,
+  Filter,
+  Users,
+  type LucideIcon,
+} from 'lucide-react';
 import { cn } from '@/lib/cn';
 
 export type FilterItem = { label: string; href: string; active?: boolean };
@@ -16,19 +24,43 @@ export type FilterGroup = { label?: string; items: FilterItem[] };
  * click are behaviours worth not reimplementing. Items are `Link`s, so a filter
  * is still a shareable URL and still works with the back button; the menu is
  * only the picker.
+ *
+ * Icons are named as strings, not passed as components — the same convention
+ * `console/nav.tsx` and `lib/ui/commands.ts` already use, and for the same
+ * reason. A lucide icon is a forwardRef object holding a function, and this is
+ * a client component: a *server* page handing one over fails serialization at
+ * request time with "Functions cannot be passed directly to Client Components".
+ *
+ * That is not hypothetical. Four server pages passed components here —
+ * /jobseeker/applications, /company/jobs, /company/applicants/[jobId],
+ * /company/jobseekers — and every one of them rendered the error boundary in
+ * production. `next build` does not catch it: the static shell prerenders
+ * before the control panel's props are serialized for the client, so the build
+ * is green and only a real request fails.
  */
+const ICONS = {
+  ArrowDownWideNarrow,
+  EyeOff,
+  Filter,
+  Users,
+} satisfies Record<string, LucideIcon>;
+
+export type FilterMenuIcon = keyof typeof ICONS;
 export function FilterMenu({
   label,
-  icon: Icon,
+  icon,
   groups,
   activeCount = 0,
 }: {
   label: string;
-  icon?: LucideIcon;
+  /** Key into ICONS above — a name, never the component itself. */
+  icon?: FilterMenuIcon;
   groups: FilterGroup[];
   /** Rendered as a trailing count when any item in this menu is applied. */
   activeCount?: number;
 }) {
+  const Icon = icon ? ICONS[icon] : undefined;
+
   return (
     <DropdownMenu.Root>
       <DropdownMenu.Trigger

@@ -1,6 +1,5 @@
 import { Suspense } from 'react';
 import Link from 'next/link';
-import { Filter } from 'lucide-react';
 import { db } from '@/lib/db';
 import { requireRole } from '@/lib/auth';
 import { ApplicationsList } from './applications-list';
@@ -98,7 +97,7 @@ export default async function JobseekerApplicationsPage({
           <>
             <FilterMenu
               label="Status"
-              icon={Filter}
+              icon="Filter"
               activeCount={status ? 1 : 0}
               groups={[
                 {

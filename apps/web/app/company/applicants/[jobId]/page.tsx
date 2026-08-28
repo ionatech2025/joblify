@@ -10,7 +10,6 @@ import { FacetChips, type Facet } from '@/app/components/console/search-view';
 import { FilterMenu } from '@/app/components/console/filter-menu';
 import { makeHref } from '@/lib/ui/list-params';
 import { Button, buttonClasses } from '@/app/components/ui/button';
-import { ArrowDownWideNarrow, EyeOff } from 'lucide-react';
 
 export const metadata = { title: 'Applicants' };
 
@@ -145,7 +144,7 @@ export default async function ApplicantsPage({
           <>
             <FilterMenu
               label="Sort"
-              icon={ArrowDownWideNarrow}
+              icon="ArrowDownWideNarrow"
               activeCount={sort === 'match' ? 1 : 0}
               groups={[
                 {
@@ -162,7 +161,7 @@ export default async function ApplicantsPage({
             />
             <FilterMenu
               label="Stages"
-              icon={EyeOff}
+              icon="EyeOff"
               activeCount={showClosed ? 1 : 0}
               groups={[
                 {
