@@ -1,5 +1,6 @@
 import { Ratelimit } from '@upstash/ratelimit';
 import { Redis } from '@upstash/redis';
+import { REDIS_URL_VARS, REDIS_TOKEN_VARS } from '@/lib/env';
 
 export type RateLimitResult = {
   success: boolean;
@@ -13,16 +14,28 @@ let _redis: Redis | null = null;
 
 function redis(): Redis | null {
   if (_redis) return _redis;
-  const url = process.env.KV_REST_API_URL;
+  // Vercel's Upstash integration has used both namings; accept either, and
+  // stay in step with lib/env.ts, which used to demand the pair this file did
+  // not read — so a correctly-configured deploy still failed the check.
+  const url = firstEnv(REDIS_URL_VARS);
+  const token = firstEnv(REDIS_TOKEN_VARS);
   // Treat missing OR non-URL (e.g. an un-filled placeholder) as "not configured"
   // so a bad value can't crash every rate-limited route at module load.
-  if (!url || !process.env.KV_REST_API_TOKEN || !url.startsWith('http')) return null;
+  if (!url || !token || !url.startsWith('http')) return null;
   try {
-    _redis = Redis.fromEnv();
+    _redis = new Redis({ url, token });
     return _redis;
   } catch {
     return null;
   }
+}
+
+function firstEnv(names: readonly string[]): string | undefined {
+  for (const name of names) {
+    const value = process.env[name];
+    if (value && value.length > 0) return value;
+  }
+  return undefined;
 }
 
 const allowAll: RateLimitResult = { success: true, remaining: Number.MAX_SAFE_INTEGER, reset: 0 };
