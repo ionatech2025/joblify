@@ -242,18 +242,44 @@ has landed (see [DESIGN.md](./DESIGN.md)).
 
 ## Code splitting
 
-Next 16 + Turbopack handles route-level splitting automatically. Push for component-level splitting only when a Client Component is heavy (e.g. a rich text editor); use `dynamic(() => import('...'), { ssr: false })` for those.
+Next 16 + Turbopack handles route-level splitting automatically. Push for component-level splitting only when a Client Component is heavy; use `dynamic(() => import('...'), { ssr: false })` for those.
+
+Two live examples, both from the 2026-08-28 payload audit:
+
+- `jobseeker/profile/bio-coach.tsx` keeps only the trigger button in the page
+  bundle and imports the panel — and with it the whole AI SDK, 80 KB gzip — on
+  first open. It is worth doing wherever a feature is behind a click and most
+  visitors never make it.
+- `instrumentation-client.ts` loads Sentry's Session Replay recorder (37 KB
+  gzip, rrweb) through a dynamic import at first idle rather than passing it to
+  `Sentry.init()`. Note it does *not* use `Sentry.lazyLoadIntegration()`, which
+  would fetch from `browser.sentry-cdn.com` — an origin the CSP does not allow.
 
 ## Performance budgets
 
-Enforced via `lighthouserc.js` in CI:
+Two gates, because they cover different things.
 
-- Performance ≥ 85
-- A11y ≥ 95
-- Best Practices ≥ 95
-- SEO ≥ 95
-- LCP ≤ 2500ms
-- INP ≤ 200ms
-- CLS ≤ 0.1
+**Lighthouse CI** (`lighthouserc.js`), against the preview deployment:
 
-When you regress one, the PR fails. Profile with Vercel Speed Insights on the preview URL.
+- Performance ≥ 85, A11y ≥ 90 (error), Best Practices ≥ 95, SEO ≥ 95
+- LCP ≤ 2500 ms, CLS ≤ 0.1, TBT ≤ 300 ms
+- `total-byte-weight` ≤ 1.6 MB, `unused-javascript` ≤ 150 KB, `uses-rel-preconnect`
+
+It runs on `/`, `/jobs`, `/sign-up`, `/sign-in` — public routes only. Lighthouse
+has no session, so pointing it at a gated route would score the sign-in redirect
+and call it a pass.
+
+INP is deliberately *not* asserted here: it needs real interactions and a lab run
+never produces it. TBT is its lab proxy; field INP comes from Speed Insights.
+
+**First-load JS budget** (`bun run perf:budget`, wired into `ci.yml` after the
+build). This reads `.next/server/app/**/*.html`, sums the gzipped scripts each
+prerendered shell requests, and fails over budget. Because it reads build output
+rather than a running server it covers what Lighthouse cannot reach — `/onboarding`,
+`/employer-setup`, the whole `/jobseeker` and `/company` console. Ceilings live at
+the top of `scripts/check-bundle-budget.ts`; raising one needs a note in the commit
+message saying what got heavier and why.
+
+When you regress one, the PR fails. Profile with Vercel Speed Insights on the
+preview URL — noting that it only reports for visitors who accepted analytics
+cookies, so field coverage is partial by design (see [COMPLIANCE.md](./COMPLIANCE.md)).

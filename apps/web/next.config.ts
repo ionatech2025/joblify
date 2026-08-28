@@ -25,6 +25,12 @@ const nextConfig: NextConfig = {
   // cacheComponents enables PPR + the 'use cache' directive (Next 16 merged the
   // former experimental.ppr into this flag and promoted it out of experimental).
   cacheComponents: true,
+  experimental: {
+    // Next already ships lucide-react in its built-in list; @radix-ui packages
+    // are not in it, and the dropdown menu is pulled in by the theme toggle and
+    // the console filter menu, both of which are on shared surfaces.
+    optimizePackageImports: ['@radix-ui/react-dropdown-menu'],
+  },
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: '*.public.blob.vercel-storage.com' },

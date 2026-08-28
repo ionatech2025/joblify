@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import { useUiStore } from '@/lib/stores/ui';
+import { useHydrated } from '@/lib/use-hydrated';
 
 // Slim self-hosted consent banner. Two choices — "Necessary only" and
 // "Accept all" (necessary + analytics). The choice is written to localStorage,
@@ -12,13 +13,24 @@ import { useUiStore } from '@/lib/stores/ui';
 
 type ConsentChoice = 'all' | 'necessary' | null;
 
+// localStorage throws rather than returning null in some privacy modes, and
+// this one is read during render, where a throw would take the page with it.
+function storedConsent(): string | null {
+  try {
+    return localStorage.getItem('joblify.consent');
+  } catch {
+    return null;
+  }
+}
+
 export function CookieBanner() {
+  const hydrated = useHydrated();
   const isOpen = useUiStore((s) => s.isCookieBannerOpen);
   const setOpen = useUiStore((s) => s.setCookieBannerOpen);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    if (localStorage.getItem('joblify.consent')) setOpen(false);
+    if (storedConsent()) setOpen(false);
   }, [setOpen]);
 
   function decide(choice: ConsentChoice) {
@@ -37,7 +49,16 @@ export function CookieBanner() {
     setOpen(false);
   }
 
-  if (!isOpen) return null;
+  // isCookieBannerOpen is an ephemeral store slice that starts true, so the
+  // banner used to be baked into the prerendered shell and shown to everyone —
+  // including people who answered it months ago — until the effect above closed
+  // it again. That is a visible flash on every cold load, and onboarding is
+  // four cold loads. Gating on hydration keeps it out of the shell entirely.
+  //
+  // The stored value is also read synchronously here rather than trusting the
+  // effect to have landed first: one frame of banner is exactly what this
+  // removes.
+  if (!hydrated || !isOpen || storedConsent()) return null;
 
   return (
     <aside

@@ -24,6 +24,11 @@ const m = vi.hoisted(() => {
     requireUser: vi.fn(),
     profileUpsert: vi.fn(),
     respondToInvitation: vi.fn(),
+    // next/server's after() needs a real request scope, which unit tests don't
+    // have. Collecting the callbacks instead of dropping them lets the tests
+    // assert both halves of the deferral: that the redirect does not wait, and
+    // that the work still runs afterwards.
+    afterCallbacks: [] as Array<() => unknown>,
     redirect: vi.fn((url: string) => {
       throw new RedirectError(url);
     }),
@@ -36,6 +41,11 @@ vi.mock('@/lib/audit', () => ({
     fn({ jobSeekerProfile: { upsert: m.profileUpsert } }),
 }));
 vi.mock('next/headers', () => ({ headers: async () => new Map() }));
+vi.mock('next/server', () => ({
+  after: (fn: () => unknown) => {
+    m.afterCallbacks.push(fn);
+  },
+}));
 vi.mock('next/navigation', () => ({ redirect: m.redirect }));
 vi.mock('@/lib/observability/logger', () => ({ logger: { info: vi.fn(), warn: vi.fn() } }));
 vi.mock('@/app/actions/invitations', () => ({ respondToInvitation: m.respondToInvitation }));
@@ -49,8 +59,15 @@ function form(profileType: unknown, invitationId?: string): FormData {
   return fd;
 }
 
+/** Runs whatever the action handed to after(), the way the runtime would. */
+async function flushAfter(): Promise<void> {
+  const queued = m.afterCallbacks.splice(0);
+  for (const fn of queued) await fn();
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
+  m.afterCallbacks.length = 0;
   m.requireUser.mockResolvedValue({ id: 'seeker1', userType: 'JOB_SEEKER' });
   m.profileUpsert.mockResolvedValue({ id: 'profile1' });
   m.respondToInvitation.mockResolvedValue(undefined);
@@ -91,6 +108,8 @@ describe('completeJobSeekerOnboarding', () => {
 
   it('does not touch invitations when none was pending', async () => {
     await expect(completeJobSeekerOnboarding(form('EMPLOYABLE'))).rejects.toThrow();
+    expect(m.afterCallbacks).toHaveLength(0);
+    await flushAfter();
     expect(m.respondToInvitation).not.toHaveBeenCalled();
   });
 
@@ -103,6 +122,12 @@ describe('completeJobSeekerOnboarding', () => {
       '/jobseeker/profile',
     );
     expect(m.profileUpsert).toHaveBeenCalled();
+
+    // The accept is deferred with after(), so the user is redirected without
+    // waiting on a second round of writes — it must not have run yet.
+    expect(m.respondToInvitation).not.toHaveBeenCalled();
+
+    await flushAfter();
     expect(m.respondToInvitation).toHaveBeenCalledWith('inv1', 'ACCEPT');
   });
 
@@ -112,5 +137,8 @@ describe('completeJobSeekerOnboarding', () => {
       '/jobseeker/profile',
     );
     expect(m.redirect).toHaveBeenCalledWith('/jobseeker/profile');
+    // A failure in the deferred work must stay contained — it is caught and
+    // logged, never rethrown into the response that has already been sent.
+    await expect(flushAfter()).resolves.toBeUndefined();
   });
 });

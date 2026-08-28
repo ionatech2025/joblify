@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { ArrowRight, BellOff } from 'lucide-react';
 import {
   useNotifications,
+  NOTIFICATION_POLL_MS,
   useMarkNotificationRead,
   type NotificationItem,
 } from '@/lib/query/notifications';
@@ -25,7 +26,7 @@ const KIND_LABEL: Record<string, string> = {
 };
 
 export function NotificationsList({ initial }: { initial: NotificationItem[] }) {
-  const { data, isError } = useNotifications();
+  const { data, isError } = useNotifications(NOTIFICATION_POLL_MS.list);
   const mark = useMarkNotificationRead();
   const items = data ?? initial;
 

@@ -6,6 +6,18 @@ import { Breadcrumb, ControlPanel } from '@/app/components/console/control-panel
 
 export const metadata = { title: 'My profile' };
 
+// The skill vocabulary is reference data: nothing in the app writes to it, only
+// prisma/seed.ts does. It was being re-read in full and re-serialised into the
+// client payload on every render of this page — which is the page onboarding
+// drops every new job seeker on. Cached like the marketing queries in
+// (marketing)/page.tsx; a deploy that reseeds also rebuilds the cache.
+async function getSkillOptions(): Promise<Array<{ slug: string; label: string }>> {
+  'use cache';
+  const { cacheLife } = await import('next/cache');
+  cacheLife('days');
+  return db.skill.findMany({ select: { slug: true, label: true }, orderBy: { label: 'asc' } });
+}
+
 export default async function JobseekerProfilePage() {
   const user = await requireRole('JOB_SEEKER');
   const [profile, allSkills] = await Promise.all([
@@ -13,7 +25,7 @@ export default async function JobseekerProfilePage() {
       where: { userId: user.id },
       include: { skills: { select: { skill: { select: { slug: true } } } } },
     }),
-    db.skill.findMany({ select: { slug: true, label: true }, orderBy: { label: 'asc' } }),
+    getSkillOptions(),
   ]);
 
   return (

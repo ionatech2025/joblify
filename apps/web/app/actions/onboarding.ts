@@ -1,5 +1,6 @@
 'use server';
 
+import { after } from 'next/server';
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
@@ -44,12 +45,29 @@ export async function completeJobSeekerOnboarding(formData: FormData): Promise<v
 
   // respondToInvitation redirected here mid-accept because no profile existed
   // yet — now that one does, finish that accept rather than losing it.
+  //
+  // Deferred with after(): this is already best-effort (its failure is caught
+  // and logged, never surfaced), and it is a second round of database writes.
+  // Awaiting it inline held the redirect — and the user's blank screen — open
+  // for the whole of it. The profile upsert above is the only thing that has to
+  // land before /jobseeker/profile is safe to render.
+  //
+  // The one path where respondToInvitation redirects is "no profile yet", which
+  // the upsert above has just ruled out, so nothing here can throw a redirect
+  // into a post-response callback.
+  //
+  // The audit write deliberately stays inside withAudit's transaction rather
+  // than moving here too: lib/audit.ts pairs the mutation and its AuditEvent in
+  // one transaction precisely so the trail cannot drift from reality, and
+  // docs/COMPLIANCE.md depends on that. Two round trips is the price of it.
   if (typeof invitationId === 'string' && invitationId) {
-    try {
-      await respondToInvitation(invitationId, 'ACCEPT');
-    } catch (err) {
-      logger.warn({ err, userId: user.id, invitationId }, 'resumed invitation accept failed');
-    }
+    after(async () => {
+      try {
+        await respondToInvitation(invitationId, 'ACCEPT');
+      } catch (err) {
+        logger.warn({ err, userId: user.id, invitationId }, 'resumed invitation accept failed');
+      }
+    });
   }
 
   redirect('/jobseeker/profile');
