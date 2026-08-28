@@ -11,7 +11,7 @@ import { ConsoleShell, ConsoleWidth } from './shell';
  * fallback even a few pixels short makes the whole page jump when the real
  * chrome swaps in.
  */
-function ConsoleNavSkeleton() {
+export function ConsoleNavSkeleton() {
   return (
     <div className="o-chrome-bar border-b">
       <ConsoleWidth className="flex h-[calc(var(--o-nav-h)-1px)] items-center gap-4">

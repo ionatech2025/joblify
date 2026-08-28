@@ -1,8 +1,8 @@
 // Joblify service worker — conservative offline support for an installable PWA.
 // Bump CACHE to invalidate. API + cross-origin (Clerk, Algolia, analytics) are
-// never intercepted; hashed static assets are cache-first; navigations are
-// network-first with an offline fallback.
-const CACHE = 'joblify-v1';
+// never intercepted; hashed static assets are cache-first; navigations go to the
+// network with an offline fallback.
+const CACHE = 'joblify-v2';
 const OFFLINE_URL = '/offline';
 const PRECACHE = [OFFLINE_URL, '/icon-192.png', '/logo.png'];
 
@@ -17,10 +17,19 @@ self.addEventListener('install', (event) => {
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches
-      .keys()
-      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
-      .then(() => self.clients.claim()),
+    (async () => {
+      // Navigation preload lets the browser fire the navigation request in
+      // parallel with booting this worker. Without it, every navigation on the
+      // site waits for service-worker startup before its request even leaves —
+      // a cost paid on all four hops of onboarding in exchange for a fallback
+      // that only ever serves /offline.
+      if (self.registration.navigationPreload) {
+        await self.registration.navigationPreload.enable();
+      }
+      const keys = await caches.keys();
+      await Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)));
+      await self.clients.claim();
+    })(),
   );
 });
 
@@ -46,17 +55,20 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Page navigations → network-first, fall back to cache then the offline page.
+  // Page navigations → preloaded network response, falling back to the offline
+  // page. Responses are deliberately NOT cached: most routes here are
+  // authenticated, and a shared device would let the next person read the
+  // previous one's console out of the cache.
   if (request.mode === 'navigate') {
     event.respondWith(
       (async () => {
         try {
+          const preloaded = await event.preloadResponse;
+          if (preloaded) return preloaded;
           return await fetch(request);
         } catch {
           const cache = await caches.open(CACHE);
-          return (
-            (await cache.match(request)) || (await cache.match(OFFLINE_URL)) || Response.error()
-          );
+          return (await cache.match(OFFLINE_URL)) || Response.error();
         }
       })(),
     );

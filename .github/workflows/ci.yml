@@ -59,6 +59,14 @@ jobs:
       - name: Build
         run: bun run build
 
+      # Payload gate for the routes Lighthouse cannot reach. LHCI runs against
+      # the preview deployment with no session, so it only ever measures public
+      # pages; this reads the build output, so it covers /onboarding,
+      # /employer-setup and the whole /jobseeker console too. Ceilings live in
+      # the script.
+      - name: First-load JS budget
+        run: bun run perf:budget
+
   # Accessibility is gated on the real preview deploy (live services, real
   # URLs — a CI-spun server here has no DB/Clerk). Two blocking checks in
   # .github/workflows/lighthouse.yml:

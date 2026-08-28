@@ -35,8 +35,14 @@ export default clerkMiddleware(async (auth, req) => {
 
 export const config = {
   matcher: [
-    // Skip static files and Next internals.
-    '/((?!_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml).*)',
+    // Skip Next internals and anything that looks like a static file, matched
+    // by extension. The previous pattern named only _next/static, _next/image
+    // and three files, which left every other public asset going through Clerk
+    // first: /logo.png (preloaded as an image on every page, so the highest
+    // priority image on the document took an auth hop), /sw.js, the PWA icons
+    // and /manifest.webmanifest. None of them need a session, and each one cost
+    // an edge invocation.
+    '/((?!_next|[^?]*\.(?:html?|css|js(?!on)|jpe?g|png|gif|svg|webp|avif|ico|ttf|woff2?|txt|xml|webmanifest|map)).*)',
     // Always run on API routes.
     '/(api|trpc)(.*)',
   ],

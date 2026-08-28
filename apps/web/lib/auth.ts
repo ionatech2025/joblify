@@ -1,3 +1,4 @@
+import { cache } from 'react';
 import { auth as clerkAuth, currentUser as clerkCurrentUser } from '@clerk/nextjs/server';
 import { redirect } from 'next/navigation';
 import type { User, UserType, PlanTier } from '@prisma/client';
@@ -8,7 +9,21 @@ import { db } from './db';
 
 export type AuthContext = User;
 
-export async function currentUser(): Promise<AuthContext | null> {
+/**
+ * Request-scoped memo of the local user row.
+ *
+ * Every gate in a route calls this independently — the (authenticated) layout's
+ * Gate, then the jobseeker/company sub-layout, then the page's own
+ * requireRole() — and layouts resolve before their children, so without the
+ * memo those are three *sequential* round trips to Neon for the identical
+ * `where: { clerkUserId }` lookup. React's cache() dedupes them to one per
+ * request; the entry is discarded when the request ends, so nothing leaks
+ * between users.
+ *
+ * clerkAuth() is already request-deduped by Clerk itself — the Prisma read was
+ * the part paying the cost.
+ */
+export const currentUser = cache(async function currentUser(): Promise<AuthContext | null> {
   const { userId: clerkUserId } = await clerkAuth();
   if (!clerkUserId) return null;
 
@@ -21,7 +36,7 @@ export async function currentUser(): Promise<AuthContext | null> {
   // would loop forever (Clerk sees a signed-in user and bounces back). The
   // webhook upsert remains the primary mirror path.
   return provisionFromClerk(clerkUserId);
-}
+});
 
 async function provisionFromClerk(clerkUserId: string): Promise<AuthContext | null> {
   const cu = await clerkCurrentUser();

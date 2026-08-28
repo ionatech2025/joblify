@@ -33,6 +33,28 @@ const archivo = Archivo({
   display: 'swap',
 });
 
+/**
+ * Clerk's frontend API origin, decoded from the publishable key (which encodes
+ * the host, base64, after the pk_test_/pk_live_ prefix). Derived rather than
+ * hardcoded so it follows the dev -> production instance switch on its own.
+ *
+ * It earns a preconnect because clerk-js is a render-blocking dependency of the
+ * thing people came to /sign-up to use: the sign-up card cannot paint until an
+ * 88 KB script arrives from an origin the browser has otherwise never seen, and
+ * that origin is only discovered when React hydrates and mounts ClerkProvider.
+ * The hint moves DNS + TCP + TLS to the start of the document instead.
+ */
+function clerkFrontendOrigin(): string | null {
+  const key = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
+  if (!key) return null;
+  try {
+    const host = atob(key.replace(/^pk_(test|live)_/, '')).replace(/\$$/, '');
+    return /^[a-z0-9.-]+$/i.test(host) ? `https://${host}` : null;
+  } catch {
+    return null;
+  }
+}
+
 export const metadata: Metadata = {
   title: { default: 'Joblify — Find your next role', template: '%s · Joblify' },
   description: 'A job marketplace for jobseekers and companies.',
@@ -70,6 +92,8 @@ export const viewport: Viewport = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  const clerkOrigin = clerkFrontendOrigin();
+
   // ClerkClientProvider is a pure context provider (see its module comment) —
   // it never reads the request, so nothing here may wrap the whole tree in a
   // Suspense boundary that would collapse every route's static shell to a
@@ -82,6 +106,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     // design on a dark-theme load.
     <html lang="en" className={`${inter.variable} ${archivo.variable}`} suppressHydrationWarning>
       <body>
+        {/* React hoists these into <head>. dns-prefetch is the fallback for the
+            handful of browsers that ignore preconnect. */}
+        {clerkOrigin && (
+          <>
+            <link rel="preconnect" href={clerkOrigin} crossOrigin="anonymous" />
+            <link rel="dns-prefetch" href={clerkOrigin} />
+          </>
+        )}
         {/* Must stay the first child of <body> — it runs before anything below
             is painted, which is what prevents a flash of the wrong theme. */}
         <ThemeScript />
