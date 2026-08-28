@@ -8,6 +8,70 @@ Updated 2026-08-28.
 
 ## P0 — must do before ANY production traffic
 
+### 0a. Production is missing most of its service env — the app 500s on every dynamic route
+
+**Found 2026-08-28 from the live console + `vercel logs`.** Every server-rendered
+route on `joblify-tau.vercel.app` returns 500. The browser only shows React's redacted
+"An error occurred in the Server Components render" paragraph; the real error is in the
+function log:
+
+```
+Error: An error occurred while loading instrumentation hook:
+  Missing security-critical env vars: CLERK_WEBHOOK_SECRET,
+  UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN
+Node.js process exited with exit status: 128
+```
+
+Two separate faults, both now fixed in code — but the env is still missing and must be
+provisioned:
+
+1. `lib/env.ts` threw from `instrumentation.ts#register()`. That hook runs on every
+   serverless **cold start**, not at build time, so instead of "failing the deploy" as its
+   comment claimed it killed the process on every request. An onboarding submit was
+   observed writing the profile and logging `job seeker onboarding completed` — and then
+   exiting 128 before the redirect, so the user's data changed and they saw an error. It
+   now reports and returns; every consumer of these secrets already fails closed on its
+   own (cron auth 500s, both webhooks 500 before signature verification, rate limiting
+   degrades to a no-op).
+2. The schema demanded `UPSTASH_REDIS_REST_*` while `.env.example` and `lib/ratelimit.ts`
+   both use `KV_REST_API_*` — so following this repo's own example file could never
+   satisfy the check. Either naming is now accepted, in both places.
+
+**`vercel env ls production` currently has only:** `DATABASE_URL`,
+`DATABASE_URL_UNPOOLED`, `CLERK_SECRET_KEY`, `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`,
+`NEXT_PUBLIC_CLERK_SIGN_IN_URL`, `NEXT_PUBLIC_CLERK_SIGN_UP_URL`, `CRON_SECRET`,
+`RESEND_WEBHOOK_SECRET`, `NEXT_PUBLIC_SITE_URL`.
+
+Still to add (Production scope):
+
+| Var                                     | Source                      | Without it                                                                                            |
+| --------------------------------------- | --------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `KV_REST_API_URL` / `KV_REST_API_TOKEN` | Upstash Marketplace install | **No rate limiting at all** — apply, post-job, invite, chat, search and the AI routes are unthrottled |
+| `CLERK_WEBHOOK_SECRET`                  | Clerk dashboard → Webhooks  | User mirroring falls back to lazy `provisionFromClerk`; profile edits in Clerk never reach Postgres   |
+| `RESEND_API_KEY`, `EMAIL_FROM`          | Resend                      | No application confirmations, no digest                                                               |
+| `SENTRY_DSN`, `NEXT_PUBLIC_SENTRY_DSN`  | Sentry                      | No error reporting — which is why this outage had to be found by hand                                 |
+| `AI_GATEWAY_API_KEY`                    | Vercel AI Gateway           | Resume parse, JD skills, bio coach, match score all fail                                              |
+| `BLOB_READ_WRITE_TOKEN`                 | Vercel Blob                 | Resume and logo uploads fail                                                                          |
+| `ALGOLIA_*`                             | Algolia                     | Search falls back to Postgres                                                                         |
+
+### 0b. Clerk is running on development keys in production
+
+The live console shows _"Clerk has been loaded with development keys"_, and the OAuth
+callback logs six `postMessage` origin mismatches — the frontend API is
+`*.clerk.accounts.dev` while the app is served from `joblify-tau.vercel.app`. Development
+instances carry strict usage limits. See [CLERK-PRODUCTION.md](../../docs/CLERK-PRODUCTION.md);
+remember to add the production `clerk.<domain>` to `script-src`/`connect-src`/`frame-src`
+in `next.config.ts` at the same time.
+
+### 0c. Vercel Web Analytics is not enabled for the project
+
+`/_vercel/insights/script.js` 404s and returns the HTML error page, so the browser
+reports a MIME-type refusal. `<Analytics />` mounts only after consent, so this is noise
+rather than breakage — enable Web Analytics on the project, or drop the component.
+Speed Insights loads from the same path shape and is presumably in the same state, which
+is worth knowing given `app/components/web-vitals.tsx` now reports field CWV to Sentry
+independently.
+
 ### 0. Apply pending migrations to the database in `.env.local`
 
 Discovered 2026-07-30. The Neon database that `.env.local` points at is **behind on

@@ -101,6 +101,13 @@ export function ClerkClientProvider({ children }: { children: ReactNode }) {
       // dist/clerk.browser.js` and follow the `location` header) whenever
       // @clerk/clerk-react is upgraded.
       clerkJSVersion="5.127.2"
+      // clerk-js POSTs usage telemetry to https://clerk-telemetry.com, which is
+      // not in the CSP's connect-src — so every page load logged a blocked
+      // request and a failed fetch in the console. Disabled rather than
+      // allow-listed: it is third-party analytics about our own SDK usage, the
+      // app has its own observability, and widening connect-src to satisfy it
+      // would loosen the policy for nothing we need.
+      telemetry={false}
       signInUrl={process.env.NEXT_PUBLIC_CLERK_SIGN_IN_URL}
       signUpUrl={process.env.NEXT_PUBLIC_CLERK_SIGN_UP_URL}
       routerPush={(to: string) => router.push(to)}
