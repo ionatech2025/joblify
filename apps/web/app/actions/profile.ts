@@ -8,29 +8,64 @@ import { withAudit } from '@/lib/audit';
 import { tags } from '@/lib/cache';
 import { logger } from '@/lib/observability/logger';
 
-const ProfileSchema = z.object({
+export const ProfileSchema = z.object({
   profileType: z.enum(['EMPLOYABLE', 'VIRTUAL_INTERN']),
   headline: z.string().max(140).optional().or(z.literal('')),
   bio: z.string().max(2000).optional().or(z.literal('')),
-  yearsExperience: z.coerce.number().int().min(0).max(70).nullable(),
+  yearsExperience: z.coerce.number().int().min(0).max(70).nullable().optional(),
   location: z.string().max(140).optional().or(z.literal('')),
-  desiredSalaryMin: z.coerce.number().int().min(0).nullable(),
-  desiredSalaryMax: z.coerce.number().int().min(0).nullable(),
-  desiredWorkMode: z.enum(['REMOTE', 'HYBRID', 'ONSITE']).nullable(),
-  visibility: z.enum(['PUBLIC', 'PRIVATE']),
+  desiredSalaryMin: z.coerce.number().int().min(0).nullable().optional(),
+  desiredSalaryMax: z.coerce.number().int().min(0).nullable().optional(),
+  desiredWorkMode: z.enum(['REMOTE', 'HYBRID', 'ONSITE']).nullable().optional(),
+  visibility: z.enum(['PUBLIC', 'PRIVATE']).default('PUBLIC'),
   // Virtual-intern extras (JOB_UC_05.0): stored only for VI profiles.
   careerInterest: z.string().max(140).optional().or(z.literal('')),
-  availabilityHoursPerWeek: z.coerce.number().int().min(1).max(80).nullable(),
+  availabilityHoursPerWeek: z.coerce.number().int().min(1).max(80).nullable().optional(),
   learningGoal: z.string().max(500).optional().or(z.literal('')),
   // JOB_UC_05.0 profile-completeness: academic background, certifications, a
   // portfolio link, and skills picked from the canonical Skill catalog.
   education: z.string().max(1000).optional().or(z.literal('')),
   certifications: z.string().max(1000).optional().or(z.literal('')),
-  portfolioUrl: z.string().trim().url().max(300).optional().or(z.literal('')),
+  portfolioUrl: z
+    .string()
+    .trim()
+    .max(300)
+    .optional()
+    .or(z.literal(''))
+    .refine((val) => !val || z.string().url().safeParse(val).success, {
+      message: 'Invalid portfolio URL',
+    }),
   skillSlugs: z.array(z.string()).max(30).default([]),
 });
 
 export type ProfileInput = z.infer<typeof ProfileSchema>;
+
+// Strict validation schema for complete profile submission (JOB_UC_05.0)
+export const StrictProfileSchema = ProfileSchema.superRefine((data, ctx) => {
+  if (data.profileType === 'EMPLOYABLE') {
+    if (!data.skillSlugs || data.skillSlugs.length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['skillSlugs'],
+        message: 'An employable profile must have at least one skill selected.',
+      });
+    }
+  }
+  if (!data.bio || data.bio.trim().length === 0) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['bio'],
+      message: 'Bio is required.',
+    });
+  }
+  if (!data.education || data.education.trim().length === 0) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['education'],
+      message: 'Education is required.',
+    });
+  }
+});
 
 // VI extras only persist on VIRTUAL_INTERN profiles; switching to EMPLOYABLE
 // clears them so stale intern data never leaks into the directory.
@@ -40,7 +75,7 @@ function viFields(parsed: ProfileInput) {
   }
   return {
     careerInterest: parsed.careerInterest || null,
-    availabilityHoursPerWeek: parsed.availabilityHoursPerWeek,
+    availabilityHoursPerWeek: parsed.availabilityHoursPerWeek ?? null,
     learningGoal: parsed.learningGoal || null,
   };
 }
@@ -69,11 +104,11 @@ export async function saveProfile(input: ProfileInput): Promise<void> {
           profileType: parsed.profileType,
           headline: parsed.headline || null,
           bio: parsed.bio || null,
-          yearsExperience: parsed.yearsExperience,
+          yearsExperience: parsed.yearsExperience ?? null,
           location: parsed.location || null,
-          desiredSalaryMin: parsed.desiredSalaryMin,
-          desiredSalaryMax: parsed.desiredSalaryMax,
-          desiredWorkMode: parsed.desiredWorkMode,
+          desiredSalaryMin: parsed.desiredSalaryMin ?? null,
+          desiredSalaryMax: parsed.desiredSalaryMax ?? null,
+          desiredWorkMode: parsed.desiredWorkMode ?? null,
           visibility: parsed.visibility,
           education: parsed.education || null,
           certifications: parsed.certifications || null,
@@ -84,11 +119,11 @@ export async function saveProfile(input: ProfileInput): Promise<void> {
           profileType: parsed.profileType,
           headline: parsed.headline || null,
           bio: parsed.bio || null,
-          yearsExperience: parsed.yearsExperience,
+          yearsExperience: parsed.yearsExperience ?? null,
           location: parsed.location || null,
-          desiredSalaryMin: parsed.desiredSalaryMin,
-          desiredSalaryMax: parsed.desiredSalaryMax,
-          desiredWorkMode: parsed.desiredWorkMode,
+          desiredSalaryMin: parsed.desiredSalaryMin ?? null,
+          desiredSalaryMax: parsed.desiredSalaryMax ?? null,
+          desiredWorkMode: parsed.desiredWorkMode ?? null,
           visibility: parsed.visibility,
           education: parsed.education || null,
           certifications: parsed.certifications || null,

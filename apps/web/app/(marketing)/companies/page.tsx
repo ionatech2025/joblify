@@ -2,7 +2,6 @@ import Link from 'next/link';
 import { Suspense } from 'react';
 import { connection } from 'next/server';
 import { db } from '@/lib/db';
-import { tags } from '@/lib/cache';
 import { Building2 } from 'lucide-react';
 import { Card } from '@/app/components/ui/card';
 import { Badge } from '@/app/components/ui/badge';
@@ -11,13 +10,22 @@ import { EmptyState } from '@/app/components/ui/empty-state';
 import { SkeletonList } from '@/app/components/ui/skeleton';
 import { IslandBoundary } from '@/app/components/island-boundary';
 import { buttonClasses } from '@/app/components/ui/button';
+import { INDUSTRY_OPTIONS, SIZE_VALUES } from '@/app/company/company-profile-schema';
+import type { IndustryType, CompanySize, Prisma } from '@prisma/client';
 
 export const metadata = {
   title: 'Companies hiring on Joblify',
   description: 'Browse verified companies hiring across industries.',
 };
 
-export default function CompaniesPage() {
+type SearchParams = Promise<{
+  q?: string;
+  industry?: string;
+  size?: string;
+  location?: string;
+}>;
+
+export default function CompaniesPage({ searchParams }: { searchParams: SearchParams }) {
   return (
     <main>
       <PageHeader
@@ -41,7 +49,7 @@ export default function CompaniesPage() {
           }
         >
           <Suspense fallback={<SkeletonList count={6} />}>
-            <CompaniesList />
+            <CompaniesList searchParams={searchParams} />
           </Suspense>
         </IslandBoundary>
       </div>
@@ -49,20 +57,25 @@ export default function CompaniesPage() {
   );
 }
 
-async function CompaniesList() {
-  // Dynamic boundary so the build needs no DB; the query is cached at runtime.
+function sanitizeQuery(raw?: string): string {
+  if (!raw) return '';
+  return raw.replace(/<[^>]*>?/gm, '').trim();
+}
+
+async function CompaniesList({ searchParams }: { searchParams: SearchParams }) {
   await connection();
-  const companies = await getCompaniesList();
+  const params = await searchParams;
+  const companies = await getCompaniesList(params);
 
   if (companies.length === 0) {
     return (
       <EmptyState
         icon={<Building2 />}
-        title="No companies listed yet"
-        description="Verified companies appear here as they join. Check back soon — or list yours."
+        title="No companies found"
+        description="Try adjusting your search or filters to find verified companies."
         action={
-          <Link href="/employer-setup" className={`${buttonClasses()} no-underline`}>
-            List your company
+          <Link href="/companies" className={`${buttonClasses('secondary')} no-underline`}>
+            Clear filters
           </Link>
         }
       />
@@ -104,14 +117,33 @@ async function CompaniesList() {
   );
 }
 
-async function getCompaniesList() {
-  'use cache';
-  const { cacheTag, cacheLife } = await import('next/cache');
-  cacheTag(tags.companies());
-  cacheLife('hours');
+export async function getCompaniesList(filters?: {
+  q?: string;
+  industry?: string;
+  size?: string;
+  location?: string;
+}) {
+  const query = sanitizeQuery(filters?.q);
+  const validIndustry = filters?.industry && INDUSTRY_OPTIONS.includes(filters.industry as (typeof INDUSTRY_OPTIONS)[number])
+    ? (filters.industry as IndustryType)
+    : undefined;
+  const validSize = filters?.size && SIZE_VALUES.includes(filters.size as (typeof SIZE_VALUES)[number])
+    ? (filters.size as CompanySize)
+    : undefined;
+  const location = sanitizeQuery(filters?.location);
+
+  const where: Prisma.CompanyProfileWhereInput = {
+    verificationStatus: 'VERIFIED',
+    ...(query
+      ? { companyName: { contains: query, mode: 'insensitive' } }
+      : {}),
+    ...(validIndustry ? { industry: validIndustry } : {}),
+    ...(validSize ? { companySize: validSize } : {}),
+    ...(location ? { address: { contains: location, mode: 'insensitive' } } : {}),
+  };
 
   return db.companyProfile.findMany({
-    where: { verificationStatus: 'VERIFIED' },
+    where,
     orderBy: { companyName: 'asc' },
     take: 60,
   });

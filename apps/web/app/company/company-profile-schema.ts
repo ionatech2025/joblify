@@ -41,12 +41,21 @@ export const SIZE_LABELS: Record<(typeof SIZE_VALUES)[number], string> = {
 };
 
 export const CompanyProfileSchema = z.object({
-  companyName: z.string().min(2).max(140),
-  industry: z.enum(INDUSTRY_OPTIONS),
-  companySize: z.enum(SIZE_VALUES),
-  description: z.string().min(20).max(4000),
-  website: z.string().url().max(200).optional().or(z.literal('')),
-  linkedin: z.string().url().max(200).optional().or(z.literal('')),
+  companyName: z.string().trim().min(2, 'Company name must be at least 2 characters').max(140),
+  industry: z.enum(INDUSTRY_OPTIONS, {
+    errorMap: () => ({ message: 'Please select a valid industry' }),
+  }),
+  companySize: z.enum(SIZE_VALUES, {
+    errorMap: () => ({ message: 'Please select a valid company size' }),
+  }),
+  description: z.string().trim().min(20, 'Description must be at least 20 characters').max(4000),
+  contactPersonName: z.string().trim().max(100).optional().or(z.literal('')),
+  contactPersonPosition: z.string().trim().max(100).optional().or(z.literal('')),
+  phone: z.string().trim().regex(/^\d{10}$/, 'Phone number must be exactly 10 numeric digits').optional().or(z.literal('')),
+  address: z.string().trim().max(255).optional().or(z.literal('')),
+  website: z.string().trim().url('Invalid website URL').max(200).optional().or(z.literal('')),
+  linkedin: z.string().trim().url('Invalid LinkedIn URL').max(200).optional().or(z.literal('')),
+  logoUrl: z.string().trim().url('Invalid logo URL').optional().or(z.literal('')),
 });
 
 export type CompanyProfileInput = z.infer<typeof CompanyProfileSchema>;

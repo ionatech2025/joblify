@@ -41,10 +41,15 @@ export async function inviteJobseeker(
   });
   if (!seeker) return fail('Job seeker not found.');
 
+  // JOB_UC_10.0 Test 114: Unverified or suspended company cannot send invitations
   const profile = await db.companyProfile.findUnique({
     where: { userId: user.id },
-    select: { companyName: true },
+    select: { companyName: true, verificationStatus: true, user: { select: { deletedAt: true } } },
   });
+  if (profile?.user?.deletedAt || (profile?.verificationStatus && profile.verificationStatus !== 'VERIFIED')) {
+    return fail('Only verified companies can send invitations.');
+  }
+
   const companyName = profile?.companyName ?? 'A company';
 
   const existing = await db.invitation.findUnique({

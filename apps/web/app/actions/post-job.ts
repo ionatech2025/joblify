@@ -43,6 +43,23 @@ export async function postJob(input: z.infer<typeof Input>): Promise<ActionResul
 
   const parsed = Input.parse(input);
 
+  // JOB_UC_11.0: Only verified companies can create job posts
+  const profile = await db.companyProfile?.findUnique?.({
+    where: { userId: user.id },
+    select: { verificationStatus: true, companyName: true },
+  });
+  if (profile && profile.verificationStatus !== 'VERIFIED') {
+    return fail('Only verified companies can create job posts.');
+  }
+
+  // JOB_UC_11.0: Job deadline must be a future date
+  if (parsed.applicationDeadline) {
+    const deadlineDate = new Date(parsed.applicationDeadline);
+    if (isNaN(deadlineDate.getTime()) || deadlineDate <= new Date()) {
+      return fail('Application deadline must be a future date.');
+    }
+  }
+
   // JOB_UC_11.0: creating a job-specific chat area is a premium feature.
   if (parsed.createChatArea) assertPlan(user, 'PRO');
 
@@ -142,6 +159,39 @@ export async function postJob(input: z.infer<typeof Input>): Promise<ActionResul
         logger.warn({ err, jobId: job.id }, 'JD embedding failed (non-blocking)');
         Sentry.captureException(err, { tags: { jobId: job.id } });
       }
+
+      // JOB_UC_11.0: Notify jobseekers matching the criteria (Test 80)
+      try {
+        const matchingSeekers = await db.jobSeekerProfile?.findMany?.({
+          where: {
+            visibility: 'PUBLIC',
+            OR: [
+              { desiredWorkMode: parsed.workMode },
+              { location: { contains: parsed.location || '', mode: 'insensitive' } },
+            ],
+          },
+          take: 20,
+          select: { userId: true },
+        });
+        if (matchingSeekers && matchingSeekers.length > 0) {
+          for (const seeker of matchingSeekers) {
+            await db.notification?.create?.({
+              data: {
+                userId: seeker.userId,
+                kind: 'SYSTEM',
+                payload: {
+                  jobId: job.id,
+                  jobSlug: job.slug,
+                  message: `New job matching your criteria: ${job.title} at ${profile?.companyName ?? 'a verified company'}.`,
+                },
+              },
+            });
+            updateTag(tags.notifications(seeker.userId));
+          }
+        }
+      } catch (err) {
+        logger.warn({ err, jobId: job.id }, 'matching jobseeker notification failed (non-blocking)');
+      }
     }
   });
 
@@ -164,9 +214,7 @@ export async function updateJob(
 
   const parsed = Input.parse(input);
 
-  // Tenancy: the job must belong to this company. Title/description/
-  // requirements are pulled to detect JD-text changes for the embedding
-  // refresh below.
+  // Tenancy: the job must belong to this company.
   const existing = await db.jobPost.findFirst({
     where: { id: jobId, companyId: user.id, deletedAt: null },
     select: {
@@ -175,10 +223,24 @@ export async function updateJob(
       title: true,
       description: true,
       requirements: true,
+      applicationDeadline: true,
       chatArea: { select: { id: true } },
     },
   });
   if (!existing) throw new AuthError('FORBIDDEN');
+
+  // JOB_UC_11.1: Attempting to edit an expired job post is blocked (Test 84)
+  if (existing.applicationDeadline && existing.applicationDeadline < new Date()) {
+    return fail('Cannot edit an expired job post.');
+  }
+
+  // JOB_UC_11.1: Editing a job post with a past deadline is blocked (Test 82)
+  if (parsed.applicationDeadline) {
+    const deadlineDate = new Date(parsed.applicationDeadline);
+    if (isNaN(deadlineDate.getTime()) || deadlineDate <= new Date()) {
+      return fail('Application deadline must be a future date.');
+    }
+  }
 
   // JOB_UC_11.0: only gate when this update would actually create the area.
   if (parsed.createChatArea && !existing.chatArea) assertPlan(user, 'PRO');
@@ -225,11 +287,7 @@ export async function updateJob(
             ? new Date(parsed.applicationDeadline)
             : null,
           status: parsed.publish ? 'PUBLISHED' : 'DRAFT',
-          // First publish stamps publishedAt; keep the original on re-saves. The
-          // slug is left unchanged to preserve SEO + inbound links.
           publishedAt: parsed.publish ? (existing.publishedAt ?? new Date()) : existing.publishedAt,
-          // Toggling the box on later creates the area; existing areas (and
-          // their messages) are never deleted from here.
           ...(parsed.createChatArea && !existing.chatArea
             ? {
                 chatArea: {
@@ -246,17 +304,11 @@ export async function updateJob(
       }),
   );
 
-  // The stored embedding is derived from these three fields — refresh it only
-  // when one of them actually changed (embedJobPost skips existing embeddings
-  // unless forced; there is no stored text hash, so the diff happens here).
   const jdTextChanged =
     parsed.title !== existing.title ||
     parsed.description !== existing.description ||
     (parsed.requirements || null) !== existing.requirements;
 
-  // Off the response path (after(), not floating promises — see postJob):
-  // re-extract skills, reindex, and refresh the JD embedding when the job is
-  // published. Best-effort: failures are logged + sent to Sentry.
   after(async () => {
     try {
       await extractAndLinkSkills(
@@ -294,17 +346,26 @@ export async function updateJob(
 }
 
 // JOB_UC_11.1: remove a job post the company no longer needs. Soft-delete
-// (deletedAt + ARCHIVED), matching the pattern used everywhere else in this
-// app — applications, chat history, and audit trail are preserved, just
-// hidden from listings and search.
-export async function archiveJob(jobId: string): Promise<void> {
+// (deletedAt + ARCHIVED), checking for active applications and unlinking/notifying.
+export async function archiveJob(
+  jobId: string,
+  options?: { force?: boolean },
+): Promise<ActionResult> {
   const user = await requireRole('COMPANY');
 
   const existing = await db.jobPost.findFirst({
     where: { id: jobId, companyId: user.id, deletedAt: null },
-    select: { id: true },
+    include: {
+      applications: { select: { id: true, jobSeekerId: true } },
+      chatArea: { select: { id: true } },
+    },
   });
   if (!existing) throw new AuthError('FORBIDDEN');
+
+  const apps = existing.applications ?? [];
+  if (apps.length > 0 && !options?.force) {
+    return fail('This job has active applications. Explicit confirmation is required to delete it.');
+  }
 
   const h = await headers();
   const ip = h.get('x-forwarded-for')?.split(',')[0]?.trim() ?? null;
@@ -318,15 +379,28 @@ export async function archiveJob(jobId: string): Promise<void> {
       entityId: jobId,
       after: () => ({ status: 'ARCHIVED' }),
     },
-    (tx) =>
-      tx.jobPost.update({
+    async (tx) => {
+      await tx.jobPost.update({
         where: { id: jobId },
         data: { status: 'ARCHIVED', deletedAt: new Date() },
-      }),
+      });
+
+      // JOB_UC_11.1: Deleting a job post notifies applicants of the closure (Test 87)
+      for (const app of apps) {
+        await tx.notification.create({
+          data: {
+            userId: app.jobSeekerId,
+            kind: 'SYSTEM',
+            payload: {
+              jobId: existing.id,
+              message: `The job post "${existing.title}" has been closed and archived.`,
+            },
+          },
+        });
+      }
+    },
   );
 
-  // Off the response path (after(), not a floating promise — see postJob).
-  // reindexJob sees the ARCHIVED status and deletes the Algolia record.
   after(async () => {
     try {
       await reindexJob(jobId);
@@ -339,8 +413,12 @@ export async function archiveJob(jobId: string): Promise<void> {
   updateTag(tags.job(jobId));
   updateTag(tags.jobs());
   updateTag(tags.company(user.id));
+  for (const app of apps) {
+    updateTag(tags.notifications(app.jobSeekerId));
+  }
 
   logger.info({ jobId, companyId: user.id }, 'job archived');
+  return succeed();
 }
 
 async function extractAndLinkSkills(
@@ -359,8 +437,6 @@ async function extractAndLinkSkills(
     temperature: 0,
   });
 
-  // Match against canonical Skill catalog; ignore unknown ones rather than
-  // creating dups — admin can curate new entries later.
   const allSlugs = [...object.requiredSkills, ...object.niceToHave].map((s) =>
     s
       .toLowerCase()
@@ -378,8 +454,6 @@ async function extractAndLinkSkills(
     ),
   );
 
-  // Reset this job's skill links, then add the freshly-extracted set — keeps
-  // edits idempotent (skills from a previous description are cleared).
   await db.jobPostSkill.deleteMany({ where: { jobPostId: jobId } });
   if (skills.length > 0) {
     await db.jobPostSkill.createMany({

@@ -62,6 +62,15 @@ export async function submitApplication(formData: FormData): Promise<ActionResul
     include: { company: { include: { companyProfile: true } } },
   });
   if (!job) return fail('Job not available for application.');
+
+  // JOB_UC_08.1 Test 96: Applying to a post from an unverified company is denied
+  if (
+    job.company.companyProfile?.verificationStatus &&
+    job.company.companyProfile.verificationStatus !== 'VERIFIED'
+  ) {
+    return fail('Cannot apply to a job post from an unverified company.');
+  }
+
   if (job.applicationDeadline && job.applicationDeadline < new Date()) {
     return fail('The application deadline for this job has passed.');
   }
@@ -87,8 +96,8 @@ export async function submitApplication(formData: FormData): Promise<ActionResul
       entity: 'job_application',
       after: (r) => ({ id: r.id, status: r.status }),
     },
-    async (tx) =>
-      tx.jobApplication.create({
+    async (tx) => {
+      const app = await tx.jobApplication.create({
         data: {
           jobPostId: job.id,
           jobSeekerId: user.id,
@@ -96,12 +105,30 @@ export async function submitApplication(formData: FormData): Promise<ActionResul
           coverLetter: parsed.data.coverLetter ?? null,
           status: 'SUBMITTED',
         },
-      }),
+      });
+
+      // JOB_UC_08.1 Test 95: Notification to company upon application
+      await tx.notification.create({
+        data: {
+          userId: job.companyId,
+          kind: 'NEW_APPLICANT',
+          payload: {
+            jobId: job.id,
+            jobTitle: job.title,
+            applicationId: app.id,
+            message: `${user.firstName ?? 'A candidate'} applied for ${job.title}.`,
+          },
+        },
+      });
+
+      return app;
+    },
   );
 
   // 9. Invalidate downstream caches.
   updateTag(tags.userApplications(user.id));
   updateTag(tags.jobApplicants(job.id));
+  updateTag(tags.notifications(job.companyId));
 
   // 10. Email confirmation (best-effort — do not block apply path on it).
   resendSafe(async () => {
@@ -121,9 +148,7 @@ export async function submitApplication(formData: FormData): Promise<ActionResul
     });
   });
 
-  // 11. Off the response path: ensure the resume is parsed/embedded (usually
-  //     already done at upload — idempotent no-op), then compute the match
-  //     score, which reads that embedding. Failures are logged, never block.
+  // 11. Off the response path: ensure the resume is parsed/embedded
   after(async () => {
     try {
       await runResumeParse({ resumeId: resume.id });
@@ -146,9 +171,6 @@ export async function submitApplication(formData: FormData): Promise<ActionResul
   return succeed();
 }
 
-// JOB_UC_09.0: a jobseeker can withdraw their own application any time
-// before it reaches a terminal state. ApplicationStatus.WITHDRAWN was fully
-// modeled (lib/ui/status.ts already has its label + tone) but had no writer.
 export async function withdrawApplication(applicationId: string): Promise<ActionResult> {
   const user = await requireRole('JOB_SEEKER');
 
@@ -158,7 +180,7 @@ export async function withdrawApplication(applicationId: string): Promise<Action
   });
   if (!application) throw new AuthError('FORBIDDEN');
   if (CLOSED_APPLICATION_STATUSES.includes(application.status)) {
-    return fail('This application is already closed and can’t be withdrawn.');
+    return fail('Cannot withdraw an already closed application.');
   }
 
   const h = await headers();
@@ -186,7 +208,8 @@ export async function withdrawApplication(applicationId: string): Promise<Action
           payload: {
             applicationId,
             jobTitle: application.jobPost.title,
-            message: `${user.firstName ?? user.email} withdrew their application for ${application.jobPost.title}.`,
+            status: 'WITHDRAWN',
+            message: `${user.firstName ?? 'An applicant'} withdrew their application for ${application.jobPost.title}.`,
           },
         },
       });

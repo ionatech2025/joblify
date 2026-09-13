@@ -40,9 +40,31 @@ export async function subscribeToCompany(
 
   const company = await db.companyProfile.findUnique({
     where: { userId: companyUserId },
-    select: { userId: true, companyName: true },
+    select: {
+      userId: true,
+      companyName: true,
+      verificationStatus: true,
+      user: { select: { deletedAt: true } },
+    },
   });
-  if (!company) return fail('Company not found.');
+  if (!company || company.user?.deletedAt || (company.verificationStatus && company.verificationStatus !== 'VERIFIED')) {
+    return fail('Company not found.');
+  }
+
+  // JOB_UC_07.0 Test 106: Duplicate subscription is an idempotent no-op or returns success
+  const existingSub = await db.companySubscription.findUnique({
+    where: {
+      companyId_jobSeekerId_profileType: {
+        companyId: company.userId,
+        jobSeekerId: user.id,
+        profileType,
+      },
+    },
+    select: { id: true },
+  });
+  if (existingSub) {
+    return succeed();
+  }
 
   const seekerName = [user.firstName, user.lastName].filter(Boolean).join(' ') || 'A job seeker';
 

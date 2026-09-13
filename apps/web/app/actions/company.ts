@@ -42,7 +42,20 @@ export async function createCompanyProfile(input: CompanyProfileInput): Promise<
     where: { userId: user.id },
     select: { id: true },
   });
-  if (existing) return; // already set up
+  if (existing) {
+    throw new Error('A company profile already exists for this account.');
+  }
+
+  // Check for duplicate company name (JOB_UC_01.1 / JOB_UC_05.1)
+  const duplicateName = await db.companyProfile.findFirst({
+    where: {
+      companyName: { equals: parsed.companyName, mode: 'insensitive' },
+    },
+    select: { id: true },
+  });
+  if (duplicateName) {
+    throw new Error('A company with this name is already registered.');
+  }
 
   const ctx = { ...(await auditCtx()), actorId: user.id };
 
@@ -50,7 +63,13 @@ export async function createCompanyProfile(input: CompanyProfileInput): Promise<
     ctx,
     { action: 'COMPANY_PROFILE_UPDATED', entity: 'company_profile', after: (r) => ({ id: r.id }) },
     async (tx) => {
-      await tx.user.update({ where: { id: user.id }, data: { userType: 'COMPANY' } });
+      await tx.user.update({
+        where: { id: user.id },
+        data: {
+          userType: 'COMPANY',
+          ...(parsed.phone ? { phone: parsed.phone } : {}),
+        },
+      });
       return tx.companyProfile.create({
         data: {
           userId: user.id,
@@ -61,6 +80,10 @@ export async function createCompanyProfile(input: CompanyProfileInput): Promise<
           description: parsed.description,
           website: parsed.website || null,
           linkedin: parsed.linkedin || null,
+          address: parsed.address || null,
+          contactPersonName: parsed.contactPersonName || null,
+          contactPersonPosition: parsed.contactPersonPosition || null,
+          logoUrl: parsed.logoUrl || null,
         },
         select: { id: true },
       });
@@ -80,6 +103,17 @@ export async function updateCompanyProfile(input: CompanyProfileInput): Promise<
   });
   if (!profile) throw new AuthError('FORBIDDEN');
 
+  const duplicateName = await db.companyProfile.findFirst({
+    where: {
+      companyName: { equals: parsed.companyName, mode: 'insensitive' },
+      id: { not: profile.id },
+    },
+    select: { id: true },
+  });
+  if (duplicateName) {
+    throw new Error('A company with this name is already registered.');
+  }
+
   const ctx = { ...(await auditCtx()), actorId: user.id };
 
   await withAudit(
@@ -90,8 +124,8 @@ export async function updateCompanyProfile(input: CompanyProfileInput): Promise<
       entityId: profile.id,
       after: () => parsed,
     },
-    (tx) =>
-      tx.companyProfile.update({
+    async (tx) => {
+      await tx.companyProfile.update({
         where: { id: profile.id },
         data: {
           companyName: parsed.companyName,
@@ -100,11 +134,23 @@ export async function updateCompanyProfile(input: CompanyProfileInput): Promise<
           description: parsed.description,
           website: parsed.website || null,
           linkedin: parsed.linkedin || null,
+          address: parsed.address || null,
+          contactPersonName: parsed.contactPersonName || null,
+          contactPersonPosition: parsed.contactPersonPosition || null,
+          ...(parsed.logoUrl !== undefined ? { logoUrl: parsed.logoUrl || null } : {}),
         },
-      }),
+      });
+      if (parsed.phone) {
+        await tx.user.update({
+          where: { id: user.id },
+          data: { phone: parsed.phone },
+        });
+      }
+    },
   );
 
   updateTag(tags.company(user.id));
+  updateTag(tags.companies());
 
   logger.info({ userId: user.id, companyProfileId: profile.id }, 'company profile updated');
 }
