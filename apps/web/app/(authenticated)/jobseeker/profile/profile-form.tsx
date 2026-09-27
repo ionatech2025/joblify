@@ -11,24 +11,71 @@ import { useProfileDraftStore } from '@/lib/stores/profile-draft';
 import { useFormDraft } from '@/lib/use-form-draft';
 import { toast } from '@/lib/stores/ui';
 
-const ProfileFormSchema = z.object({
-  profileType: z.enum(['EMPLOYABLE', 'VIRTUAL_INTERN']),
-  headline: z.string().max(140).optional().or(z.literal('')),
-  bio: z.string().max(2000).optional().or(z.literal('')),
-  yearsExperience: z.coerce.number().int().min(0).max(70).nullable(),
-  location: z.string().max(140).optional().or(z.literal('')),
-  desiredSalaryMin: z.coerce.number().int().min(0).nullable(),
-  desiredSalaryMax: z.coerce.number().int().min(0).nullable(),
-  desiredWorkMode: z.enum(['REMOTE', 'HYBRID', 'ONSITE']).nullable(),
-  visibility: z.enum(['PUBLIC', 'PRIVATE']),
-  careerInterest: z.string().max(140).optional().or(z.literal('')),
-  availabilityHoursPerWeek: z.coerce.number().int().min(1).max(80).nullable(),
-  learningGoal: z.string().max(500).optional().or(z.literal('')),
-  education: z.string().max(1000).optional().or(z.literal('')),
-  certifications: z.string().max(1000).optional().or(z.literal('')),
-  portfolioUrl: z.string().trim().url().max(300).optional().or(z.literal('')),
-  skillSlugs: z.array(z.string()).max(30).default([]),
-});
+const ProfileFormSchema = z
+  .object({
+    profileType: z.enum(['EMPLOYABLE', 'VIRTUAL_INTERN']),
+    headline: z.string().max(140).optional().or(z.literal('')),
+    bio: z.string().trim().min(1, 'Bio is required.').max(2000),
+    yearsExperience: z.preprocess(
+      (val) => (val === '' || val === null || val === undefined ? null : val),
+      z.coerce
+        .number()
+        .int()
+        .min(0, 'Years of experience cannot be negative.')
+        .max(70, 'Years of experience cannot exceed 70.')
+        .nullable()
+        .optional(),
+    ),
+    location: z.string().max(140).optional().or(z.literal('')),
+    desiredSalaryMin: z.preprocess(
+      (val) => (val === '' || val === null || val === undefined ? null : val),
+      z.coerce.number().int().min(0, 'Salary cannot be negative.').nullable().optional(),
+    ),
+    desiredSalaryMax: z.preprocess(
+      (val) => (val === '' || val === null || val === undefined ? null : val),
+      z.coerce.number().int().min(0, 'Salary cannot be negative.').nullable().optional(),
+    ),
+    desiredWorkMode: z.preprocess(
+      (val) => (val === '' || val === null || val === undefined ? null : val),
+      z.enum(['REMOTE', 'HYBRID', 'ONSITE']).nullable().optional(),
+    ),
+    visibility: z.enum(['PUBLIC', 'PRIVATE']),
+    careerInterest: z.string().max(140).optional().or(z.literal('')),
+    availabilityHoursPerWeek: z.preprocess(
+      (val) => (val === '' || val === null || val === undefined ? null : val),
+      z.coerce
+        .number()
+        .int()
+        .min(1, 'Hours per week must be between 1 and 80.')
+        .max(80, 'Hours per week must be between 1 and 80.')
+        .nullable()
+        .optional(),
+    ),
+    learningGoal: z.string().max(500).optional().or(z.literal('')),
+    education: z.string().trim().min(1, 'Education is required.').max(1000),
+    certifications: z.string().max(1000).optional().or(z.literal('')),
+    portfolioUrl: z
+      .string()
+      .trim()
+      .max(300)
+      .optional()
+      .or(z.literal(''))
+      .refine((val) => !val || z.string().url().safeParse(val).success, {
+        message: 'Invalid portfolio URL (e.g. https://github.com/yourname)',
+      }),
+    skillSlugs: z.array(z.string()).max(30).default([]),
+  })
+  .superRefine((data, ctx) => {
+    if (data.profileType === 'EMPLOYABLE') {
+      if (!data.skillSlugs || data.skillSlugs.length === 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['skillSlugs'],
+          message: 'An employable profile must have at least one skill selected.',
+        });
+      }
+    }
+  });
 
 export type ProfileFormValues = z.infer<typeof ProfileFormSchema>;
 
@@ -71,9 +118,12 @@ export function ProfileForm({
         await saveProfile(values);
         setSaved(true);
         clearDraft();
-        toast.success('Profile saved');
+        toast.success('Profile updated successfully');
       } catch (err) {
-        const message = err instanceof Error ? err.message : 'Save failed.';
+        let message = err instanceof Error ? err.message : 'Save failed.';
+        if (message.includes('Server Components render') || message.includes('digest')) {
+          message = 'Please check that all required fields (Bio, Education, and Skills) are filled in properly.';
+        }
         setError(message);
         toast.error("Couldn't save your profile", message);
       }
@@ -118,7 +168,7 @@ export function ProfileForm({
         />
       </Field>
 
-      <Field label="Bio" error={errors.bio?.message}>
+      <Field label="Bio *" error={errors.bio?.message}>
         <Textarea
           {...register('bio')}
           rows={6}
@@ -127,7 +177,9 @@ export function ProfileForm({
       </Field>
 
       <fieldset className="flex flex-col gap-1">
-        <legend className="text-sm font-medium text-fg-muted">Skills</legend>
+        <legend className="text-sm font-medium text-fg-muted">
+          Skills {isVirtualIntern ? '(optional)' : '*(at least 1 required)'}
+        </legend>
         <div className="grid grid-cols-2 gap-x-4 gap-y-2 rounded-control border border-border-strong bg-surface p-3 sm:grid-cols-3">
           {allSkills.map((skill) => (
             <label key={skill.slug} className="flex items-center gap-2 text-sm text-fg-muted">
@@ -145,7 +197,7 @@ export function ProfileForm({
         <Input type="number" {...register('yearsExperience')} min={0} max={70} />
       </Field>
 
-      <Field label="Education" error={errors.education?.message}>
+      <Field label="Education *" error={errors.education?.message}>
         <Textarea
           {...register('education')}
           rows={3}

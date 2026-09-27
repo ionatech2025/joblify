@@ -19,6 +19,11 @@ import { cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Field, Input, Checkbox } from '@/app/components/ui/form';
 import { TimeStamp } from '@/app/components/ui/timestamp';
+import { ProfileForm } from '@/app/(authenticated)/jobseeker/profile/profile-form';
+
+vi.mock('@/app/actions/profile', () => ({
+  saveProfile: vi.fn().mockResolvedValue(undefined),
+}));
 
 afterEach(cleanup);
 
@@ -203,5 +208,65 @@ describe('form composition', () => {
       .getAllByRole('alert')
       .map((el) => el.id);
     expect(new Set(ids).size).toBe(2);
+  });
+});
+
+describe('ProfileForm inline field validation (JOB_UC_05.0)', () => {
+  const initial = {
+    profileType: 'EMPLOYABLE' as const,
+    headline: 'Graphics designer',
+    bio: '',
+    yearsExperience: null,
+    location: '',
+    desiredSalaryMin: null,
+    desiredSalaryMax: null,
+    desiredWorkMode: null,
+    visibility: 'PRIVATE' as const,
+    careerInterest: '',
+    availabilityHoursPerWeek: null,
+    learningGoal: '',
+    education: '',
+    certifications: '',
+    portfolioUrl: '',
+    skillSlugs: [],
+  };
+
+  const skills = [
+    { slug: 'graphic-design', label: 'Graphic Design' },
+    { slug: 'communication', label: 'Communication' },
+  ];
+
+  it('shows inline field errors when required fields (bio, education, skills) are missing on submission', async () => {
+    const user = userEvent.setup();
+    render(<ProfileForm initial={initial} allSkills={skills} />);
+
+    await user.type(screen.getByLabelText('Headline'), 'Senior Designer');
+    await user.click(screen.getByRole('button', { name: /Save profile/i }));
+
+    expect(await screen.findByText('Bio is required.')).toBeDefined();
+    expect(await screen.findByText('Education is required.')).toBeDefined();
+    expect(
+      await screen.findByText('An employable profile must have at least one skill selected.'),
+    ).toBeDefined();
+  });
+
+  it('submits successfully when required fields are provided and "No preference" is selected for work mode', async () => {
+    const user = userEvent.setup();
+    render(<ProfileForm initial={initial} allSkills={skills} />);
+
+    await user.type(screen.getByLabelText('Headline'), 'Graphics designer');
+    await user.type(screen.getByLabelText(/Bio/i), 'I am a detail oriented designer with 10 years of experience.');
+    await user.type(screen.getByLabelText(/Education/i), 'B.A. Graphic Design');
+    await user.click(screen.getByLabelText('Graphic Design'));
+
+    // Select "No preference" (value "")
+    await user.selectOptions(screen.getByLabelText('Preferred work mode'), '');
+
+    await user.click(screen.getByRole('button', { name: /Save profile/i }));
+
+    // Should show "Saved." message without error
+    expect(await screen.findByText('Saved.')).toBeDefined();
+    expect(screen.queryByText('Bio is required.')).toBeNull();
+    expect(screen.queryByText('Education is required.')).toBeNull();
   });
 });

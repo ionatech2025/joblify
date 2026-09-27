@@ -47,6 +47,29 @@ const SKILLS: Array<{ slug: string; label: string; aliases: string[] }> = [
   { slug: 'machine-learning', label: 'Machine Learning', aliases: ['ml'] },
   { slug: 'communication', label: 'Communication', aliases: [] },
   { slug: 'leadership', label: 'Leadership', aliases: [] },
+  // Design & Creative
+  { slug: 'graphic-design', label: 'Graphic Design', aliases: ['graphics'] },
+  { slug: 'ui-ux-design', label: 'UI/UX Design', aliases: ['ui', 'ux', 'ui/ux'] },
+  { slug: 'adobe-photoshop', label: 'Adobe Photoshop', aliases: ['photoshop', 'ps'] },
+  { slug: 'adobe-illustrator', label: 'Adobe Illustrator', aliases: ['illustrator', 'ai'] },
+  { slug: 'adobe-indesign', label: 'Adobe InDesign', aliases: ['indesign'] },
+  { slug: 'branding', label: 'Branding & Identity', aliases: ['brand identity'] },
+  { slug: 'typography', label: 'Typography', aliases: [] },
+  { slug: 'motion-graphics', label: 'Motion Graphics', aliases: ['motion design'] },
+  { slug: 'video-editing', label: 'Video Editing', aliases: ['premiere', 'final cut'] },
+  { slug: 'illustration', label: 'Illustration', aliases: ['digital art'] },
+  { slug: '3d-modeling', label: '3D Modeling', aliases: ['blender', 'maya'] },
+  // Marketing & Writing
+  { slug: 'content-writing', label: 'Content Writing', aliases: ['copywriting', 'writing'] },
+  { slug: 'seo', label: 'SEO', aliases: ['search engine optimization'] },
+  { slug: 'digital-marketing', label: 'Digital Marketing', aliases: ['marketing'] },
+  { slug: 'social-media-marketing', label: 'Social Media Marketing', aliases: ['smm'] },
+  // Business, Sales & Operations
+  { slug: 'sales', label: 'Sales & Business Development', aliases: ['bizdev'] },
+  { slug: 'accounting', label: 'Accounting & Finance', aliases: ['finance'] },
+  { slug: 'customer-service', label: 'Customer Service', aliases: ['support', 'customer support'] },
+  { slug: 'human-resources', label: 'Human Resources', aliases: ['hr'] },
+  { slug: 'data-visualization', label: 'Data Visualization', aliases: ['tableau', 'powerbi'] },
 ];
 
 async function seedSkills(): Promise<number> {

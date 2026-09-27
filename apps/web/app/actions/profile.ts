@@ -12,15 +12,30 @@ export const ProfileSchema = z.object({
   profileType: z.enum(['EMPLOYABLE', 'VIRTUAL_INTERN']),
   headline: z.string().max(140).optional().or(z.literal('')),
   bio: z.string().max(2000).optional().or(z.literal('')),
-  yearsExperience: z.coerce.number().int().min(0).max(70).nullable().optional(),
+  yearsExperience: z.preprocess(
+    (val) => (val === '' || val === null || val === undefined ? null : val),
+    z.coerce.number().int().min(0).max(70).nullable().optional(),
+  ),
   location: z.string().max(140).optional().or(z.literal('')),
-  desiredSalaryMin: z.coerce.number().int().min(0).nullable().optional(),
-  desiredSalaryMax: z.coerce.number().int().min(0).nullable().optional(),
-  desiredWorkMode: z.enum(['REMOTE', 'HYBRID', 'ONSITE']).nullable().optional(),
+  desiredSalaryMin: z.preprocess(
+    (val) => (val === '' || val === null || val === undefined ? null : val),
+    z.coerce.number().int().min(0).nullable().optional(),
+  ),
+  desiredSalaryMax: z.preprocess(
+    (val) => (val === '' || val === null || val === undefined ? null : val),
+    z.coerce.number().int().min(0).nullable().optional(),
+  ),
+  desiredWorkMode: z.preprocess(
+    (val) => (val === '' || val === null || val === undefined ? null : val),
+    z.enum(['REMOTE', 'HYBRID', 'ONSITE']).nullable().optional(),
+  ),
   visibility: z.enum(['PUBLIC', 'PRIVATE']).default('PUBLIC'),
   // Virtual-intern extras (JOB_UC_05.0): stored only for VI profiles.
   careerInterest: z.string().max(140).optional().or(z.literal('')),
-  availabilityHoursPerWeek: z.coerce.number().int().min(1).max(80).nullable().optional(),
+  availabilityHoursPerWeek: z.preprocess(
+    (val) => (val === '' || val === null || val === undefined ? null : val),
+    z.coerce.number().int().min(1).max(80).nullable().optional(),
+  ),
   learningGoal: z.string().max(500).optional().or(z.literal('')),
   // JOB_UC_05.0 profile-completeness: academic background, certifications, a
   // portfolio link, and skills picked from the canonical Skill catalog.
