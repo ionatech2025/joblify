@@ -25,13 +25,70 @@
 import { generateObject, embed } from 'ai';
 import { fileTypeFromBuffer } from 'file-type';
 import { gateway, MODELS } from '@/lib/ai/gateway';
-import { ResumeSchema, RESUME_PARSE_SYSTEM } from '@/lib/ai/prompts/resume-parse';
+import { ResumeSchema, RESUME_PARSE_SYSTEM, type ParsedResume } from '@/lib/ai/prompts/resume-parse';
 import { db } from '@/lib/db';
 import { RESUME_MIME } from '@/lib/storage/blob';
 import { logger } from '@/lib/observability/logger';
 import type { Prisma } from '@prisma/client';
 
 export type ResumeParseInput = { resumeId: string };
+
+/**
+ * Heuristic parser used as a robust fallback when AI Gateway is unavailable,
+ * rate-limited, or unconfigured. Extracts contact info, summary, and skills
+ * by cross-referencing against the canonical Skill catalog.
+ */
+export function heuristicParseResume(text: string, knownSkillSlugs: string[] = []): ParsedResume {
+  const lines = text
+    .split('\n')
+    .map((l) => l.trim())
+    .filter(Boolean);
+
+  const emailMatch = text.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
+  const phoneMatch = text.match(
+    /(?:\+?\d{1,3}[-.\s]?)?\(?\d{2,4}\)?[-.\s]?\d{3,4}[-.\s]?\d{3,4}/,
+  );
+
+  const email = emailMatch ? emailMatch[0] : null;
+  const phone = phoneMatch ? phoneMatch[0] : null;
+
+  const firstLine = lines[0] ?? '';
+  const fullName =
+    firstLine.length > 2 && firstLine.length < 60 && !firstLine.includes('@') ? firstLine : null;
+
+  const secondLine = lines[1] ?? '';
+  const headline =
+    secondLine.length > 2 &&
+    secondLine.length < 80 &&
+    !secondLine.includes('@') &&
+    !secondLine.includes('http')
+      ? secondLine
+      : null;
+
+  const lowerText = text.toLowerCase();
+  const matchedSkills: string[] = [];
+  for (const slug of knownSkillSlugs) {
+    const term = slug.replace(/-/g, ' ');
+    if (lowerText.includes(term) || lowerText.includes(slug)) {
+      matchedSkills.push(slug);
+    }
+  }
+
+  const summary = text.slice(0, 500).trim();
+
+  return {
+    fullName,
+    email,
+    phone,
+    headline,
+    yearsExperience: null,
+    summary: summary || null,
+    skills: matchedSkills.slice(0, 40),
+    experience: [],
+    education: [],
+    certifications: [],
+  };
+}
 
 export async function runResumeParse({ resumeId }: ResumeParseInput): Promise<void> {
   const resume = await db.resume.findUnique({ where: { id: resumeId } });
@@ -76,14 +133,22 @@ export async function runResumeParse({ resumeId }: ResumeParseInput): Promise<vo
   const text = await extractText(bytes, detected.mime);
   if (text.length < 30) throw new Error('Resume text too short to parse');
 
-  // 4. Structured parse via Haiku
-  const { object: parsed } = await generateObject({
-    model: gateway(MODELS.haiku),
-    schema: ResumeSchema,
-    system: RESUME_PARSE_SYSTEM,
-    prompt: text.slice(0, 80_000),
-    temperature: 0,
-  });
+  // 4. Structured parse via Haiku (with robust heuristic fallback if AI Gateway is unavailable)
+  let parsed: ParsedResume;
+  try {
+    const { object } = await generateObject({
+      model: gateway(MODELS.haiku),
+      schema: ResumeSchema,
+      system: RESUME_PARSE_SYSTEM,
+      prompt: text.slice(0, 80_000),
+      temperature: 0,
+    });
+    parsed = object;
+  } catch (aiErr) {
+    logger.warn({ err: aiErr, resumeId }, 'AI Gateway unavailable, using heuristic resume parser');
+    const allSkills = await db.skill.findMany({ select: { slug: true } });
+    parsed = heuristicParseResume(text, allSkills.map((s) => s.slug));
+  }
 
   // 5. Persist parsedJson first: if the embedding step fails, the stored parse
   //    lets the reconcile sweep repair the embedding without a second Haiku call.
@@ -92,8 +157,15 @@ export async function runResumeParse({ resumeId }: ResumeParseInput): Promise<vo
     data: { parsedJson: parsed as unknown as Prisma.InputJsonValue },
   });
 
-  // 6. Embedding for match score
-  await writeEmbedding(resumeId, parsed.summary ?? text.slice(0, 8000));
+  // 6. Embedding for match score (safe against unconfigured embedding model)
+  try {
+    await writeEmbedding(resumeId, parsed.summary ?? text.slice(0, 8000));
+  } catch (embedErr) {
+    logger.warn(
+      { err: embedErr, resumeId },
+      'Resume embedding skipped (AI Gateway embedding model unavailable)',
+    );
+  }
 
   // 7. Link skills from the parsed list against our canonical Skill catalog.
   if (parsed.skills.length > 0) {
@@ -141,7 +213,7 @@ async function extractText(bytes: Uint8Array, mime: string): Promise<string> {
   if (mime === 'application/pdf') {
     const { default: pdfParse } = await import('pdf-parse');
     const result = await pdfParse(Buffer.from(bytes));
-    return result.text;
+    return result.text.replace(/\0/g, '').trim();
   }
   if (
     mime === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
@@ -149,7 +221,7 @@ async function extractText(bytes: Uint8Array, mime: string): Promise<string> {
   ) {
     const { default: mammoth } = await import('mammoth');
     const result = await mammoth.extractRawText({ buffer: Buffer.from(bytes) });
-    return result.value;
+    return result.value.replace(/\0/g, '').trim();
   }
   throw new Error(`Unsupported mime ${mime}`);
 }

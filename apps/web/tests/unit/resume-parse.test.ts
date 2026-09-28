@@ -149,4 +149,29 @@ describe('runResumeParse', () => {
     expect(m.skillUpsert).not.toHaveBeenCalled();
     expect(m.resumeUpdate).toHaveBeenCalledTimes(1); // parse still persisted
   });
+
+  it('falls back to heuristic parsing when AI Gateway is unavailable or fails', async () => {
+    m.generateObject.mockRejectedValue(new Error('AI Gateway unavailable'));
+    m.pdfParse.mockResolvedValue({
+      text: 'Jane Doe\nFrontend Developer\njane@example.com | 0743535678\nExperienced in React and TypeScript.',
+    });
+    m.skillFindMany.mockResolvedValue([
+      { id: 's-react', slug: 'react' },
+      { id: 's-ts', slug: 'typescript' },
+    ]);
+
+    await runResumeParse({ resumeId: RESUME_ID });
+    expect(m.resumeUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: RESUME_ID },
+        data: expect.objectContaining({
+          parsedJson: expect.objectContaining({
+            fullName: 'Jane Doe',
+            email: 'jane@example.com',
+            phone: '0743535678',
+          }),
+        }),
+      }),
+    );
+  });
 });
