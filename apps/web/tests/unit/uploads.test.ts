@@ -37,28 +37,7 @@ vi.mock('@/lib/observability/logger', () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
 
-describe('registerResume', () => {
-  it('rejects URLs outside the user namespace', async () => {
-    m.requireRole.mockResolvedValue({ id: 'seeker-123', userType: 'JOB_SEEKER' });
-    await expect(
-      registerResume({
-        url: 'https://blob.vercel-storage.com/resumes/other-user/file.pdf',
-        title: 'file.pdf',
-      }),
-    ).rejects.toThrow();
-  });
-
-  it('accepts data URLs for direct uploads', async () => {
-    m.requireRole.mockResolvedValue({ id: 'seeker-123', userType: 'JOB_SEEKER' });
-    const result = await registerResume({
-      url: 'data:application/pdf;base64,JVBERi0xLjQK',
-      title: 'direct.pdf',
-    });
-    expect(result.id).toBe('res-1');
-  });
-});
-
-describe('uploadResumeDirect', () => {
+describe('uploads', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     m.requireRole.mockResolvedValue({ id: 'seeker-123', userType: 'JOB_SEEKER' });
@@ -70,7 +49,29 @@ describe('uploadResumeDirect', () => {
         createdAt: new Date('2026-09-28'),
       }),
     );
+    m.companyProfileUpdateMany.mockResolvedValue({ count: 1 });
   });
+
+  describe('registerResume', () => {
+    it('rejects URLs outside the user namespace', async () => {
+      await expect(
+        registerResume({
+          url: 'https://blob.vercel-storage.com/resumes/other-user/file.pdf',
+          title: 'file.pdf',
+        }),
+      ).rejects.toThrow();
+    });
+
+    it('accepts data URLs for direct uploads', async () => {
+      const result = await registerResume({
+        url: 'data:application/pdf;base64,JVBERi0xLjQK',
+        title: 'direct.pdf',
+      });
+      expect(result.id).toBe('res-1');
+    });
+  });
+
+  describe('uploadResumeDirect', () => {
 
   it('rejects when no file is provided', async () => {
     const fd = new FormData();
@@ -162,4 +163,5 @@ describe('uploadLogoDirect', () => {
       expect(result.data).toContain('data:image/png;base64');
     }
   });
+});
 });
