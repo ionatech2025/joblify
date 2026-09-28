@@ -13,7 +13,8 @@ import {
   SIZE_LABELS,
 } from '@/app/company/company-profile-schema';
 import { updateCompanyProfile } from '@/app/actions/company';
-import { registerLogo } from '@/app/actions/uploads';
+import { registerLogo, uploadLogoDirect } from '@/app/actions/uploads';
+import { unwrap } from '@/lib/action-result';
 import { Input, Select, Textarea } from '@/app/components/ui/form';
 import { Button } from '@/app/components/ui/button';
 import {
@@ -98,19 +99,31 @@ export function CompanySettingsForm({
     setError(null);
     setLogoBusy(true);
     try {
-      const safe = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-      const blob = await upload(`logos/${userId}/${safe}`, file, {
-        access: 'public',
-        handleUploadUrl: '/api/v1/uploads/sign',
-        clientPayload: JSON.stringify({ kind: 'logo' }),
-      });
-      await registerLogo({ url: blob.url });
-      setLogo(blob.url);
+      let logoUrl: string;
+      try {
+        const safe = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+        const blob = await upload(`logos/${userId}/${safe}`, file, {
+          access: 'public',
+          handleUploadUrl: '/api/v1/uploads/sign',
+          clientPayload: JSON.stringify({ kind: 'logo' }),
+        });
+        await registerLogo({ url: blob.url });
+        logoUrl = blob.url;
+      } catch {
+        const formData = new FormData();
+        formData.append('file', file);
+        const res = await uploadLogoDirect(formData);
+        logoUrl = unwrap(res);
+      }
+      setLogo(logoUrl);
       router.refresh();
       toast.success('Logo updated');
     } catch (err) {
-      const message =
+      let message =
         err instanceof Error ? err.message : 'Logo upload failed. Use a PNG/JPG under 2MB.';
+      if (message.includes('Vercel Blob') || message.includes('token')) {
+        message = 'Logo upload failed. Please ensure the file is an image under 2MB.';
+      }
       setError(message);
       toast.error('Logo upload failed', message);
     } finally {

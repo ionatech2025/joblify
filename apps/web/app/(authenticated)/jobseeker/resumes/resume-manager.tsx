@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation';
 import { upload } from '@vercel/blob/client';
 import Link from 'next/link';
 import { CheckCircle2, FileText, TriangleAlert } from 'lucide-react';
-import { registerResume, deleteResume } from '@/app/actions/uploads';
+import { registerResume, deleteResume, uploadResumeDirect } from '@/app/actions/uploads';
+import { unwrap } from '@/lib/action-result';
 import { Button, buttonClasses } from '@/app/components/ui/button';
 import { EmptyState } from '@/app/components/ui/empty-state';
 import { toast } from '@/lib/stores/ui';
@@ -44,26 +45,43 @@ export function ResumeManager({
     setError(null);
     setBusy(true);
     try {
-      const safe = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-      const blob = await upload(`resumes/${userId}/${safe}`, file, {
-        access: 'public',
-        handleUploadUrl: '/api/v1/uploads/sign',
-        clientPayload: JSON.stringify({ kind: 'resume' }),
-      });
-      const created = await registerResume({
-        url: blob.url,
-        title: file.name,
-        contentType: file.type || undefined,
-        sizeBytes: file.size,
-      });
-      setResumes((prev) => [{ ...created, parsed: false, parseFailed: false }, ...prev]);
+      let created: ResumeRow;
+
+      // Try Vercel Blob client upload first if configured
+      try {
+        const safe = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+        const blob = await upload(`resumes/${userId}/${safe}`, file, {
+          access: 'public',
+          handleUploadUrl: '/api/v1/uploads/sign',
+          clientPayload: JSON.stringify({ kind: 'resume' }),
+        });
+        const reg = await registerResume({
+          url: blob.url,
+          title: file.name,
+          contentType: file.type || undefined,
+          sizeBytes: file.size,
+        });
+        created = { ...reg, parsed: false, parseFailed: false };
+      } catch {
+        // Fall back to direct server-side upload when client token / Vercel Blob is not available
+        const formData = new FormData();
+        formData.append('file', file);
+        const res = await uploadResumeDirect(formData);
+        const reg = unwrap(res);
+        created = { ...reg, parsed: false, parseFailed: false };
+      }
+
+      setResumes((prev) => [created, ...prev]);
       router.refresh();
       // Parsing is asynchronous, so say so — otherwise the row appears
       // unparsed and reads as a half-failed upload.
       toast.success('Resume uploaded', 'We’re parsing it now; match scores appear shortly.');
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : 'Upload failed. Use a PDF or Word file under 10MB.';
+      let message =
+        err instanceof Error ? err.message : 'Upload failed. Use a PDF or Word file under 5MB.';
+      if (message.includes('Vercel Blob') || message.includes('token')) {
+        message = 'Upload failed. Please ensure the file is a PDF or Word document under 5MB.';
+      }
       setError(message);
       toast.error('Upload failed', message);
     } finally {

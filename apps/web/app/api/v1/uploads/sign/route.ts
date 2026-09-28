@@ -29,6 +29,13 @@ export async function POST(request: Request): Promise<Response> {
 
   const body = (await request.json()) as HandleUploadBody;
 
+  if (!process.env.BLOB_READ_WRITE_TOKEN) {
+    return NextResponse.json(
+      { error: 'Blob storage token not configured' },
+      { status: 503 },
+    );
+  }
+
   try {
     const json = await handleUpload({
       body,
