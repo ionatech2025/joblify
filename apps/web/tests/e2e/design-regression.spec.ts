@@ -54,8 +54,18 @@ function themeToggle(page: Page) {
  * unlike the old single-button cycle it replaced.
  */
 async function selectTheme(page: Page, choice: 'Light' | 'Dark' | 'System') {
-  await themeToggle(page).click();
-  await page.getByRole('menuitem', { name: choice }).click();
+  const toggle = themeToggle(page);
+  await toggle.waitFor({ state: 'visible' });
+  await toggle.click();
+  const item = page.getByRole('menuitem', { name: choice });
+  try {
+    await item.waitFor({ state: 'visible', timeout: 2000 });
+  } catch {
+    // Retry click in case hydration raced the first click
+    await toggle.click();
+    await item.waitFor({ state: 'visible', timeout: 5000 });
+  }
+  await item.click();
 }
 
 /**
