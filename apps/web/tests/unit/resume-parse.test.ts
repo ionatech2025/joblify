@@ -174,4 +174,49 @@ describe('runResumeParse', () => {
       }),
     );
   });
+
+  it('accurately parses complex multiline resume with experience, education and certifications', async () => {
+    m.generateObject.mockRejectedValue(new Error('AI Gateway unconfigured'));
+    const testResume = `
+MPAIRWE
+LAUBEN
+DEVSECOPS · CLOUD-NATIVE · ML · AGENTIC AI ENGINEER
+ABOUT
+DevSecOps engineer and applied ML practitioner. Co-founder of IONATECH.
+Kampala, Uganda +256 773 336 896 mpairwelauben75@gmail.com
+WORK EXPERIENCE
+AIBOS Uganda
+Feb 2024 – Present
+DEVSECOPS ENGINEER
+Own CI/CD posture on GitHub Actions
+Sauti Health
+2026 – Present
+DEVELOPER · ENGINEERING PARTNER
+EDUCATION
+Makerere University
+2022 – Expected 2027
+Bachelor of Science in Software Engineering
+CERTIFICATIONS
+PLANNED AWS Certified DevOps Engineer · Professional — Amazon Web Services
+PLANNED Certified Kubernetes Security Specialist — CNCF
+    `;
+    m.pdfParse.mockResolvedValue({ text: testResume });
+    m.skillFindMany.mockResolvedValue([
+      { id: 's-k8s', slug: 'kubernetes' },
+      { id: 's-tf', slug: 'terraform' },
+    ]);
+
+    await runResumeParse({ resumeId: RESUME_ID });
+    const updateCall = m.resumeUpdate.mock.calls.find((c: unknown[]) =>
+      (c[0] as { data: { parsedJson?: unknown } })?.data?.parsedJson,
+    );
+    const parsed = updateCall![0].data.parsedJson;
+    expect(parsed.fullName).toBe('MPAIRWE LAUBEN');
+    expect(parsed.email).toBe('mpairwelauben75@gmail.com');
+    expect(parsed.phone).toBe('+256 773 336 896');
+    expect(parsed.headline).toContain('DEVSECOPS');
+    expect(parsed.experience.length).toBeGreaterThanOrEqual(1);
+    expect(parsed.education.length).toBeGreaterThanOrEqual(1);
+    expect(parsed.certifications.length).toBeGreaterThanOrEqual(1);
+  });
 });

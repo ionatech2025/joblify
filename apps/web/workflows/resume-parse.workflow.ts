@@ -52,19 +52,61 @@ export function heuristicParseResume(text: string, knownSkillSlugs: string[] = [
   const email = emailMatch ? emailMatch[0] : null;
   const phone = phoneMatch ? phoneMatch[0] : null;
 
-  const firstLine = lines[0] ?? '';
-  const fullName =
-    firstLine.length > 2 && firstLine.length < 60 && !firstLine.includes('@') ? firstLine : null;
+  // Name and headline extraction
+  let fullName: string | null = null;
+  let headline: string | null = null;
 
-  const secondLine = lines[1] ?? '';
-  const headline =
-    secondLine.length > 2 &&
-    secondLine.length < 80 &&
-    !secondLine.includes('@') &&
-    !secondLine.includes('http')
-      ? secondLine
-      : null;
+  const headerLines: string[] = [];
+  for (let i = 0; i < Math.min(lines.length, 6); i++) {
+    const l = lines[i];
+    if (!l) continue;
+    if (/^(about|summary|work experience|experience|skills|contact)/i.test(l)) break;
+    if (l.includes('@') || l.includes('+') || l.includes('http')) continue;
+    headerLines.push(l);
+  }
 
+  const isJobTitle = (s: string) =>
+    /engineer|developer|designer|manager|specialist|lead|consultant|architect|officer|coordinator|director|intern|partner|practitioner|founder/i.test(
+      s,
+    );
+
+  if (headerLines.length >= 2) {
+    const first = headerLines[0] ?? '';
+    const second = headerLines[1] ?? '';
+    const l0Words = first.split(/\s+/).length;
+    const l1Words = second.split(/\s+/).length;
+
+    if (
+      l0Words === 1 &&
+      l1Words === 1 &&
+      !isJobTitle(second) &&
+      first.length < 25 &&
+      second.length < 25
+    ) {
+      fullName = `${first} ${second}`;
+      if (headerLines[2]) headline = headerLines.slice(2).join(' · ');
+    } else {
+      fullName = first;
+      if (headerLines.length > 1) {
+        headline = headerLines.slice(1).join(' · ');
+      }
+    }
+  } else if (headerLines.length > 0) {
+    fullName = headerLines[0] ?? null;
+  }
+
+  // Summary / About section extraction
+  let summary: string | null = null;
+  const aboutMatch = text.match(
+    /(?:about|summary|professional summary|profile)\s*([\s\S]*?)(?=(work experience|experience|skills|education|certifications|references|\n[A-Z\s]{4,}\n))/i,
+  );
+  if (aboutMatch && aboutMatch[1]) {
+    summary = aboutMatch[1].replace(/\n+/g, ' ').trim().slice(0, 1000);
+  } else {
+    summary = text.slice(0, 500).replace(/\n+/g, ' ').trim();
+  }
+
+  // Skills matching against canonical catalog
   const lowerText = text.toLowerCase();
   const matchedSkills: string[] = [];
   for (const slug of knownSkillSlugs) {
@@ -74,19 +116,113 @@ export function heuristicParseResume(text: string, knownSkillSlugs: string[] = [
     }
   }
 
-  const summary = text.slice(0, 500).trim();
+  // Experience extraction
+  const experience: ParsedResume['experience'] = [];
+  const expMatch = text.match(
+    /(?:work experience|experience)\s*([\s\S]*?)(?=(education|certifications|skills|references|languages|personal details))/i,
+  );
+  if (expMatch && expMatch[1]) {
+    const expBlock = expMatch[1];
+    const sections = expBlock.split(
+      /(?=\n[A-Z0-9\s-]{3,40}\n(?:[A-Za-z\s]+)?\n?(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|\d{4}))/i,
+    );
+    for (const sec of sections) {
+      const sLines = sec
+        .split('\n')
+        .map((l) => l.trim())
+        .filter(Boolean);
+      if (sLines.length >= 2) {
+        const company = sLines[0];
+        if (!company) continue;
+        const dateMatch = sec.match(
+          /(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|\d{4})[a-z0-9\s–-]+(Present|\d{4})/i,
+        );
+        const titleMatch = sLines.find((l) =>
+          /engineer|developer|partner|intern|maintainer|manager|lead|architect|consultant|analyst/i.test(
+            l,
+          ),
+        );
+        if (titleMatch || dateMatch) {
+          experience.push({
+            company: company.slice(0, 80),
+            title: titleMatch ? titleMatch.slice(0, 80) : 'Software Engineer',
+            startDate: dateMatch ? (dateMatch[1] ?? null) : null,
+            endDate: dateMatch ? (dateMatch[2] ?? null) : null,
+            description: sLines.slice(2).join(' ').slice(0, 500) || null,
+          });
+        }
+      }
+    }
+  }
+
+  // Education extraction
+  const education: ParsedResume['education'] = [];
+  const eduMatch = text.match(
+    /education\s*([\s\S]*?)(?=(certifications|references|skills|experience|$))/i,
+  );
+  if (eduMatch && eduMatch[1]) {
+    const eduBlock = eduMatch[1];
+    const eduLines = eduBlock
+      .split('\n')
+      .map((l) => l.trim())
+      .filter(Boolean);
+    for (let i = 0; i < eduLines.length; i++) {
+      const line = eduLines[i];
+      if (line && /university|college|school|institute/i.test(line)) {
+        const school = line;
+        const degLine =
+          eduLines.find(
+            (l, idx) => idx > i && /bachelor|master|phd|diploma|certificate|degree|bsc|ba/i.test(l),
+          ) || null;
+        const years = (
+          (eduLines[i + 1] || '') +
+          ' ' +
+          (eduLines[i + 2] || '')
+        ).match(/\b(20\d\d|19\d\d)\b.*?(\b(20\d\d|present|expected\s+20\d\d)\b)?/i);
+        education.push({
+          school: school.slice(0, 100),
+          degree: degLine ? degLine.slice(0, 80) : null,
+          field: degLine && degLine.includes('in ') ? (degLine.split('in ')[1]?.slice(0, 80) ?? null) : null,
+          startYear: years && years[1] ? parseInt(years[1], 10) : null,
+          endYear: years && years[3] && !isNaN(parseInt(years[3], 10)) ? parseInt(years[3], 10) : null,
+        });
+      }
+    }
+  }
+
+  // Certifications extraction
+  const certifications: string[] = [];
+  const certMatch = text.match(
+    /certifications\s*([\s\S]*?)(?=(education|references|skills|experience|$))/i,
+  );
+  if (certMatch && certMatch[1]) {
+    const cLines = certMatch[1]
+      .split('\n')
+      .map((l) => l.trim().replace(/^PLANNED\s*/i, ''))
+      .filter((l) => l.length > 5 && !/^[▸•-]$/.test(l));
+    certifications.push(...cLines.slice(0, 10));
+  }
+
+  // Calculate yearsExperience from earliest date
+  const allYears = Array.from(text.matchAll(/\b(19\d\d|20\d\d)\b/g))
+    .map((m) => parseInt(m[0], 10))
+    .filter((y) => y >= 1990 && y <= new Date().getFullYear());
+  const earliestYear = allYears.length > 0 ? Math.min(...allYears) : null;
+  const yearsExperience = earliestYear
+    ? Math.min(new Date().getFullYear() - earliestYear, 70)
+    : null;
 
   return {
     fullName,
     email,
     phone,
     headline,
-    yearsExperience: null,
-    summary: summary || null,
+    yearsExperience,
+    summary,
     skills: matchedSkills.slice(0, 40),
-    experience: [],
-    education: [],
-    certifications: [],
+    experience: experience.slice(0, 20),
+    education: education.slice(0, 10),
+    certifications: certifications.slice(0, 20),
   };
 }
 

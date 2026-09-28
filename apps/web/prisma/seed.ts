@@ -70,6 +70,18 @@ const SKILLS: Array<{ slug: string; label: string; aliases: string[] }> = [
   { slug: 'customer-service', label: 'Customer Service', aliases: ['support', 'customer support'] },
   { slug: 'human-resources', label: 'Human Resources', aliases: ['hr'] },
   { slug: 'data-visualization', label: 'Data Visualization', aliases: ['tableau', 'powerbi'] },
+  // Cloud-Native, DevOps, AI & Mobile
+  { slug: 'devops', label: 'DevOps', aliases: ['devsecops'] },
+  { slug: 'ci-cd', label: 'CI/CD', aliases: ['github actions', 'cicd'] },
+  { slug: 'langchain', label: 'LangChain', aliases: [] },
+  { slug: 'langgraph', label: 'LangGraph', aliases: [] },
+  { slug: 'mcp', label: 'Model Context Protocol', aliases: ['mcp'] },
+  { slug: 'qdrant', label: 'Qdrant', aliases: ['vector database'] },
+  { slug: 'prometheus', label: 'Prometheus', aliases: [] },
+  { slug: 'grafana', label: 'Grafana', aliases: [] },
+  { slug: 'vault', label: 'HashiCorp Vault', aliases: ['vault'] },
+  { slug: 'flutter', label: 'Flutter', aliases: [] },
+  { slug: 'tailwind', label: 'Tailwind CSS', aliases: ['tailwind', 'tailwindcss'] },
 ];
 
 async function seedSkills(): Promise<number> {
