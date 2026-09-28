@@ -8,12 +8,22 @@ import { NextRequest } from 'next/server';
 const m = vi.hoisted(() => ({
   searchLimit: vi.fn(),
   search: vi.fn(),
+  jobPostFindMany: vi.fn(),
+  jobPostCount: vi.fn(),
 }));
 
 vi.mock('@/lib/ratelimit', () => ({ searchLimit: m.searchLimit }));
 vi.mock('@/lib/search/algolia', () => ({
   adminClient: () => ({ search: m.search }),
   INDEX: { jobs: 'jobs', jobsRecent: 'jobs_recent', jobsSalaryDesc: 'jobs_salary_desc' },
+}));
+vi.mock('@/lib/db', () => ({
+  db: {
+    jobPost: {
+      findMany: m.jobPostFindMany,
+      count: m.jobPostCount,
+    },
+  },
 }));
 
 import { GET } from '@/app/api/v1/jobs/search/route';
@@ -76,5 +86,36 @@ describe('GET /api/v1/jobs/search', () => {
     const res = await GET(req('?q=engineer'));
     expect(res.status).toBe(429);
     expect(m.search).not.toHaveBeenCalled();
+  });
+
+  it('falls back to Postgres search when Algolia fails or is unconfigured', async () => {
+    m.search.mockRejectedValue(new Error('Algolia down'));
+    m.jobPostFindMany.mockResolvedValue([
+      {
+        id: 'job-1',
+        slug: 'frontend-engineer',
+        title: 'Frontend Engineer',
+        description: 'React developer',
+        companyId: 'comp-1',
+        company: { companyProfile: { companyName: 'Acme', logoUrl: null, industry: 'TECH' } },
+        jobType: 'FULL_TIME',
+        experienceLevel: 'MID',
+        workMode: 'REMOTE',
+        location: 'Kampala',
+        salaryMin: 50000,
+        salaryMax: 80000,
+        salaryCurrency: 'USD',
+        publishedAt: new Date('2026-09-01'),
+        createdAt: new Date('2026-09-01'),
+        skills: [{ skill: { slug: 'react' } }],
+      },
+    ]);
+    m.jobPostCount.mockResolvedValue(1);
+
+    const res = await GET(req('?q=engineer'));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.nbHits).toBe(1);
+    expect(body.hits[0].title).toBe('Frontend Engineer');
   });
 });

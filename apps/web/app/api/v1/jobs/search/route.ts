@@ -1,7 +1,9 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { z } from 'zod';
+import type { Prisma } from '@prisma/client';
 import { adminClient, INDEX, type JobSearchRecord } from '@/lib/search/algolia';
 import { searchLimit } from '@/lib/ratelimit';
+import { db } from '@/lib/db';
 
 type AlgoliaPage = { hits: JobSearchRecord[]; nbHits: number; page: number; nbPages: number };
 
@@ -88,12 +90,83 @@ export async function GET(req: NextRequest) {
     }
     return NextResponse.json({ hits: r.hits, nbHits: r.nbHits, page: r.page, nbPages: r.nbPages });
   } catch (err) {
-    return NextResponse.json(
-      {
-        error: 'search backend unavailable',
-        detail: process.env.NODE_ENV === 'development' ? String(err) : undefined,
-      },
-      { status: 502 },
-    );
+    // Fallback to Postgres search when Algolia is unconfigured or unavailable
+    try {
+      const where: Prisma.JobPostWhereInput = {
+        status: 'PUBLISHED',
+        deletedAt: null,
+        ...(q
+          ? {
+              OR: [
+                { title: { contains: q, mode: 'insensitive' } },
+                { description: { contains: q, mode: 'insensitive' } },
+                {
+                  company: {
+                    companyProfile: { companyName: { contains: q, mode: 'insensitive' } },
+                  },
+                },
+              ],
+            }
+          : {}),
+        ...(location ? { location: { contains: location, mode: 'insensitive' } } : {}),
+        ...(workMode ? { workMode } : {}),
+        ...(jobType ? { jobType } : {}),
+        ...(experienceLevel ? { experienceLevel } : {}),
+        ...(salaryMin != null ? { salaryMax: { gte: salaryMin } } : {}),
+        ...(salaryMax != null ? { salaryMin: { lte: salaryMax } } : {}),
+      };
+
+      const orderBy: Prisma.JobPostOrderByWithRelationInput =
+        sort === 'salary' ? { salaryMax: 'desc' } : { publishedAt: 'desc' };
+
+      const [jobs, total] = await Promise.all([
+        db.jobPost.findMany({
+          where,
+          include: {
+            company: { include: { companyProfile: true } },
+            skills: { include: { skill: true } },
+          },
+          orderBy,
+          skip: page * 20,
+          take: 20,
+        }),
+        db.jobPost.count({ where }),
+      ]);
+
+      const hits: JobSearchRecord[] = jobs.map((j) => ({
+        objectID: j.id,
+        slug: j.slug,
+        title: j.title,
+        description: j.description,
+        companyId: j.companyId,
+        companyName: j.company.companyProfile?.companyName ?? 'Company',
+        companyLogoUrl: j.company.companyProfile?.logoUrl ?? null,
+        industry: j.company.companyProfile?.industry ?? '',
+        jobType: j.jobType,
+        experienceLevel: j.experienceLevel,
+        workMode: j.workMode,
+        location: j.location,
+        salaryMin: j.salaryMin,
+        salaryMax: j.salaryMax,
+        salaryCurrency: j.salaryCurrency,
+        publishedAt: (j.publishedAt ?? j.createdAt).getTime(),
+        skills: j.skills.map((s) => s.skill.slug),
+      }));
+
+      return NextResponse.json({
+        hits,
+        nbHits: total,
+        page,
+        nbPages: Math.ceil(total / 20),
+      });
+    } catch {
+      return NextResponse.json(
+        {
+          error: 'search backend unavailable',
+          detail: process.env.NODE_ENV === 'development' ? String(err) : undefined,
+        },
+        { status: 502 },
+      );
+    }
   }
 }
