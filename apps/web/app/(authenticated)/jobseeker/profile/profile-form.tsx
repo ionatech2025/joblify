@@ -27,6 +27,12 @@ const ProfileFormSchema = z
         .optional(),
     ),
     location: z.string().max(140).optional().or(z.literal('')),
+    phone: z
+      .string()
+      .trim()
+      .regex(/^\d{10}$/, 'Phone number must be exactly 10 numeric digits')
+      .optional()
+      .or(z.literal('')),
     desiredSalaryMin: z.preprocess(
       (val) => (val === '' || val === null || val === undefined ? null : val),
       z.coerce.number().int().min(0, 'Salary cannot be negative.').nullable().optional(),
@@ -222,9 +228,23 @@ export function ProfileForm({
         />
       </Field>
 
-      <Field label="Location" error={errors.location?.message}>
-        <Input {...register('location')} autoComplete="address-level2" placeholder="Berlin, DE" />
-      </Field>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <Field label="Location" error={errors.location?.message}>
+          <Input {...register('location')} autoComplete="address-level2" placeholder="Berlin, DE" />
+        </Field>
+        <Field
+          label="Phone number"
+          hint="Optional 10-digit mobile number"
+          error={errors.phone?.message}
+        >
+          <Input
+            type="tel"
+            {...register('phone')}
+            autoComplete="tel"
+            placeholder="0743535678"
+          />
+        </Field>
+      </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Field label="Desired min salary (annual)" error={errors.desiredSalaryMin?.message}>

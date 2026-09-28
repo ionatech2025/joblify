@@ -17,6 +17,12 @@ export const ProfileSchema = z.object({
     z.coerce.number().int().min(0).max(70).nullable().optional(),
   ),
   location: z.string().max(140).optional().or(z.literal('')),
+  phone: z
+    .string()
+    .trim()
+    .regex(/^\d{10}$/, 'Phone number must be exactly 10 numeric digits')
+    .optional()
+    .or(z.literal('')),
   desiredSalaryMin: z.preprocess(
     (val) => (val === '' || val === null || val === undefined ? null : val),
     z.coerce.number().int().min(0).nullable().optional(),
@@ -160,6 +166,13 @@ export async function saveProfile(input: ProfileInput): Promise<void> {
             skipDuplicates: true,
           });
         }
+      }
+
+      if (parsed.phone !== undefined && tx.user?.update) {
+        await tx.user.update({
+          where: { id: user.id },
+          data: { phone: parsed.phone || null },
+        });
       }
 
       return profile;

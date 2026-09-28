@@ -43,6 +43,7 @@ export default async function JobseekerProfilePage() {
             bio: profile?.bio ?? '',
             yearsExperience: profile?.yearsExperience ?? null,
             location: profile?.location ?? '',
+            phone: user.phone ?? '',
             desiredSalaryMin: profile?.desiredSalaryMin ?? null,
             desiredSalaryMax: profile?.desiredSalaryMax ?? null,
             desiredWorkMode: profile?.desiredWorkMode ?? null,

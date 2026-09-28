@@ -218,6 +218,7 @@ describe('ProfileForm inline field validation (JOB_UC_05.0)', () => {
     bio: '',
     yearsExperience: null,
     location: '',
+    phone: '',
     desiredSalaryMin: null,
     desiredSalaryMax: null,
     desiredWorkMode: null,
@@ -268,5 +269,16 @@ describe('ProfileForm inline field validation (JOB_UC_05.0)', () => {
     expect(await screen.findByText('Saved.')).toBeDefined();
     expect(screen.queryByText('Bio is required.')).toBeNull();
     expect(screen.queryByText('Education is required.')).toBeNull();
+  });
+
+  it('rejects an invalid phone number with inline error', async () => {
+    const user = userEvent.setup();
+    render(<ProfileForm initial={initial} allSkills={skills} />);
+
+    await user.type(screen.getByLabelText('Headline'), 'Senior Designer');
+    await user.type(screen.getByLabelText(/Phone/i), '12345');
+    await user.click(screen.getByRole('button', { name: /Save profile/i }));
+
+    expect(await screen.findByText('Phone number must be exactly 10 numeric digits')).toBeDefined();
   });
 });
