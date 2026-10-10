@@ -1,4 +1,5 @@
 import { PageHeader } from '@/app/components/ui/ambient';
+import { CONTACTS } from '@/lib/site-config';
 
 export const metadata = { title: 'Accessibility statement' };
 
@@ -21,10 +22,9 @@ export default function AccessibilityPage() {
         </p>
         <h2>Get in touch</h2>
         <p>
-          Email <a href="mailto:accessibility@joblify.example">accessibility@joblify.example</a> or
-          report directly through your account settings.
+          Email <a href={`mailto:${CONTACTS.accessibility}`}>{CONTACTS.accessibility}</a>. We aim to
+          reply within five working days.
         </p>
-        <p className="text-sm text-fg-subtle">Last audited: see /legal/processors for date.</p>
       </div>
     </main>
   );

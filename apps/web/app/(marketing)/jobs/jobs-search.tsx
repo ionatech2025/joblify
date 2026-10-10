@@ -13,6 +13,7 @@ import { Button } from '@/app/components/ui/button';
 import { Input, Select } from '@/app/components/ui/form';
 import { EmptyState } from '@/app/components/ui/empty-state';
 import { SaveSearchButton } from './save-search-button';
+import { formatSalary } from '@/lib/ui/salary';
 
 type SearchResponse = { hits: JobSearchRecord[]; nbHits: number; page: number; nbPages: number };
 
@@ -311,12 +312,19 @@ function JobCard({ hit }: { hit: JobSearchRecord }) {
                   : ''}
               {hit.publishedAt ? ` · ${relativeDate(hit.publishedAt)}` : ''}
             </p>
-            {hit.salaryMin && hit.salaryMax ? (
-              <Badge tone="dark" className="mt-2">
-                {hit.salaryCurrency} {hit.salaryMin.toLocaleString()}–
-                {hit.salaryMax.toLocaleString()}
-              </Badge>
-            ) : null}
+            {(() => {
+              const pay = formatSalary({
+                min: hit.salaryMin,
+                max: hit.salaryMax,
+                currency: hit.salaryCurrency,
+                period: hit.salaryPeriod,
+              });
+              return pay ? (
+                <Badge tone="dark" className="mt-2">
+                  {pay}
+                </Badge>
+              ) : null;
+            })()}
             {hit.description ? (
               <p className="mt-1.5 mb-0 line-clamp-2 text-sm leading-snug text-fg-subtle">
                 {hit.description.slice(0, 150)}

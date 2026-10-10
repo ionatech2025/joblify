@@ -73,15 +73,15 @@ Plus: `Invitation`, `JobView`.
 
 ## Jobs
 
-| Field               | Purpose                                                                                            |
-| ------------------- | -------------------------------------------------------------------------------------------------- |
-| `JobPost.slug`      | Unique URL slug. Generated from title + random suffix.                                             |
-| `JobPost.companyId` | FK to `User.id` (the owner).                                                                       |
-| `JobPost.status`    | `DRAFT` / `PENDING_REVIEW` / `PUBLISHED` / `CLOSED` / `ARCHIVED`. Only `PUBLISHED` shows on /jobs. |
-| `JobPost.embedding` | 1536-dim `vector` for match scoring. Written by `resume-parse` + `match-score` workflows.          |
-| `JobPost.geo`       | PostGIS `geography(Point, 4326)` for radius queries. Optional.                                     |
-| `JobPost.tsv`       | `tsvector` for FTS fallback. Optional — Algolia handles primary search.                            |
-| `JobPost.deletedAt` | Soft delete.                                                                                       |
+| Field               | Purpose                                                                                                                                                                  |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `JobPost.slug`      | Unique URL slug. Generated from title + random suffix.                                                                                                                   |
+| `JobPost.companyId` | FK to `User.id` (the owner).                                                                                                                                             |
+| `JobPost.status`    | `DRAFT` / `PENDING_REVIEW` / `PUBLISHED` / `CLOSED` / `ARCHIVED`. Only `PUBLISHED` shows on /jobs.                                                                       |
+| `JobPost.embedding` | 1536-dim `vector` for match scoring (width enforced by `lib/ai/embeddings.ts`; `embeddingModel` records the producer). Written by `match-score.workflow` `embedJobPost`. |
+| `JobPost.geo`       | PostGIS `geography(Point, 4326)` for radius queries. Optional.                                                                                                           |
+| `JobPost.tsv`       | `tsvector` for FTS fallback. Optional — Algolia handles primary search.                                                                                                  |
+| `JobPost.deletedAt` | Soft delete.                                                                                                                                                             |
 
 `JobApplication` joins jobseeker × jobPost × resume with a `@@unique([jobPostId, jobSeekerId])` so a user can't apply twice.
 
@@ -254,3 +254,18 @@ These are the contracts that protect against IDOR. Code reviews must enforce the
 | `AuditEvent`       | admin only                                       | system writes (immutable)                 |
 
 Every controller that reads or writes from these tables must include the right `where` clause. Never use `findUnique({ where: { id } })` for a resource that has a tenancy boundary — use `findFirst({ where: { id, ownerId: user.id } })`.
+
+## Columns added in the 2026-10-10 hardening pass
+
+All expand-only (nullable or defaulted) so the previous build keeps working while they apply.
+
+| Column                                                                       | Why                                                                                                                                                                                |
+| ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `users.digestOptIn` (default `false`), `digestOptInAt`                       | Explicit, withdrawable consent for the daily digest. Replaces inferring consent from `consentJson`. Partial index `users_digest_optin_eligibility_idx` backs the eligibility scan. |
+| `resumes.embeddingModel`, `job_posts.embeddingModel`                         | Which model produced each vector; vectors from different models are not comparable.                                                                                                |
+| `job_applications.matchModel`, `matchScoredAt`                               | Provenance of the recruiter-visible match score.                                                                                                                                   |
+| `job_posts.salaryPeriod` (`SalaryPeriod`, default `YEAR`), `locationCountry` | What the pay range is per, and the ISO country Google's JobPosting markup requires.                                                                                                |
+
+| `job_reports` (new table) | User reports of postings (`SCAM`/`DISCRIMINATORY`/`MISLEADING`/`DUPLICATE`/`OTHER`), one per (job, reporter), resolved by an admin. `reporterId` is SET NULL on user erasure; `resolvedBy` is deliberately not a foreign key. |
+
+`resumes.parsedJson` carries `_source`: `'model'`, `'heuristic'` (regex fallback — re-parsed by the sweep) or `'profile'` (generated from the profile).

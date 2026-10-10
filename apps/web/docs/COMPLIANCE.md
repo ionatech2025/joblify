@@ -1,190 +1,189 @@
 # Compliance
 
-GDPR (EU) + CCPA (California) are the floors. Joblify aims for both from day one.
+GDPR (EU/UK) and CCPA/CPRA (California) are the floors; the hiring-specific AI rules below are
+the part that is easy to miss for a job platform. This document describes what the code **does**
+— each claim names the file that enforces it. If you change the behaviour, change the sentence.
+
+> **Status: engineering controls are in place; legal/organisational work is not.** A DPIA, signed
+> DPAs, a registered controller identity, and counsel review of `app/(marketing)/legal/*` are still
+> to do. They are listed under [Open items](#open-items-that-code-cannot-close).
 
 ## Legal basis (GDPR Article 6)
 
-| Processing activity                    | Basis                                  |
-| -------------------------------------- | -------------------------------------- |
-| Operating accounts + applications      | Contract                               |
-| Anti-fraud / abuse logs                | Legitimate interest                    |
-| Email notifications                    | Consent                                |
-| Analytics (Speed Insights / Analytics) | Consent                                |
-| Audit log                              | Legal obligation (also legit interest) |
+| Processing activity                           | Basis                                          |
+| --------------------------------------------- | ---------------------------------------------- |
+| Operating accounts, applications, chats       | Contract                                       |
+| Résumé parsing and match scores               | Contract + legitimate interest (see AI, below) |
+| Anti-fraud / abuse logs                       | Legitimate interest                            |
+| Daily jobs digest email                       | **Consent** — `User.digestOptIn`               |
+| Analytics (Vercel Analytics / Speed Insights) | **Consent** — cookie banner                    |
+| Error replay (Sentry Replay)                  | **Consent** — cookie banner                    |
+| Audit log                                     | Legitimate interest / legal obligation         |
+
+### Email consent is its own consent
+
+`User.digestOptIn` (default `false`) is the only thing that makes a user eligible for the digest
+(`workflows/digest-email.workflow.ts`). It is set only by the toggle on `/jobseeker/notifications`
+(`app/actions/email-preferences.ts`) and cleared by the one-click unsubscribe
+(`app/api/v1/email/unsubscribe`). Answering the cookie banner — including "Necessary only" — does
+**not** imply it (it used to: the digest selected `consentJson IS NOT NULL`).
+
+Every digest carries a signed unsubscribe link in the body and RFC 8058
+`List-Unsubscribe` / `List-Unsubscribe-Post: List-Unsubscribe=One-Click` headers
+(`lib/email/unsubscribe.ts`). The run refuses to send at all when it cannot build that link
+(`NEXT_PUBLIC_SITE_URL` + `EMAIL_UNSUBSCRIBE_SECRET`/`CRON_SECRET`), and every consent change is an
+`AuditEvent` (`CONSENT_UPDATED`) with timestamp and channel, so consent can be demonstrated
+(Art. 7(1)). `EMAIL_POSTAL_ADDRESS` is appended for CAN-SPAM.
+
+Transactional mail (application confirmation, status change) is not marketing and has no
+unsubscribe, but it **does** honour bounce/complaint suppression
+(`isEmailSuppressed`, applied in `apply.ts` and `update-applicant-status.ts`).
 
 ## Subject rights
 
-### Article 15 — Right to access
+### Article 15 / 20 — access and portability
 
-Self-service export at **`/account/export`**. The endpoint:
+`POST /api/v1/account/export` (page: `/account/export`) returns one JSON document **directly to the
+signed-in requester** (`workflows/gdpr-export.workflow.ts`). It is not stored and not emailed, so
+there is no link to leak or to expire. It covers: account, profile and work history, company
+profile and postings, applications (with recruiter notes and match score), résumés (with the
+authenticated download path), notifications, invitations, saved jobs and searches, subscriptions,
+chat memberships, chat messages sent, job views tied to the account, and audit events — plus a
+`processing` block (purposes, recipients, the automated processing, retention, rights; Art. 15(1)).
+Rate-limited to 2/day. For a company it contains the company's own data, not its applicants'.
 
-1. Verifies session.
-2. Rate-limited to 2/day per user (`accountExportLimit`).
-3. Calls `runGdprExport({ userId })` workflow.
-4. Workflow collects every row owned by the user (User, JobSeekerProfile, CompanyProfile, JobPost, JobApplication, Resume, Notification, Invitation, AuditEvent where actorId=user), bundles to JSON, uploads to Vercel Blob under the `exports/` prefix as an unguessable capability URL (random suffix).
-5. Workflow emails the user the link. The 24-hour expiry stated in that email is **enforced by the nightly retention sweep** (`workflows/retention.workflow.ts` step 5), which deletes `exports/` blobs older than 24h — so an export link is live for at most 24h + one cron interval.
-6. `AuditEvent: USER_EXPORTED` written.
+Résumé files are served only by `GET /api/v1/resumes/[id]/file` — owner, or a company holding a
+live application that used that résumé; everyone else gets 404.
 
-SLA: < 30 days per GDPR; ours runs in seconds.
+### Article 17 — erasure
 
-### Article 17 — Right to erasure
+`/account/delete` → `deleteMyAccount` (`app/actions/account.ts`):
 
-Self-service delete at **`/account/delete`**. Requires the user to retype their email as confirmation. The Server Action `deleteMyAccount`:
+1. Soft-deletes the user and switches the digest off; **a company's job postings are archived in the
+   same transaction**, so they leave the public site, sitemap and search immediately.
+2. Deletes the Clerk user (revokes sessions) and de-indexes the postings from Algolia.
+3. After 30 days the retention sweep (`workflows/retention.workflow.ts`) deletes the stored
+   **files first** (résumés, generated CVs, logo), then the database rows. A user whose files could
+   not be deleted is left for the next run rather than orphaning a personal document.
 
-1. Soft-deletes the User row (`deletedAt` = now).
-2. Writes `AuditEvent: USER_DELETED`.
-3. Redirects to `/sign-out?reason=deleted`.
+Deleting a single résumé erases row and file at once unless an employer already received it with an
+application; then it is hidden from the owner and removed once those applications are gone
+(`JobApplication.resumeId` is a RESTRICT foreign key).
 
-The `retention` workflow (daily 02:00 UTC) hard-deletes soft-deleted users after 30 days. Cascade deletes via FK rules remove:
+### Article 16 / 21
 
-- `JobSeekerProfile` / `CompanyProfile`
-- `Resume`
-- `JobApplication`
-- `Notification`
-- `LoginSession`
-- Other dependents
+Rectification: `/jobseeker/profile`. Objection / consent withdrawal: notification settings, the
+cookie banner, or the unsubscribe link. Nothing in the product makes a solely automated decision
+(next section), so Art. 22 rights are exercised by writing to the privacy contact for human review.
 
-What's retained after hard delete:
+## Automated processing in hiring (AI)
 
-- `AuditEvent` rows with `actorId` set to `NULL` (FK `onDelete: SetNull`) — anonymized, kept 1 year for anti-fraud.
-- `ChatMessage` (when chat ships in V1.5) — userId nulled; preserves the thread for the other party.
+Recruitment AI is regulated as high-risk in the EU and is the target of employment-specific rules in
+several US states. The product's posture, and where each point lives:
 
-What we do **not** do on delete: revoke Clerk sessions (TODO Week 10 follow-up) and deindex from Algolia (TODO).
+| Control                                  | Where                                                                                           |
+| ---------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| No solely automated decisions            | No code path accepts/rejects. Status changes are recruiter actions (`update-applicant-status`). |
+| Candidate-facing notice                  | Apply form disclosure + `/legal/ai`; privacy policy; export `processing` block                  |
+| Score provenance                         | `JobApplication.matchModel` / `matchScoredAt`; `Resume                                          | JobPost.embeddingModel` |
+| No cross-model comparison                | `runMatchScore` skips when resume/job vectors differ in model (`match-score.workflow.ts`)       |
+| Score is for the **submitted** résumé    | `runMatchScore({ resumeId })`; re-scoring uses `JobApplication.resumeId`                        |
+| Transparent limits                       | `/legal/ai` ("Limits you should know about")                                                    |
+| Résumé text treated as untrusted data    | `lib/ai/untrusted.ts` (fenced, invisible characters stripped) — OWASP LLM01                     |
+| Degraded mode is labelled, then upgraded | `parsedJson._source = 'heuristic'`; reconcile sweep re-parses with the model                    |
+| Heuristic never invents                  | `lib/resume/heuristic-parser.ts` — no default job title, years only from dated entries          |
+| Bias testing / DPIA                      | **Not done** — see open items                                                                   |
 
-### Article 16 — Right to rectification
-
-Self-service via `/jobseeker/profile`. Saving the form rewrites the canonical row; Clerk webhooks keep the mirror in sync for the fields Clerk owns.
-
-### Article 21 — Right to object
-
-Implicit via `/account/delete` and via cookie consent rejection. Email opt-out via the unsubscribe link on the daily digest (TODO Week 9 follow-up).
+The match score is a raw embedding cosine; it is **not calibrated** and the 70 %/50 % colour bands in
+`lib/ui/status.ts` are presentation, not a validated threshold. Treat any use of it for ranking or
+filtering as in-scope for the regulations above (EU AI Act Annex III(4); Illinois HB 3773 notice;
+California FEHA ADS regulations and CPPA ADMT rules; NYC Local Law 144 bias audit for NYC
+candidates). Check current effective dates with counsel — they have been moving (e.g. the EU
+"Digital Omnibus" postponed Annex III high-risk duties to 2 Dec 2027; Colorado replaced its AI Act).
 
 ## Audit log
 
-`AuditEvent` is the compliance trail. See [BACKEND.md](./BACKEND.md) for the write contract. Retention:
+`AuditEvent` is the compliance trail (`lib/audit.ts`, written in the same transaction as the change).
 
-- 1 year by default.
-- `retention` workflow purges older rows nightly.
-- Cannot be deleted by users (the `actorId` is nulled on user deletion but the row stays).
+- IP address and user agent are **removed after 90 days**; the event itself after **1 year**
+  (`retention.workflow.ts`, steps 6). `actorId` is nulled when the user is erased.
+- Recruiter note text is never written to the audit log (only its length).
 
 ## Data processors
 
-`/legal/processors` lists every third party that processes data on our behalf:
+`/legal/processors` lists them. The page no longer asserts regions or "ZDR contracts": the region
+column is published from `NEXT_PUBLIC_REGION_*` and reads "Not yet published" until set. **Set these
+only when true** — the repository's own `.env.local` pointed at a US-East Neon host while the
+previous version of this page said "EU".
 
-| Processor                                  | Purpose                       | Region             |
-| ------------------------------------------ | ----------------------------- | ------------------ |
-| Vercel                                     | Hosting + edge + Blob storage | EU + US            |
-| Neon                                       | Postgres database             | EU                 |
-| Upstash                                    | Redis                         | EU                 |
-| Clerk                                      | Auth                          | EU + US            |
-| Algolia                                    | Search                        | EU + US            |
-| Resend                                     | Transactional email           | EU + US            |
-| Sentry                                     | Errors + traces               | EU + US            |
-| OpenAI + Anthropic (via Vercel AI Gateway) | AI features                   | US (ZDR contracts) |
-
-Each is bound by a DPA. Add new processors to the list **and** sign a DPA before integrating.
+AI requests can be forced onto zero-data-retention providers with `AI_GATEWAY_ZDR=1` (a Vercel
+AI Gateway Pro/Enterprise feature; the Gateway fails closed if no ZDR provider is available).
+Without it, do not claim ZDR anywhere — `/legal/ai` switches its wording on that variable.
 
 ## Data residency
 
-EU data is processed in EU regions:
+Not guaranteed by the code. Function region is a Vercel project setting (`vercel.ts` carries no
+`regions`; multi-region requires Pro), and the database region is whatever the Neon project was
+created in. Choose both deliberately, put them next to each other (a cross-region database costs
+~100 ms per round trip), and then publish them via the `NEXT_PUBLIC_REGION_*` variables.
 
-- Vercel functions: `regions: ['fra1', 'dub1', 'iad1']` in `vercel.ts`. EU-routed traffic stays in EU functions where possible.
-- Neon project provisioned in `eu-central-1`.
-- Algolia primary index in EU (Frankfurt); US replica for performance.
-- Clerk runs multi-region with EU residency available on higher tiers — enable when the team is on the relevant plan.
+## Retention
 
-AI Gateway forwards to providers in US — disclosed in `/legal/processors` and gated behind a ZDR contract (no training data).
+Defined in `workflows/retention.workflow.ts` (daily 02:00 UTC, idempotent):
 
-## Retention policy
+| Data                         | Kept                                               | Then                                        |
+| ---------------------------- | -------------------------------------------------- | ------------------------------------------- |
+| Deleted user account         | 30 days soft                                       | Files then rows hard-deleted                |
+| Résumé deleted by owner      | Immediately, or until its applications are removed | File + row erased (30-day grace if applied) |
+| `AuditEvent` IP / user agent | 90 days                                            | Nulled                                      |
+| `AuditEvent`                 | 1 year                                             | Deleted                                     |
+| `JobView`                    | 13 months                                          | Deleted                                     |
+| Notification (read / unread) | 6 months / 90 days                                 | Deleted                                     |
+| Invitation                   | 90 days past expiry                                | Deleted                                     |
+| Legacy `exports/` blobs      | 24 h                                               | Deleted (exports are no longer stored)      |
 
-| Data         | Active                     | Deleted                      | Reason                               |
-| ------------ | -------------------------- | ---------------------------- | ------------------------------------ |
-| User account | until deleted              | 30 d soft → hard             | GDPR Art. 17 + abuse recovery window |
-| AuditEvent   | 1 year                     | purged by retention workflow | legal / anti-fraud                   |
-| JobView      | 13 months                  | purged                       | analytics window                     |
-| Notification | read >6 mo or unread >90 d | purged                       | UX, not strictly required            |
-| Invitation   | 90 d after expiry          | purged                       | cleanup                              |
-| LoginSession | 365 d                      | purged                       | session log retention                |
+## Consent, cookies and telemetry
 
-Defined in `workflows/retention.workflow.ts`. Run daily; idempotent.
+`app/components/cookie-banner.tsx`: "Accept all" / "Necessary only", symmetric. Choice is a
+`joblify_consent` cookie plus a mirror on `User.consentJson` when signed in (`/api/v1/consent`).
 
-## Cookie consent
+| Thing                             | Before consent                        | After "Accept all"  |
+| --------------------------------- | ------------------------------------- | ------------------- |
+| Vercel Analytics / Speed Insights | not loaded                            | loaded              |
+| Sentry Replay (sessionStorage)    | not armed                             | armed (on error)    |
+| Sentry error capture              | on                                    | on                  |
+| Job-view beacon                   | counts only (no user id, no referrer) | + user id, referrer |
+| Core Web Vitals to Sentry         | on (metric name/value only)           | on                  |
 
-Self-hosted slim banner in `app/components/cookie-banner.tsx`. Three categories:
+IP addresses are never stored raw for analytics: `hashIpForAnalytics` is an HMAC keyed by a server
+secret and salted with the UTC date, so it is neither reversible by enumeration nor linkable across
+days.
 
-- **Necessary** — always on (session, CSRF). No consent required (GDPR strictly necessary exception).
-- **Analytics** — Vercel Speed Insights + Analytics. Gated by consent.
-- **Marketing** — not in V1.
-
-Choice persisted to `localStorage` key `joblify.consent`. Server-side mirror via `/api/v1/consent` (TODO Week 10 follow-up).
-
-The Speed Insights + Analytics scripts in `app/layout.tsx` mount unconditionally today; gate by consent before EU launch:
-
-```tsx
-{
-  consent.analytics && <Analytics />;
-}
-{
-  consent.analytics && <SpeedInsights />;
-}
-```
+**Not implemented:** honouring the Global Privacy Control signal (`Sec-GPC`) server-side. Required
+for California; tracked in REMAINING_STEPS.
 
 ## Accessibility
 
-WCAG 2.2 Level AA target. Statement at `/accessibility`. Automated checks in CI via `@axe-core/playwright`. Manual SR test on critical funnels per [TESTING.md](./TESTING.md).
-
-The statement page documents:
-
-- Target conformance level.
-- Last automated check (build date implicitly).
-- Contact email for accessibility issues.
+WCAG 2.2 AA target. Statement at `/accessibility`; automated axe checks run on preview deploys
+(`.github/workflows/lighthouse.yml`) and the unit suite asserts autocomplete tokens and label
+association. Manual screen-reader passes are a process commitment, not a repo artefact.
 
 ## Breach response
 
-GDPR Article 33: notify the supervisory authority within 72 hours of becoming aware. Article 34: notify affected users without undue delay if high risk.
+GDPR Art. 33: notify the supervisory authority within 72 h of becoming aware; Art. 34: notify
+affected users without undue delay if high risk. Detect (Sentry, audit log) → contain (rotate keys,
+revoke sessions, roll back) → assess scope → notify DPO/counsel → file within 72 h if exposure is
+confirmed → postmortem. Contacts come from `NEXT_PUBLIC_PRIVACY_EMAIL` / `NEXT_PUBLIC_LEGAL_EMAIL`.
 
-Process:
+## Open items that code cannot close
 
-1. Detect (Sentry, audit log, or report).
-2. Contain (key rotation, session revoke, deploy rollback).
-3. Assess scope (which rows / which users affected).
-4. Notify DPO / legal counsel.
-5. Within 72 h: file with supervisory authority if PII exposure is confirmed.
-6. Notify users if high risk to rights and freedoms.
-7. Postmortem + remediation + retest.
-
-DPO: `privacy@joblify.example`. Legal: `legal@joblify.example`.
-
-## SOC 2 readiness
-
-Not in V1 scope, but built with SOC 2 Type 1 in mind:
-
-- Audit log → CC7.2 (system operations).
-- Access reviews via Clerk → CC6.1 / 6.2.
-- Change management via GitHub PR + CI gates → CC8.1.
-- Vendor management via the processors list → CC9.2.
-
-When the team is ready for SOC 2, the gaps to fill are documented policies (vendor management, business continuity, info security) + an annual independent audit. Code-side, we're already on the right side of most controls.
-
-## CCPA specifics
-
-For California residents:
-
-- Right to know: covered by `/account/export`.
-- Right to delete: covered by `/account/delete`.
-- Right to opt out of sale: we don't sell data; banner state of `analytics: false` is sufficient.
-
-Disclose in the privacy policy + `/legal/privacy` page.
-
-## Data minimization
-
-We collect what we need. When tempted to add a new column:
-
-1. What feature requires it?
-2. Can we infer it from existing data?
-3. Can we store a hash / aggregate instead of the raw value?
-4. Is it PII? If yes, update the redact list, the export workflow, the retention rule, and the privacy policy.
-
-## Children's data
-
-Joblify isn't directed at children. Terms require users to be 18+. We don't intentionally collect data from minors; if discovered, delete immediately.
+1. **Controller identity and contacts** — set `NEXT_PUBLIC_CONTROLLER_NAME/ADDRESS`,
+   `NEXT_PUBLIC_PRIVACY_EMAIL`, `NEXT_PUBLIC_ACCESSIBILITY_EMAIL`, `EMAIL_POSTAL_ADDRESS`.
+2. **DPIA** for résumé parsing + match scoring (GDPR Art. 35: systematic evaluation of people).
+3. **DPAs / transfer mechanism** with each processor, and the actual regions published.
+4. **Bias testing** of the match score on representative data before relying on it to rank people;
+   record the result next to `matchModel`.
+5. **Counsel review** of `legal/privacy`, `legal/ai`, `legal/terms` (the transfer-safeguard sentence
+   and the employer/controller description in particular).
+6. **GPC** support and a "Do Not Sell or Share" position statement for CPRA.
+7. **Rotate the credentials leaked in git history** (see `docs/SECURITY.md`).

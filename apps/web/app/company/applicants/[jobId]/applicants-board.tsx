@@ -16,6 +16,7 @@ import {
   matchTone,
 } from '@/lib/ui/status';
 import { toast } from '@/lib/stores/ui';
+import { unwrap } from '@/lib/action-result';
 import { cn } from '@/lib/cn';
 import { TimeStamp } from '@/app/components/ui/timestamp';
 
@@ -64,7 +65,9 @@ export function ApplicantsBoard({
     setRows((r) => r.map((x) => (x.id === id ? { ...x, status } : x)));
     startTransition(async () => {
       try {
-        await updateApplicantStatus(id, status);
+        // Returns { ok:false } for an expected refusal (e.g. the candidate
+        // withdrew); unwrap() routes it to the same handler as a thrown fault.
+        unwrap(await updateApplicantStatus(id, status));
         // A status change emails the applicant and sends an in-app
         // notification, so confirming it actually committed matters here more
         // than anywhere else on the board.
@@ -259,6 +262,12 @@ function StageStepper({
   const index = STAGES.findIndex((s) => s.status === current);
   const label = applicationStatusLabel(current);
 
+  // WITHDRAWN belongs to the candidate: nobody else can enter or leave it
+  // (lib/applications/transitions.ts), so there is nothing to step through.
+  if (current === 'WITHDRAWN') {
+    return <p className="mt-2 mb-0 text-[12px] text-fg-muted">Withdrawn by the candidate</p>;
+  }
+
   function pick(status: ApplicationStatus) {
     if (status === current) return;
     if (
@@ -306,7 +315,7 @@ function StageStepper({
             align="start"
             className="o-console border-border bg-surface shadow-o-overlay rounded-card z-50 min-w-[11rem] border p-1"
           >
-            {STAGES.map((s) => (
+            {STAGES.filter((s) => s.status !== 'WITHDRAWN').map((s) => (
               <DropdownMenu.Item
                 key={s.status}
                 onSelect={() => pick(s.status)}

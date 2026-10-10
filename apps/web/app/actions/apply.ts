@@ -18,6 +18,7 @@ import { type ActionResult, fail, succeed } from '@/lib/action-result';
 import { runResumeParse } from '@/workflows/resume-parse.workflow';
 import { runMatchScore } from '@/workflows/match-score.workflow';
 import { CLOSED_APPLICATION_STATUSES } from '@/lib/ui/status';
+import { clientIp } from '@/lib/security/client-ip';
 
 const ApplySchema = z.object({
   jobId: z.string().uuid(),
@@ -63,13 +64,16 @@ export async function submitApplication(formData: FormData): Promise<ActionResul
   });
   if (!job) return fail('Job not available for application.');
 
-  // JOB_UC_08.1 Test 96: Applying to a post from an unverified company is denied
-  if (
-    job.company.companyProfile?.verificationStatus &&
-    job.company.companyProfile.verificationStatus !== 'VERIFIED'
-  ) {
+  // JOB_UC_08.1 Test 96: Applying to a post from an unverified company is denied.
+  // Fails CLOSED: a company with no profile row is not a verified company. (The
+  // check used to read `status && status !== 'VERIFIED'`, which a missing
+  // profile slid straight past.)
+  if (job.company.companyProfile?.verificationStatus !== 'VERIFIED') {
     return fail('Cannot apply to a job post from an unverified company.');
   }
+  // A job whose owner has deleted their account is closed to new applications
+  // even though the row lives on until the retention sweep removes it.
+  if (job.company.deletedAt) return fail('Job not available for application.');
 
   if (job.applicationDeadline && job.applicationDeadline < new Date()) {
     return fail('The application deadline for this job has passed.');
@@ -85,7 +89,7 @@ export async function submitApplication(formData: FormData): Promise<ActionResul
 
   // 7. Capture audit context.
   const h = await headers();
-  const ip = h.get('x-forwarded-for')?.split(',')[0]?.trim() ?? null;
+  const ip = clientIp(h);
   const ua = h.get('user-agent') ?? null;
 
   // 8. Insert + audit in a single tx.
@@ -130,26 +134,29 @@ export async function submitApplication(formData: FormData): Promise<ActionResul
   updateTag(tags.jobApplicants(job.id));
   updateTag(tags.notifications(job.companyId));
 
-  // 10. Email confirmation (best-effort — do not block apply path on it).
-  resendSafe(async () => {
-    if (await isEmailSuppressed(user.email)) return;
-    const { subject, text, html } = applicationConfirm({
-      jobseekerName: user.firstName ?? user.email,
-      jobTitle: job.title,
-      companyName: job.company.companyProfile?.companyName ?? 'the team',
-      applicationUrl: `${process.env.NEXT_PUBLIC_SITE_URL ?? ''}/jobseeker/applications`,
-    });
-    await resend().emails.send({
-      from: EMAIL_FROM,
-      to: user.email,
-      subject,
-      text,
-      html,
-    });
-  });
-
-  // 11. Off the response path: ensure the resume is parsed/embedded
+  // 10 + 11. Off the response path, inside after(). A floating promise (the
+  // old `resendSafe(...)`) can be dropped the moment the response is sent on
+  // Fluid Compute — the confirmation email was best-effort in name and
+  // intermittent in practice. Each step has its own try/catch so one failure
+  // does not skip the next.
   after(async () => {
+    // Email confirmation (best-effort — never blocks the apply path).
+    try {
+      if (!(await isEmailSuppressed(user.email))) {
+        const { subject, text, html } = applicationConfirm({
+          jobseekerName: user.firstName ?? user.email,
+          jobTitle: job.title,
+          companyName: job.company.companyProfile?.companyName ?? 'the team',
+          applicationUrl: `${process.env.NEXT_PUBLIC_SITE_URL ?? ''}/jobseeker/applications`,
+        });
+        await resend().emails.send({ from: EMAIL_FROM, to: user.email, subject, text, html });
+      }
+    } catch (err) {
+      logger.warn({ err }, 'email send failed (non-blocking)');
+      Sentry.captureException(err);
+    }
+
+    // Ensure the resume is parsed/embedded, then score it against this job.
     try {
       await runResumeParse({ resumeId: resume.id });
     } catch (err) {
@@ -157,7 +164,7 @@ export async function submitApplication(formData: FormData): Promise<ActionResul
       Sentry.captureException(err, { tags: { resumeId: resume.id, userId: user.id } });
     }
     try {
-      await runMatchScore({ jobPostId: job.id, jobSeekerId: user.id });
+      await runMatchScore({ jobPostId: job.id, jobSeekerId: user.id, resumeId: resume.id });
     } catch (err) {
       logger.warn({ err, jobId: job.id, userId: user.id }, 'match-score failed (post-apply)');
       Sentry.captureException(err, { tags: { jobId: job.id, userId: user.id } });
@@ -184,7 +191,7 @@ export async function withdrawApplication(applicationId: string): Promise<Action
   }
 
   const h = await headers();
-  const ip = h.get('x-forwarded-for')?.split(',')[0]?.trim() ?? null;
+  const ip = clientIp(h);
   const ua = h.get('user-agent') ?? null;
 
   await withAudit(
@@ -222,11 +229,4 @@ export async function withdrawApplication(applicationId: string): Promise<Action
 
   logger.info({ applicationId, userId: user.id }, 'application withdrawn');
   return succeed();
-}
-
-function resendSafe(fn: () => Promise<unknown>): void {
-  fn().catch((err) => {
-    logger.warn({ err }, 'email send failed (non-blocking)');
-    Sentry.captureException(err);
-  });
 }

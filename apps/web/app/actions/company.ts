@@ -6,11 +6,13 @@ import { requireUser, requireRole, AuthError } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { withAudit } from '@/lib/audit';
 import { tags } from '@/lib/cache';
+import { trustedLogoUrl } from '@/lib/storage/blob';
 import { logger } from '@/lib/observability/logger';
 import {
   CompanyProfileSchema,
   type CompanyProfileInput,
 } from '@/app/company/company-profile-schema';
+import { clientIp } from '@/lib/security/client-ip';
 
 function slugify(name: string): string {
   const base =
@@ -26,7 +28,7 @@ async function auditCtx() {
   const h = await headers();
   return {
     actorId: null as string | null,
-    ip: h.get('x-forwarded-for')?.split(',')[0]?.trim() ?? null,
+    ip: clientIp(h),
     ua: h.get('user-agent') ?? null,
   };
 }
@@ -83,7 +85,8 @@ export async function createCompanyProfile(input: CompanyProfileInput): Promise<
           address: parsed.address || null,
           contactPersonName: parsed.contactPersonName || null,
           contactPersonPosition: parsed.contactPersonPosition || null,
-          logoUrl: parsed.logoUrl || null,
+          // Only a logo that is actually in our store — never a typed-in URL.
+          logoUrl: trustedLogoUrl(parsed.logoUrl, user.id),
         },
         select: { id: true },
       });
@@ -99,9 +102,22 @@ export async function updateCompanyProfile(input: CompanyProfileInput): Promise<
 
   const profile = await db.companyProfile.findUnique({
     where: { userId: user.id },
-    select: { id: true },
+    select: { id: true, logoUrl: true },
   });
   if (!profile) throw new AuthError('FORBIDDEN');
+
+  // '' clears the logo; a value must already be ours (uploadLogoDirect is the
+  // only thing that mints one). A foreign URL is ignored rather than stored —
+  // and rather than wiping the logo the company already has.
+  const trustedLogo = trustedLogoUrl(parsed.logoUrl, user.id, profile.logoUrl);
+  const logoPatch =
+    parsed.logoUrl === undefined
+      ? {}
+      : parsed.logoUrl === ''
+        ? { logoUrl: null }
+        : trustedLogo !== null
+          ? { logoUrl: trustedLogo }
+          : {};
 
   const duplicateName = await db.companyProfile.findFirst({
     where: {
@@ -137,7 +153,7 @@ export async function updateCompanyProfile(input: CompanyProfileInput): Promise<
           address: parsed.address || null,
           contactPersonName: parsed.contactPersonName || null,
           contactPersonPosition: parsed.contactPersonPosition || null,
-          ...(parsed.logoUrl !== undefined ? { logoUrl: parsed.logoUrl || null } : {}),
+          ...logoPatch,
         },
       });
       if (parsed.phone) {

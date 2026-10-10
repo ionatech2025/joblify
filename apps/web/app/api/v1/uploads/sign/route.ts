@@ -1,22 +1,22 @@
 import { handleUpload, type HandleUploadBody } from '@vercel/blob/client';
 import { NextResponse } from 'next/server';
 import { currentUser } from '@/lib/auth';
-import {
-  RESUME_MIME,
-  IMAGE_MIME,
-  RESUME_MAX_BYTES,
-  LOGO_MAX_BYTES,
-  resumePathPrefix,
-  logoPathPrefix,
-} from '@/lib/storage/blob';
+import { RESUME_MIME, RESUME_MAX_BYTES, resumePathPrefix } from '@/lib/storage/blob';
 import { logger } from '@/lib/observability/logger';
 import { uploadSignLimit } from '@/lib/ratelimit';
 
-// Signs scoped upload tokens for Vercel Blob client uploads. Path prefix is
-// always derived server-side from the authenticated user — the client cannot
-// upload outside their own namespace.
+// Signs scoped upload tokens for Vercel Blob client uploads of RÉSUMÉS — the
+// one upload too large for a Server Action (the platform body limit is ~4.5 MB,
+// the résumé limit 5 MB). Company logos are ≤ 2 MB and go through the
+// `uploadLogoDirect` Server Action instead, which keeps this route to a single
+// store (the private one, via BLOB_READ_WRITE_TOKEN) and a single caller type.
+//
+// The path prefix is always derived server-side from the authenticated user —
+// the client cannot upload outside their own namespace.
 
-type Kind = 'resume' | 'logo';
+// Messages from this are written for the end user and safe to return. Anything
+// else (SDK/network errors) is logged and answered generically.
+class UploadNotPermitted extends Error {}
 
 export async function POST(request: Request): Promise<Response> {
   const user = await currentUser();
@@ -27,55 +27,51 @@ export async function POST(request: Request): Promise<Response> {
     return NextResponse.json({ error: 'too many upload requests' }, { status: 429 });
   }
 
-  const body = (await request.json()) as HandleUploadBody;
-
-  if (!process.env.BLOB_READ_WRITE_TOKEN) {
-    return NextResponse.json(
-      { error: 'Blob storage token not configured' },
-      { status: 503 },
-    );
+  let body: HandleUploadBody;
+  try {
+    body = (await request.json()) as HandleUploadBody;
+  } catch {
+    return NextResponse.json({ error: 'invalid request' }, { status: 400 });
   }
 
   try {
     const json = await handleUpload({
       body,
       request,
-      onBeforeGenerateToken: async (pathname, clientPayload) => {
-        const payload = (clientPayload ? JSON.parse(clientPayload) : {}) as { kind?: Kind };
-        const kind: Kind = payload.kind === 'logo' ? 'logo' : 'resume';
-
-        if (kind === 'resume' && user.userType !== 'JOB_SEEKER') {
-          throw new Error('Only jobseekers can upload resumes.');
-        }
-        if (kind === 'logo' && user.userType !== 'COMPANY') {
-          throw new Error('Only companies can upload logos.');
+      onBeforeGenerateToken: async (pathname) => {
+        if (user.userType !== 'JOB_SEEKER') {
+          throw new UploadNotPermitted('Only jobseekers can upload resumes.');
         }
 
-        const prefix = kind === 'resume' ? resumePathPrefix(user.id) : logoPathPrefix(user.id);
-        if (!pathname.startsWith(prefix)) {
-          throw new Error(`Path must start with ${prefix}`);
+        const prefix = resumePathPrefix(user.id);
+        if (!pathname.startsWith(prefix) || pathname.split('/').includes('..')) {
+          throw new UploadNotPermitted('Invalid upload path.');
         }
 
         return {
-          allowedContentTypes: kind === 'resume' ? [...RESUME_MIME] : [...IMAGE_MIME],
-          maximumSizeInBytes: kind === 'resume' ? RESUME_MAX_BYTES : LOGO_MAX_BYTES,
-          tokenPayload: JSON.stringify({ kind, userId: user.id }),
+          allowedContentTypes: [...RESUME_MIME],
+          maximumSizeInBytes: RESUME_MAX_BYTES,
+          // Unguessable names: a filename must not be the only thing standing
+          // between a stranger and a document.
+          addRandomSuffix: true,
+          tokenPayload: JSON.stringify({ kind: 'resume', userId: user.id }),
         };
       },
       onUploadCompleted: async ({ blob }) => {
-        // The DB row (resume) / profile field (logo) is written by the client-
-        // invoked Server Action (app/actions/uploads.ts) once upload() resolves,
-        // so it also works in local dev where this callback never fires.
-        logger.info({ url: blob.url }, 'blob upload completed');
+        // The DB row is written by the client-invoked Server Action
+        // (app/actions/uploads.ts → registerResume) once upload() resolves, so
+        // it also works in local dev where this callback never fires. Log the
+        // pathname only: the URL of a private object is not something to log.
+        logger.info({ pathname: blob.pathname }, 'blob upload completed');
       },
     });
 
     return NextResponse.json(json);
   } catch (err) {
+    if (err instanceof UploadNotPermitted) {
+      return NextResponse.json({ error: err.message }, { status: 400 });
+    }
     logger.error({ err }, 'upload sign failed');
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'upload failed' },
-      { status: 400 },
-    );
+    return NextResponse.json({ error: 'upload could not be started' }, { status: 400 });
   }
 }

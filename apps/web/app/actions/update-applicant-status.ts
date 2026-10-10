@@ -2,14 +2,19 @@
 
 import { headers } from 'next/headers';
 import { updateTag } from 'next/cache';
+import { after } from 'next/server';
 import type { ApplicationStatus } from '@prisma/client';
 import { requireRole, AuthError } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { withAudit } from '@/lib/audit';
 import { tags } from '@/lib/cache';
-import { resend, EMAIL_FROM } from '@/lib/email/resend';
+import { resend, EMAIL_FROM, isEmailSuppressed } from '@/lib/email/resend';
 import { statusChange } from '@/lib/email/templates';
 import { logger } from '@/lib/observability/logger';
+import { clientIp } from '@/lib/security/client-ip';
+import { checkRecruiterTransition } from '@/lib/applications/transitions';
+import { APPLICATION_STATUS_LABEL } from '@/lib/ui/status';
+import { type ActionResult, fail, succeed } from '@/lib/action-result';
 
 // Statuses that grant access to the job's chat area (flowchart: "interact with
 // accepted (shortlisted) job seekers on the job specific chat area").
@@ -23,7 +28,7 @@ const CHAT_JOIN_STATUSES = new Set<ApplicationStatus>([
 export async function updateApplicantStatus(
   applicationId: string,
   status: ApplicationStatus,
-): Promise<void> {
+): Promise<ActionResult> {
   const user = await requireRole('COMPANY');
 
   // Tenancy: applicant must belong to one of this company's jobs.
@@ -37,10 +42,14 @@ export async function updateApplicantStatus(
   if (!application) throw new AuthError('FORBIDDEN');
 
   const previousStatus = application.status;
-  if (previousStatus === status) return;
+  if (previousStatus === status) return succeed();
+
+  // Expected failure → RETURNED (a thrown message is redacted in production).
+  const transition = checkRecruiterTransition(previousStatus, status);
+  if (!transition.ok) return fail(transition.reason);
 
   const h = await headers();
-  const ip = h.get('x-forwarded-for')?.split(',')[0]?.trim() ?? null;
+  const ip = clientIp(h);
   const ua = h.get('user-agent') ?? null;
 
   await withAudit(
@@ -66,7 +75,7 @@ export async function updateApplicantStatus(
             jobTitle: application.jobPost.title,
             companyName: application.jobPost.company.companyProfile?.companyName ?? 'Company',
             status,
-            message: `Your application status changed to ${status}.`,
+            message: `Your application status changed to ${APPLICATION_STATUS_LABEL[status]}.`,
           },
         },
       });
@@ -110,10 +119,17 @@ export async function updateApplicantStatus(
   updateTag(tags.notifications(application.jobSeekerId));
   updateTag(tags.jobApplicants(application.jobPostId));
 
-  // Email notification (best-effort).
-  void sendStatusEmail(application, status).catch((err) =>
-    logger.warn({ err, applicationId }, 'status email send failed (non-blocking)'),
-  );
+  // Email notification (best-effort), run inside after(): a floating promise
+  // can be dropped the moment the response is sent on Fluid Compute.
+  after(async () => {
+    try {
+      await sendStatusEmail(application, status);
+    } catch (err) {
+      logger.warn({ err, applicationId }, 'status email send failed (non-blocking)');
+    }
+  });
+
+  return succeed();
 }
 
 async function sendStatusEmail(
@@ -123,12 +139,18 @@ async function sendStatusEmail(
   },
   status: ApplicationStatus,
 ): Promise<void> {
+  // Bounced / complained addresses are suppressed everywhere else; this path
+  // used to skip the check and keep mailing them, which is what damages a
+  // sending domain's reputation.
+  if (await isEmailSuppressed(application.jobSeeker.email)) return;
+
   const url = `${process.env.NEXT_PUBLIC_SITE_URL ?? ''}/jobseeker/applications`;
   const { subject, text, html } = statusChange({
     jobseekerName: application.jobSeeker.firstName ?? application.jobSeeker.email,
     jobTitle: application.jobPost.title,
     companyName: application.jobPost.company.companyProfile?.companyName ?? 'the team',
-    status: status.replace('_', ' '),
+    // The label a person reads ("Not selected"), not the enum ("REJECTED").
+    status: APPLICATION_STATUS_LABEL[status],
     applicationUrl: url,
   });
   await resend().emails.send({
@@ -151,7 +173,7 @@ export async function saveApplicantNote(applicationId: string, notes: string): P
   if (!application) throw new AuthError('FORBIDDEN');
 
   const h = await headers();
-  const ip = h.get('x-forwarded-for')?.split(',')[0]?.trim() ?? null;
+  const ip = clientIp(h);
   const ua = h.get('user-agent') ?? null;
 
   const text = notes.slice(0, 5000);

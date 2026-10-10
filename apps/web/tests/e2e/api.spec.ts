@@ -4,10 +4,29 @@ import { test, expect } from '@playwright/test';
 // wired (so it's valid against both a no-vendor local run and a full preview).
 // Notably locks the rate-limit fail-open fix: search must never return a 500.
 test.describe('API regression', () => {
-  test('GET /api/v1/health → 200 ok', async ({ request }) => {
+  test('GET /api/v1/health → 200 ok, and reveals nothing else to anonymous callers', async ({
+    request,
+  }) => {
     const res = await request.get('/api/v1/health');
     expect(res.status()).toBe(200);
-    expect((await res.json()).status).toBe('ok');
+    const body = await res.json();
+    expect(body.status).toBe('ok');
+    // The dependency map used to be public and advertised "redis: not_configured".
+    expect(body).not.toHaveProperty('dependencies');
+    expect(body).not.toHaveProperty('commit');
+  });
+
+  test('a résumé is not readable without a session', async ({ request }) => {
+    const res = await request.get('/api/v1/resumes/11111111-1111-4111-8111-111111111111/file');
+    expect(res.status()).toBe(401);
+  });
+
+  test('the unsubscribe endpoint rejects a forged token and never mutates on GET', async ({
+    request,
+  }) => {
+    const bad = '/api/v1/email/unsubscribe?t=not-a-real-token';
+    expect((await request.get(bad)).status()).toBe(400);
+    expect((await request.post(bad)).status()).toBe(400);
   });
 
   test('GET /api/v1/applications → 401 when unauthenticated', async ({ request }) => {

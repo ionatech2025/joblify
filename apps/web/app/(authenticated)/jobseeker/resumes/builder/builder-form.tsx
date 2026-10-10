@@ -68,7 +68,8 @@ export function ResumeBuilderForm({ initialEntries }: { initialEntries: FormValu
     startGenerating(async () => {
       try {
         const resume = await generateResume();
-        setResumeUrl(resume.fileBlobUrl);
+        // The authenticated download route — generated PDFs are private too.
+        setResumeUrl(`/api/v1/resumes/${resume.id}/file`);
         toast.success('Resume generated', 'Your PDF is ready.');
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Could not generate a resume.';

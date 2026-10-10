@@ -1,4 +1,5 @@
 import type { Prisma, WorkMode, JobType, ExperienceLevel } from '@prisma/client';
+import { salaryOverlapWhere } from './salary';
 
 const WORK_MODES = ['REMOTE', 'HYBRID', 'ONSITE'];
 const JOB_TYPES = ['FULL_TIME', 'PART_TIME', 'CONTRACT', 'INTERNSHIP', 'TEMPORARY'];
@@ -24,11 +25,15 @@ export function savedSearchWhere(query: string): Prisma.JobPostWhereInput {
     where.experienceLevel = experienceLevel as ExperienceLevel;
   }
 
-  // Bracket overlapping salary bands, as the search route does.
+  // Bracket overlapping salary bands, as the search route does — on the
+  // annualised range, so "per month" and "per year" postings compare fairly.
   const salaryMin = Number(p.get('salaryMin'));
-  if (Number.isFinite(salaryMin) && salaryMin > 0) where.salaryMax = { gte: salaryMin };
   const salaryMax = Number(p.get('salaryMax'));
-  if (Number.isFinite(salaryMax) && salaryMax > 0) where.salaryMin = { lte: salaryMax };
+  const salaryWhere = salaryOverlapWhere(
+    Number.isFinite(salaryMin) && salaryMin > 0 ? salaryMin : null,
+    Number.isFinite(salaryMax) && salaryMax > 0 ? salaryMax : null,
+  );
+  if (salaryWhere) and.push(salaryWhere);
 
   const q = p.get('q')?.trim();
   if (q) {

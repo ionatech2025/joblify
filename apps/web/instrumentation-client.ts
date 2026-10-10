@@ -46,15 +46,33 @@ if (dsn) {
       });
   };
 
-  // Checked by typeof rather than `in`: Window declares requestIdleCallback, so
-  // an `in` guard narrows the else branch to never and the fallback stops
-  // compiling — while Safari still only shipped it in 18.4.
-  if (typeof window !== 'undefined') {
+  // Replay records the DOM and keeps a session id in sessionStorage — reading
+  // or writing the visitor's device for something that is not strictly
+  // necessary to deliver the page (ePrivacy art. 5(3)), so it waits for the
+  // analytics consent the cookie banner collects. Error capture itself stays
+  // on: it neither records the page nor stores anything on the device.
+  const hasConsent = () =>
+    typeof document !== 'undefined' && document.cookie.split('; ').includes('joblify_consent=all');
+
+  let replayScheduled = false;
+  const armWhenConsented = () => {
+    if (replayScheduled || !hasConsent()) return;
+    replayScheduled = true;
+    // Checked by typeof rather than `in`: Window declares requestIdleCallback,
+    // so an `in` guard narrows the else branch to never and the fallback stops
+    // compiling — while Safari still only shipped it in 18.4.
     if (typeof window.requestIdleCallback === 'function') {
       window.requestIdleCallback(armReplay, { timeout: 4000 });
     } else {
       window.setTimeout(armReplay, 2000);
     }
+  };
+
+  if (typeof window !== 'undefined') {
+    armWhenConsented();
+    // The banner dispatches this when the choice changes, so consent takes
+    // effect without a reload (same event <AnalyticsGate> listens to).
+    window.addEventListener('joblify:consent', armWhenConsented);
   }
 }
 

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { configWarnings } from '@/lib/site-config';
 
 /**
  * Security-critical env vars.
@@ -76,6 +77,12 @@ export function missingCriticalEnv(): string[] {
  * for non-node runtimes too.
  */
 export function reportCriticalEnv(): void {
+  // Non-fatal configuration that still breaks a promise made to users (contact
+  // addresses, unsubscribe, storage). One line each, production only.
+  if (process.env.VERCEL_ENV === 'production') {
+    for (const warning of configWarnings()) console.warn(`[config] ${warning}`);
+  }
+
   const missing = missingCriticalEnv();
   if (missing.length === 0) return;
 

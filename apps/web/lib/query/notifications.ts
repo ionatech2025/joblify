@@ -78,7 +78,8 @@ export function useMarkNotificationRead() {
       toast.error("Couldn't mark as read", 'Try again in a moment.');
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.notifications() });
+      // Deliberately not returned (see lib/query/applications.ts).
+      void queryClient.invalidateQueries({ queryKey: queryKeys.notifications() });
     },
   });
 }

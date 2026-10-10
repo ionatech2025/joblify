@@ -73,12 +73,15 @@ export function ChatThread({
                   <a
                     href={m.attachmentUrl}
                     target="_blank"
-                    rel="noopener noreferrer"
+                    // nofollow/ugc: the link was typed by a participant, and the
+                    // platform does not vouch for where it goes.
+                    rel="noopener noreferrer nofollow ugc"
                     className={`mt-1 inline-flex items-center gap-1 text-sm hover:underline ${
                       own ? 'text-ink-fg/80' : 'text-brand'
                     }`}
                   >
                     View attachment
+                    <span className="text-fg-subtle">({hostOf(m.attachmentUrl)})</span>
                     <ExternalLink aria-hidden className="size-3.5" />
                   </a>
                 )}
@@ -92,4 +95,14 @@ export function ChatThread({
       </ul>
     </Card>
   );
+}
+
+// Show where an attachment link actually goes, so "Interview schedule" cannot
+// quietly be a lookalike domain.
+function hostOf(url: string): string {
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return 'unknown site';
+  }
 }

@@ -9,12 +9,13 @@ import { db } from '@/lib/db';
 import { withAudit } from '@/lib/audit';
 import { tags } from '@/lib/cache';
 import { type ActionResult, fail, succeed } from '@/lib/action-result';
+import { clientIp } from '@/lib/security/client-ip';
 
 async function auditCtx(actorId: string) {
   const h = await headers();
   return {
     actorId,
-    ip: h.get('x-forwarded-for')?.split(',')[0]?.trim() ?? null,
+    ip: clientIp(h),
     ua: h.get('user-agent') ?? null,
   };
 }
@@ -47,7 +48,11 @@ export async function subscribeToCompany(
       user: { select: { deletedAt: true } },
     },
   });
-  if (!company || company.user?.deletedAt || (company.verificationStatus && company.verificationStatus !== 'VERIFIED')) {
+  if (
+    !company ||
+    company.user?.deletedAt ||
+    (company.verificationStatus && company.verificationStatus !== 'VERIFIED')
+  ) {
     return fail('Company not found.');
   }
 

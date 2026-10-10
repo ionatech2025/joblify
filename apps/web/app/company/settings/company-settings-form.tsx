@@ -4,7 +4,6 @@ import { useRef, useState, useTransition } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
-import { upload } from '@vercel/blob/client';
 import {
   CompanyProfileSchema,
   type CompanyProfileInput,
@@ -13,7 +12,7 @@ import {
   SIZE_LABELS,
 } from '@/app/company/company-profile-schema';
 import { updateCompanyProfile } from '@/app/actions/company';
-import { registerLogo, uploadLogoDirect } from '@/app/actions/uploads';
+import { uploadLogoDirect } from '@/app/actions/uploads';
 import { unwrap } from '@/lib/action-result';
 import { Input, Select, Textarea } from '@/app/components/ui/form';
 import { Button } from '@/app/components/ui/button';
@@ -34,11 +33,9 @@ function titleCase(s: string): string {
 }
 
 export function CompanySettingsForm({
-  userId,
   initial,
   logoUrl,
 }: {
-  userId: string;
   initial: CompanyProfileInput;
   logoUrl: string | null;
 }) {
@@ -99,22 +96,12 @@ export function CompanySettingsForm({
     setError(null);
     setLogoBusy(true);
     try {
-      let logoUrl: string;
-      try {
-        const safe = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-        const blob = await upload(`logos/${userId}/${safe}`, file, {
-          access: 'public',
-          handleUploadUrl: '/api/v1/uploads/sign',
-          clientPayload: JSON.stringify({ kind: 'logo' }),
-        });
-        await registerLogo({ url: blob.url });
-        logoUrl = blob.url;
-      } catch {
-        const formData = new FormData();
-        formData.append('file', file);
-        const res = await uploadLogoDirect(formData);
-        logoUrl = unwrap(res);
-      }
+      // Logos are <= 2 MB, well under the Server Action body limit, so they go
+      // through the action directly (validated by magic bytes, stored in the
+      // public store). No client-token round trip is needed or offered.
+      const formData = new FormData();
+      formData.append('file', file);
+      const logoUrl = unwrap(await uploadLogoDirect(formData));
       setLogo(logoUrl);
       router.refresh();
       toast.success('Logo updated');

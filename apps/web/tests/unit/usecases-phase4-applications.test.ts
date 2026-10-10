@@ -181,7 +181,13 @@ describe('Phase 4: Application Flow (Tests 88–103)', () => {
     const isSupportedMime = (mime: string) =>
       (RESUME_MIME as readonly string[]).includes(mime as (typeof RESUME_MIME)[number]);
     expect(isSupportedMime('application/pdf')).toBe(true);
-    expect(isSupportedMime('application/msword')).toBe(true);
+    expect(
+      isSupportedMime('application/vnd.openxmlformats-officedocument.wordprocessingml.document'),
+    ).toBe(true);
+    // Legacy .doc is refused up front: file-type reports OLE2 as x-cfb and no
+    // maintained reader exists, so accepting it only produced files that could
+    // never be parsed (and were then silently soft-deleted).
+    expect(isSupportedMime('application/msword')).toBe(false);
     expect(isSupportedMime('application/x-msdownload')).toBe(false);
     expect(isSupportedMime('image/jpeg')).toBe(false);
   });
@@ -277,7 +283,8 @@ describe('Phase 4: Application Flow (Tests 88–103)', () => {
   // 100 Phase 4: Application Flow JOB_UC_12.0 Manage Job Applicants
   it('100. Attempting to both accept and reject the same applicant is blocked (mutually exclusive status)', () => {
     const isMutuallyExclusive = (statusA: string, statusB: string) =>
-      (statusA === 'REJECTED' && statusB === 'HIRED') || (statusA === 'HIRED' && statusB === 'REJECTED');
+      (statusA === 'REJECTED' && statusB === 'HIRED') ||
+      (statusA === 'HIRED' && statusB === 'REJECTED');
     expect(isMutuallyExclusive('REJECTED', 'HIRED')).toBe(true);
     expect(isMutuallyExclusive('HIRED', 'REJECTED')).toBe(true);
   });

@@ -49,6 +49,19 @@ In Vercel dashboard → **joblify-web** → **Integrations**. Install in this or
 
 Neon + Upstash + Clerk are required to get past Week 2 locally. Sentry / Resend / Algolia can wait until Week 4–6 work.
 
+## 3b. Create the two Blob stores
+
+Résumés must not be publicly addressable, so storage is split (a store is private or public at creation):
+
+```bash
+vercel blob create-store joblify-private --access private   # résumés, generated CVs
+# In the dashboard: Storage → Create → Blob → Public, connect with env prefix BLOB_PUBLIC   # logos
+```
+
+Connect both to the project. Vercel injects `BLOB_STORE_ID` + an OIDC token and `BLOB_READ_WRITE_TOKEN`
+for the private one (the static token is required to mint browser upload tokens), and
+`BLOB_PUBLIC_READ_WRITE_TOKEN` for the public one. Without them, uploads **fail closed in production**.
+
 ## 4. Manual env vars (not provided by Marketplace)
 
 Set these via the Vercel dashboard → **Settings → Environment Variables**.

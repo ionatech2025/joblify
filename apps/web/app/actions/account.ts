@@ -7,6 +7,7 @@ import { db } from '@/lib/db';
 import { withAudit } from '@/lib/audit';
 import { deleteJob } from '@/lib/search/algolia';
 import { logger } from '@/lib/observability/logger';
+import { clientIp } from '@/lib/security/client-ip';
 import { redirect } from 'next/navigation';
 // deleteMyAccount ends in redirect(), which never returns — so the only
 // reachable result is the expected-failure one. No succeed() needed.
@@ -17,7 +18,7 @@ export async function deleteMyAccount(confirmation: string): Promise<ActionResul
   if (confirmation !== user.email) return fail('Confirmation does not match your email.');
 
   const h = await headers();
-  const ip = h.get('x-forwarded-for')?.split(',')[0]?.trim() ?? null;
+  const ip = clientIp(h);
   const ua = h.get('user-agent') ?? null;
 
   await withAudit(
@@ -25,10 +26,20 @@ export async function deleteMyAccount(confirmation: string): Promise<ActionResul
     { action: 'USER_DELETED', entity: 'user', entityId: user.id },
     async (tx) => {
       // Soft delete now; retention workflow hard-deletes after 30 days.
+      const now = new Date();
       await tx.user.update({
         where: { id: user.id },
-        data: { deletedAt: new Date() },
+        data: { deletedAt: now, digestOptIn: false },
       });
+      // A company's postings go with it, immediately. Until the hard delete they
+      // used to stay PUBLISHED — still on the public page, in the sitemap and
+      // open to applications — for up to 30 days after the owner left.
+      if (user.userType === 'COMPANY') {
+        await tx.jobPost.updateMany({
+          where: { companyId: user.id, deletedAt: null },
+          data: { status: 'ARCHIVED', deletedAt: now },
+        });
+      }
     },
   );
 

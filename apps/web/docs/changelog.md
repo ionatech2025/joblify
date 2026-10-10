@@ -1,5 +1,25 @@
 # Changelog
 
+## 2026-10-10 — Hardening pass (security, privacy, AI correctness, supply chain)
+
+Driven by a full audit against current standards (OWASP Top 10:2025, OWASP LLM Top 10:2025, GDPR/ePrivacy,
+EU AI Act + US state hiring-AI rules, Google JobPosting, bulk-sender email rules, GitHub Actions /
+npm supply-chain guidance). See REMAINING_STEPS.md for the table of changes and the owner actions.
+
+- **Security:** private résumé storage + authenticated download; URL host pinning (SSRF); `next` 16.4.0 and
+  the dependency clean-up (production advisories 74 → 0 critical, 2 acknowledged high, 8 moderate); JSON-LD escaping; CSP `unsafe-eval` dev-only;
+  fail-closed verification gates; rate limiter never off; health endpoint minimised; Clerk org
+  membership no longer grants COMPANY.
+- **Privacy:** explicit email opt-in + one-click unsubscribe; streamed GDPR export; file erasure; audit-log
+  retention actually enforced; consent-gated Replay and view-beacon identifiers; drafts cleared on user
+  change; honest legal pages (privacy, processors, AI use).
+- **AI:** embedding width fixed and validated; canonical Gateway model slugs; provenance columns; prompt
+  injection fencing; non-fabricating fallback parser; sweeps re-parse/re-embed/re-score.
+- **Product:** pay period + country on postings and correct JobPosting markup; annualised salary search;
+  candidate-owned WITHDRAWN; recruiter-facing labels in emails.
+- **Trust & safety:** report-a-job flow + admin moderation queue; PII-aware log redaction.
+- **Platform:** proxy.ts, OG routes off the edge runtime, Server Action body limit, CI hardening, Dependabot.
+
 ## 2026-08-26 — Odoo-enterprise console: flows + design register
 
 The first two design passes applied one visual language to the whole product.

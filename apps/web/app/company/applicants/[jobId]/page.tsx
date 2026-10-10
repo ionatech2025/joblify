@@ -66,7 +66,7 @@ export default async function ApplicantsPage({
         coverLetter: true,
         recruiterNotes: true,
         jobSeekerId: true,
-        resume: { select: { fileBlobUrl: true } },
+        resume: { select: { id: true } },
         jobSeeker: {
           select: {
             firstName: true,
@@ -215,7 +215,8 @@ export default async function ApplicantsPage({
             matchScore: a.matchScore,
             coverLetter: a.coverLetter,
             recruiterNotes: a.recruiterNotes,
-            resumeUrl: a.resume.fileBlobUrl,
+            // Authenticated route — the storage locator never leaves the server.
+            resumeUrl: `/api/v1/resumes/${a.resume.id}/file`,
             seeker: {
               id: a.jobSeekerId,
               firstName: a.jobSeeker.firstName ?? null,

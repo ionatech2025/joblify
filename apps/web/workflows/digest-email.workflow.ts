@@ -22,11 +22,12 @@
 //      (~80% of the route's maxDuration) and logs progress.
 
 import { db } from '@/lib/db';
-import { Prisma } from '@prisma/client';
+import type { Prisma } from '@prisma/client';
 import * as Sentry from '@sentry/nextjs';
 import { resend, EMAIL_FROM } from '@/lib/email/resend';
 import { logger } from '@/lib/observability/logger';
 import { savedSearchWhere } from '@/lib/search/saved-search';
+import { canSendWithUnsubscribe, unsubscribeUrl } from '@/lib/email/unsubscribe';
 
 const SINCE_HOURS = 24;
 // Successive daily runs stamp watermarks a few minutes AFTER the cron's
@@ -106,12 +107,25 @@ async function processUser(
   const newJobs = await digestJobsFor(searches, since, genericJobs);
   if (newJobs.length === 0) return 'skipped';
 
+  // A marketing email without a working opt-out is not something to send at
+  // all (CAN-SPAM, ePrivacy, and the bulk-sender rules at Gmail/Yahoo/Outlook).
+  // runDigest() checks this once up front; this guards the per-user path.
+  const link = unsubscribeUrl(user.id);
+  if (!link) throw new Error('unsubscribe link unavailable — refusing to send');
+
   await resend().emails.send({
     from: EMAIL_FROM,
     to: user.email,
     subject: `${newJobs.length} new jobs for you on Joblify`,
-    text: textBody(user.firstName ?? user.email, newJobs),
-    html: htmlBody(user.firstName ?? user.email, newJobs),
+    text: textBody(user.firstName ?? user.email, newJobs, link),
+    html: htmlBody(user.firstName ?? user.email, newJobs, link),
+    // RFC 8058 one-click: mailbox providers show their native "Unsubscribe"
+    // button and POST here. Requires the message to be DKIM-signed (Resend
+    // signs for the verified sending domain).
+    headers: {
+      'List-Unsubscribe': `<${link}>`,
+      'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+    },
   });
   return 'sent';
 }
@@ -119,6 +133,17 @@ async function processUser(
 export async function runDigest({
   deadlineMs = 240_000,
 }: { deadlineMs?: number } = {}): Promise<DigestSummary> {
+  // Fail closed: with no signing secret / absolute site URL there is no way to
+  // honour the unsubscribe requirement, so the run does nothing (loudly) rather
+  // than mailing people an email they cannot opt out of.
+  if (!canSendWithUnsubscribe()) {
+    logger.error(
+      'digest not sent: set NEXT_PUBLIC_SITE_URL and EMAIL_UNSUBSCRIBE_SECRET (or CRON_SECRET) so ' +
+        'every digest can carry a working unsubscribe link',
+    );
+    return { sent: 0, skipped: 0, failed: 0, stoppedEarly: true };
+  }
+
   const runStart = Date.now();
   const deadline = runStart + deadlineMs;
   const since = new Date(runStart - SINCE_HOURS * 3600 * 1000);
@@ -136,7 +161,10 @@ export async function runDigest({
   const eligibility = {
     userType: 'JOB_SEEKER',
     deletedAt: null,
-    consentJson: { not: Prisma.DbNull },
+    // The explicit opt-in — NOT consentJson. That column records the cookie
+    // banner answer (including "Necessary only"), which is not consent to
+    // marketing email. See User.digestOptIn in schema.prisma.
+    digestOptIn: true,
     emailSuppressedAt: null,
     OR: [{ lastDigestAt: null }, { lastDigestAt: { lt: eligibleBefore } }],
   } satisfies Prisma.UserWhereInput;
@@ -232,14 +260,21 @@ export async function runDigest({
   return s;
 }
 
-function textBody(
-  name: string,
-  jobs: Array<{
-    slug: string;
-    title: string;
-    company: { companyProfile: { companyName: string } | null };
-  }>,
-): string {
+type DigestListJob = {
+  slug: string;
+  title: string;
+  company: { companyProfile: { companyName: string } | null };
+};
+
+// CAN-SPAM requires a valid physical postal address in commercial email. It is
+// configuration, not code: set EMAIL_POSTAL_ADDRESS to the registered address.
+function postalLine(): string | null {
+  const v = process.env.EMAIL_POSTAL_ADDRESS?.trim();
+  return v ? v : null;
+}
+
+function textBody(name: string, jobs: DigestListJob[], unsubscribeLink: string): string {
+  const postal = postalLine();
   const lines = [
     `Hi ${name},`,
     '',
@@ -251,18 +286,17 @@ function textBody(
     ),
     '',
     '— The Joblify team',
+    '',
+    '---',
+    'You are receiving this because you turned on the daily jobs digest on Joblify.',
+    `Unsubscribe in one click: ${unsubscribeLink}`,
+    ...(postal ? [postal] : []),
   ];
   return lines.join('\n');
 }
 
-function htmlBody(
-  name: string,
-  jobs: Array<{
-    slug: string;
-    title: string;
-    company: { companyProfile: { companyName: string } | null };
-  }>,
-): string {
+function htmlBody(name: string, jobs: DigestListJob[], unsubscribeLink: string): string {
+  const postal = postalLine();
   const items = jobs
     .map(
       (j) =>
@@ -272,7 +306,10 @@ function htmlBody(
   return `<p>Hi ${escape(name)},</p>
 <p>Here are the latest jobs that landed in the last day:</p>
 <ul>${items}</ul>
-<p>— The Joblify team</p>`;
+<p>— The Joblify team</p>
+<hr>
+<p style="color:#666;font-size:12px">You are receiving this because you turned on the daily jobs digest on Joblify.
+<a href="${escape(unsubscribeLink)}">Unsubscribe in one click</a>.${postal ? `<br>${escape(postal)}` : ''}</p>`;
 }
 
 function escape(s: string): string {

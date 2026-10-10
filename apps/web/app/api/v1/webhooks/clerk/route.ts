@@ -75,10 +75,22 @@ export async function POST(req: Request) {
       }
       case 'user.deleted': {
         if (!evt.data.id) break;
+        const now = new Date();
+        const gone = await db.user.findUnique({
+          where: { clerkUserId: evt.data.id },
+          select: { id: true },
+        });
         await db.user.updateMany({
           where: { clerkUserId: evt.data.id },
-          data: { deletedAt: new Date() },
+          data: { deletedAt: now, digestOptIn: false },
         });
+        // Same rule as deleteMyAccount: a departed company's postings close now.
+        if (gone) {
+          await db.jobPost.updateMany({
+            where: { companyId: gone.id, deletedAt: null },
+            data: { status: 'ARCHIVED', deletedAt: now },
+          });
+        }
         break;
       }
       case 'organization.created':
@@ -89,13 +101,19 @@ export async function POST(req: Request) {
         break;
       }
       case 'organizationMembership.created': {
-        const org = evt.data.organization;
-        const userId = evt.data.public_user_data?.user_id;
-        if (!org || !userId) break;
-        await db.user.updateMany({
-          where: { clerkUserId: userId },
-          data: { userType: 'COMPANY' },
-        });
+        // Deliberately NOT a role change. This handler used to set
+        // userType = COMPANY for any user who joined any Clerk organization.
+        // The app does not provision organizations (companies are self-serve
+        // User rows, authorised by userType + verification), but if
+        // Organizations is ever enabled in the Clerk dashboard that would let
+        // anyone mint themselves a COMPANY account without a company profile —
+        // and the verification gate used to treat "no profile" as "fine".
+        // Becoming a COMPANY goes through createCompanyProfile and admin
+        // verification only.
+        logger.info(
+          { orgId: evt.data.organization?.id },
+          'clerk organization membership ignored (organizations are not used for roles)',
+        );
         break;
       }
       default:

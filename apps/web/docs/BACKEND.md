@@ -204,19 +204,38 @@ Hard bounces + complaints are suppressed: the Resend webhook sets `User.emailSup
 
 ## File uploads
 
-Vercel Blob with scoped client tokens. Flow:
+Two Vercel Blob stores, split by sensitivity (`lib/storage/blob.ts`): a **private** one for résumés and
+generated CVs, a **public** one for company logos. Nothing personal is ever written with public access.
 
-1. Client posts `{ kind: 'resume', filename, contentType, size }` to `/api/v1/uploads/sign`.
-2. Route Handler verifies session, asserts path prefix matches `resumes/<userId>/`, returns a scoped token.
-3. Client uploads directly to Blob with the token.
-4. Vercel calls `onUploadCompleted` with blob metadata; server writes the `Resume` row.
-5. Workflow trigger: `resume-parse.workflow.ts` parses the file and writes embeddings.
+Résumé flow (browser upload, because the platform body limit is ~4.5 MB and résumés may be 5 MB):
 
-Magic-byte check (`file-type` package) inside the workflow rejects mime mismatches — declared `application/pdf` but the bytes are a JPEG → soft-delete the row and abort.
+1. Browser calls `upload()` with `access: 'private'`; the SDK posts to `/api/v1/uploads/sign`.
+2. The route verifies the session and role, asserts the path is under `resumes/<userId>/`, and returns a
+   scoped token: allowed content types (PDF, .docx), max size, **`addRandomSuffix`**.
+3. The browser uploads straight to the store.
+4. The `registerResume` Server Action then **names** the object: `verifyStoredBlob` pins the host to our
+   store, pins the prefix, and confirms existence through the SDK. The row stores the _store's_ URL,
+   type and size — never the request's. A disallowed or oversized object is deleted, not just refused.
+5. `resume-parse.workflow.ts` runs in `after()`: reads the bytes **through the SDK** (not `fetch`),
+   magic-byte checks them, extracts text under budgets (`lib/resume/extract-text.ts`), parses, embeds.
+
+`uploadResumeDirect` is the server-side alternative for small files; `uploadLogoDirect` is the only
+logo path (≤ 2 MB). In **production** neither falls back to inline `data:` storage — with no store
+configured they return an expected failure. (`data:` locators remain for local development only.)
+
+Reading: résumés are served only by `GET /api/v1/resumes/[id]/file` (owner, or a company with a live
+application that used it), as an attachment. The storage locator never leaves the server.
+
+Deleting: a résumé no application references is erased (row + file) immediately; otherwise it is hidden
+from its owner and removed by the retention sweep once the applications are gone. Account erasure removes
+files before rows.
+
+Magic-byte check (`file-type`) rejects mime mismatches — declared `application/pdf` but the bytes are a
+JPEG → soft-delete the row and abort. Legacy `.doc` (reported as `application/x-cfb`) is not accepted.
 
 ## Error handling
 
-- **Server Actions**: throw. Next propagates the error to the form's `useTransition` callback. Show user-facing text only — never expose stack traces.
+- **Server Actions**: _expected_ failures (validation, rate limit, "already applied", a refused transition) **return** an `ActionResult` — a thrown message is replaced by React's redaction paragraph in production. Unexpected ones (auth, DB) throw. See `lib/action-result.ts`.
 - **Route Handlers**: return `NextResponse.json({ error: 'machine-code', detail: dev-only }, { status: 4xx | 5xx })`.
 - **Workflows**: throw. Workflow retries handle transient errors; deterministic errors (mime mismatch, missing row) should not retry — they raise + log.
 - **AuthError**: thrown by `requireUser` / `requireRole` / `requireSelfOrAdmin`. Caught at the route or layout level (which redirects to `/sign-in`).

@@ -8,6 +8,7 @@ import { requireUser, AuthError } from '@/lib/auth';
 import { withAudit } from '@/lib/audit';
 import { logger } from '@/lib/observability/logger';
 import { respondToInvitation } from './invitations';
+import { clientIp } from '@/lib/security/client-ip';
 
 const ProfileTypeSchema = z.enum(['EMPLOYABLE', 'VIRTUAL_INTERN']);
 
@@ -22,7 +23,7 @@ export async function completeJobSeekerOnboarding(formData: FormData): Promise<v
   const invitationId = formData.get('invitationId');
 
   const h = await headers();
-  const ip = h.get('x-forwarded-for')?.split(',')[0]?.trim() ?? null;
+  const ip = clientIp(h);
   const ua = h.get('user-agent') ?? null;
 
   await withAudit(

@@ -1,7 +1,9 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { z } from 'zod';
 import type { Prisma } from '@prisma/client';
-import { adminClient, INDEX, type JobSearchRecord } from '@/lib/search/algolia';
+import { searchClient, INDEX, type JobSearchRecord } from '@/lib/search/algolia';
+import { salaryOverlapWhere } from '@/lib/search/salary';
+import { clientIp } from '@/lib/security/client-ip';
 import { searchLimit } from '@/lib/ratelimit';
 import { db } from '@/lib/db';
 
@@ -30,7 +32,7 @@ const SearchQuery = z.object({
 });
 
 export async function GET(req: NextRequest) {
-  const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown';
+  const ip = clientIp(req.headers) ?? 'unknown';
   const { success } = await searchLimit(ip);
   if (!success) return NextResponse.json({ error: 'rate-limited' }, { status: 429 });
 
@@ -56,9 +58,11 @@ export async function GET(req: NextRequest) {
   if (workMode) filters.push(`workMode:${workMode}`);
   if (jobType) filters.push(`jobType:${jobType}`);
   if (experienceLevel) filters.push(`experienceLevel:${experienceLevel}`);
-  // Bracket overlapping salary bands: the job's range must intersect the user's.
-  if (salaryMin != null) filters.push(`salaryMax >= ${salaryMin}`);
-  if (salaryMax != null) filters.push(`salaryMin <= ${salaryMax}`);
+  // Bracket overlapping salary bands: the job's range must intersect the
+  // user's. Compared on the ANNUALISED fields — raw salaryMin/Max are in
+  // whatever period the employer chose, and are not comparable to each other.
+  if (salaryMin != null) filters.push(`salaryAnnualMax >= ${salaryMin}`);
+  if (salaryMax != null) filters.push(`salaryAnnualMin <= ${salaryMax}`);
 
   const buildRequest = (indexName: string) => ({
     indexName,
@@ -71,9 +75,13 @@ export async function GET(req: NextRequest) {
   });
 
   async function run(indexName: string): Promise<AlgoliaPage> {
-    const res = await adminClient().search<JobSearchRecord>({
-      requests: [buildRequest(indexName)],
-    });
+    // X-Forwarded-For makes `aroundLatLngViaIP` resolve the *visitor's*
+    // location. Called from a Server Function, Algolia would otherwise see the
+    // datacenter's address and centre every "near me" search there.
+    const res = await searchClient().search<JobSearchRecord>(
+      { requests: [buildRequest(indexName)] },
+      ip !== 'unknown' ? { headers: { 'X-Forwarded-For': ip } } : undefined,
+    );
     return res.results[0] as AlgoliaPage;
   }
 
@@ -95,6 +103,7 @@ export async function GET(req: NextRequest) {
       const where: Prisma.JobPostWhereInput = {
         status: 'PUBLISHED',
         deletedAt: null,
+        company: { deletedAt: null },
         ...(q
           ? {
               OR: [
@@ -112,12 +121,14 @@ export async function GET(req: NextRequest) {
         ...(workMode ? { workMode } : {}),
         ...(jobType ? { jobType } : {}),
         ...(experienceLevel ? { experienceLevel } : {}),
-        ...(salaryMin != null ? { salaryMax: { gte: salaryMin } } : {}),
-        ...(salaryMax != null ? { salaryMin: { lte: salaryMax } } : {}),
+        ...(salaryOverlapWhere(salaryMin, salaryMax) ?? {}),
       };
 
       const orderBy: Prisma.JobPostOrderByWithRelationInput =
         sort === 'salary' ? { salaryMax: 'desc' } : { publishedAt: 'desc' };
+      // Known limit of the fallback: "highest salary" orders by the stored
+      // figure, so mixed pay periods are not strictly comparable here. The
+      // Algolia path sorts on salaryAnnualMax.
 
       const [jobs, total] = await Promise.all([
         db.jobPost.findMany({
@@ -149,6 +160,7 @@ export async function GET(req: NextRequest) {
         salaryMin: j.salaryMin,
         salaryMax: j.salaryMax,
         salaryCurrency: j.salaryCurrency,
+        salaryPeriod: j.salaryPeriod,
         publishedAt: (j.publishedAt ?? j.createdAt).getTime(),
         skills: j.skills.map((s) => s.skill.slug),
       }));

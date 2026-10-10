@@ -4,7 +4,8 @@ import { db } from '@/lib/db';
 import { requireCronAuth } from '@/lib/cron-auth';
 import { reindexJob, drainIndexOutbox } from '@/lib/search/index-job';
 import { runResumeParse } from '@/workflows/resume-parse.workflow';
-import { embedJobPost } from '@/workflows/match-score.workflow';
+import { embedJobPost, runMatchScore } from '@/workflows/match-score.workflow';
+import { MODELS } from '@/lib/ai/gateway';
 import { logger } from '@/lib/observability/logger';
 
 // Every run: (1) re-push recently-updated jobs and remove soft-deleted ones,
@@ -22,6 +23,10 @@ export const maxDuration = 300;
 
 // Per-run bounds for the AI sweep.
 const SWEEP_LIMIT = 20;
+// Re-scoring only does database work (the vectors already exist; cosine is
+// computed in-process), so it can afford a much larger batch than the sweeps
+// above, which each cost a model call.
+const RESCORE_LIMIT = 500;
 // Skip resumes younger than this: their upload-path after() parse is likely
 // still in flight, and double-parsing would waste a Haiku call.
 const SWEEP_MIN_AGE_MS = 10 * 60_000;
@@ -37,6 +42,7 @@ type SweepSummary = {
   jobsEmbedded: number;
   jobsFailed: number;
   stoppedEarly: boolean;
+  applicationsRescored: number;
 };
 
 export async function GET(req: Request) {
@@ -47,9 +53,14 @@ export async function GET(req: Request) {
   const deadline = startedAt + maxDuration * 1000 * SWEEP_DEADLINE_FRACTION;
 
   // `?all=1` backfills every published job (one-off, e.g. after seeding or first
-  // wiring Algolia). Default scans only the last 30min for the scheduled cron.
+  // wiring Algolia). Otherwise the scan covers the cron's own interval: the
+  // window used to be a fixed 30 minutes while the schedule is DAILY, so a job
+  // whose live sync failed hours before the run fell outside it and was never
+  // re-pushed. Default 26h = one daily run plus slack; set
+  // RECONCILE_WINDOW_MINUTES to match the schedule if it is tightened.
   const all = new URL(req.url).searchParams.get('all') === '1';
-  const since = new Date(Date.now() - 30 * 60_000);
+  const windowMinutes = Math.max(5, Number(process.env.RECONCILE_WINDOW_MINUTES) || 26 * 60);
+  const since = new Date(Date.now() - windowMinutes * 60_000);
 
   const recent = await db.jobPost.findMany({
     where: all ? { status: 'PUBLISHED', deletedAt: null } : { updatedAt: { gte: since } },
@@ -97,16 +108,27 @@ async function sweepStrandedAiDerivations(deadline: number): Promise<SweepSummar
     jobsEmbedded: 0,
     jobsFailed: 0,
     stoppedEarly: false,
+    applicationsRescored: 0,
   };
 
-  // Resumes stuck half-processed. Raw SQL: `embedding` is an Unsupported()
-  // pgvector column, so Prisma's typed `where` can't test it for NULL.
+  // Résumés that need work. Raw SQL: `embedding` is an Unsupported() pgvector
+  // column, so Prisma's typed `where` can't test it. A row qualifies when
+  //   - it was never parsed, or has no embedding, or
+  //   - its embedding came from a model other than the current one (vectors
+  //     from different models are not comparable), or
+  //   - it was only parsed by the heuristic fallback (re-parse with the model).
+  // Rows already marked permanently failed (corrupt/oversized/hostile files)
+  // are excluded: retrying them cannot succeed and used to loop to the cap.
   const createdBefore = new Date(Date.now() - SWEEP_MIN_AGE_MS);
   const staleResumes = await db.$queryRaw<Array<{ id: string; parseAttempts: number }>>`
     SELECT id, "parseAttempts"
       FROM resumes
      WHERE "deletedAt" IS NULL
-       AND ("parsedJson" IS NULL OR embedding IS NULL)
+       AND "parseFailedAt" IS NULL
+       AND ("parsedJson" IS NULL
+            OR embedding IS NULL
+            OR "embeddingModel" IS DISTINCT FROM ${MODELS.embedding}
+            OR "parsedJson"->>'_source' = 'heuristic')
        AND "createdAt" < ${createdBefore}
        AND "parseAttempts" < ${MAX_PARSE_ATTEMPTS}
   ORDER BY "createdAt" ASC
@@ -153,16 +175,16 @@ async function sweepStrandedAiDerivations(deadline: number): Promise<SweepSummar
     }
   }
 
-  // Published jobs that never got an embedding (e.g. published before the
-  // publish-time embed existed, or the embed call failed). One cheap embed
-  // call each — no attempts column needed; a failure is retried next sweep
-  // and surfaced via Sentry.
+  // Published jobs with no embedding (published before the publish-time embed
+  // existed, or the embed call failed) or one from a retired model. One cheap
+  // embed call each — no attempts column needed; a failure is retried next
+  // sweep and surfaced via Sentry.
   const unembeddedJobs = await db.$queryRaw<Array<{ id: string }>>`
     SELECT id
       FROM job_posts
      WHERE status = 'PUBLISHED'
        AND "deletedAt" IS NULL
-       AND embedding IS NULL
+       AND (embedding IS NULL OR "embeddingModel" IS DISTINCT FROM ${MODELS.embedding})
   ORDER BY "publishedAt" ASC NULLS FIRST
      LIMIT ${SWEEP_LIMIT}
   `;
@@ -180,6 +202,39 @@ async function sweepStrandedAiDerivations(deadline: number): Promise<SweepSummar
       s.jobsFailed++;
       logger.error({ err, jobId: id }, 'sweep: job embedding failed');
       Sentry.captureException(err, { tags: { jobId: id } });
+    }
+  }
+
+  // Applications with no score, or one produced by a different embedding model.
+  // Only those whose job AND the submitted résumé both carry a current-model
+  // vector are eligible — scoring is pure arithmetic over stored vectors, so
+  // this fills in scores for everything that applied while embeddings were
+  // unavailable, without a single model call.
+  if (!s.stoppedEarly && Date.now() <= deadline) {
+    const toScore = await db.$queryRaw<
+      Array<{ jobPostId: string; jobSeekerId: string; resumeId: string }>
+    >`
+      SELECT a."jobPostId", a."jobSeekerId", a."resumeId"
+        FROM job_applications a
+        JOIN job_posts j ON j.id = a."jobPostId"
+        JOIN resumes r ON r.id = a."resumeId"
+       WHERE (a."matchScore" IS NULL OR a."matchModel" IS DISTINCT FROM ${MODELS.embedding})
+         AND j.embedding IS NOT NULL AND j."embeddingModel" = ${MODELS.embedding}
+         AND r.embedding IS NOT NULL AND r."embeddingModel" = ${MODELS.embedding}
+    ORDER BY a."appliedAt" DESC
+       LIMIT ${RESCORE_LIMIT}
+    `;
+    for (const row of toScore) {
+      if (Date.now() > deadline) {
+        s.stoppedEarly = true;
+        break;
+      }
+      try {
+        if ((await runMatchScore(row)) !== null) s.applicationsRescored++;
+      } catch (err) {
+        logger.error({ err, ...row }, 'sweep: re-scoring failed');
+        Sentry.captureException(err, { tags: { jobId: row.jobPostId } });
+      }
     }
   }
 

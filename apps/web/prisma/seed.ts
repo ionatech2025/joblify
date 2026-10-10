@@ -10,8 +10,7 @@
 // re-run.
 
 import { PrismaClient } from '@prisma/client';
-import { embed } from 'ai';
-import { gateway, MODELS } from '@/lib/ai/gateway';
+import { embedText, toVectorLiteral } from '@/lib/ai/embeddings';
 
 const prisma = new PrismaClient();
 
@@ -850,12 +849,15 @@ async function seedEmbeddings(resumeId: string, jobPostId: string): Promise<void
       SELECT (embedding IS NOT NULL) AS "hasEmbedding" FROM resumes WHERE id = ${resumeId}::uuid
     `;
     if (!resumeRow?.hasEmbedding) {
-      const { embedding } = await embed({
-        model: gateway.textEmbeddingModel(MODELS.embeddingLarge),
-        value: ADA_RESUME_TEXT,
-      });
+      // embedText() requests and VALIDATES the 1536-wide vector the column
+      // holds; the old inline embed() here asked for a 3072-wide one, which
+      // pgvector rejects — the seed's "Skipping demo embeddings" warning was
+      // the same bug production had.
+      const { embedding, model } = await embedText(ADA_RESUME_TEXT);
       await prisma.$executeRaw`
-        UPDATE resumes SET embedding = ${`[${embedding.join(',')}]`}::vector WHERE id = ${resumeId}::uuid
+        UPDATE resumes
+           SET embedding = ${toVectorLiteral(embedding)}::vector, "embeddingModel" = ${model}
+         WHERE id = ${resumeId}::uuid
       `;
     }
 
@@ -867,16 +869,12 @@ async function seedEmbeddings(resumeId: string, jobPostId: string): Promise<void
         where: { id: jobPostId },
         select: { title: true, description: true, requirements: true },
       });
-      const text = `${job.title}\n\n${job.description}\n\n${job.requirements ?? ''}`.slice(
-        0,
-        30_000,
-      );
-      const { embedding } = await embed({
-        model: gateway.textEmbeddingModel(MODELS.embeddingLarge),
-        value: text,
-      });
+      const text = `${job.title}\n\n${job.description}\n\n${job.requirements ?? ''}`;
+      const { embedding, model } = await embedText(text);
       await prisma.$executeRaw`
-        UPDATE job_posts SET embedding = ${`[${embedding.join(',')}]`}::vector WHERE id = ${jobPostId}::uuid
+        UPDATE job_posts
+           SET embedding = ${toVectorLiteral(embedding)}::vector, "embeddingModel" = ${model}
+         WHERE id = ${jobPostId}::uuid
       `;
     }
   } catch (err) {

@@ -53,6 +53,8 @@ export default async function EditJobPage({
     salaryMin: job.salaryMin,
     salaryMax: job.salaryMax,
     salaryCurrency: job.salaryCurrency,
+    salaryPeriod: job.salaryPeriod,
+    locationCountry: job.locationCountry ?? '',
     applicationDeadline: job.applicationDeadline
       ? job.applicationDeadline.toISOString().slice(0, 10)
       : '',

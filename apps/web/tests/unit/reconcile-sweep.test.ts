@@ -13,6 +13,7 @@ const m = vi.hoisted(() => ({
   drainIndexOutbox: vi.fn(),
   runResumeParse: vi.fn(),
   embedJobPost: vi.fn(),
+  runMatchScore: vi.fn(),
   captureException: vi.fn(),
   captureMessage: vi.fn(),
 }));
@@ -30,7 +31,11 @@ vi.mock('@/lib/search/index-job', () => ({
   drainIndexOutbox: m.drainIndexOutbox,
 }));
 vi.mock('@/workflows/resume-parse.workflow', () => ({ runResumeParse: m.runResumeParse }));
-vi.mock('@/workflows/match-score.workflow', () => ({ embedJobPost: m.embedJobPost }));
+vi.mock('@/workflows/match-score.workflow', () => ({
+  embedJobPost: m.embedJobPost,
+  runMatchScore: m.runMatchScore,
+}));
+vi.mock('@/lib/ai/gateway', () => ({ MODELS: { embedding: 'emb-current' } }));
 vi.mock('@sentry/nextjs', () => ({
   captureException: m.captureException,
   captureMessage: m.captureMessage,
@@ -60,6 +65,7 @@ describe('algolia-reconcile sweep', () => {
     m.resumeUpdate.mockResolvedValue({});
     m.runResumeParse.mockResolvedValue(undefined);
     m.embedJobPost.mockResolvedValue([0.1]);
+    m.runMatchScore.mockResolvedValue(0.8);
   });
 
   it('short-circuits with the denial response from requireCronAuth', async () => {
@@ -71,12 +77,18 @@ describe('algolia-reconcile sweep', () => {
     expect(m.jobFindMany).not.toHaveBeenCalled();
   });
 
-  it('selects stranded resumes: NULL fields, >10min old, under the attempt cap, oldest first, limit 20', async () => {
+  it('selects résumés needing work: unparsed, un-embedded, stale-model or heuristic-only — never permanently failed', async () => {
     await GET(req());
     const { sql, params } = rawCall(0);
     expect(sql).toContain('FROM resumes');
     expect(sql).toContain('"deletedAt" IS NULL');
-    expect(sql).toContain('("parsedJson" IS NULL OR embedding IS NULL)');
+    // Permanently-failed files cannot succeed on retry; they used to loop to the cap.
+    expect(sql).toContain('"parseFailedAt" IS NULL');
+    expect(sql).toContain('"parsedJson" IS NULL');
+    expect(sql).toContain('embedding IS NULL');
+    expect(sql).toContain('"embeddingModel" IS DISTINCT FROM');
+    expect(sql).toContain(`"parsedJson"->>'_source' = 'heuristic'`);
+    expect(params).toContain('emb-current');
     expect(sql).toContain('"createdAt" <');
     expect(sql).toContain('"parseAttempts" <');
     expect(sql).toContain('ORDER BY "createdAt" ASC');
@@ -90,13 +102,14 @@ describe('algolia-reconcile sweep', () => {
     expect(params).toContain(20);
   });
 
-  it('selects published, non-deleted jobs with a NULL embedding, oldest first, limit 20', async () => {
+  it('selects published, non-deleted jobs with no (or a stale-model) embedding, oldest first, limit 20', async () => {
     await GET(req());
     const { sql, params } = rawCall(1);
     expect(sql).toContain('FROM job_posts');
     expect(sql).toContain("status = 'PUBLISHED'");
     expect(sql).toContain('"deletedAt" IS NULL');
     expect(sql).toContain('embedding IS NULL');
+    expect(sql).toContain('"embeddingModel" IS DISTINCT FROM');
     expect(sql).toContain('ORDER BY "publishedAt" ASC');
     expect(params).toContain(20);
   });
@@ -152,5 +165,36 @@ describe('algolia-reconcile sweep', () => {
     expect(m.captureException).toHaveBeenCalledWith(expect.any(Error), { tags: { jobId: 'j1' } });
     const body = await res.json();
     expect(body.sweep).toMatchObject({ jobsTried: 2, jobsEmbedded: 1, jobsFailed: 1 });
+  });
+
+  it('re-scores applications that have no score or a stale-model score, using the SUBMITTED résumé', async () => {
+    m.queryRaw
+      .mockResolvedValueOnce([]) // résumés
+      .mockResolvedValueOnce([]) // jobs
+      .mockResolvedValueOnce([{ jobPostId: 'j9', jobSeekerId: 's9', resumeId: 'r9' }]); // to score
+    const res = await GET(req());
+    const { sql, params } = rawCall(2);
+    expect(sql).toContain('FROM job_applications');
+    expect(sql).toContain('"matchScore" IS NULL');
+    expect(sql).toContain('"matchModel" IS DISTINCT FROM');
+    // both vectors must be current-model, or the score would cross a model boundary
+    expect(sql).toContain('j."embeddingModel" =');
+    expect(sql).toContain('r."embeddingModel" =');
+    expect(params).toContain('emb-current');
+    expect(m.runMatchScore).toHaveBeenCalledWith({
+      jobPostId: 'j9',
+      jobSeekerId: 's9',
+      resumeId: 'r9',
+    });
+    const body = await res.json();
+    expect(body.sweep.applicationsRescored).toBe(1);
+  });
+
+  it('scans a window as wide as the cron interval (default 26h), not 30 minutes', async () => {
+    await GET(req());
+    const where = m.jobFindMany.mock.calls[0]![0].where;
+    const hours = (Date.now() - where.updatedAt.gte.getTime()) / 3_600_000;
+    expect(hours).toBeGreaterThan(25.9);
+    expect(hours).toBeLessThan(26.1);
   });
 });

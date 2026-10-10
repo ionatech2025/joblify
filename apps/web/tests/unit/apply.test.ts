@@ -65,6 +65,7 @@ vi.mock('@/lib/email/templates', () => ({
   applicationConfirm: () => ({ subject: 's', text: 't', html: 'h' }),
 }));
 vi.mock('@/lib/observability/logger', () => ({ logger: { info: vi.fn(), warn: vi.fn() } }));
+vi.mock('@sentry/nextjs', () => ({ captureException: vi.fn() }));
 vi.mock('next/cache', () => ({ updateTag: vi.fn() }));
 vi.mock('next/headers', () => ({ headers: async () => new Map() }));
 vi.mock('next/server', () => ({ after: (_fn: () => unknown) => void 0 }));
@@ -99,12 +100,40 @@ describe('submitApplication', () => {
     m.jobFindFirst.mockResolvedValue({
       id: JOB_ID,
       title: 'Engineer',
-      company: { companyProfile: { companyName: 'Acme' } },
+      company: {
+        deletedAt: null,
+        companyProfile: { companyName: 'Acme', verificationStatus: 'VERIFIED' },
+      },
     });
     m.appFindUnique.mockResolvedValue(null);
     m.appCreate.mockResolvedValue({ id: 'app1', status: 'SUBMITTED' });
     m.isEmailSuppressed.mockResolvedValue(false);
     m.send.mockResolvedValue({});
+  });
+
+  it('fails CLOSED: a job whose company has no profile row cannot be applied to', async () => {
+    m.jobFindFirst.mockResolvedValue({
+      id: JOB_ID,
+      title: 'Engineer',
+      company: { deletedAt: null, companyProfile: null },
+    });
+    const res = await submitApplication(fd());
+    expect(res).toMatchObject({ ok: false, error: expect.stringMatching(/unverified/i) });
+    expect(m.appCreate).not.toHaveBeenCalled();
+  });
+
+  it('rejects a job whose company account has been deleted', async () => {
+    m.jobFindFirst.mockResolvedValue({
+      id: JOB_ID,
+      title: 'Engineer',
+      company: {
+        deletedAt: new Date(),
+        companyProfile: { companyName: 'Acme', verificationStatus: 'VERIFIED' },
+      },
+    });
+    const res = await submitApplication(fd());
+    expect(res.ok).toBe(false);
+    expect(m.appCreate).not.toHaveBeenCalled();
   });
 
   it('rejects detected bots before creating anything', async () => {
@@ -166,7 +195,10 @@ describe('submitApplication', () => {
       id: JOB_ID,
       title: 'Engineer',
       applicationDeadline: new Date('2020-01-01T00:00:00Z'),
-      company: { companyProfile: { companyName: 'Acme' } },
+      company: {
+        deletedAt: null,
+        companyProfile: { companyName: 'Acme', verificationStatus: 'VERIFIED' },
+      },
     });
     expect(await submitApplication(fd())).toMatchObject({
       ok: false,
@@ -180,7 +212,10 @@ describe('submitApplication', () => {
       id: JOB_ID,
       title: 'Engineer',
       applicationDeadline: new Date('2099-01-01T00:00:00Z'),
-      company: { companyProfile: { companyName: 'Acme' } },
+      company: {
+        deletedAt: null,
+        companyProfile: { companyName: 'Acme', verificationStatus: 'VERIFIED' },
+      },
     });
     await expect(submitApplication(fd())).resolves.toEqual({ ok: true, data: undefined });
     expect(m.appCreate).toHaveBeenCalledTimes(1);

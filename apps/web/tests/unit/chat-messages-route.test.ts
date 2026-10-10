@@ -97,7 +97,8 @@ describe('GET /api/v1/chats/[id]/messages', () => {
     expect(body.messages[0].senderName).toBe('Acme Inc.');
   });
 
-  it('falls back to the address for anyone who is not the company', async () => {
+  it('shows a nameless participant by e-mail ONLY to the owning company', async () => {
+    m.currentUser.mockResolvedValue({ id: AREA.companyId });
     m.areaFindFirst.mockResolvedValue({
       ...AREA,
       messages: [
@@ -110,6 +111,25 @@ describe('GET /api/v1/chats/[id]/messages', () => {
     const res = await GET(new Request('http://t/'), { params });
     const body = await res.json();
     expect(body.messages[0].senderName).toBe('ada@x.test');
+  });
+
+  it('never shows one candidate another candidate’s e-mail address', async () => {
+    // A shortlisted candidate polling a shared job chat. The other candidate
+    // has no name on file; their address must not become a display name.
+    m.currentUser.mockResolvedValue({ id: 'seeker2' });
+    m.areaFindFirst.mockResolvedValue({
+      ...AREA,
+      messages: [
+        row({
+          senderId: 'seeker1',
+          sender: { firstName: null, lastName: null, email: 'ada@x.test' },
+        }),
+      ],
+    });
+    const res = await GET(new Request('http://t/'), { params });
+    const body = await res.json();
+    expect(body.messages[0].senderName).toBe('Participant');
+    expect(JSON.stringify(body)).not.toContain('ada@x.test');
   });
 
   it('prefers a real name over either fallback', async () => {

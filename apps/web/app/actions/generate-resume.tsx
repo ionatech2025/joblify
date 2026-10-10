@@ -6,15 +6,16 @@ import type { Prisma } from '@prisma/client';
 import { requireRole } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { withAudit } from '@/lib/audit';
-import { put, resumePathPrefix } from '@/lib/storage/blob';
+import { putStored, resumePathPrefix, storeConfigured } from '@/lib/storage/blob';
 import { ResumeDocument, type ResumeData } from '@/lib/resume/resume-document';
+import { clientIp } from '@/lib/security/client-ip';
 
 // JOB_UC_05.0: builds a resume PDF from the jobseeker's own profile data
 // (headline, bio, skills, work experience, education, certifications)
 // instead of requiring a pre-made file upload. The generated PDF is stored
 // through the same Resume model as an uploaded file, so it shows up
 // alongside uploads in "My resumes" with no separate UI needed.
-export async function generateResume(): Promise<{ id: string; fileBlobUrl: string }> {
+export async function generateResume(): Promise<{ id: string }> {
   const user = await requireRole('JOB_SEEKER');
 
   const profile = await db.jobSeekerProfile.findUnique({
@@ -49,13 +50,26 @@ export async function generateResume(): Promise<{ id: string; fileBlobUrl: strin
 
   const pdfBuffer = await renderToBuffer(<ResumeDocument data={data} />);
 
-  const blob = await put(`${resumePathPrefix(user.id)}generated-${Date.now()}.pdf`, pdfBuffer, {
-    access: 'public',
-    contentType: 'application/pdf',
-  });
+  // Private store, same as an uploaded résumé. The stored locator is only ever
+  // read back through the authenticated route (app/api/v1/resumes/[id]/file).
+  let locator: string;
+  if (storeConfigured('private')) {
+    const stored = await putStored(
+      'private',
+      `${resumePathPrefix(user.id)}generated.pdf`,
+      pdfBuffer,
+      'application/pdf',
+    );
+    locator = stored.url;
+  } else if (process.env.NODE_ENV !== 'production') {
+    // Local development with no Blob store only.
+    locator = `data:application/pdf;base64,${pdfBuffer.toString('base64')}`;
+  } else {
+    throw new Error('File storage is not configured.');
+  }
 
   const h = await headers();
-  const ip = h.get('x-forwarded-for')?.split(',')[0]?.trim() ?? null;
+  const ip = clientIp(h);
   const ua = h.get('user-agent') ?? null;
 
   return withAudit(
@@ -66,12 +80,20 @@ export async function generateResume(): Promise<{ id: string; fileBlobUrl: strin
         data: {
           userId: user.id,
           title: 'Generated resume',
-          fileBlobUrl: blob.url,
+          fileBlobUrl: locator,
           fileMime: 'application/pdf',
           fileSizeBytes: pdfBuffer.length,
-          parsedJson: data as unknown as Prisma.InputJsonValue,
+          // Shaped like a ParsedResume (summary/skills/experience) so the
+          // embedding builder can use it, and tagged so it is never mistaken
+          // for model output.
+          parsedJson: {
+            ...data,
+            fullName: data.name,
+            summary: data.bio,
+            _source: 'profile',
+          } as unknown as Prisma.InputJsonValue,
         },
-        select: { id: true, fileBlobUrl: true },
+        select: { id: true },
       }),
   );
 }

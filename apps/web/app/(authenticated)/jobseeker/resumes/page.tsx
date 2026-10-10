@@ -15,7 +15,6 @@ export default async function ResumesPage() {
     select: {
       id: true,
       title: true,
-      fileBlobUrl: true,
       parsedJson: true,
       parseFailedAt: true,
       createdAt: true,
@@ -24,7 +23,6 @@ export default async function ResumesPage() {
   const resumes = rows.map((r) => ({
     id: r.id,
     title: r.title,
-    fileBlobUrl: r.fileBlobUrl,
     parsed: r.parsedJson != null,
     parseFailed: r.parseFailedAt != null,
     createdAt: r.createdAt.toISOString(),
@@ -35,7 +33,8 @@ export default async function ResumesPage() {
       <ControlPanel breadcrumb={<Breadcrumb items={[{ label: 'Resumes' }]} />} />
       <div className="mx-auto w-full max-w-5xl px-3 py-3 sm:px-4">
         <p className="text-fg-muted mb-2 text-[13px]">
-          Upload a PDF or Word resume. We parse it to autofill applications and score your matches.
+          Upload a PDF or Word (.docx) resume. We parse it to autofill applications and score your
+          matches.
         </p>
         <p className="m-0 text-sm text-fg-muted">
           Don't have a resume file handy?{' '}

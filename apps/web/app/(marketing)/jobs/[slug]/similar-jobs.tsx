@@ -19,6 +19,7 @@ export async function SimilarJobs({
       id: { not: jobId },
       status: 'PUBLISHED',
       deletedAt: null,
+      company: { deletedAt: null },
       ...(skillIds.length
         ? { OR: [{ skills: { some: { skillId: { in: skillIds } } } }, { industry }] }
         : { industry }),

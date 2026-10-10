@@ -18,8 +18,18 @@ describe('savedSearchWhere', () => {
     expect(savedSearchWhere('workMode=BOGUS&jobType=')).toEqual({});
   });
 
-  it('brackets overlapping salary bands like the search route', () => {
-    expect(savedSearchWhere('salaryMin=100000&salaryMax=150000')).toEqual({
+  it('brackets overlapping salary bands like the search route — on annualised pay', () => {
+    const where = savedSearchWhere('salaryMin=100000&salaryMax=150000');
+    const or = (where.AND as Array<{ OR: Array<Record<string, unknown>> }>)[0]!.OR;
+    // A job priced per month (12 000–13 000) is a 144 000–156 000 job, so it
+    // must overlap this band; the old raw comparison missed it entirely.
+    expect(or).toContainEqual({
+      salaryPeriod: 'MONTH',
+      salaryMax: { gte: Math.ceil(100000 / 12) },
+      salaryMin: { lte: Math.floor(150000 / 12) },
+    });
+    expect(or).toContainEqual({
+      salaryPeriod: 'YEAR',
       salaryMax: { gte: 100000 },
       salaryMin: { lte: 150000 },
     });

@@ -101,7 +101,12 @@ export function ApplyForm({
         />
         <span>
           I agree my application data (resume, cover letter, profile) may be shared with this
-          employer.
+          employer, and I understand a similarity score is computed from my resume and shown to the
+          employer and to me.{' '}
+          <a href="/legal/ai" className="underline" target="_blank" rel="noopener noreferrer">
+            How this works
+          </a>
+          . No application is decided automatically.
         </span>
       </label>
 
