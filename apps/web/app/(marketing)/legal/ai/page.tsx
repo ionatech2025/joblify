@@ -10,7 +10,7 @@ export default function AiUsePage() {
   return (
     <main>
       <PageHeader eyebrow="Legal" title="How we use AI" width="max-w-3xl" />
-      <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
+      <div className="prose-links mx-auto max-w-3xl px-4 py-10 sm:px-6">
         <p>
           AI is used in four places. In none of them does it decide anything about you on its own:
           people — you, and the employer — make every hiring decision.
@@ -25,10 +25,9 @@ export default function AiUsePage() {
           </li>
           <li>
             <strong>Match score.</strong> The text of your résumé and of a job posting are each
-            converted to a numerical representation, and the similarity between the two is shown
-            to you and to the employer as a percentage. It is a rough indicator of topical
-            overlap — <em>not</em> a judgement of your ability, and not calibrated to hiring
-            outcomes.
+            converted to a numerical representation, and the similarity between the two is shown to
+            you and to the employer as a percentage. It is a rough indicator of topical overlap —{' '}
+            <em>not</em> a judgement of your ability, and not calibrated to hiring outcomes.
           </li>
           <li>
             <strong>Job skills.</strong> For postings, a model lists the skills a role asks for.
@@ -44,8 +43,8 @@ export default function AiUsePage() {
           <li>
             The score can be wrong. It rewards similar wording, so it can under-rate people whose
             experience is described differently, in another language, or in an unusual format, and
-            it can be influenced by keyword choice. Scanned or image-only résumés may not be read
-            at all.
+            it can be influenced by keyword choice. Scanned or image-only résumés may not be read at
+            all.
           </li>
           <li>
             If a résumé cannot be read by the AI model, a simpler rule-based reader is used, which

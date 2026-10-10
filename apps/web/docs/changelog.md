@@ -1,5 +1,34 @@
 # Changelog
 
+## 2026-10-10 — Live responsive / UX / SEO verification pass
+
+Measured against the production URL with Lighthouse 13.5 (mobile and desktop, 14 runs), the Vercel
+CLI, and a new Playwright gate that loads every route at 11 viewports
+(`tests/e2e/responsive.spec.ts`). The Lighthouse gate had only ever run the _desktop_ preset.
+
+- **Layout shift.** The footer sat in view while `/jobs`, job pages and company pages streamed in,
+  then was pushed a page down — CLS 0.41 on a throttled mobile run of a job page, up to 0.66 on
+  `/jobs`. The loading shells now reserve the body with the house skeletons and keep the footer
+  below the fold (`min-h-svh`).
+- **iOS input zoom.** The shared form controls were 14 px, so iOS Safari zoomed the page on focus
+  (and did not zoom back). `text-base sm:text-sm`: 16 px on phones, unchanged from `sm` up.
+- **Crawler metadata.** Async metadata was streamed into `<body>` for every user agent outside
+  Next's default bot list — Googlebot and the AI answer-engine crawlers (OAI-SearchBot,
+  PerplexityBot, Claude-SearchBot) got `<title>` and the description ~34 KB deep. `htmlLimitedBots`
+  now covers them. No `<link rel="canonical">` existed on any route; the root layout now emits a
+  per-route canonical with the query string stripped.
+- **Links in prose** relied on colour alone (WCAG 1.4.1) on the legal and about pages. `.prose-links`
+  underlines them; the axe gate now scans those pages, which was a blind spot.
+- **Globe** stops scheduling animation frames when scrolled off-screen or the tab is hidden (it
+  previously kept waking the main thread ~60×/s for the rest of the visit).
+- **Node engine pinned to `24.x`** — `>=24.0.0` would have let Vercel move production to Node 26
+  the day it ships.
+- **CI.** Dependabot runs skip the secret-dependent preview deploy; runners pinned to
+  `ubuntu-24.04` ahead of `ubuntu-latest` moving to 26 on 2026-10-19.
+- **Not fixable from the repo:** the Clerk _development_ instance costs every first visit a
+  four-hop redirect (1.9–2.5 s) and sets two third-party cookies (Best Practices 77) — see
+  REMAINING_STEPS.md §0b.
+
 ## 2026-10-10 — Hardening pass (security, privacy, AI correctness, supply chain)
 
 Driven by a full audit against current standards (OWASP Top 10:2025, OWASP LLM Top 10:2025, GDPR/ePrivacy,

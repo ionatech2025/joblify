@@ -49,8 +49,18 @@ const CLERK_DARK = {
 
 // Frozen at module scope so the object identity is stable across renders and
 // Clerk only re-applies styles when the theme genuinely flips.
-const APPEARANCE_LIGHT = { variables: CLERK_LIGHT };
-const APPEARANCE_DARK = { variables: CLERK_DARK };
+//
+// Clerk's inputs render at 13px by default, and iOS Safari zooms the page when
+// a focused field is under 16px (and does not zoom back). Touch pointers and
+// narrow viewports get 16px; desktop keeps Clerk's density.
+const CLERK_ELEMENTS = {
+  formFieldInput: {
+    '@media (pointer: coarse), (max-width: 639px)': { fontSize: '16px' },
+  },
+} as const;
+
+const APPEARANCE_LIGHT = { variables: CLERK_LIGHT, elements: CLERK_ELEMENTS };
+const APPEARANCE_DARK = { variables: CLERK_DARK, elements: CLERK_ELEMENTS };
 
 // Root Clerk context, built directly on @clerk/clerk-react — the library
 // @clerk/nextjs re-exports every component and hook from, so <SignedIn>,

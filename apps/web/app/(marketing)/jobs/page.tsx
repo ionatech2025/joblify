@@ -1,5 +1,6 @@
 import { Suspense } from 'react';
 import { JobsSearch } from './jobs-search';
+import { JobsSearchSkeleton } from './jobs-search-skeleton';
 import { PageHeader } from '@/app/components/ui/ambient';
 
 export const metadata = {
@@ -8,8 +9,10 @@ export const metadata = {
 };
 
 export default function JobsPage() {
+  // min-h-svh keeps the footer below the fold until the results arrive, so their
+  // late arrival cannot shift anything that is on screen.
   return (
-    <main>
+    <main className="min-h-svh">
       <PageHeader
         eyebrow="Open roles"
         title="Search jobs"
@@ -17,7 +20,7 @@ export default function JobsPage() {
       />
       <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
         {/* JobsSearch reads useSearchParams() — must sit inside a Suspense boundary. */}
-        <Suspense fallback={<p className="text-fg-subtle">Loading…</p>}>
+        <Suspense fallback={<JobsSearchSkeleton />}>
           <JobsSearch />
         </Suspense>
       </div>

@@ -64,6 +64,19 @@ real traffic.
     verified without them (unit, type, lint, build, bundle budget). Authenticated Playwright suites
     still self-skip without `E2E_*`.
 
+### Found by the live verification, not fixed in code (2026-10-10)
+
+Measured against the production URL; the fixed items are in the changelog. These are the ones
+that need a decision or a feature-sized change:
+
+| Finding                                                                                                                                                              | Evidence                                                                                                                                                                      | Suggested fix                                                                                                                                                                                                                         |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **`/jobs` results are client-rendered.** With JavaScript off the page is a filter form with no listings, so crawlers that do not execute JS see no links from it.    | `responsive.spec.ts › jobs listing is server-rendered` (marked `test.fail`; goes red when closed). JDs themselves are server-rendered and in the sitemap.                     | Extract the search in `app/api/v1/jobs/search/route.ts` into `lib/search`, run it for the first page in the route and pass it to `useQuery` as `initialData`. Also removes the fetch waterfall that sits under the LCP on this route. |
+| **The Lighthouse gate is desktop-only** (`lighthouserc.js` → `preset: 'desktop'`). Mobile is where Google scores Core Web Vitals and where every defect above lived. | Mobile preset, 14 live runs: Performance 32–71, LCP 2.4–4.3 s, TBT 0.6–1.6 s (146 s before the globe fix, software GL), CLS up to 0.41. Desktop: 38–79.                       | Add a second `collect` run with the mobile preset at `warn`, thresholds set just under the baseline so it ratchets, not nags. Costs ~3 min per PR.                                                                                    |
+| **Mobile main-thread cost on public pages**                                                                                                                          | Even with the globe static: TBT 1.1–2.2 s at 4× CPU. Top two items on `/sign-in`: one first-party chunk (775 ms scripting) and `clerk-js` (~890 ms), 157 KiB unused.          | See §0b — scope `ClerkProvider`, or load the headless variant on marketing routes.                                                                                                                                                    |
+| **`<title>`/description are streamed into `<body>` for browsers**                                                                                                    | Lighthouse SEO flags `meta-description` on JD pages (92). Googlebot and the AI answer crawlers now get them in `<head>`; browsers and Lighthouse's UA still stream by design. | Accept, or set `htmlLimitedBots: /.*/` to make metadata blocking for everyone (costs first paint on dynamic routes).                                                                                                                  |
+| **Unknown job slug is HTTP 200** (404 UI + `noindex`)                                                                                                                | Documented contract in `critical-paths.spec.ts`: PPR commits the shell before the streamed body can `notFound()`.                                                             | Accept; `noindex` covers the soft-404 risk.                                                                                                                                                                                           |
+
 ### Deliberately deferred (with the reason)
 
 | Item                                                                             | Why not now                                                                                                                                                                                                                                                                                                                                                                             |
@@ -132,6 +145,25 @@ callback logs six `postMessage` origin mismatches — the frontend API is
 instances carry strict usage limits. See [CLERK-PRODUCTION.md](../../docs/CLERK-PRODUCTION.md);
 remember to add the production `clerk.<domain>` to `script-src`/`connect-src`/`frame-src`
 in `next.config.ts` at the same time.
+
+**Measured on the live site, 2026-10-10 (Lighthouse 13.5, mobile preset, 14 runs).** This is
+now the single largest item on the performance and Best Practices scores, not a licensing
+footnote:
+
+- **Every first visit is a four-hop redirect** — `/` → `…clerk.accounts.dev/v1/client/handshake`
+  → `/?__clerk_handshake=…` → `/` — which Lighthouse's `redirects` audit prices at
+  **1.9–2.5 s** of the critical path on every page. It is why LCP is 3.9–4.3 s on `/jobs`,
+  `/sign-in` and `/sign-up` (TTFB 1.6–2.4 s of that). A production instance serves the
+  frontend API from `clerk.<domain>` on the same site, so a signed-out first visit needs no
+  handshake.
+- **Two third-party cookies** are set on every page, which is what holds Best Practices at
+  **77** everywhere (`third-party-cookies`, `inspector-issues`; 100 is otherwise within
+  reach). First-party on a production instance.
+- Not fixed by the keys, but visible in the same runs: `clerk-js` is ~0.9 s of main-thread
+  time at 4× CPU and ~157 KiB of unused JavaScript on every public page, because
+  `ClerkProvider` wraps the whole tree. Scoping it to the routes that render auth UI (or
+  loading the headless variant on marketing pages) is a design decision, so it is listed
+  here rather than done.
 
 ### 0c. Vercel Web Analytics is not enabled for the project
 

@@ -5,11 +5,12 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useState, useTransition } from 'react';
 import { saveProfile } from '@/app/actions/profile';
-import { Field, Input, Select, Textarea } from '@/app/components/ui/form';
+import { Checkbox, Field, Input, Select, Textarea } from '@/app/components/ui/form';
 import { Button } from '@/app/components/ui/button';
 import { useProfileDraftStore } from '@/lib/stores/profile-draft';
 import { useFormDraft } from '@/lib/use-form-draft';
 import { toast } from '@/lib/stores/ui';
+import { MAX_PROFILE_SKILLS, PROFILE_SKILLS_LIMIT_MESSAGE } from '@/lib/profile-limits';
 
 const ProfileFormSchema = z
   .object({
@@ -69,7 +70,10 @@ const ProfileFormSchema = z
       .refine((val) => !val || z.string().url().safeParse(val).success, {
         message: 'Invalid portfolio URL (e.g. https://github.com/yourname)',
       }),
-    skillSlugs: z.array(z.string()).max(30).default([]),
+    skillSlugs: z
+      .array(z.string())
+      .max(MAX_PROFILE_SKILLS, PROFILE_SKILLS_LIMIT_MESSAGE)
+      .default([]),
   })
   .superRefine((data, ctx) => {
     if (data.profileType === 'EMPLOYABLE') {
@@ -128,7 +132,8 @@ export function ProfileForm({
       } catch (err) {
         let message = err instanceof Error ? err.message : 'Save failed.';
         if (message.includes('Server Components render') || message.includes('digest')) {
-          message = 'Please check that all required fields (Bio, Education, and Skills) are filled in properly.';
+          message =
+            'Please check that all required fields (Bio, Education, and Skills) are filled in properly.';
         }
         setError(message);
         toast.error("Couldn't save your profile", message);
@@ -188,10 +193,13 @@ export function ProfileForm({
         </legend>
         <div className="grid grid-cols-2 gap-x-4 gap-y-2 rounded-control border border-border-strong bg-surface p-3 sm:grid-cols-3">
           {allSkills.map((skill) => (
-            <label key={skill.slug} className="flex items-center gap-2 text-sm text-fg-muted">
-              <input type="checkbox" value={skill.slug} {...register('skillSlugs')} />
-              {skill.label}
-            </label>
+            <Checkbox
+              key={skill.slug}
+              value={skill.slug}
+              label={skill.label}
+              className="py-1"
+              {...register('skillSlugs')}
+            />
           ))}
         </div>
         {errors.skillSlugs?.message && (
@@ -237,12 +245,7 @@ export function ProfileForm({
           hint="Optional 10-digit mobile number"
           error={errors.phone?.message}
         >
-          <Input
-            type="tel"
-            {...register('phone')}
-            autoComplete="tel"
-            placeholder="0743535678"
-          />
+          <Input type="tel" {...register('phone')} autoComplete="tel" placeholder="0743535678" />
         </Field>
       </div>
 

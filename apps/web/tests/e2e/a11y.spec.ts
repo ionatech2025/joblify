@@ -25,6 +25,15 @@ const DEFAULT_PAGES = [
   { path: '/companies', label: 'companies' },
   { path: '/sign-in', label: 'sign-in' },
   { path: '/sign-up', label: 'sign-up' },
+  // Prose pages carry inline links, which is where colour-only link styling
+  // (axe `link-in-text-block`) shows up. A Lighthouse run caught it on
+  // /legal/privacy because nothing here scanned these pages.
+  { path: '/legal/privacy', label: 'privacy' },
+  { path: '/legal/terms', label: 'terms' },
+  { path: '/legal/ai', label: 'ai use' },
+  { path: '/legal/processors', label: 'processors' },
+  { path: '/accessibility', label: 'accessibility statement' },
+  { path: '/about', label: 'about' },
 ];
 
 // Authenticated surfaces — the gap tracked in docs/REMAINING_STEPS.md. They need

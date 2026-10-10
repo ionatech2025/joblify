@@ -46,6 +46,7 @@ export function Globe() {
 
     let width = 0;
     let raf = 0;
+    let phi = 0;
     let globe: ReturnType<typeof createGlobe> | null = null;
 
     // Capped rather than the raw value: a hardcoded 2 renders 4x the pixels a
@@ -62,11 +63,32 @@ export function Globe() {
     // record spins up a fresh WebGL context each time, exhausts the browser's
     // context limit and starves the main thread.
     let builtDark: boolean | null = null;
-    // The rAF loop keeps recomputing the globe's rotation every frame even
-    // while the tab is backgrounded, burning CPU/battery for no visible
-    // result. Skip the actual update work (but keep the loop scheduled, so it
-    // resumes instantly) whenever the tab is hidden.
-    let hidden = document.hidden;
+
+    // The loop runs only while the globe can be seen: tab visible, canvas in the
+    // viewport, motion allowed. It used to keep re-scheduling
+    // requestAnimationFrame every frame while hidden or scrolled away (skipping
+    // only the draw), which still woke the main thread ~60x/s for the rest of
+    // the visit once the user had scrolled past the hero — battery and INP cost
+    // for a decorative element nobody can see. Now it is really stopped and
+    // restarted by the observers below, continuing from the same rotation.
+    let inView = true;
+    let running = false;
+
+    const frame = () => {
+      phi += 0.0035;
+      globe?.update({ phi, width: width * dpr, height: width * dpr });
+      raf = requestAnimationFrame(frame);
+    };
+    const syncLoop = () => {
+      const shouldRun = globe !== null && !motion.matches && inView && !document.hidden;
+      if (shouldRun && !running) {
+        running = true;
+        raf = requestAnimationFrame(frame);
+      } else if (!shouldRun && running) {
+        running = false;
+        cancelAnimationFrame(raf);
+      }
+    };
 
     // Rebuilt (not just re-styled) on theme or motion-preference change; both
     // are baked into the instance. Doing it imperatively rather than through
@@ -76,15 +98,15 @@ export function Globe() {
       if (!force && dark === builtDark) return;
       builtDark = dark;
 
+      running = false;
       cancelAnimationFrame(raf);
       globe?.destroy();
 
-      let phi = 0;
       globe = createGlobe(canvas, {
         devicePixelRatio: dpr,
         width: width * dpr,
         height: width * dpr,
-        phi: 0,
+        phi,
         theta: 0.25,
         mapSamples: 12000,
         markers: MARKERS,
@@ -96,16 +118,8 @@ export function Globe() {
         // reads as a globe, and never start the rAF loop. CSS can't reach a
         // canvas animation, so this is the only place it can be honoured.
         globe.update({ phi: 0.6, width: width * dpr, height: width * dpr });
-      } else {
-        const tick = () => {
-          if (!hidden) {
-            phi += 0.0035;
-            globe?.update({ phi, width: width * dpr, height: width * dpr });
-          }
-          raf = requestAnimationFrame(tick);
-        };
-        raf = requestAnimationFrame(tick);
       }
+      syncLoop();
       requestAnimationFrame(() => {
         canvas.style.opacity = '1';
       });
@@ -117,10 +131,12 @@ export function Globe() {
       if (motion.matches) globe?.update({ phi: 0.6, width: width * dpr, height: width * dpr });
     };
     window.addEventListener('resize', onResize);
-    const onVisibilityChange = () => {
-      hidden = document.hidden;
-    };
-    document.addEventListener('visibilitychange', onVisibilityChange);
+    document.addEventListener('visibilitychange', syncLoop);
+    const viewObserver = new IntersectionObserver(([entry]) => {
+      inView = entry?.isIntersecting ?? true;
+      syncLoop();
+    });
+    viewObserver.observe(canvas);
     width = canvas.offsetWidth;
 
     build(true);
@@ -136,10 +152,12 @@ export function Globe() {
     });
 
     return () => {
+      running = false;
       cancelAnimationFrame(raf);
       globe?.destroy();
       window.removeEventListener('resize', onResize);
-      document.removeEventListener('visibilitychange', onVisibilityChange);
+      document.removeEventListener('visibilitychange', syncLoop);
+      viewObserver.disconnect();
       motion.removeEventListener('change', onMotionChange);
       themeObserver.disconnect();
     };

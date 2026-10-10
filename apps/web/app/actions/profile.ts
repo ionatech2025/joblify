@@ -8,6 +8,7 @@ import { withAudit } from '@/lib/audit';
 import { tags } from '@/lib/cache';
 import { logger } from '@/lib/observability/logger';
 import { clientIp } from '@/lib/security/client-ip';
+import { MAX_PROFILE_SKILLS, PROFILE_SKILLS_LIMIT_MESSAGE } from '@/lib/profile-limits';
 
 export const ProfileSchema = z.object({
   profileType: z.enum(['EMPLOYABLE', 'VIRTUAL_INTERN']),
@@ -57,7 +58,7 @@ export const ProfileSchema = z.object({
     .refine((val) => !val || z.string().url().safeParse(val).success, {
       message: 'Invalid portfolio URL',
     }),
-  skillSlugs: z.array(z.string()).max(30).default([]),
+  skillSlugs: z.array(z.string()).max(MAX_PROFILE_SKILLS, PROFILE_SKILLS_LIMIT_MESSAGE).default([]),
 });
 
 export type ProfileInput = z.infer<typeof ProfileSchema>;

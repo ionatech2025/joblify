@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useUiStore } from '@/lib/stores/ui';
 import { useHydrated } from '@/lib/use-hydrated';
 
@@ -60,8 +60,41 @@ export function CookieBanner() {
   // removes.
   if (!hydrated || !isOpen || storedConsent()) return null;
 
+  return <Banner decide={decide} />;
+}
+
+function Banner({ decide }: { decide: (choice: ConsentChoice) => void }) {
+  const ref = useRef<HTMLElement>(null);
+
+  // The banner is position:fixed, so it sits on top of whatever is at the
+  // bottom of the viewport — including the element a Tab press just focused
+  // (the footer links were reachable only underneath it: WCAG 2.2 SC 2.4.11
+  // Focus Not Obscured). Publish the space it takes; globals.css turns that
+  // into scroll-padding-bottom (so scrolling a focused element into view stops
+  // above the banner) and bottom padding (so the end of the page can scroll
+  // clear of it). Removed again as soon as the banner goes.
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const root = document.documentElement;
+    const publish = () =>
+      root.style.setProperty(
+        '--consent-banner-h',
+        // + bottom-4 (16px) and a little slack so focus rings are not clipped.
+        `${Math.ceil(el.getBoundingClientRect().height) + 24}px`,
+      );
+    publish();
+    const observer = new ResizeObserver(publish);
+    observer.observe(el);
+    return () => {
+      observer.disconnect();
+      root.style.removeProperty('--consent-banner-h');
+    };
+  }, []);
+
   return (
     <aside
+      ref={ref}
       // No role="dialog" here: <aside>'s implicit role is `complementary`, and
       // ARIA forbids overriding it with `dialog` (aria-allowed-role) — this
       // banner doesn't trap focus or block the page like a real dialog does,

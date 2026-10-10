@@ -1,6 +1,7 @@
 import type { NextConfig } from 'next';
 import { withSentryConfig } from '@sentry/nextjs';
 import { withBotId } from 'botid/next/config';
+import { HTML_LIMITED_BOTS } from './lib/seo/html-limited-bots';
 
 /**
  * Content Security Policy.
@@ -101,6 +102,9 @@ const cspReportOnly = reportUri
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  // Crawlers that get <title>/<meta>/canonical in <head> rather than streamed
+  // into <body>; see lib/seo/html-limited-bots.ts for the list and why.
+  htmlLimitedBots: HTML_LIMITED_BOTS,
   poweredByHeader: false,
   // cacheComponents enables PPR + the 'use cache' directive (Next 16 merged the
   // former experimental.ppr into this flag and promoted it out of experimental).

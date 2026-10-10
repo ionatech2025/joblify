@@ -61,7 +61,7 @@ export function ThemeToggle({ className }: { className?: string }) {
           aria-label="Change theme"
           title="Change theme"
           className={cn(
-            'text-fg-muted hover:bg-surface-sunken hover:text-fg border-border focus-visible:ring-brand focus-visible:ring-offset-canvas data-[state=open]:bg-surface-sunken data-[state=open]:text-fg grid size-9 shrink-0 place-items-center rounded-full border transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none',
+            'text-fg-muted hover:bg-surface-sunken hover:text-fg border-border focus-visible:ring-brand focus-visible:ring-offset-canvas data-[state=open]:bg-surface-sunken data-[state=open]:text-fg grid size-[36px] shrink-0 place-items-center rounded-full border transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none',
             className,
           )}
         >
