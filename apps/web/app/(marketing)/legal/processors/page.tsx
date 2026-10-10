@@ -1,4 +1,5 @@
 import { PageHeader } from '@/app/components/ui/ambient';
+import { groqTasks, listTasks } from '@/lib/ai/groq-config';
 
 export const metadata = { title: 'Data processors' };
 
@@ -9,6 +10,38 @@ export const metadata = { title: 'Data processors' };
 // in each row to the region this deployment really uses. Until it is set the
 // page says so rather than guessing.
 const NOT_PUBLISHED = 'Not yet published';
+
+// Which AI processor receives what is decided by the same switches that route
+// the calls (lib/ai/groq-config.ts), so this page cannot say Groq is used when
+// it is not, or the reverse. Groq is called directly with our own account; the
+// Gateway is the route for everything else and the fallback when a Groq model is
+// unavailable, so a task on Groq can still reach the Gateway's providers.
+function aiRows() {
+  const onGroq = groqTasks();
+  if (onGroq.length === 0) {
+    return [
+      {
+        name: 'AI model providers via Vercel AI Gateway',
+        purpose:
+          'AI features (résumé reading, job skill extraction, bio coach, match score) — see How we use AI',
+        region: process.env.NEXT_PUBLIC_REGION_AI,
+      },
+    ];
+  }
+  return [
+    {
+      name: 'Groq',
+      purpose: `AI inference, called directly, for ${listTasks(onGroq)} — the text of what you submit to those features is sent to it. See How we use AI`,
+      region: process.env.NEXT_PUBLIC_REGION_GROQ,
+    },
+    {
+      name: 'AI model providers via Vercel AI Gateway',
+      purpose:
+        'Match score and the other AI features not listed under Groq, and the fallback if a Groq model is unavailable — see How we use AI',
+      region: process.env.NEXT_PUBLIC_REGION_AI,
+    },
+  ];
+}
 
 const PROCESSORS = [
   {
@@ -38,12 +71,7 @@ const PROCESSORS = [
     purpose: 'Error tracking + traces',
     region: process.env.NEXT_PUBLIC_REGION_MONITORING,
   },
-  {
-    name: 'AI model providers via Vercel AI Gateway',
-    purpose:
-      'AI features (résumé reading, job skill extraction, bio coach, match score) — see How we use AI',
-    region: process.env.NEXT_PUBLIC_REGION_AI,
-  },
+  ...aiRows(),
 ];
 
 export default function ProcessorsPage() {

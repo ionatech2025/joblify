@@ -1,5 +1,6 @@
 import { PageHeader } from '@/app/components/ui/ambient';
 import { CONTACTS } from '@/lib/site-config';
+import { groqTasks, listTasks } from '@/lib/ai/groq-config';
 
 export const metadata = { title: 'How we use AI' };
 
@@ -7,6 +8,8 @@ export const metadata = { title: 'How we use AI' };
 // actually do. If those change, change this page in the same PR.
 export default function AiUsePage() {
   const zdr = process.env.AI_GATEWAY_ZDR === '1';
+  // Decided by the same switches that route the calls (lib/ai/groq-config.ts).
+  const onGroq = groqTasks();
   return (
     <main>
       <PageHeader eyebrow="Legal" title="How we use AI" width="max-w-3xl" />
@@ -69,11 +72,16 @@ export default function AiUsePage() {
 
         <h2>Where the data goes</h2>
         <p>
-          Résumé text and the other inputs above are sent to AI model providers through a gateway
-          operated by our hosting provider (see <a href="/legal/processors">processors</a>).
+          {onGroq.length > 0
+            ? `For ${listTasks(onGroq)}, the text you submit is sent directly to Groq, an AI inference provider, under our own account. Everything else — and any of those requests Groq cannot answer — goes to AI model providers through a gateway operated by our hosting provider.`
+            : 'Résumé text and the other inputs above are sent to AI model providers through a gateway operated by our hosting provider.'}{' '}
+          Each is listed on the <a href="/legal/processors">processors</a> page.
           {zdr
-            ? ' Requests are routed only to providers that have agreed not to retain them or use them to train models.'
+            ? ' Requests through the gateway are routed only to providers that have agreed not to retain them or use them to train models.'
             : ' We do not send your data to a provider for any purpose other than producing the result you asked for.'}
+          {onGroq.length > 0 && zdr
+            ? ' That routing setting applies to the gateway; requests sent directly to Groq are not covered by it.'
+            : ''}
         </p>
       </div>
     </main>
