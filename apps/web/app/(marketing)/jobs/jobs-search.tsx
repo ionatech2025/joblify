@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
-import { SignedIn } from '@clerk/nextjs';
 import { ChevronLeft, ChevronRight, SearchX } from 'lucide-react';
 import {
   canonicalSearchString,
@@ -19,6 +18,7 @@ import { EmptyState } from '@/app/components/ui/empty-state';
 import { SaveSearchButton } from './save-search-button';
 import { JobResultsSkeleton } from './jobs-search-skeleton';
 import { formatSalary } from '@/lib/ui/salary';
+import { useAuthHint } from '@/lib/stores/auth-hint';
 
 const SELECTS = {
   workMode: [
@@ -68,6 +68,8 @@ export function JobsSearch({
 }) {
   const searchParams = useSearchParams();
   const qs = searchParams.toString();
+  // Whether the server saw a signed-in visitor (see app/components/auth-hint.tsx).
+  const signedIn = useAuthHint((s) => Boolean(s.userId));
   // The search's identity, independent of parameter order or a spelled-out
   // `page=0`; this, not `qs`, is what the query is keyed and fetched by.
   const searchKey = canonicalSearchString(searchParams);
@@ -226,11 +228,7 @@ export function JobsSearch({
               : ''}
           </p>
           <div className="flex flex-wrap items-center gap-3">
-            {qs.length > 0 && (
-              <SignedIn>
-                <SaveSearchButton key={qs} query={qs} />
-              </SignedIn>
-            )}
+            {qs.length > 0 && signedIn && <SaveSearchButton key={qs} query={qs} />}
             <label className="flex flex-wrap items-center gap-2 text-sm text-fg-muted">
               Sort
               <span className="w-40 max-w-full">

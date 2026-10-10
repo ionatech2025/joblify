@@ -1,5 +1,43 @@
 # Changelog
 
+## 2026-10-10 — Performance: Clerk's browser SDK loads only where it is used
+
+Every page used to load Clerk — one `<ClerkProvider>` wrapped the whole tree — including the legal
+pages and the job board for visitors who were never going to sign in. Measured on the live site
+(mobile preset), a signed-out visit to a static page spent **305 KB and eight requests** on it
+(clerk.browser.js 87, framework 43, vendors 47, ui-common 119, two XHRs, the handshake), roughly
+0.8–1.1 s of main-thread time at 4× CPU, and set **two third-party cookies** — which is what held
+Best Practices at 77 — to render nothing: the header's links are server-rendered from `auth()`.
+
+- **No provider around the tree.** `app/components/clerk-host.tsx` mounts the one provider on
+  demand, when a `<ClerkSlot>` registers (`clerk-slot.tsx`); slots are portalled into it. A host
+  with portals rather than a wrapper because a wrapper cannot appear later without remounting
+  everything beneath it, and two `ClerkProvider`s are an error in `@clerk/clerk-react`. The runtime
+  chunk sits behind an error boundary, so a failed chunk load costs the avatar menu, not the page.
+- **Widgets are named, not imported** (`<ClerkSlot widget="userButton" />`, `widget="signIn"` with
+  its props). A server component that imports a Clerk component puts that component's chunk — and
+  `@clerk/clerk-react`, ~27 KB gzip — in the scripts of every page of its layout, whether or not the
+  render reaches it. The first version of this change did exactly that and passed every test;
+  only a look at the built chunks found it. Only `clerk-runtime.tsx` imports Clerk's components now.
+- **What needs a slot:** the header's avatar menu (rendered only for a signed-in visitor — the
+  server decides from the session cookie, desktop and mobile) and the sign-in / sign-up cards, which
+  keep their skeleton until clerk-js is ready.
+- **Server → client auth state.** `<AuthHint>` (rendered by the header island) carries `auth()`'s
+  answer into a small store: the mobile menu's links and the save-search button read it instead of
+  Clerk's `<SignedIn>`/`<SignedOut>`. It also replaces `DraftOwnerGuard`: drafts are reconciled
+  against the server's `userId`, which has no "not loaded yet" ambiguity and arrives with the HTML
+  rather than after a script.
+- **Connection hint** to the Clerk frontend API moved from every page to the pages that load it
+  (auth layout, signed-in header).
+- **First-load JS** (gzip): `/legal/terms` 284.1 → 221.8 KB, `/jobs` 294.2 → 232.1,
+  `/company/jobs/new` 322.7 → 260.6 — **360.2 → 221.8 KB (−38 %) on the lightest routes since the
+  start of this pass**. Budgets lowered to match (default 396 → 285).
+- **Two guards.** `tests/unit/clerk-boundary.test.ts` fails if a file outside a short allow-list
+  imports the Clerk browser SDK (mutation-checked); `scripts/check-bundle-budget.ts` now also fails
+  if the Clerk or Sentry SDK appears _by name_ in any route's first-load chunks, which is the check
+  that would have caught the leak above. e2e: public pages load no clerk-js; `/sign-in` and
+  `/sign-up` still do and show their cards; the signed-in header shows Dashboard and the avatar menu.
+
 ## 2026-10-10 — Performance: Sentry, the theme menu and the globe off the critical path
 
 Measured with `next experimental-analyze` and the live site (Lighthouse 13.5, 3 runs per page).

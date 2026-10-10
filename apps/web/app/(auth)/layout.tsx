@@ -1,3 +1,5 @@
+import { preconnect } from 'react-dom';
+import { clerkFrontendOrigin } from '@/lib/clerk-origin';
 import { AuthVisualPanel } from './auth-visual-panel';
 
 /**
@@ -10,6 +12,13 @@ import { AuthVisualPanel } from './auth-visual-panel';
  * 1440×900 and hidden at 390×844 — that behaviour lives in AuthVisualPanel.
  */
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
+  // These are the pages that exist to show Clerk's card, which cannot paint
+  // until clerk-js arrives from an origin the browser has never seen. Open the
+  // connection with the document; every other page no longer loads Clerk, so
+  // none of them sends this hint.
+  const origin = clerkFrontendOrigin();
+  if (origin) preconnect(origin, { crossOrigin: 'anonymous' });
+
   return (
     <main className="grid min-h-[80vh] lg:grid-cols-2">
       <section className="flex flex-col items-center justify-center gap-8 px-4 py-12 sm:px-6">

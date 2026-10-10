@@ -70,8 +70,23 @@ const NEXT_DIR = join(process.cwd(), '.next');
  * The ceilings sit ~15-20 KB above what each route measures, which is the
  * convention above - not a new floor to be spent. /_global-error carries no
  * shared UI and keeps the default.
+ *
+ * LOWERED again 2026-10-10, 340 -> 285 (overrides 280-290), when Clerk's
+ * browser SDK left the first-load chunks: the lightest routes went 284.1 ->
+ * 221.8 KB, console form routes 315-327 -> 253-265. The provider and every
+ * Clerk component now load on demand (app/components/clerk-host.tsx).
+ * Cumulative since the start of the pass: 360.2 -> 221.8 KB (-38%).
+ *
+ * Worth recording how this number was reached, because the first attempt
+ * reported 254.4 KB and was wrong in a way the size table could not show: a
+ * server component that imports a Clerk component makes Next ship that
+ * component's chunk - and @clerk/clerk-react with it, ~27 KB gzip - with the
+ * layout whether or not the render reaches it, so the SDK was still in every
+ * page's scripts. The widgets are now named (<ClerkSlot widget="userButton"/>)
+ * rather than imported, and this script looks for the SDKs by name in the
+ * first-load chunks (ON_DEMAND_SDKS below) so that cannot recur unseen.
  */
-const DEFAULT_BUDGET_KB = 340;
+const DEFAULT_BUDGET_KB = 285;
 
 /**
  * Per-route overrides. Every route here carries a react-hook-form + zod
@@ -80,18 +95,43 @@ const DEFAULT_BUDGET_KB = 340;
  * *without* a form cannot quietly grow into the same allowance.
  */
 const BUDGET_KB: Record<string, number> = {
-  '/company/settings': 340,
-  '/company/jobs/new': 345,
-  '/company/jobs/[id]/edit': 345,
-  '/jobseeker/profile': 345,
-  '/jobseeker/resumes/builder': 345,
-  '/jobseeker/resumes': 350,
-  '/employer-setup': 340,
+  '/company/settings': 280,
+  '/company/jobs/new': 285,
+  '/company/jobs/[id]/edit': 285,
+  '/jobseeker/profile': 285,
+  '/jobseeker/resumes/builder': 285,
+  '/jobseeker/resumes': 290,
+  '/employer-setup': 280,
 };
 
 const budgetFor = (route: string): number => BUDGET_KB[route] ?? DEFAULT_BUDGET_KB;
 
 const SCRIPT_RE = /\/_next\/(static\/[^"']+?\.js)/g;
+
+/**
+ * Browser SDKs that must NOT be in any route's first-load chunks, because each
+ * loads on demand. A size budget alone cannot enforce that: the first version
+ * of the Clerk change passed its tests and moved this table's numbers by 30 KB
+ * while @clerk/clerk-react (~27 KB gzip) was still in every page's scripts — a
+ * server component importing a Clerk component makes Next ship that component's
+ * chunk with the layout whether or not the render reaches it. Looking for the
+ * SDK by name in the built chunks is what finds it.
+ *
+ * The markers are strings only the SDK itself contains (its package metadata),
+ * not names first-party code could use in a comment or a variable.
+ */
+const ON_DEMAND_SDKS: ReadonlyArray<{ name: string; marker: string; fix: string }> = [
+  {
+    name: 'Clerk browser SDK',
+    marker: '@clerk/clerk-react',
+    fix: 'name the widget with <ClerkSlot widget="…"/> instead of importing it (app/components/clerk-slot.tsx); only app/components/clerk-runtime.tsx may import Clerk\'s components',
+  },
+  {
+    name: 'Sentry browser SDK',
+    marker: 'sentry.javascript.',
+    fix: 'import it through lib/observability/sentry-client.ts, which loads it dynamically',
+  },
+];
 
 function walk(dir: string): string[] {
   const out: string[] = [];
@@ -130,12 +170,34 @@ const rows = walk(APP_DIR)
     let bytes = 0;
     for (const script of scripts) bytes += gzippedBytes(join(NEXT_DIR, script));
     const route = routeOf(file);
-    return { route, kb: bytes / 1024, chunks: scripts.size, budget: budgetFor(route) };
+    return { route, kb: bytes / 1024, chunks: scripts.size, budget: budgetFor(route), scripts };
   })
   .filter((r) => r.chunks > 0)
   .sort((a, b) => b.kb - a.kb);
 
 const over = rows.filter((r) => r.kb > r.budget);
+
+// Which on-demand SDKs ended up in a route's first-load chunks. Each chunk is
+// read once; a route lists the first chunk that carries the SDK.
+const chunkText = new Map<string, string>();
+const textOf = (script: string): string => {
+  let text = chunkText.get(script);
+  if (text === undefined) {
+    try {
+      text = readFileSync(join(NEXT_DIR, script), 'utf8');
+    } catch {
+      text = '';
+    }
+    chunkText.set(script, text);
+  }
+  return text;
+};
+const leaks = rows.flatMap((r) =>
+  ON_DEMAND_SDKS.flatMap((sdk) => {
+    const chunk = [...r.scripts].find((script) => textOf(script).includes(sdk.marker));
+    return chunk ? [{ route: r.route, sdk, chunk }] : [];
+  }),
+);
 
 const width = Math.max(...rows.map((r) => r.route.length), 5);
 console.log(`\nFirst-load JS (gzip) — ${rows.length} prerendered routes\n`);
@@ -146,6 +208,19 @@ for (const r of rows) {
   console.log(
     `  ${r.route.padEnd(width)}  ${`${r.kb.toFixed(1)} KB`.padStart(9)}  ${`${r.budget} KB`.padStart(8)}  ${String(r.chunks).padStart(6)} ${flag}`,
   );
+}
+
+if (leaks.length > 0) {
+  const bySdk = new Map<string, typeof leaks>();
+  for (const l of leaks) bySdk.set(l.sdk.name, [...(bySdk.get(l.sdk.name) ?? []), l]);
+  for (const [name, list] of bySdk) {
+    const first = list[0]!;
+    console.error(
+      `\n${name} is in the first-load chunks of ${list.length} route(s), e.g. ${first.route} (${first.chunk}).\n` +
+        `It is meant to load on demand: ${first.sdk.fix}.\n`,
+    );
+  }
+  process.exit(1);
 }
 
 if (over.length > 0) {
@@ -160,4 +235,6 @@ if (over.length > 0) {
   process.exit(1);
 }
 
-console.log(`\nAll ${rows.length} routes within budget.\n`);
+console.log(
+  `\nAll ${rows.length} routes within budget; no on-demand SDK (${ON_DEMAND_SDKS.map((d) => d.name).join(', ')}) in any first-load chunk.\n`,
+);

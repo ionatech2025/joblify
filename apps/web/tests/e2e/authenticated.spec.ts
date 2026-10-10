@@ -33,6 +33,18 @@ test.describe('jobseeker (authenticated)', () => {
     await expect(page.getByRole('heading', { name: /applications/i }).first()).toBeVisible();
   });
 
+  test('the header shows the signed-in state and its avatar menu', async ({ page }) => {
+    // The server decides this from the session cookie (HeaderAuth), and the
+    // avatar menu is Clerk's UserButton, mounted into a slot once clerk-js has
+    // loaded on demand — so this is the path that would break if the on-demand
+    // loading did.
+    await page.goto('/jobs');
+    const header = page.getByRole('banner');
+    await expect(header.getByRole('link', { name: 'Dashboard' })).toBeVisible();
+    await expect(header.getByRole('link', { name: 'Sign up' })).toHaveCount(0);
+    await expect(header.locator('.cl-userButtonTrigger').first()).toBeVisible({ timeout: 30_000 });
+  });
+
   test('GDPR export downloads a JSON file straight to the browser', async ({ page }) => {
     // No Blob store is involved any more: the export is the response itself,
     // so there is no stored copy and no emailed link.
