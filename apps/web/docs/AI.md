@@ -28,6 +28,27 @@ Never import `@ai-sdk/anthropic`, `@ai-sdk/openai`, or any other provider SDK di
 
 Aliases live in `lib/ai/gateway.ts` `MODELS`.
 
+### Groq (opt-in, per task, with fallback)
+
+`lib/ai/groq.ts` gives each task a chain — Groq models first, the Gateway model above last:
+
+| Task               | Groq chain (in order)                      | Final fallback     | Switch                              |
+| ------------------ | ------------------------------------------ | ------------------ | ----------------------------------- |
+| `bio-coach`        | `openai/gpt-oss-120b` → `qwen/qwen3.8-27b` | `sonnet` (Gateway) | `AI_PROVIDER_BIO_COACH=groq`        |
+| `resume-parse`     | `openai/gpt-oss-120b` → `qwen/qwen3.8-27b` | `haiku` (Gateway)  | `AI_PROVIDER_RESUME_PARSE=groq`     |
+| `skill-extraction` | `openai/gpt-oss-20b` → `qwen/qwen3.8-27b`  | `haiku` (Gateway)  | `AI_PROVIDER_SKILL_EXTRACTION=groq` |
+
+- **Off by default.** Groq is called with its own key, so it is a separate processor: a task uses it
+  only with its switch (or `AI_PROVIDER=groq`) **and** `GROQ_API_KEY`. List Groq in
+  `/legal/processors` before turning it on for résumés or bios.
+- **Fallback** is per call: a model that fails to _start_ (404, 429, 5xx, network) hands over to the
+  next; a streamed answer that breaks half-way is a failed call, not a restart.
+- **Ids come from Groq's catalogue**, not memory: `llama-3.3-70b-versatile` returns 404 on this
+  project's key. Override per task with `AI_GROQ_MODELS_<TASK>` (comma-separated).
+- gpt-oss is a reasoning model whose reasoning tokens count against `maxOutputTokens`; chains run it
+  at `reasoningEffort: 'low'` so the cap is spent on the answer.
+- No embeddings: Groq has none, so `embedding` stays on the Gateway.
+
 **Slugs are the Gateway's canonical ids, not the provider's.** The Gateway catalogue
 (`GET https://ai-gateway.vercel.sh/v1/models`) spells Claude models with dots —
 `anthropic/claude-haiku-5.5` — where Anthropic's own API uses dashes. The dashed ids this file

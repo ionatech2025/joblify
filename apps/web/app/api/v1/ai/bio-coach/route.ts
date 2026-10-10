@@ -1,7 +1,7 @@
 import { streamText, convertToModelMessages, type UIMessage } from 'ai';
 import { z } from 'zod';
 import { requireRole, AuthError } from '@/lib/auth';
-import { gateway, MODELS, aiProviderOptions } from '@/lib/ai/gateway';
+import { aiModelFor } from '@/lib/ai/groq';
 import { BIO_COACH_SYSTEM } from '@/lib/ai/prompts/bio-coach';
 import { fenceUntrusted, sanitizeUntrustedText, untrustedInputNotice } from '@/lib/ai/untrusted';
 import { bioCoachLimit } from '@/lib/ratelimit';
@@ -93,13 +93,16 @@ export async function POST(req: Request) {
       : 'The user has no bio yet.',
   ].join('\n\n');
 
+  // Groq models first when selected (AI_PROVIDER_BIO_COACH=groq + GROQ_API_KEY),
+  // falling back through the chain to the Gateway model — see lib/ai/groq.ts.
+  const { model, providerOptions } = aiModelFor('bio-coach');
   const result = streamText({
-    model: gateway(MODELS.sonnet),
+    model,
     system,
     messages: await convertToModelMessages(history),
     temperature: 0.4,
     maxOutputTokens: 600,
-    providerOptions: aiProviderOptions(),
+    providerOptions,
   });
 
   return result.toUIMessageStreamResponse();

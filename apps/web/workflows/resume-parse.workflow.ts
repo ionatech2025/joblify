@@ -24,7 +24,8 @@
 
 import { generateObject } from 'ai';
 import { fileTypeFromBuffer } from 'file-type';
-import { gateway, MODELS, aiProviderOptions } from '@/lib/ai/gateway';
+import { MODELS } from '@/lib/ai/gateway';
+import { aiModelFor } from '@/lib/ai/groq';
 import { embedText, toVectorLiteral } from '@/lib/ai/embeddings';
 import {
   ResumeSchema,
@@ -145,18 +146,19 @@ export async function runResumeParse({ resumeId }: ResumeParseInput): Promise<vo
   let parsed: ParsedResume;
   let source: ParseSource = 'model';
   try {
+    const { model, providerOptions } = aiModelFor('resume-parse');
     const { object } = await generateObject({
-      model: gateway(MODELS.haiku),
+      model,
       schema: ResumeSchema,
       system: `${RESUME_PARSE_SYSTEM}\n\n${untrustedInputNotice('resume')}`,
       prompt: fenceUntrusted('resume', text),
       temperature: 0,
-      providerOptions: aiProviderOptions(),
+      providerOptions,
     });
     parsed = object;
   } catch (aiErr) {
     logger.warn(
-      { err: aiErr, resumeId, model: MODELS.haiku },
+      { err: aiErr, resumeId, task: 'resume-parse' },
       'model parse failed — using the heuristic parser (will be re-parsed when the model is reachable)',
     );
     const allSkills = await db.skill.findMany({ select: { slug: true } });
