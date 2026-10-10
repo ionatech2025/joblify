@@ -20,6 +20,29 @@ const eslintConfig = [
       'react/no-unescaped-entities': 'off',
     },
   },
+  // Type-aware rules. The default Next preset lints syntax only, so it cannot
+  // see that `void sendStatusEmail(...)` or an un-awaited `resend...send()`
+  // is a promise nobody is waiting for — on Fluid Compute such a promise can be
+  // dropped the moment the response is sent. post-job.ts already wrote that rule
+  // down in a comment; this makes the linter enforce it.
+  {
+    files: ['**/*.{ts,tsx}'],
+    languageOptions: {
+      parserOptions: {
+        projectService: true,
+        tsconfigRootDir: import.meta.dirname,
+      },
+    },
+    rules: {
+      '@typescript-eslint/no-floating-promises': 'error',
+      // checksVoidReturn.attributes off: passing an async handler to an
+      // onClick/onSubmit prop is idiomatic React and not a defect.
+      '@typescript-eslint/no-misused-promises': [
+        'error',
+        { checksVoidReturn: { attributes: false } },
+      ],
+    },
+  },
   {
     ignores: [
       '.next/**',

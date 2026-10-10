@@ -19,9 +19,22 @@ export function ExportButton() {
           const body = (await res.json().catch(() => null)) as { error?: string } | null;
           throw new Error(body?.error ?? `Failed: ${res.status}`);
         }
-        const body = (await res.json()) as { url: string };
-        setMessage(`Export ready. Download: ${body.url}`);
-        toast.success('Export ready', 'Your download link is below.');
+        // The response IS the file — nothing is stored server-side and there is
+        // no link to share or leak. Hand it to the browser as a download.
+        const blob = await res.blob();
+        const name =
+          /filename="([^"]+)"/.exec(res.headers.get('content-disposition') ?? '')?.[1] ??
+          'joblify-data-export.json';
+        const href = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = href;
+        a.download = name;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(href);
+        setMessage(`Your export was downloaded as ${name}.`);
+        toast.success('Export ready', 'Your file has been downloaded.');
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Export failed';
         setError(message);
@@ -35,7 +48,7 @@ export function ExportButton() {
       <Button onClick={start} disabled={isPending}>
         {isPending ? 'Building export…' : 'Request data export'}
       </Button>
-      {message && <p className="mt-4 break-all text-success">{message}</p>}
+      {message && <p className="mt-4 text-success">{message}</p>}
       {error && <p className="mt-4 text-danger">{error}</p>}
     </div>
   );

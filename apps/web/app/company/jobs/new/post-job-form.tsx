@@ -20,6 +20,8 @@ const initialValues: Partial<PostJobFormValues> = {
   experienceLevel: 'MID',
   workMode: 'ONSITE',
   salaryCurrency: 'USD',
+  salaryPeriod: 'YEAR',
+  locationCountry: '',
   salaryMin: null,
   salaryMax: null,
   publish: true,

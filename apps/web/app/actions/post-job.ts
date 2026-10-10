@@ -10,8 +10,10 @@ import { requireRole, assertPlan, AuthError } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { withAudit } from '@/lib/audit';
 import { tags } from '@/lib/cache';
-import { gateway, MODELS } from '@/lib/ai/gateway';
+import { gateway, MODELS, aiProviderOptions } from '@/lib/ai/gateway';
 import { JdSkillsSchema, JD_SKILLS_SYSTEM } from '@/lib/ai/prompts/jd-skills';
+import { fenceUntrusted, sanitizeUntrustedText, untrustedInputNotice } from '@/lib/ai/untrusted';
+import { clientIp } from '@/lib/security/client-ip';
 import { reindexJob } from '@/lib/search/index-job';
 import { logger } from '@/lib/observability/logger';
 import { postJobLimit } from '@/lib/ratelimit';
@@ -33,6 +35,22 @@ function uniqueSlug(base: string): string {
 
 const Input = PostJobFormSchema;
 
+// The verification gate. It FAILS CLOSED: a company with no profile row is not
+// verified. (It used to read `if (profile && status !== 'VERIFIED')`, so a
+// COMPANY account that had never created a profile — reachable via the Clerk
+// organization webhook, since removed — passed straight through.)
+async function verificationBlock(userId: string): Promise<string | null> {
+  const profile = await db.companyProfile.findUnique({
+    where: { userId },
+    select: { verificationStatus: true },
+  });
+  if (!profile) return 'Finish setting up your company profile before posting jobs.';
+  if (profile.verificationStatus !== 'VERIFIED') {
+    return 'Only verified companies can create job posts.';
+  }
+  return null;
+}
+
 export async function postJob(input: z.infer<typeof Input>): Promise<ActionResult<string>> {
   const user = await requireRole('COMPANY');
 
@@ -41,16 +59,13 @@ export async function postJob(input: z.infer<typeof Input>): Promise<ActionResul
   const rl = await postJobLimit(user.id);
   if (!rl.success) return fail('Daily job-posting limit reached. Try again tomorrow.');
 
-  const parsed = Input.parse(input);
+  const result = Input.safeParse(input);
+  if (!result.success) return fail(result.error.issues[0]?.message ?? 'Check the job details.');
+  const parsed = result.data;
 
   // JOB_UC_11.0: Only verified companies can create job posts
-  const profile = await db.companyProfile?.findUnique?.({
-    where: { userId: user.id },
-    select: { verificationStatus: true, companyName: true },
-  });
-  if (profile && profile.verificationStatus !== 'VERIFIED') {
-    return fail('Only verified companies can create job posts.');
-  }
+  const blocked = await verificationBlock(user.id);
+  if (blocked) return fail(blocked);
 
   // JOB_UC_11.0: Job deadline must be a future date
   if (parsed.applicationDeadline) {
@@ -75,7 +90,7 @@ export async function postJob(input: z.infer<typeof Input>): Promise<ActionResul
   if (duplicate) return fail('You already have a job post with this title.');
 
   const h = await headers();
-  const ip = h.get('x-forwarded-for')?.split(',')[0]?.trim() ?? null;
+  const ip = clientIp(h);
   const ua = h.get('user-agent') ?? null;
 
   const baseSlug = slugify(parsed.title) || 'job';
@@ -105,6 +120,8 @@ export async function postJob(input: z.infer<typeof Input>): Promise<ActionResul
           salaryMin: parsed.salaryMin,
           salaryMax: parsed.salaryMax,
           salaryCurrency: parsed.salaryCurrency,
+          salaryPeriod: parsed.salaryPeriod,
+          locationCountry: parsed.locationCountry || null,
           applicationDeadline: parsed.applicationDeadline
             ? new Date(parsed.applicationDeadline)
             : null,
@@ -162,35 +179,50 @@ export async function postJob(input: z.infer<typeof Input>): Promise<ActionResul
 
       // JOB_UC_11.0: Notify jobseekers matching the criteria (Test 80)
       try {
-        const matchingSeekers = await db.jobSeekerProfile?.findMany?.({
-          where: {
-            visibility: 'PUBLIC',
-            OR: [
-              { desiredWorkMode: parsed.workMode },
-              { location: { contains: parsed.location || '', mode: 'insensitive' } },
-            ],
-          },
-          take: 20,
-          select: { userId: true },
-        });
-        if (matchingSeekers && matchingSeekers.length > 0) {
-          for (const seeker of matchingSeekers) {
-            await db.notification?.create?.({
-              data: {
-                userId: seeker.userId,
-                kind: 'SYSTEM',
-                payload: {
-                  jobId: job.id,
-                  jobSlug: job.slug,
-                  message: `New job matching your criteria: ${job.title} at ${profile?.companyName ?? 'a verified company'}.`,
-                },
+        // A location criterion only counts when the job actually has one:
+        // `contains: ''` matches every row, which used to make a remote post
+        // "match" an arbitrary twenty people regardless of fit.
+        const location = parsed.location?.trim();
+        const [seekers, company] = await Promise.all([
+          db.jobSeekerProfile.findMany({
+            where: {
+              visibility: 'PUBLIC',
+              user: { deletedAt: null },
+              OR: [
+                { desiredWorkMode: parsed.workMode },
+                ...(location
+                  ? [{ location: { contains: location, mode: 'insensitive' as const } }]
+                  : []),
+              ],
+            },
+            orderBy: { updatedAt: 'desc' },
+            take: 20,
+            select: { userId: true },
+          }),
+          db.companyProfile.findUnique({
+            where: { userId: user.id },
+            select: { companyName: true },
+          }),
+        ]);
+        if (seekers.length > 0) {
+          await db.notification.createMany({
+            data: seekers.map((seeker) => ({
+              userId: seeker.userId,
+              kind: 'SYSTEM' as const,
+              payload: {
+                jobId: job.id,
+                jobSlug: job.slug,
+                message: `New job matching your criteria: ${job.title} at ${company?.companyName ?? 'a verified company'}.`,
               },
-            });
-            updateTag(tags.notifications(seeker.userId));
-          }
+            })),
+          });
+          for (const seeker of seekers) updateTag(tags.notifications(seeker.userId));
         }
       } catch (err) {
-        logger.warn({ err, jobId: job.id }, 'matching jobseeker notification failed (non-blocking)');
+        logger.warn(
+          { err, jobId: job.id },
+          'matching jobseeker notification failed (non-blocking)',
+        );
       }
     }
   });
@@ -212,7 +244,17 @@ export async function updateJob(
   const rl = await postJobLimit(user.id);
   if (!rl.success) return fail('Daily job-posting limit reached. Try again tomorrow.');
 
-  const parsed = Input.parse(input);
+  const result = Input.safeParse(input);
+  if (!result.success) return fail(result.error.issues[0]?.message ?? 'Check the job details.');
+  const parsed = result.data;
+
+  // Publishing (or re-publishing) is gated on verification exactly like
+  // creation; saving as a draft / unpublishing is always allowed. Without this a
+  // company that lost its verification could keep editing live postings.
+  if (parsed.publish) {
+    const blocked = await verificationBlock(user.id);
+    if (blocked) return fail(blocked);
+  }
 
   // Tenancy: the job must belong to this company.
   const existing = await db.jobPost.findFirst({
@@ -257,7 +299,7 @@ export async function updateJob(
   if (duplicate) return fail('You already have a job post with this title.');
 
   const h = await headers();
-  const ip = h.get('x-forwarded-for')?.split(',')[0]?.trim() ?? null;
+  const ip = clientIp(h);
   const ua = h.get('user-agent') ?? null;
 
   await withAudit(
@@ -283,6 +325,8 @@ export async function updateJob(
           salaryMin: parsed.salaryMin,
           salaryMax: parsed.salaryMax,
           salaryCurrency: parsed.salaryCurrency,
+          salaryPeriod: parsed.salaryPeriod,
+          locationCountry: parsed.locationCountry || null,
           applicationDeadline: parsed.applicationDeadline
             ? new Date(parsed.applicationDeadline)
             : null,
@@ -364,11 +408,13 @@ export async function archiveJob(
 
   const apps = existing.applications ?? [];
   if (apps.length > 0 && !options?.force) {
-    return fail('This job has active applications. Explicit confirmation is required to delete it.');
+    return fail(
+      'This job has active applications. Explicit confirmation is required to delete it.',
+    );
   }
 
   const h = await headers();
-  const ip = h.get('x-forwarded-for')?.split(',')[0]?.trim() ?? null;
+  const ip = clientIp(h);
   const ua = h.get('user-agent') ?? null;
 
   await withAudit(
@@ -427,14 +473,15 @@ async function extractAndLinkSkills(
   description: string,
   requirements: string,
 ): Promise<void> {
-  const text = `${title}\n\n${description}\n\n${requirements}`.slice(0, 30_000);
+  const text = sanitizeUntrustedText(`${title}\n\n${description}\n\n${requirements}`, 30_000);
 
   const { object } = await generateObject({
     model: gateway(MODELS.haiku),
     schema: JdSkillsSchema,
-    system: JD_SKILLS_SYSTEM,
-    prompt: text,
+    system: `${JD_SKILLS_SYSTEM}\n\n${untrustedInputNotice('job-description')}`,
+    prompt: fenceUntrusted('job-description', text),
     temperature: 0,
+    providerOptions: aiProviderOptions(),
   });
 
   const allSlugs = [...object.requiredSkills, ...object.niceToHave].map((s) =>

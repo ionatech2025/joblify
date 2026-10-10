@@ -55,8 +55,15 @@ const cspDirectives = (scriptSrc: string): string[] => [
   "frame-ancestors 'none'",
 ];
 
+// 'unsafe-eval' is a DEVELOPMENT-only allowance: React's dev tooling rebuilds
+// stack traces with eval, and the production build does not need it (it is also
+// absent from the strict target policy below, which has been collecting
+// violations — none from eval). Shipping it in production left the policy with
+// both halves of the pair that stops a CSP from constraining script injection.
+// This is the allowance the Next.js CSP guide itself makes dev-only.
+const isDev = process.env.NODE_ENV !== 'production';
 const csp = cspDirectives(
-  `'self' 'unsafe-inline' 'unsafe-eval' ${CLERK} https://challenges.cloudflare.com https://va.vercel-scripts.com`,
+  `'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''} ${CLERK} https://challenges.cloudflare.com https://va.vercel-scripts.com`,
 ).join('; ');
 
 /**
@@ -98,6 +105,12 @@ const nextConfig: NextConfig = {
   // cacheComponents enables PPR + the 'use cache' directive (Next 16 merged the
   // former experimental.ppr into this flag and promoted it out of experimental).
   cacheComponents: true,
+  // Next 16.4 asks for this to be explicit. `false` is the behaviour this app
+  // was built and measured with (the first Cache Components release did not
+  // have partial prefetching), so it is pinned rather than flipped on a minor
+  // bump. Enabling it is a tracked follow-up (REMAINING_STEPS.md): it changes
+  // what navigations prefetch and needs the e2e + payload budgets re-run.
+  partialPrefetching: false,
   // React Compiler auto-memoizes every component, which is what this codebase
   // was relying on manual memoization for and never actually doing: 2 useMemo,
   // 1 useCallback and 0 memo() across the whole app. The console's dense list
@@ -111,6 +124,11 @@ const nextConfig: NextConfig = {
   // new bailout is a build failure rather than scrollback.
   reactCompiler: true,
   experimental: {
+    // Server Actions accept request bodies up to 1 MB by default, which is
+    // smaller than the 2 MB logo limit the upload action enforces (a valid logo
+    // between 1 and 2 MB was rejected by the framework before any of our checks
+    // ran). 4 MB stays under the platform's own 4.5 MB request-body ceiling.
+    serverActions: { bodySizeLimit: '4mb' },
     // Next already ships lucide-react in its built-in list; @radix-ui packages
     // are not in it, and the dropdown menu is pulled in by the theme toggle and
     // the console filter menu, both of which are on shared surfaces.

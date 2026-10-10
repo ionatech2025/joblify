@@ -27,11 +27,18 @@ vi.mock('@/lib/email/resend', () => ({
   EMAIL_FROM: 'no-reply@joblify.test',
 }));
 vi.mock('@sentry/nextjs', () => ({ captureException: m.captureException }));
-vi.mock('@/lib/observability/logger', () => ({ logger: { warn: vi.fn(), info: vi.fn() } }));
+vi.mock('@/lib/observability/logger', () => ({
+  logger: { warn: vi.fn(), info: vi.fn(), error: vi.fn() },
+}));
 
 import { runDigest } from '@/workflows/digest-email.workflow';
+import { verifyUnsubscribeToken } from '@/lib/email/unsubscribe';
 
 const HOUR = 3600 * 1000;
+
+// Real users are UUIDs and the unsubscribe token is only minted for UUIDs.
+const uid = (label: string) =>
+  `00000000-0000-4000-8000-${label.replace(/\D/g, '').padStart(12, '0')}`;
 const job = {
   id: 'j1',
   slug: 'eng',
@@ -39,13 +46,17 @@ const job = {
   company: { companyProfile: { companyName: 'Acme' } },
 };
 
-function seeker(id: string) {
-  return { id, email: `${id}@x.com`, firstName: id.toUpperCase() };
+function seeker(label: string) {
+  return { id: uid(label), email: `${label}@x.com`, firstName: label.toUpperCase() };
 }
 
 describe('runDigest', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Marketing mail needs a working unsubscribe link; both of these are
+    // required to build one (see lib/email/unsubscribe.ts).
+    process.env.NEXT_PUBLIC_SITE_URL = 'https://joblify.test';
+    process.env.EMAIL_UNSUBSCRIBE_SECRET = 'test-unsubscribe-secret';
     m.send.mockResolvedValue({});
     m.userFind.mockResolvedValue([]); // default: no more pages → loop ends
     m.userCount.mockResolvedValue(0);
@@ -55,13 +66,16 @@ describe('runDigest', () => {
     m.savedUpdate.mockResolvedValue({ count: 0 });
   });
 
-  it('selects only consented, non-suppressed, non-deleted jobseekers with a null-or-stale watermark', async () => {
+  it('selects only opted-in, non-suppressed, non-deleted jobseekers with a null-or-stale watermark', async () => {
     await runDigest();
     const args = m.userFind.mock.calls[0]![0];
     expect(args.where.userType).toBe('JOB_SEEKER');
     expect(args.where.deletedAt).toBeNull();
     expect(args.where.emailSuppressedAt).toBeNull();
-    expect(args.where.consentJson).toBeDefined(); // { not: Prisma.DbNull }
+    // The explicit email opt-in — and NOT the cookie-banner record: answering
+    // the banner (even "Necessary only") is not consent to marketing email.
+    expect(args.where.digestOptIn).toBe(true);
+    expect(args.where.consentJson).toBeUndefined();
     // Watermark window: never digested OR digested before the padded cutoff
     // (24h - 2h slack, so a run stamped minutes after yesterday's schedule
     // still qualifies today).
@@ -102,13 +116,15 @@ describe('runDigest', () => {
     // Only the successful send advanced its watermark…
     expect(m.userUpdate).toHaveBeenCalledTimes(1);
     expect(m.userUpdate.mock.calls[0]![0]).toEqual({
-      where: { id: { in: ['u1'] } },
+      where: { id: { in: [uid('u1')] } },
       data: { lastDigestAt: expect.any(Date) },
     });
     // …the failure went to Sentry with the user id…
-    expect(m.captureException).toHaveBeenCalledWith(expect.any(Error), { tags: { userId: 'u2' } });
+    expect(m.captureException).toHaveBeenCalledWith(expect.any(Error), {
+      tags: { userId: uid('u2') },
+    });
     // …and the next page query excludes the failed id so the loop can't spin on it.
-    expect(m.userFind.mock.calls[1]![0].where.id).toEqual({ notIn: ['u2'] });
+    expect(m.userFind.mock.calls[1]![0].where.id).toEqual({ notIn: [uid('u2')] });
   });
 
   it('advances the watermark for users with nothing new (skipped, no email, no re-selection)', async () => {
@@ -118,7 +134,7 @@ describe('runDigest', () => {
     expect(r).toEqual({ sent: 0, skipped: 1, failed: 0, stoppedEarly: false });
     expect(m.send).not.toHaveBeenCalled();
     expect(m.userUpdate).toHaveBeenCalledWith({
-      where: { id: { in: ['u1'] } },
+      where: { id: { in: [uid('u1')] } },
       data: { lastDigestAt: expect.any(Date) },
     });
   });
@@ -138,7 +154,7 @@ describe('runDigest', () => {
   it('personalizes for saved-search users and stamps lastNotifiedAt only after processing', async () => {
     m.userFind.mockResolvedValueOnce([seeker('u1')]);
     m.savedFind.mockResolvedValueOnce([
-      { userId: 'u1', query: 'workMode=REMOTE', lastNotifiedAt: null },
+      { userId: uid('u1'), query: 'workMode=REMOTE', lastNotifiedAt: null },
     ]);
     m.jobFind
       .mockResolvedValueOnce([]) // generic list (computed once, unused here)
@@ -153,9 +169,38 @@ describe('runDigest', () => {
     // Watermark + per-search watermark stamped together, post-send.
     expect(m.userUpdate).toHaveBeenCalledTimes(1);
     expect(m.savedUpdate).toHaveBeenCalledWith({
-      where: { userId: { in: ['u1'] } },
+      where: { userId: { in: [uid('u1')] } },
       data: { lastNotifiedAt: expect.any(Date) },
     });
+  });
+
+  it('puts a working one-click unsubscribe in every email: link in the body AND RFC 8058 headers', async () => {
+    m.userFind.mockResolvedValueOnce([seeker('u7')]);
+    m.jobFind.mockResolvedValueOnce([job]);
+    await runDigest();
+    const mail = m.send.mock.calls[0]![0];
+
+    // Headers mailbox providers use for their native "Unsubscribe" button.
+    expect(mail.headers['List-Unsubscribe-Post']).toBe('List-Unsubscribe=One-Click');
+    const link = mail.headers['List-Unsubscribe'].replace(/^<|>$/g, '');
+    expect(link).toMatch(/^https:\/\/joblify\.test\/api\/v1\/email\/unsubscribe\?t=/);
+    expect(mail.text).toContain(link);
+    expect(mail.html).toContain('Unsubscribe in one click');
+
+    // The token is bound to this user and verifies server-side.
+    const token = decodeURIComponent(new URL(link).searchParams.get('t')!);
+    expect(verifyUnsubscribeToken(token)).toBe(uid('u7'));
+    expect(verifyUnsubscribeToken(token.replace(/.$/, 'x'))).toBeNull(); // tampered
+  });
+
+  it('refuses to send marketing email it cannot offer an unsubscribe for', async () => {
+    delete process.env.EMAIL_UNSUBSCRIBE_SECRET;
+    delete process.env.CRON_SECRET;
+    m.userFind.mockResolvedValueOnce([seeker('u1')]);
+    const r = await runDigest();
+    expect(r).toEqual({ sent: 0, skipped: 0, failed: 0, stoppedEarly: true });
+    expect(m.userFind).not.toHaveBeenCalled();
+    expect(m.send).not.toHaveBeenCalled();
   });
 
   it('stops cleanly at the wall-clock deadline before selecting users', async () => {

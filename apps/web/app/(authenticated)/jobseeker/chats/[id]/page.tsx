@@ -40,8 +40,11 @@ export default async function JobseekerChatAreaPage({ params }: { params: Params
   const area = membership.chatArea;
   const companyName = area.company.companyProfile?.companyName ?? 'Company';
   // The company account may have no first/last name; its messages should read
-  // as the company rather than as a blank sender.
-  const initial = toChatMessages(area.messages, () => companyName);
+  // as the company rather than as a blank sender. Another candidate with no
+  // name is "Participant" — never their e-mail (must match the polled route).
+  const initial = toChatMessages(area.messages, (m) =>
+    m.senderId === area.companyId ? companyName : 'Participant',
+  );
 
   return (
     <main>

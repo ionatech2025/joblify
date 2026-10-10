@@ -5,7 +5,7 @@ const m = vi.hoisted(() => ({
   executeRaw: vi.fn(),
   updateMany: vi.fn(),
   findUnique: vi.fn(),
-  embed: vi.fn(),
+  embedText: vi.fn(),
 }));
 
 vi.mock('@/lib/db', () => ({
@@ -16,11 +16,11 @@ vi.mock('@/lib/db', () => ({
     jobPost: { findUnique: m.findUnique },
   },
 }));
-vi.mock('ai', () => ({ embed: m.embed }));
-vi.mock('@/lib/ai/gateway', () => ({
-  gateway: { textEmbeddingModel: () => ({}) },
-  MODELS: { embeddingLarge: 'e' },
+vi.mock('@/lib/ai/embeddings', () => ({
+  embedText: m.embedText,
+  toVectorLiteral: (v: number[]) => `[${v.join(',')}]`,
 }));
+vi.mock('@/lib/ai/gateway', () => ({ MODELS: { embedding: 'e' } }));
 vi.mock('@/lib/observability/logger', () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
@@ -30,33 +30,42 @@ import { cosine, runMatchScore, embedJobPost } from '@/workflows/match-score.wor
 describe('embedJobPost', () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it('is idempotent — returns the cached embedding without an AI call', async () => {
-    m.queryRaw.mockResolvedValueOnce([{ embedding: [1, 0, 0] }]);
+  it('is idempotent — returns the cached embedding from the CURRENT model without an AI call', async () => {
+    m.queryRaw.mockResolvedValueOnce([{ embedding: [1, 0, 0], embeddingModel: 'e' }]);
     const r = await embedJobPost('j');
     expect(r).toEqual([1, 0, 0]);
-    expect(m.embed).not.toHaveBeenCalled();
+    expect(m.embedText).not.toHaveBeenCalled();
     expect(m.executeRaw).not.toHaveBeenCalled();
   });
 
-  it('computes and persists the embedding when missing', async () => {
-    m.queryRaw.mockResolvedValueOnce([{ embedding: null }]);
+  it('recomputes an embedding that came from a retired (or unknown) model', async () => {
+    m.queryRaw.mockResolvedValueOnce([{ embedding: [1, 0, 0], embeddingModel: null }]);
     m.findUnique.mockResolvedValue({ title: 'T', description: 'D', requirements: null });
-    m.embed.mockResolvedValue({ embedding: [0.5, 0.5] });
+    m.embedText.mockResolvedValue({ embedding: [0.5, 0.5], model: 'e' });
     const r = await embedJobPost('j');
     expect(r).toEqual([0.5, 0.5]);
-    expect(m.embed).toHaveBeenCalledTimes(1);
-    expect(m.embed.mock.calls[0]![0].value).toContain('T');
-    expect(m.embed.mock.calls[0]![0].value).toContain('D');
-    expect(m.executeRaw).toHaveBeenCalledTimes(1); // raw pgvector UPDATE
+    expect(m.embedText).toHaveBeenCalledTimes(1);
+  });
+
+  it('computes and persists the embedding (and its model) when missing', async () => {
+    m.queryRaw.mockResolvedValueOnce([{ embedding: null }]);
+    m.findUnique.mockResolvedValue({ title: 'T', description: 'D', requirements: null });
+    m.embedText.mockResolvedValue({ embedding: [0.5, 0.5], model: 'e' });
+    const r = await embedJobPost('j');
+    expect(r).toEqual([0.5, 0.5]);
+    expect(m.embedText).toHaveBeenCalledTimes(1);
+    expect(m.embedText.mock.calls[0]![0]).toContain('T');
+    expect(m.embedText.mock.calls[0]![0]).toContain('D');
+    expect(m.executeRaw).toHaveBeenCalledTimes(1); // raw pgvector UPDATE (embedding + model)
   });
 
   it('force-regenerates even when an embedding exists (JD text changed)', async () => {
     m.findUnique.mockResolvedValue({ title: 'T', description: 'D2', requirements: 'R' });
-    m.embed.mockResolvedValue({ embedding: [0.9, 0.1] });
+    m.embedText.mockResolvedValue({ embedding: [0.9, 0.1], model: 'e' });
     const r = await embedJobPost('j', { force: true });
     expect(r).toEqual([0.9, 0.1]);
     expect(m.queryRaw).not.toHaveBeenCalled(); // skips the cache read entirely
-    expect(m.embed).toHaveBeenCalledTimes(1);
+    expect(m.embedText).toHaveBeenCalledTimes(1);
     expect(m.executeRaw).toHaveBeenCalledTimes(1);
   });
 
@@ -65,7 +74,7 @@ describe('embedJobPost', () => {
     m.findUnique.mockResolvedValue(null);
     const r = await embedJobPost('gone');
     expect(r).toBeNull();
-    expect(m.embed).not.toHaveBeenCalled();
+    expect(m.embedText).not.toHaveBeenCalled();
   });
 });
 
@@ -83,18 +92,28 @@ describe('runMatchScore', () => {
     m.queryRaw.mockResolvedValueOnce([]); // resume embedding lookup → none
     const r = await runMatchScore({ jobPostId: 'j', jobSeekerId: 's' });
     expect(r).toBeNull();
-    expect(m.embed).not.toHaveBeenCalled();
+    expect(m.embedText).not.toHaveBeenCalled();
     expect(m.updateMany).not.toHaveBeenCalled();
   });
 
-  it('scores and persists when both embeddings already exist', async () => {
+  it('refuses to compare across a model boundary (resume vector from a retired model)', async () => {
+    m.queryRaw.mockResolvedValueOnce([{ embedding: [1, 0, 0], embeddingModel: 'old-model' }]);
+    const r = await runMatchScore({ jobPostId: 'j', jobSeekerId: 's' });
+    expect(r).toBeNull();
+    expect(m.updateMany).not.toHaveBeenCalled();
+  });
+
+  it('scores, and records which model produced the score and when', async () => {
     m.queryRaw
-      .mockResolvedValueOnce([{ embedding: [1, 0, 0] }]) // resume
-      .mockResolvedValueOnce([{ embedding: [1, 0, 0] }]); // job (already embedded)
+      .mockResolvedValueOnce([{ embedding: [1, 0, 0], embeddingModel: 'e' }]) // resume
+      .mockResolvedValueOnce([{ embedding: [1, 0, 0], embeddingModel: 'e' }]); // job (already embedded)
     m.updateMany.mockResolvedValue({ count: 1 });
     const r = await runMatchScore({ jobPostId: 'j', jobSeekerId: 's' });
     expect(r).toBeCloseTo(1, 6);
-    expect(m.embed).not.toHaveBeenCalled(); // JD embedding present → no recompute
+    expect(m.embedText).not.toHaveBeenCalled(); // JD embedding present → no recompute
     expect(m.updateMany).toHaveBeenCalledTimes(1);
+    const { data } = m.updateMany.mock.calls[0]![0];
+    expect(data.matchModel).toBe('e');
+    expect(data.matchScoredAt).toBeInstanceOf(Date);
   });
 });

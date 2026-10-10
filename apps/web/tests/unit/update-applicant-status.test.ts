@@ -23,7 +23,10 @@ const m = vi.hoisted(() => {
     partFindUnique: vi.fn(),
     partCreate: vi.fn(),
     send: vi.fn(),
+    isEmailSuppressed: vi.fn(),
+    statusChangeTemplate: vi.fn(),
     updateTag: vi.fn(),
+    afterCallbacks: [] as Array<() => unknown>,
   };
 });
 
@@ -41,15 +44,30 @@ vi.mock('@/lib/audit', () => ({
 vi.mock('@/lib/email/resend', () => ({
   resend: () => ({ emails: { send: m.send } }),
   EMAIL_FROM: 'x@joblify.test',
+  isEmailSuppressed: m.isEmailSuppressed,
 }));
 vi.mock('@/lib/email/templates', () => ({
-  statusChange: () => ({ subject: 's', text: 't', html: 'h' }),
+  statusChange: (t: unknown) => {
+    m.statusChangeTemplate(t);
+    return { subject: 's', text: 't', html: 'h' };
+  },
+}));
+// Side effects must be registered through after() (a floating promise is
+// dropped on Fluid Compute); the mock captures them so tests run them on purpose.
+vi.mock('next/server', () => ({
+  after: (fn: () => unknown) => {
+    m.afterCallbacks.push(fn);
+  },
 }));
 vi.mock('@/lib/observability/logger', () => ({ logger: { info: vi.fn(), warn: vi.fn() } }));
 vi.mock('next/cache', () => ({ updateTag: m.updateTag }));
 vi.mock('next/headers', () => ({ headers: async () => new Map() }));
 
 import { updateApplicantStatus, saveApplicantNote } from '@/app/actions/update-applicant-status';
+
+async function runAfter(): Promise<void> {
+  for (const cb of m.afterCallbacks.splice(0)) await cb();
+}
 
 const APP_ID = '33333333-3333-3333-3333-333333333333';
 
@@ -64,6 +82,8 @@ const APPLICATION = {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  m.afterCallbacks.length = 0;
+  m.isEmailSuppressed.mockResolvedValue(false);
   m.requireRole.mockResolvedValue({ id: 'company1', plan: 'PRO' });
   m.appFindFirst.mockResolvedValue({ ...APPLICATION });
   m.appUpdate.mockResolvedValue({});
@@ -88,6 +108,24 @@ describe('updateApplicantStatus', () => {
     expect(m.notifCreate).not.toHaveBeenCalled();
   });
 
+  it('refuses to set WITHDRAWN on a candidate’s behalf', async () => {
+    const res = await updateApplicantStatus(APP_ID, 'WITHDRAWN');
+    expect(res).toMatchObject({
+      ok: false,
+      error: expect.stringMatching(/candidate can withdraw/i),
+    });
+    expect(m.appUpdate).not.toHaveBeenCalled();
+    expect(m.notifCreate).not.toHaveBeenCalled();
+  });
+
+  it('refuses to reopen an application the candidate withdrew', async () => {
+    m.appFindFirst.mockResolvedValue({ ...APPLICATION, status: 'WITHDRAWN' });
+    const res = await updateApplicantStatus(APP_ID, 'SHORTLISTED');
+    expect(res).toMatchObject({ ok: false, error: expect.stringMatching(/withdrew/i) });
+    expect(m.appUpdate).not.toHaveBeenCalled();
+    expect(m.notifCreate).not.toHaveBeenCalled(); // and no "you were shortlisted" email
+  });
+
   it('is a no-op when the status is unchanged', async () => {
     await updateApplicantStatus(APP_ID, 'SUBMITTED');
     expect(m.appUpdate).not.toHaveBeenCalled();
@@ -97,7 +135,8 @@ describe('updateApplicantStatus', () => {
   });
 
   it('writes the status and notifies the jobseeker on the happy path', async () => {
-    await updateApplicantStatus(APP_ID, 'SHORTLISTED');
+    const res = await updateApplicantStatus(APP_ID, 'SHORTLISTED');
+    expect(res).toEqual({ ok: true, data: undefined });
     expect(m.appUpdate).toHaveBeenCalledWith({
       where: { id: APP_ID },
       data: { status: 'SHORTLISTED' },
@@ -107,6 +146,8 @@ describe('updateApplicantStatus', () => {
     expect(notif.kind).toBe('APPLICATION_STATUS_CHANGED');
     expect(notif.payload.status).toBe('SHORTLISTED');
     expect(notif.payload.jobTitle).toBe('Engineer');
+    // The message is written for a person — a label, not the enum.
+    expect(notif.payload.message).toContain('Shortlisted');
   });
 
   it('invalidates the applicant, notification, and pipeline caches', async () => {
@@ -118,13 +159,32 @@ describe('updateApplicantStatus', () => {
 
   it('emails the jobseeker (best-effort, post-write)', async () => {
     await updateApplicantStatus(APP_ID, 'OFFER_EXTENDED');
-    await vi.waitFor(() => expect(m.send).toHaveBeenCalledTimes(1));
+    expect(m.afterCallbacks).toHaveLength(1); // registered via after(), not floated
+    await runAfter();
+    expect(m.send).toHaveBeenCalledTimes(1);
     expect(m.send.mock.calls[0]![0].to).toBe('seeker@x.com');
+  });
+
+  it('emails the label a person reads ("Not selected"), not the enum', async () => {
+    await updateApplicantStatus(APP_ID, 'REJECTED');
+    await runAfter();
+    expect(m.statusChangeTemplate.mock.calls[0]![0].status).toBe('Not selected');
+  });
+
+  it('does not email an address that bounced or complained (suppression applies here too)', async () => {
+    m.isEmailSuppressed.mockResolvedValue(true);
+    await updateApplicantStatus(APP_ID, 'SHORTLISTED');
+    await runAfter();
+    expect(m.send).not.toHaveBeenCalled();
   });
 
   it('does not fail the transition when the email send fails', async () => {
     m.send.mockRejectedValue(new Error('resend down'));
-    await expect(updateApplicantStatus(APP_ID, 'REJECTED')).resolves.toBeUndefined();
+    await expect(updateApplicantStatus(APP_ID, 'REJECTED')).resolves.toEqual({
+      ok: true,
+      data: undefined,
+    });
+    await expect(runAfter()).resolves.toBeUndefined(); // the failure is contained
     expect(m.appUpdate).toHaveBeenCalledTimes(1);
   });
 

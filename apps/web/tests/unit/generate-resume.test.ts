@@ -9,7 +9,8 @@ const m = vi.hoisted(() => ({
   profileFindUnique: vi.fn(),
   resumeCreate: vi.fn(),
   renderToBuffer: vi.fn(),
-  put: vi.fn(),
+  putStored: vi.fn(),
+  storeConfigured: vi.fn(),
 }));
 
 vi.mock('@/lib/auth', () => ({ requireRole: m.requireRole }));
@@ -19,7 +20,8 @@ vi.mock('@/lib/audit', () => ({
     fn({ resume: { create: m.resumeCreate } }),
 }));
 vi.mock('@/lib/storage/blob', () => ({
-  put: m.put,
+  putStored: m.putStored,
+  storeConfigured: m.storeConfigured,
   resumePathPrefix: (userId: string) => `resumes/${userId}/`,
 }));
 vi.mock('@react-pdf/renderer', () => ({
@@ -61,11 +63,12 @@ beforeEach(() => {
     ],
   });
   m.renderToBuffer.mockResolvedValue(Buffer.from('%PDF-1.4 fake'));
-  m.put.mockResolvedValue({ url: 'https://blob.example.com/resumes/seeker1/generated-123.pdf' });
-  m.resumeCreate.mockResolvedValue({
-    id: 'resume1',
-    fileBlobUrl: 'https://blob.example.com/resumes/seeker1/generated-123.pdf',
+  m.storeConfigured.mockReturnValue(true);
+  m.putStored.mockResolvedValue({
+    url: 'https://s1.private.blob.vercel-storage.com/resumes/seeker1/generated-ab12.pdf',
+    pathname: 'resumes/seeker1/generated-ab12.pdf',
   });
+  m.resumeCreate.mockResolvedValue({ id: 'resume1' });
 });
 
 describe('generateResume', () => {
@@ -96,21 +99,29 @@ describe('generateResume', () => {
       ],
     });
 
-    expect(m.put).toHaveBeenCalledWith(
-      expect.stringMatching(/^resumes\/seeker1\/generated-\d+\.pdf$/),
+    // A generated CV is a personal document: it goes to the PRIVATE store (it
+    // used to be written with access: 'public').
+    expect(m.putStored).toHaveBeenCalledWith(
+      'private',
+      'resumes/seeker1/generated.pdf',
       expect.any(Buffer),
-      { access: 'public', contentType: 'application/pdf' },
+      'application/pdf',
     );
 
     const created = m.resumeCreate.mock.calls[0]![0];
     expect(created.data.userId).toBe('seeker1');
     expect(created.data.fileMime).toBe('application/pdf');
     expect(created.data.fileBlobUrl).toBe(
-      'https://blob.example.com/resumes/seeker1/generated-123.pdf',
+      'https://s1.private.blob.vercel-storage.com/resumes/seeker1/generated-ab12.pdf',
     );
-    expect(result).toEqual({
-      id: 'resume1',
-      fileBlobUrl: 'https://blob.example.com/resumes/seeker1/generated-123.pdf',
+    // The storage locator is not handed back to the browser — only the id, which
+    // the UI turns into the authenticated download route.
+    expect(result).toEqual({ id: 'resume1' });
+    // Profile-derived, so it is tagged and ParsedResume-shaped for the embedder.
+    expect(created.data.parsedJson).toMatchObject({
+      _source: 'profile',
+      fullName: 'Ada Lovelace',
+      summary: 'I build things.',
     });
   });
 

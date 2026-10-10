@@ -6,13 +6,13 @@ const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000';
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const [jobs, companies] = await Promise.all([
     db.jobPost.findMany({
-      where: { status: 'PUBLISHED', deletedAt: null },
+      where: { status: 'PUBLISHED', deletedAt: null, company: { deletedAt: null } },
       select: { slug: true, updatedAt: true },
       take: 5000,
       orderBy: { publishedAt: 'desc' },
     }),
     db.companyProfile.findMany({
-      where: { verificationStatus: 'VERIFIED' },
+      where: { verificationStatus: 'VERIFIED', user: { deletedAt: null } },
       select: { slug: true, updatedAt: true },
       take: 1000,
     }),

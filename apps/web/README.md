@@ -31,7 +31,7 @@ What landed:
 
 - Full app surface: `(marketing)` (PPR), `(auth)` (Clerk), `(authenticated)`, and the `company/` segment; 12-model Postgres schema (`pgvector` + PostGIS).
 - Real Server Actions (apply, post-job, profile, status, account) wrapped in `withAudit`; AI workflows (resume parse, JD skills, match score, bio coach) triggered off the response path via `after()`.
-- Auth (Clerk middleware + `lib/auth`), Algolia search, Blob uploads, Upstash rate limits, Sentry (DSN-gated + client Replay), consent-gated analytics, email bounce/complaint suppression, GDPR export/delete + retention.
+- Auth (Clerk via `proxy.ts` + `lib/auth`), Algolia search, private Blob résumé storage behind an authenticated download route, Upstash rate limits (with an in-process fallback), Sentry (DSN-gated + client Replay), consent-gated analytics, email bounce/complaint suppression + signed one-click unsubscribe, GDPR export (streamed, not stored) / delete + retention.
 - CI (lint/typecheck/test/build, gitleaks, axe), Playwright + Clerk e2e harness, Lighthouse CI on preview deploys, and `docs/`.
 
 Runs on Next 16 **Cache Components** — see the conventions in [FRONTEND.md](./docs/FRONTEND.md). Outstanding work (vendor provisioning, history scrub, deferred features) is tracked in [docs/REMAINING_STEPS.md](./docs/REMAINING_STEPS.md).

@@ -15,6 +15,7 @@ import { Stat, StatRow } from '@/app/components/ui/stat';
 import { buttonClasses } from '@/app/components/ui/button';
 import { AmbientCanvas } from '@/app/components/ui/ambient';
 import { GlobeLazy } from '@/app/components/globe-lazy';
+import { formatSalary } from '@/lib/ui/salary';
 
 export const metadata = {
   title: 'Find your next role',
@@ -129,7 +130,7 @@ async function getFeaturedJobs() {
   cacheLife('hours');
 
   return db.jobPost.findMany({
-    where: { status: 'PUBLISHED', deletedAt: null },
+    where: { status: 'PUBLISHED', deletedAt: null, company: { deletedAt: null } },
     orderBy: { publishedAt: 'desc' },
     take: 6,
     include: {
@@ -281,10 +282,19 @@ async function FeaturedJobs() {
                   {job.location ? ` · ${job.location}` : ''}
                 </p>
               </div>
-              {job.salaryMin && job.salaryMax ? (
+              {formatSalary({
+                min: job.salaryMin,
+                max: job.salaryMax,
+                currency: job.salaryCurrency,
+                period: job.salaryPeriod,
+              }) ? (
                 <Badge tone="dark" className="self-start">
-                  {job.salaryCurrency} {job.salaryMin.toLocaleString('en-US')}–
-                  {job.salaryMax.toLocaleString('en-US')}
+                  {formatSalary({
+                    min: job.salaryMin,
+                    max: job.salaryMax,
+                    currency: job.salaryCurrency,
+                    period: job.salaryPeriod,
+                  })}
                 </Badge>
               ) : null}
               {job.skills.length > 0 && (

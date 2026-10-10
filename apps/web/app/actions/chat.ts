@@ -12,12 +12,13 @@ import { tags } from '@/lib/cache';
 import { chatMessageLimit } from '@/lib/ratelimit';
 import { logger } from '@/lib/observability/logger';
 import { type ActionResult, fail, succeed } from '@/lib/action-result';
+import { clientIp } from '@/lib/security/client-ip';
 
 async function auditCtx(actorId: string) {
   const h = await headers();
   return {
     actorId,
-    ip: h.get('x-forwarded-for')?.split(',')[0]?.trim() ?? null,
+    ip: clientIp(h),
     ua: h.get('user-agent') ?? null,
   };
 }
@@ -190,7 +191,23 @@ export async function addVirtualInternToChat(jobSeekerUserId: string): Promise<v
 const MessageSchema = z.object({
   body: z.string().trim().min(1, 'Message is empty.').max(4000),
   kind: z.enum(['TEXT', 'MATERIAL', 'INTERVIEW_DETAILS']).default('TEXT'),
-  attachmentUrl: z.string().url().max(2000).optional().or(z.literal('')),
+  // https only, no user:pass@. `z.string().url()` alone accepts javascript:,
+  // data:, ftp: and file: — fine to *store*, not fine to render as a link in a
+  // hiring chat where a stranger's link is the classic phishing vector.
+  attachmentUrl: z
+    .string()
+    .url()
+    .max(2000)
+    .refine((u) => {
+      try {
+        const p = new URL(u);
+        return p.protocol === 'https:' && !p.username && !p.password;
+      } catch {
+        return false;
+      }
+    }, 'Attachment links must be https:// addresses.')
+    .optional()
+    .or(z.literal('')),
 });
 
 // Discriminated result for sendChatMessage so the composer can surface

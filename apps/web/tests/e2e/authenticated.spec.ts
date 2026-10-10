@@ -8,10 +8,6 @@ import { STORAGE } from './storage-paths';
 
 const hasJobseeker = Boolean(process.env.E2E_TEST_PASSWORD && process.env.E2E_TEST_EMAIL_JOBSEEKER);
 const hasCompany = Boolean(process.env.E2E_TEST_PASSWORD && process.env.E2E_TEST_EMAIL_COMPANY);
-// The GDPR export writes the bundle to Vercel Blob and returns a signed URL; with
-// no Blob token the request 500s, so skip locally and run it where Blob is wired
-// (CI / preview), mirroring how the whole suite skips without Clerk creds.
-const hasBlob = Boolean(process.env.BLOB_READ_WRITE_TOKEN);
 
 // The stored session state only holds `__client_uat`/`__clerk_db_jwt`; Clerk mints
 // the short-lived `__session` cookie via a FAPI handshake on each protected
@@ -36,13 +32,16 @@ test.describe('jobseeker (authenticated)', () => {
     await expect(page.getByRole('heading', { name: /applications/i }).first()).toBeVisible();
   });
 
-  test('GDPR export request surfaces a download/confirmation', async ({ page }) => {
-    test.skip(!hasBlob, 'GDPR export needs Vercel Blob (BLOB_READ_WRITE_TOKEN)');
+  test('GDPR export downloads a JSON file straight to the browser', async ({ page }) => {
+    // No Blob store is involved any more: the export is the response itself,
+    // so there is no stored copy and no emailed link.
     await page.goto('/account/export');
-    await page.getByRole('button', { name: /request data export/i }).click();
-    // Target the success message specifically — the page copy already contains
-    // words like "email"/"prepare", so a loose match is ambiguous.
-    await expect(page.getByText(/Export ready|Download:/i)).toBeVisible({ timeout: 30_000 });
+    const [download] = await Promise.all([
+      page.waitForEvent('download', { timeout: 30_000 }),
+      page.getByRole('button', { name: /request data export/i }).click(),
+    ]);
+    expect(download.suggestedFilename()).toMatch(/^joblify-data-export-.*\.json$/);
+    await expect(page.getByText(/Your export was downloaded/i)).toBeVisible();
   });
 
   test('signed-in jobseeker can open an apply page', async ({ page }) => {

@@ -2,7 +2,13 @@ import { vi, describe, it, expect, beforeEach } from 'vitest';
 
 const m = vi.hoisted(() => ({ verify: vi.fn(), updateMany: vi.fn() }));
 
-vi.mock('svix', () => ({ Webhook: vi.fn().mockImplementation(() => ({ verify: m.verify })) }));
+// A class, not vi.fn(() => …): Vitest >= 4 only honours `new` on function/class
+// implementations, and the route does `new Webhook(secret)`.
+vi.mock('svix', () => ({
+  Webhook: class {
+    verify = m.verify;
+  },
+}));
 vi.mock('@/lib/db', () => ({ db: { user: { updateMany: m.updateMany } } }));
 vi.mock('@/lib/observability/logger', () => ({ logger: { info: vi.fn(), warn: vi.fn() } }));
 vi.mock('next/headers', () => ({

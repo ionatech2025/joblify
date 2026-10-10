@@ -2,18 +2,13 @@
 # https://bun.sh/docs/runtime/bunfig
 
 [install]
-# Disable noisy postinstall scripts by default; allow Prisma's generate.
-# Run `bun install --trust` once when adding a new package that needs scripts.
-auto = "auto"
-exact = false
-production = false
-
-# Trust postinstall scripts only for packages that need them.
-[install.scopes]
-
-[install.cache]
-disable = false
+# Never resolve to a release younger than 3 days (value is seconds). The window
+# between a malicious publish and its takedown is where npm supply-chain worms
+# (the Sep/Nov 2025 waves) do their damage; a job board loses nothing by being
+# three days behind on patch releases. Raise it in an emergency, never lower it
+# to "get the fix now" without reading the changelog.
+minimumReleaseAge = 259200
 
 [run]
-# Use Bun's runtime for npm scripts where possible (`bun run dev` etc).
+# Use the system shell for npm scripts (`bun run dev` etc).
 shell = "system"

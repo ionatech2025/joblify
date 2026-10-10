@@ -15,14 +15,15 @@ import { TimeStamp } from '@/app/components/ui/timestamp';
 type ResumeRow = {
   id: string;
   title: string;
-  fileBlobUrl: string;
   parsed: boolean;
   parseFailed: boolean;
   createdAt: string;
 };
 
+// PDF and .docx only: legacy .doc (OLE2) has no maintained reader, so accepting
+// it would just produce a file that can never be parsed.
 const ACCEPT =
-  '.pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+  '.pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 
 export function ResumeManager({
   userId,
@@ -50,17 +51,14 @@ export function ResumeManager({
       // Try Vercel Blob client upload first if configured
       try {
         const safe = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+        // Résumés go to the PRIVATE store: the returned URL is not readable on
+        // its own, and registerResume() re-derives everything it persists from
+        // the store rather than from what we send.
         const blob = await upload(`resumes/${userId}/${safe}`, file, {
-          access: 'public',
+          access: 'private',
           handleUploadUrl: '/api/v1/uploads/sign',
-          clientPayload: JSON.stringify({ kind: 'resume' }),
         });
-        const reg = await registerResume({
-          url: blob.url,
-          title: file.name,
-          contentType: file.type || undefined,
-          sizeBytes: file.size,
-        });
+        const reg = await registerResume({ url: blob.url, title: file.name });
         created = { ...reg, parsed: false, parseFailed: false };
       } catch {
         // Fall back to direct server-side upload when client token / Vercel Blob is not available
@@ -78,9 +76,12 @@ export function ResumeManager({
       toast.success('Resume uploaded', 'We’re parsing it now; match scores appear shortly.');
     } catch (err) {
       let message =
-        err instanceof Error ? err.message : 'Upload failed. Use a PDF or Word file under 5MB.';
+        err instanceof Error
+          ? err.message
+          : 'Upload failed. Use a PDF or Word (.docx) file under 5MB.';
       if (message.includes('Vercel Blob') || message.includes('token')) {
-        message = 'Upload failed. Please ensure the file is a PDF or Word document under 5MB.';
+        message =
+          'Upload failed. Please ensure the file is a PDF or Word (.docx) document under 5MB.';
       }
       setError(message);
       toast.error('Upload failed', message);
@@ -135,7 +136,7 @@ export function ResumeManager({
           className="mt-6"
           icon={<FileText />}
           title="No resumes yet"
-          description="Upload a PDF or Word document, or build one here. We parse it to prefill applications and score your match against every role."
+          description="Upload a PDF or Word (.docx) document, or build one here. We parse it to prefill applications and score your match against every role."
           action={
             <Link
               href="/jobseeker/resumes/builder"
@@ -153,9 +154,9 @@ export function ResumeManager({
               className="flex items-center justify-between gap-4 rounded-card border border-border bg-surface p-4 shadow-soft"
             >
               <div className="min-w-0">
+                {/* Authenticated download route — résumés are not publicly addressable. */}
                 <a
-                  href={r.fileBlobUrl}
-                  target="_blank"
+                  href={`/api/v1/resumes/${r.id}/file`}
                   rel="noopener noreferrer"
                   className="font-semibold text-fg no-underline hover:underline"
                 >

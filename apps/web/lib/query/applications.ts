@@ -58,7 +58,10 @@ export function useWithdrawApplication(userId: string) {
       if (ctx?.previous) queryClient.setQueryData(key, ctx.previous);
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: key });
+      // Deliberately not returned: returning the promise would hold the mutation
+      // in "pending" until the refetch lands. Client-side, so nothing is
+      // dropped on a response boundary.
+      void queryClient.invalidateQueries({ queryKey: key });
     },
   });
 }

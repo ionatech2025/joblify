@@ -3,13 +3,14 @@ import { db } from '@/lib/db';
 import { ConsoleWidth } from '@/app/components/console/shell';
 import { Breadcrumb, ControlPanel } from '@/app/components/console/control-panel';
 import { VerificationQueue } from './verification-queue';
+import { JobReportsQueue } from './job-reports';
 
 export const metadata = { title: 'Admin' };
 
 export default async function AdminPage() {
   await requireRole('ADMIN');
 
-  const [pending, jobSeekerCount, companyCount, publishedJobCount] = await Promise.all([
+  const [pending, reports, jobSeekerCount, companyCount, publishedJobCount] = await Promise.all([
     db.companyProfile.findMany({
       where: { verificationStatus: 'PENDING' },
       // Oldest first, so a ceiling here trims the newest arrivals rather than
@@ -23,6 +24,24 @@ export default async function AdminPage() {
         companySize: true,
         website: true,
         createdAt: true,
+      },
+    }),
+    db.jobReport.findMany({
+      where: { status: 'OPEN' },
+      orderBy: { createdAt: 'asc' },
+      take: 100,
+      select: {
+        id: true,
+        reason: true,
+        details: true,
+        createdAt: true,
+        jobPost: {
+          select: {
+            title: true,
+            slug: true,
+            company: { select: { companyProfile: { select: { companyName: true } } } },
+          },
+        },
       },
     }),
     db.user.count({ where: { userType: 'JOB_SEEKER', deletedAt: null } }),
@@ -56,6 +75,19 @@ export default async function AdminPage() {
             companySize: p.companySize,
             website: p.website,
             createdAt: p.createdAt.toISOString(),
+          }))}
+        />
+
+        <h2 className="text-fg mt-6 mb-2 text-sm font-semibold">Reported job postings</h2>
+        <JobReportsQueue
+          initial={reports.map((r) => ({
+            id: r.id,
+            reason: r.reason,
+            details: r.details,
+            createdAt: r.createdAt.toISOString(),
+            jobTitle: r.jobPost.title,
+            jobSlug: r.jobPost.slug,
+            companyName: r.jobPost.company.companyProfile?.companyName ?? 'Company',
           }))}
         />
       </ConsoleWidth>

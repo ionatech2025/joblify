@@ -1,3 +1,6 @@
+// Next 16 renamed the `middleware` file convention to `proxy` (it now runs on the
+// Node.js runtime). The previous name still worked but printed a deprecation
+// warning on every build and is slated for removal.
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 

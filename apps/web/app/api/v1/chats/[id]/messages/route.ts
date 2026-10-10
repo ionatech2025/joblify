@@ -57,11 +57,15 @@ export async function GET(
   if (!area) return NextResponse.json({ error: 'not found' }, { status: 404 });
 
   // Mirror each page's own fallback so a poll can't rename a sender mid-thread:
-  // the company's own messages read as the company, everyone else falls back to
-  // the address that identifies them.
+  // the company's own messages read as the company. A nameless participant is
+  // identified by e-mail ONLY to the owning company (it already holds that
+  // address from the application); to anyone else — notably other candidates in
+  // a shared job chat — they are just "Participant". Showing a stranger's
+  // address as a display name leaked it to every other shortlisted candidate.
   const companyName = area.company.companyProfile?.companyName ?? 'Company';
+  const viewerIsCompany = user.id === area.companyId;
   const body: ChatMessagesResponse = toChatMessages(area.messages, (m) =>
-    m.senderId === area.companyId ? companyName : m.sender.email,
+    m.senderId === area.companyId ? companyName : viewerIsCompany ? m.sender.email : 'Participant',
   );
 
   // Per-user content: never let a shared cache hold it.

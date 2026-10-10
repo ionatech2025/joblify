@@ -102,6 +102,15 @@ enum WorkMode {
   ONSITE
 }
 
+// Matches schema.org QuantitativeValue.unitText for MonetaryAmount.
+enum SalaryPeriod {
+  HOUR
+  DAY
+  WEEK
+  MONTH
+  YEAR
+}
+
 enum JobPostStatus {
   DRAFT
   PENDING_REVIEW
@@ -160,6 +169,22 @@ enum InvitationStatus {
   REVOKED
 }
 
+// Trust & safety: why a posting was reported. The reporter picks one; free text
+// goes in `details`.
+enum JobReportReason {
+  SCAM
+  DISCRIMINATORY
+  MISLEADING
+  DUPLICATE
+  OTHER
+}
+
+enum JobReportStatus {
+  OPEN
+  ACTIONED
+  DISMISSED
+}
+
 enum AuditAction {
   USER_SIGNED_UP
   USER_SIGNED_IN
@@ -183,6 +208,8 @@ enum AuditAction {
   JOB_SHARED
   INVITATION_SENT
   INVITATION_RESPONDED
+  JOB_REPORTED
+  JOB_REPORT_RESOLVED
 }
 
 // ============================================================================
@@ -206,6 +233,15 @@ model User {
   locale                 String    @default("en")
   timezone               String    @default("UTC")
   consentJson            Json?
+  /// Explicit opt-in to the daily jobs digest. This is NOT derived from
+  /// `consentJson`: that column records the cookie-banner choice (analytics /
+  /// marketing cookies), and treating "the banner was answered" — including
+  /// "Necessary only" — as permission to send marketing email is how the digest
+  /// used to enrol people who had refused. Email consent has to be a specific,
+  /// affirmative, withdrawable act; it defaults to false and is flipped only by
+  /// the user (settings toggle) or reverted by a one-click unsubscribe.
+  digestOptIn            Boolean   @default(false)
+  digestOptInAt          DateTime?
   emailSuppressedAt      DateTime?
   emailSuppressionReason String?
   /// Digest watermark: when this user last had a digest run complete for them
@@ -232,6 +268,7 @@ model User {
   auditEvents     AuditEvent[]   @relation("AuditActor")
   savedJobs       SavedJob[]
   savedSearches   SavedSearch[]
+  jobReportsFiled JobReport[]    @relation("JobReportsFiled")
 
   subscribers      CompanySubscription[] @relation("SubscribersOfCompany")
   subscriptions    CompanySubscription[] @relation("SubscriptionsByJobSeeker")
@@ -402,17 +439,28 @@ model JobPost {
   /// PostGIS Point(longitude, latitude) — written/read via raw SQL.
   geo         Unsupported("geography(Point, 4326)")?
 
-  salaryMin      Int?
-  salaryMax      Int?
-  salaryCurrency String @default("USD")
+  salaryMin       Int?
+  salaryMax       Int?
+  salaryCurrency  String       @default("USD")
+  /// What `salaryMin`/`salaryMax` are per. Without it the numbers are
+  /// ambiguous (a monthly figure published as an annual one is a wrong pay
+  /// claim, and Google Jobs treats a wrong `unitText` as misleading markup).
+  /// Existing rows were all entered as annual figures — that is what the JSON-LD
+  /// hard-coded — so YEAR is the truthful default.
+  salaryPeriod    SalaryPeriod @default(YEAR)
+  /// ISO 3166-1 alpha-2. Google's JobPosting `jobLocation.address.addressCountry`
+  /// is a *required* property; free-text `location` alone cannot supply it.
+  locationCountry String?
 
   applicationDeadline DateTime?
   status              JobPostStatus @default(DRAFT)
 
-  /// 1536-dim embedding from openai/text-embedding-3-small (resized) or large.
-  embedding Unsupported("vector(1536)")?
+  /// 1536-dim embedding (see EMBEDDING_DIMENSIONS in lib/ai/embeddings.ts).
+  embedding      Unsupported("vector(1536)")?
+  /// Which model produced `embedding` (see Resume.embeddingModel).
+  embeddingModel String?
   /// tsvector built from title + description + requirements for FTS fallback.
-  tsv       Unsupported("tsvector")?
+  tsv            Unsupported("tsvector")?
 
   viewCount   Int       @default(0)
   publishedAt DateTime?
@@ -425,6 +473,7 @@ model JobPost {
   views        JobView[]
   savedBy      SavedJob[]
   chatArea     ChatArea?
+  reports      JobReport[]
 
   @@index([companyId, status, deletedAt])
   @@index([status, publishedAt(sort: Desc)])
@@ -447,6 +496,13 @@ model JobApplication {
   coverLetter    String?
   recruiterNotes String?
   matchScore     Float?
+  /// Provenance of `matchScore`: which embedding model produced it and when.
+  /// A score a recruiter can see is an AI-assisted evaluation of a person, and
+  /// being able to say how it was produced (and to invalidate scores from a
+  /// retired model) is the minimum the EU AI Act / GDPR Art. 22 / US state
+  /// automated-decision rules ask of the deployer.
+  matchModel     String?
+  matchScoredAt  DateTime?
 
   appliedAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -530,21 +586,25 @@ model Resume {
   fileMime      String
   fileSizeBytes Int
 
-  parsedJson    Json?
+  parsedJson     Json?
   /// 1536-dim embedding from the parsed resume text.
-  embedding     Unsupported("vector(1536)")?
+  embedding      Unsupported("vector(1536)")?
   /// How many times the algolia-reconcile AI sweep retried parsing/embedding
   /// this resume. Capped (see MAX_PARSE_ATTEMPTS in the cron route) so a
   /// poison file can't burn AI budget forever.
-  parseAttempts Int                          @default(0)
+  parseAttempts  Int                          @default(0)
   /// Set once parseAttempts hits the cap with parsedJson still null — the
   /// cron's own retry filter already excludes it from future attempts once
   /// this is set, so there's no spontaneous-recovery path; the UI uses this
   /// to stop showing "Processing…" forever and offer a recovery action
   /// (re-upload) instead.
-  parseFailedAt DateTime?
+  parseFailedAt  DateTime?
   /// Short, user-facing reason captured alongside parseFailedAt.
-  parseError    String?
+  parseError     String?
+  /// The embedding model that produced `embedding`. Vectors from different
+  /// models (or different widths) are not comparable, so a model change has to
+  /// be able to find — and re-embed — everything produced by the old one.
+  embeddingModel String?
 
   isDefault Boolean   @default(false)
   deletedAt DateTime?
@@ -703,4 +763,32 @@ model AuditEvent {
   @@index([entity, entityId])
   @@index([action, createdAt(sort: Desc)])
   @@map("audit_events")
+}
+
+// ============================================================================
+// Trust & safety
+// ============================================================================
+
+// A user flagging a posting (scam, discrimination, misleading pay, duplicate).
+// One open report per (job, reporter) — re-reporting updates it rather than
+// stacking — and the reporter link is SetNull so erasing an account does not
+// erase the moderation record of what was reported.
+model JobReport {
+  id         String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  jobPostId  String          @db.Uuid
+  reporterId String?         @db.Uuid
+  reason     JobReportReason
+  details    String?
+  status     JobReportStatus @default(OPEN)
+  resolvedAt DateTime?
+  /// Admin user id. Not a relation: moderation history must outlive the account.
+  resolvedBy String?         @db.Uuid
+  createdAt  DateTime        @default(now())
+
+  jobPost  JobPost @relation(fields: [jobPostId], references: [id], onDelete: Cascade)
+  reporter User?   @relation("JobReportsFiled", fields: [reporterId], references: [id], onDelete: SetNull)
+
+  @@unique([jobPostId, reporterId])
+  @@index([status, createdAt])
+  @@map("job_reports")
 }

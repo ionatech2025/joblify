@@ -16,6 +16,8 @@ import { JobDetailSkeleton } from './job-detail-skeleton';
 import { MatchBadge } from './match-badge';
 import { SimilarJobs } from './similar-jobs';
 import { ViewTracker } from './view-tracker';
+import { ReportJob } from './report-job';
+import { formatSalary } from '@/lib/ui/salary';
 
 type Params = Promise<{ slug: string }>;
 
@@ -144,10 +146,19 @@ async function JobDetailBody({ slug }: { slug: string }) {
                   {job.workMode === 'REMOTE' ? 'Remote' : 'Hybrid'}
                 </Badge>
               )}
-            {job.salaryMin && job.salaryMax && (
+            {formatSalary({
+              min: job.salaryMin,
+              max: job.salaryMax,
+              currency: job.salaryCurrency,
+              period: job.salaryPeriod,
+            }) && (
               <Badge tone="dark">
-                {job.salaryCurrency} {job.salaryMin.toLocaleString('en-US')} –{' '}
-                {job.salaryMax.toLocaleString('en-US')} per year
+                {formatSalary({
+                  min: job.salaryMin,
+                  max: job.salaryMax,
+                  currency: job.salaryCurrency,
+                  period: job.salaryPeriod,
+                })}
               </Badge>
             )}
           </div>
@@ -195,6 +206,7 @@ async function JobDetailBody({ slug }: { slug: string }) {
               <ApplyPanel jobId={job.id} slug={job.slug} />
             </Suspense>
           </Card>
+          <ReportJob jobPostId={job.id} />
         </section>
 
         <IslandBoundary fallback={null}>
@@ -228,7 +240,9 @@ export async function getJobBySlug(slug: string) {
     },
   });
 
-  if (!job || job.deletedAt || job.status !== 'PUBLISHED') return null;
+  // A deleted company's postings are not live (deleteMyAccount also archives
+  // them; this covers rows that predate that and any other path).
+  if (!job || job.deletedAt || job.status !== 'PUBLISHED' || job.company.deletedAt) return null;
 
   cacheTag(tags.job(job.id), tags.company(job.companyId));
   return job;

@@ -7,6 +7,7 @@ import { requireRole } from '@/lib/auth';
 import { withAudit } from '@/lib/audit';
 import { tags } from '@/lib/cache';
 import { logger } from '@/lib/observability/logger';
+import { clientIp } from '@/lib/security/client-ip';
 
 export const ProfileSchema = z.object({
   profileType: z.enum(['EMPLOYABLE', 'VIRTUAL_INTERN']),
@@ -106,7 +107,7 @@ export async function saveProfile(input: ProfileInput): Promise<void> {
   const parsed = ProfileSchema.parse(input);
 
   const h = await headers();
-  const ip = h.get('x-forwarded-for')?.split(',')[0]?.trim() ?? null;
+  const ip = clientIp(h);
   const ua = h.get('user-agent') ?? null;
 
   await withAudit(

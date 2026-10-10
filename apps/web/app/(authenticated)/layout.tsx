@@ -17,7 +17,7 @@ import { ConsoleShell } from '@/app/components/console/shell';
 // from the CDN.
 //
 // This is safe because the shell is build-time markup with no user data in it,
-// and it is not the authentication check: middleware.ts already refuses
+// and it is not the authentication check: proxy.ts already refuses
 // signed-out requests to every route in this group, and each page and Server
 // Action re-checks with requireUser/requireRole. The gate is defence in depth,
 // and it still redirects before anything user-specific can stream.

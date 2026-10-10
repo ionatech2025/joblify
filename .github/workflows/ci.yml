@@ -10,6 +10,12 @@ concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
+# Least privilege: nothing here writes to the repo, so the GITHUB_TOKEN gets
+# read-only contents and nothing else. (Without this block the token inherits
+# the repository default, which is read/write on many orgs.)
+permissions:
+  contents: read
+
 jobs:
   web:
     name: web (apps/web)
@@ -24,22 +30,59 @@ jobs:
       # The Clerk publishable key must be FORMAT-VALID (pk_test_<base64 of
       # "domain$">) — `next build` prerenders <ClerkProvider>, which decodes it.
       # A bare "pk_test_placeholder" fails the decoder and breaks the build.
-      DATABASE_URL: 'postgresql://user:pass@localhost:5432/joblify?schema=public'
-      DATABASE_URL_UNPOOLED: 'postgresql://user:pass@localhost:5432/joblify?schema=public'
-      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: 'pk_test_Y2xlcmsuZXhhbXBsZS5jb20k'
-      CLERK_SECRET_KEY: 'sk_test_placeholderplaceholderplaceholder'
-      NEXT_PUBLIC_SITE_URL: 'http://localhost:3000'
+      DATABASE_URL: "postgresql://user:pass@localhost:5432/joblify?schema=public"
+      DATABASE_URL_UNPOOLED: "postgresql://user:pass@localhost:5432/joblify?schema=public"
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: "pk_test_Y2xlcmsuZXhhbXBsZS5jb20k"
+      CLERK_SECRET_KEY: "sk_test_placeholderplaceholderplaceholder"
+      NEXT_PUBLIC_SITE_URL: "http://localhost:3000"
 
     steps:
-      - uses: actions/checkout@v4
+      # Third-party actions are pinned to full commit SHAs (a mutable tag such
+      # as `@v4` can be repointed by whoever controls that repository — the
+      # March 2025 tj-actions compromise worked exactly that way). Dependabot's
+      # github-actions ecosystem bumps these and keeps the version comment.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      # Vitest 5 and file-type 22 need Node >= 22.12; the runner's default Node
+      # is older. Bun runs the scripts, but the test runner and `next build`
+      # execute under Node.
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
 
       - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
-          bun-version: latest
+          # Pinned to match `packageManager` in apps/web/package.json. `latest`
+          # made every run depend on whatever Bun shipped that morning.
+          bun-version: 1.3.14
 
       - name: Install
         run: bun install --frozen-lockfile
+
+      # Blocks on high/critical advisories in what actually ships. Dev-only
+      # tooling is reported (second step) but does not block: a vulnerable test
+      # runner is not a production exposure.
+      #
+      # Two advisories are acknowledged, both build/CLI-time only (no request
+      # path, no user-controlled input), and neither has a compatible fix yet:
+      #   GHSA-vfj7-8cjw-p6xm  braces <= 3.0.3 — newest 3.x IS 3.0.3; only
+      #                        reachable by glob patterns the developers write.
+      #   GHSA-ggr8-5vv4-36mx  deepmerge-ts < 8 — pinned exactly by
+      #                        @prisma/config@6; clears with the Prisma 7 move.
+      # Review when either package ships a fix; do not add to this list casually.
+      - name: Dependency audit (production, blocking)
+        run: |
+          bun audit --prod --audit-level=high \
+            --ignore GHSA-vfj7-8cjw-p6xm \
+            --ignore GHSA-ggr8-5vv4-36mx
+
+      - name: Dependency audit (all, advisory)
+        continue-on-error: true
+        run: bun audit --audit-level=moderate
 
       - name: Prisma validate
         run: bunx prisma validate
@@ -91,9 +134,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           fetch-depth: 0
-      - uses: gitleaks/gitleaks-action@v2
+          persist-credentials: false
+      - uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2.3.9
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -31,6 +31,7 @@ const m = vi.hoisted(() => {
     companyFindUnique: vi.fn(),
     seekerProfileFindMany: vi.fn(),
     notifCreate: vi.fn(),
+    notifCreateMany: vi.fn(),
     updateTag: vi.fn(),
   };
 });
@@ -60,7 +61,7 @@ vi.mock('@/lib/db', () => ({
     },
     skill: { findMany: m.skillFindMany },
     jobPostSkill: { deleteMany: m.jpsDeleteMany, createMany: m.jpsCreateMany },
-    notification: { create: m.notifCreate },
+    notification: { create: m.notifCreate, createMany: m.notifCreateMany },
   },
 }));
 
@@ -73,7 +74,11 @@ vi.mock('@/lib/audit', () => ({
 }));
 
 vi.mock('ai', () => ({ generateObject: m.generateObject }));
-vi.mock('@/lib/ai/gateway', () => ({ gateway: () => ({}), MODELS: { haiku: 'h' } }));
+vi.mock('@/lib/ai/gateway', () => ({
+  gateway: () => ({}),
+  MODELS: { haiku: 'h' },
+  aiProviderOptions: () => ({}),
+}));
 vi.mock('@/lib/search/index-job', () => ({ reindexJob: m.reindexJob }));
 vi.mock('@/workflows/match-score.workflow', () => ({ embedJobPost: m.embedJobPost }));
 vi.mock('@sentry/nextjs', () => ({ captureException: vi.fn() }));
@@ -101,7 +106,8 @@ function futureDateString(daysAhead = 30): string {
 function validJobInput(over: Record<string, unknown> = {}) {
   return {
     title: 'Senior Backend Developer',
-    description: 'We are seeking a senior backend developer to build robust microservices and distributed APIs.',
+    description:
+      'We are seeking a senior backend developer to build robust microservices and distributed APIs.',
     requirements: '5+ years Node.js or Rust experience.',
     industry: 'TECHNOLOGY' as const,
     jobType: 'FULL_TIME' as const,
@@ -111,6 +117,7 @@ function validJobInput(over: Record<string, unknown> = {}) {
     salaryMin: 80000,
     salaryMax: 120000,
     salaryCurrency: 'USD',
+    salaryPeriod: 'YEAR' as const,
     applicationDeadline: futureDateString(30),
     publish: true,
     createChatArea: false,
@@ -130,9 +137,19 @@ describe('Phase 3: Job Exploration and Posting (Tests 57–87)', () => {
       verificationStatus: 'VERIFIED',
     });
     m.jobFindFirst.mockResolvedValue(null);
-    m.jobCreate.mockResolvedValue({ id: JOB_ID, status: 'PUBLISHED', title: 'Senior Backend Developer' });
-    m.jobUpdate.mockResolvedValue({ id: JOB_ID, status: 'PUBLISHED', title: 'Senior Backend Developer' });
-    m.generateObject.mockResolvedValue({ object: { requiredSkills: ['Node.js'], niceToHave: ['Docker'] } });
+    m.jobCreate.mockResolvedValue({
+      id: JOB_ID,
+      status: 'PUBLISHED',
+      title: 'Senior Backend Developer',
+    });
+    m.jobUpdate.mockResolvedValue({
+      id: JOB_ID,
+      status: 'PUBLISHED',
+      title: 'Senior Backend Developer',
+    });
+    m.generateObject.mockResolvedValue({
+      object: { requiredSkills: ['Node.js'], niceToHave: ['Docker'] },
+    });
     m.skillFindMany.mockResolvedValue([{ id: 's-1', slug: 'node-js' }]);
     m.jpsDeleteMany.mockResolvedValue({ count: 0 });
     m.jpsCreateMany.mockResolvedValue({ count: 1 });
@@ -252,7 +269,12 @@ describe('Phase 3: Job Exploration and Posting (Tests 57–87)', () => {
   it('67. Filtering by Job Type, Industry, Experience Level, or Location returns only posts matching the selected filters', () => {
     const jobs = [
       { jobType: 'FULL_TIME', industry: 'TECHNOLOGY', experienceLevel: 'MID', location: 'Kampala' },
-      { jobType: 'PART_TIME', industry: 'HOSPITALITY', experienceLevel: 'ENTRY', location: 'Entebbe' },
+      {
+        jobType: 'PART_TIME',
+        industry: 'HOSPITALITY',
+        experienceLevel: 'ENTRY',
+        location: 'Entebbe',
+      },
     ];
     const filtered = jobs.filter(
       (j) => j.jobType === 'FULL_TIME' && j.industry === 'TECHNOLOGY' && j.location === 'Kampala',
@@ -300,7 +322,11 @@ describe('Phase 3: Job Exploration and Posting (Tests 57–87)', () => {
 
   // 72 Phase 3: Job Exploration and Posting JOB_UC_08.0 View Job Posts
   it('72. Submitting an empty or malicious (script-tag/SQL) search query is safely rejected/sanitized', () => {
-    const sanitize = (q: string) => q.replace(/<[^>]*>?/gm, '').replace(/['";]/g, '').trim();
+    const sanitize = (q: string) =>
+      q
+        .replace(/<[^>]*>?/gm, '')
+        .replace(/['";]/g, '')
+        .trim();
     const safe = sanitize("<script>alert('hack')</script>'; DROP TABLE jobs; --");
     expect(safe).not.toContain('<script>');
     expect(safe).not.toContain(';');
@@ -326,8 +352,13 @@ describe('Phase 3: Job Exploration and Posting (Tests 57–87)', () => {
   // 75 Phase 3: Job Exploration and Posting JOB_UC_11.0 Create Job Post
   it('75. Submitting a job post with a missing Title, Description, or Category is blocked with a validation error', () => {
     expect(PostJobFormSchema.safeParse(validJobInput({ title: '' })).success).toBe(false);
-    expect(PostJobFormSchema.safeParse(validJobInput({ description: 'short' })).success).toBe(false);
-    expect(PostJobFormSchema.safeParse(validJobInput({ industry: 'INVALID' as unknown as 'TECHNOLOGY' })).success).toBe(false);
+    expect(PostJobFormSchema.safeParse(validJobInput({ description: 'short' })).success).toBe(
+      false,
+    );
+    expect(
+      PostJobFormSchema.safeParse(validJobInput({ industry: 'INVALID' as unknown as 'TECHNOLOGY' }))
+        .success,
+    ).toBe(false);
   });
 
   // 76 Phase 3: Job Exploration and Posting JOB_UC_11.0 Create Job Post
@@ -342,7 +373,9 @@ describe('Phase 3: Job Exploration and Posting (Tests 57–87)', () => {
   // 77 Phase 3: Job Exploration and Posting JOB_UC_11.0 Create Job Post
   it("77. Enabling 'Create job-specific chat area' for a company without a Premium plan prompts for payment/upgrade before proceeding", async () => {
     m.requireRole.mockResolvedValue({ id: 'company1', plan: 'FREE' });
-    await expect(postJob(validJobInput({ createChatArea: true }))).rejects.toThrow(/UPGRADE_REQUIRED/i);
+    await expect(postJob(validJobInput({ createChatArea: true }))).rejects.toThrow(
+      /UPGRADE_REQUIRED/i,
+    );
   });
 
   // 78 Phase 3: Job Exploration and Posting JOB_UC_11.0 Create Job Post
@@ -366,14 +399,15 @@ describe('Phase 3: Job Exploration and Posting (Tests 57–87)', () => {
     m.seekerProfileFindMany.mockResolvedValue([{ userId: 'seeker-match-1' }]);
     await postJob(validJobInput());
     await flushAfter();
-    expect(m.notifCreate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({
+    // One batched insert for the whole fan-out (was a create() per seeker).
+    expect(m.notifCreateMany).toHaveBeenCalledWith({
+      data: [
+        expect.objectContaining({
           userId: 'seeker-match-1',
           kind: 'SYSTEM',
         }),
-      }),
-    );
+      ],
+    });
   });
 
   // 81 Phase 3: Job Exploration and Posting JOB_UC_11.1 Edit or Delete Job Posts
@@ -391,7 +425,10 @@ describe('Phase 3: Job Exploration and Posting (Tests 57–87)', () => {
       }
       return null;
     });
-    const result = await updateJob(JOB_ID, validJobInput({ description: 'New description exceeding 50 chars for testing purposes.' }));
+    const result = await updateJob(
+      JOB_ID,
+      validJobInput({ description: 'New description exceeding 50 chars for testing purposes.' }),
+    );
     expect(result).toEqual({ ok: true, data: undefined });
     expect(m.jobUpdate).toHaveBeenCalled();
   });
@@ -411,7 +448,10 @@ describe('Phase 3: Job Exploration and Posting (Tests 57–87)', () => {
       }
       return null;
     });
-    const pastResult = await updateJob(JOB_ID, validJobInput({ applicationDeadline: '2020-01-01T00:00:00Z' }));
+    const pastResult = await updateJob(
+      JOB_ID,
+      validJobInput({ applicationDeadline: '2020-01-01T00:00:00Z' }),
+    );
     expect(pastResult).toMatchObject({
       ok: false,
       error: expect.stringMatching(/future date/i),

@@ -1,6 +1,7 @@
 import { Ratelimit } from '@upstash/ratelimit';
 import { Redis } from '@upstash/redis';
 import { REDIS_URL_VARS, REDIS_TOKEN_VARS } from '@/lib/env';
+import { MemoryRateLimiter, parseWindow } from '@/lib/ratelimit-memory';
 
 export type RateLimitResult = {
   success: boolean;
@@ -38,10 +39,8 @@ function firstEnv(names: readonly string[]): string | undefined {
   return undefined;
 }
 
-const allowAll: RateLimitResult = { success: true, remaining: Number.MAX_SAFE_INTEGER, reset: 0 };
-
-// Cheap connectivity check for /api/v1/health — rate limiting already
-// degrades gracefully without Redis, so this reports status rather than
+// Cheap connectivity check for /api/v1/health — rate limiting degrades to the
+// per-instance fallback without Redis, so this reports status rather than
 // throwing or blocking a route.
 export async function pingRedis(): Promise<'ok' | 'not_configured' | 'error'> {
   const client = redis();
@@ -54,25 +53,70 @@ export async function pingRedis(): Promise<'ok' | 'not_configured' | 'error'> {
   }
 }
 
-// Returns a no-op limiter when Upstash isn't configured (local dev without
-// `vercel env pull`) so the request path always works. Production always has
-// the env wired via Marketplace, so the real limiter is in effect.
-function makeLimit(prefix: string, limit: ReturnType<typeof Ratelimit.slidingWindow>): Limiter {
-  const client = redis();
-  if (!client) return async () => allowAll;
-  const rl = new Ratelimit({
-    redis: client,
-    limiter: limit,
-    prefix: `joblify:${prefix}`,
-    analytics: true,
-  });
+let warnedDegraded = false;
+function warnDegradedOnce(reason: string): void {
+  if (warnedDegraded) return;
+  warnedDegraded = true;
+  // console, not pino: this module is imported by routes that must not pull
+  // the logger graph in, and one line per cold start is all that is wanted.
+  console.error(
+    `[ratelimit] ${reason} — using the per-instance in-memory limiter. Limits are NOT ` +
+      `shared across serverless instances until Upstash Redis is reachable.`,
+  );
+}
+
+/**
+ * A limiter that is never "off".
+ *
+ * Before: no Redis configured → `allowAll`, and a Redis error mid-request →
+ * `allowAll` ("fail open rather than 500 the route"). Combined with production
+ * missing its Upstash variables, that meant apply, post-job, invite, chat,
+ * search and the paid AI routes had no ceiling at all (OWASP A10:2025 lists
+ * failing open as its own risk class).
+ *
+ * Now the shared Redis limiter is the primary, and the same limit is enforced
+ * in-process whenever Redis is absent or erroring. Per-instance counters are
+ * weaker than a shared one — N warm instances admit up to N× the limit — but
+ * they are a hard ceiling per instance rather than none, and the request path
+ * still never 500s on a limiter fault.
+ */
+function makeLimit(prefix: string, limit: number, window: string): Limiter {
+  const memory = new MemoryRateLimiter(limit, parseWindow(window));
+  const key = (id: string) => `${prefix}:${id}`;
+
+  let upstash: Ratelimit | null = null;
+  function shared(): Ratelimit | null {
+    if (upstash) return upstash;
+    const client = redis();
+    if (!client) return null;
+    upstash = new Ratelimit({
+      redis: client,
+      // Ratelimit.slidingWindow wants its own template-literal Duration type;
+      // `window` is validated by parseWindow() above, so the cast is safe.
+      limiter: Ratelimit.slidingWindow(
+        limit,
+        window as Parameters<typeof Ratelimit.slidingWindow>[1],
+      ),
+      prefix: `joblify:${prefix}`,
+      // `analytics: true` doubles the Redis commands per check for a dashboard
+      // nobody reads; the per-route limits are tuned from application metrics.
+      analytics: false,
+    });
+    return upstash;
+  }
+
   return async (identifier) => {
+    const rl = shared();
+    if (!rl) {
+      warnDegradedOnce('Upstash Redis is not configured');
+      return memory.check(key(identifier));
+    }
     try {
       const { success, remaining, reset } = await rl.limit(identifier);
       return { success, remaining, reset };
     } catch {
-      // Upstash unavailable mid-request — fail open rather than 500 the route.
-      return allowAll;
+      warnDegradedOnce('Upstash Redis call failed');
+      return memory.check(key(identifier));
     }
   };
 }
@@ -88,29 +132,32 @@ function makeLimit(prefix: string, limit: ReturnType<typeof Ratelimit.slidingWin
 // per-IP ceiling belongs at the edge, not in a route handler that has already
 // done its database work. Both were removed rather than left as decoration; if
 // either is wanted later, add the call site in the same commit as the limiter.
-export const applyLimit: Limiter = makeLimit('apply', Ratelimit.slidingWindow(20, '1 d'));
-export const accountExportLimit: Limiter = makeLimit(
-  'account-export',
-  Ratelimit.slidingWindow(2, '1 d'),
-);
-export const searchLimit: Limiter = makeLimit('search', Ratelimit.slidingWindow(100, '1 m'));
+export const applyLimit: Limiter = makeLimit('apply', 20, '1 d');
+export const accountExportLimit: Limiter = makeLimit('account-export', 2, '1 d');
+export const searchLimit: Limiter = makeLimit('search', 100, '1 m');
 // Every call is a paid AI Gateway completion. Was borrowing applyLimit under a
 // different identifier — a separate bucket in practice, but governed by a
 // ceiling named and tuned for job applications, which is not a number anyone
 // would pick for inference spend.
-export const bioCoachLimit: Limiter = makeLimit('bio-coach', Ratelimit.slidingWindow(30, '1 h'));
+export const bioCoachLimit: Limiter = makeLimit('bio-coach', 30, '1 h');
 // Minting a scoped Blob upload token is cheap for us and cheap to repeat; size
 // and MIME are already constrained, request count was not.
-export const uploadSignLimit: Limiter = makeLimit(
-  'upload-sign',
-  Ratelimit.slidingWindow(40, '1 h'),
-);
+export const uploadSignLimit: Limiter = makeLimit('upload-sign', 40, '1 h');
 // Each post/update triggers a paid AI Gateway skill-extraction call + an
 // Algolia reindex — unthrottled writes are a direct cost-abuse vector, not
 // just a spam nuisance.
-export const postJobLimit: Limiter = makeLimit('post-job', Ratelimit.slidingWindow(10, '1 d'));
-export const inviteLimit: Limiter = makeLimit('invite', Ratelimit.slidingWindow(30, '1 d'));
-export const chatMessageLimit: Limiter = makeLimit(
-  'chat-message',
-  Ratelimit.slidingWindow(60, '10 m'),
-);
+export const postJobLimit: Limiter = makeLimit('post-job', 10, '1 d');
+export const inviteLimit: Limiter = makeLimit('invite', 30, '1 d');
+export const chatMessageLimit: Limiter = makeLimit('chat-message', 60, '10 m');
+// The view beacon is unauthenticated and writes two rows per hit. Generous for
+// a person browsing, tight enough that it is not a free write amplifier.
+export const viewBeaconLimit: Limiter = makeLimit('job-view', 120, '1 h');
+// Public, unauthenticated, state-changing (flips a user's email opt-in) — keyed
+// by IP so a leaked token cannot be used to hammer the endpoint.
+export const unsubscribeLimit: Limiter = makeLimit('unsubscribe', 30, '1 h');
+// Authenticated download of a stored resume. Cheap per call, but each one
+// streams up to RESUME_MAX_BYTES through a function.
+export const resumeDownloadLimit: Limiter = makeLimit('resume-download', 120, '1 h');
+// A report costs a moderator's time, so it is throttled per reporter: enough to
+// flag several bad postings in a sitting, not enough to bury the queue.
+export const reportLimit: Limiter = makeLimit('job-report', 10, '1 d');

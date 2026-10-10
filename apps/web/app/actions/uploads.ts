@@ -8,63 +8,66 @@ import { requireRole, AuthError } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { withAudit } from '@/lib/audit';
 import {
-  put,
+  putStored,
+  verifyStoredBlob,
+  deleteStored,
+  storeConfigured,
   resumePathPrefix,
   logoPathPrefix,
   RESUME_MIME,
   IMAGE_MIME,
   RESUME_MAX_BYTES,
   LOGO_MAX_BYTES,
+  MAX_ACTIVE_RESUMES,
+  type ResumeMime,
 } from '@/lib/storage/blob';
 import { runResumeParse } from '@/workflows/resume-parse.workflow';
 import { logger } from '@/lib/observability/logger';
+import { clientIp } from '@/lib/security/client-ip';
 import { type ActionResult, succeed, fail } from '@/lib/action-result';
 
-// Client uploads go straight to Vercel Blob via /api/v1/uploads/sign; the DB row
-// (resume) / profile field (logo) is registered here once upload() resolves. This
-// is synchronous from the client's view and works in local dev (where Blob's
-// onUploadCompleted webhook never fires).
-
-function pathnameOf(url: string): string {
-  return new URL(url).pathname.replace(/^\/+/, '');
-}
-
-function isAllowedResumeUrl(url: string, userId: string): boolean {
-  if (url.startsWith('data:application/')) return true;
-  try {
-    return pathnameOf(url).startsWith(resumePathPrefix(userId));
-  } catch {
-    return false;
-  }
-}
-
-function isAllowedLogoUrl(url: string, userId: string): boolean {
-  if (url.startsWith('data:image/')) return true;
-  try {
-    return pathnameOf(url).startsWith(logoPathPrefix(userId));
-  } catch {
-    return false;
-  }
-}
+// Client uploads go straight to the private Blob store via /api/v1/uploads/sign;
+// the DB row (resume) / profile field (logo) is registered here once upload()
+// resolves.
+//
+// TRUST MODEL — the client only *names* an object; it never describes one. The
+// URL it sends is checked against OUR store (host pinned, path prefix pinned,
+// existence confirmed through the store's own API) and every persisted value
+// (URL, content type, size) is the store's, not the client's. Previously the
+// check was a path prefix on a URL of any host, and the content type and size
+// were taken from the request.
 
 const RegisterResume = z.object({
-  url: z.string().url(),
+  url: z.string().url().max(2_000),
   title: z.string().min(1).max(200),
+  // Accepted for API compatibility and ignored: the store reports the truth.
   contentType: z.string().max(200).optional(),
-  sizeBytes: z
-    .number()
-    .int()
-    .min(0)
-    .max(50 * 1024 * 1024)
-    .optional(),
+  sizeBytes: z.number().int().min(0).optional(),
 });
 
 export type RegisteredResume = {
   id: string;
   title: string;
-  fileBlobUrl: string;
   createdAt: string;
 };
+
+// No fallback to inline `data:` storage in production: it put up to 5 MB of
+// base64 per résumé in a Postgres column and bypassed every control above.
+// It survives only for local development with no Blob store configured.
+const DEV_INLINE_FALLBACK = process.env.NODE_ENV !== 'production';
+
+function safeFileName(name: string): string {
+  const cleaned = name.replace(/[^a-zA-Z0-9._-]/g, '_').replace(/^\.+/, '');
+  return cleaned.slice(0, 120) || 'file';
+}
+
+async function activeResumeCount(userId: string): Promise<number> {
+  return db.resume.count({ where: { userId, deletedAt: null } });
+}
+
+function auditContext(h: Headers, actorId: string) {
+  return { actorId, ip: clientIp(h), ua: h.get('user-agent') };
+}
 
 export async function registerResume(
   input: z.infer<typeof RegisterResume>,
@@ -72,28 +75,40 @@ export async function registerResume(
   const user = await requireRole('JOB_SEEKER');
   const parsed = RegisterResume.parse(input);
 
-  // Defense in depth: the uploaded blob must live in this user's namespace.
-  if (!isAllowedResumeUrl(parsed.url, user.id)) {
-    throw new AuthError('FORBIDDEN');
+  const blob = await verifyStoredBlob(parsed.url, 'private', resumePathPrefix(user.id));
+  if (!blob) throw new AuthError('FORBIDDEN');
+
+  // The sign route constrains type and size at upload time; re-assert here
+  // because this action is callable directly with any URL in the user's
+  // namespace. Anything out of bounds is removed from the store, not just
+  // refused.
+  const typeOk = RESUME_MIME.includes(blob.contentType as ResumeMime);
+  if (!typeOk || blob.size > RESUME_MAX_BYTES) {
+    await deleteStored(blob.url, 'private');
+    throw new Error('That file is not an accepted résumé (PDF or Word .docx, up to 5 MB).');
+  }
+
+  if ((await activeResumeCount(user.id)) >= MAX_ACTIVE_RESUMES) {
+    await deleteStored(blob.url, 'private');
+    throw new Error(
+      `You can keep up to ${MAX_ACTIVE_RESUMES} résumés. Delete one to upload another.`,
+    );
   }
 
   const h = await headers();
-  const ip = h.get('x-forwarded-for')?.split(',')[0]?.trim() ?? null;
-  const ua = h.get('user-agent') ?? null;
-
   const resume = await withAudit(
-    { actorId: user.id, ip, ua },
+    auditContext(h, user.id),
     { action: 'RESUME_UPLOADED', entity: 'resume', after: (r) => ({ id: r.id, title: r.title }) },
     (tx) =>
       tx.resume.create({
         data: {
           userId: user.id,
           title: parsed.title.slice(0, 200),
-          fileBlobUrl: parsed.url,
-          fileMime: parsed.contentType ?? 'application/octet-stream',
-          fileSizeBytes: parsed.sizeBytes ?? 0,
+          fileBlobUrl: blob.url,
+          fileMime: blob.contentType,
+          fileSizeBytes: blob.size,
         },
-        select: { id: true, title: true, fileBlobUrl: true, createdAt: true },
+        select: { id: true, title: true, createdAt: true },
       }),
   );
 
@@ -106,17 +121,14 @@ export async function registerResume(
     }
   });
 
-  return {
-    id: resume.id,
-    title: resume.title,
-    fileBlobUrl: resume.fileBlobUrl,
-    createdAt: resume.createdAt.toISOString(),
-  };
+  return { id: resume.id, title: resume.title, createdAt: resume.createdAt.toISOString() };
 }
 
 /**
- * Direct server-side upload fallback for resumes when Vercel Blob client token
- * is not configured or fails. Handles file validation, storage, and registration.
+ * Direct server-side upload, for when the browser cannot use a client token.
+ * Bounded by the platform request-body limit (~4.5 MB on Vercel), which is why
+ * client uploads remain the primary path. Validates by magic bytes, stores
+ * privately, registers.
  */
 export async function uploadResumeDirect(
   formData: FormData,
@@ -131,48 +143,54 @@ export async function uploadResumeDirect(
     return fail('File is too large. Please upload a resume under 5MB.');
   }
 
-  const buffer = Buffer.from(await file.arrayBuffer());
-  const detected = await fileTypeFromBuffer(buffer);
-  const mime = detected?.mime || file.type;
-  if (!detected || !RESUME_MIME.includes(detected.mime as (typeof RESUME_MIME)[number])) {
-    return fail('Unsupported file type. Please upload a PDF or Word document.');
+  if ((await activeResumeCount(user.id)) >= MAX_ACTIVE_RESUMES) {
+    return fail(`You can keep up to ${MAX_ACTIVE_RESUMES} résumés. Delete one to upload another.`);
   }
 
-  const safe = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-  let fileBlobUrl: string;
+  const buffer = Buffer.from(await file.arrayBuffer());
+  const detected = await fileTypeFromBuffer(buffer);
+  if (!detected || !RESUME_MIME.includes(detected.mime as ResumeMime)) {
+    return fail('Unsupported file type. Please upload a PDF or a Word .docx document.');
+  }
+  const mime = detected.mime;
 
-  if (process.env.BLOB_READ_WRITE_TOKEN) {
+  const name = safeFileName(file.name);
+  let locator: string;
+
+  if (storeConfigured('private')) {
     try {
-      const blob = await put(`resumes/${user.id}/${safe}`, buffer, {
-        access: 'public',
-        contentType: mime,
-      });
-      fileBlobUrl = blob.url;
+      const stored = await putStored(
+        'private',
+        `${resumePathPrefix(user.id)}${name}`,
+        buffer,
+        mime,
+      );
+      locator = stored.url;
     } catch (err) {
-      logger.warn({ err }, 'Vercel Blob put failed, falling back to data URL');
-      fileBlobUrl = `data:${mime};base64,${buffer.toString('base64')}`;
+      logger.error({ err, userId: user.id }, 'private blob put failed (resume upload)');
+      return fail('We could not store your file right now. Please try again in a few minutes.');
     }
+  } else if (DEV_INLINE_FALLBACK) {
+    locator = `data:${mime};base64,${buffer.toString('base64')}`;
   } else {
-    fileBlobUrl = `data:${mime};base64,${buffer.toString('base64')}`;
+    logger.error('resume upload attempted but no private Blob store is configured');
+    return fail('File uploads are temporarily unavailable. Please try again later.');
   }
 
   const h = await headers();
-  const ip = h.get('x-forwarded-for')?.split(',')[0]?.trim() ?? null;
-  const ua = h.get('user-agent') ?? null;
-
   const resume = await withAudit(
-    { actorId: user.id, ip, ua },
+    auditContext(h, user.id),
     { action: 'RESUME_UPLOADED', entity: 'resume', after: (r) => ({ id: r.id, title: r.title }) },
     (tx) =>
       tx.resume.create({
         data: {
           userId: user.id,
           title: file.name.slice(0, 200),
-          fileBlobUrl,
+          fileBlobUrl: locator,
           fileMime: mime,
-          fileSizeBytes: file.size,
+          fileSizeBytes: buffer.byteLength,
         },
-        select: { id: true, title: true, fileBlobUrl: true, createdAt: true },
+        select: { id: true, title: true, createdAt: true },
       }),
   );
 
@@ -187,33 +205,41 @@ export async function uploadResumeDirect(
   return succeed({
     id: resume.id,
     title: resume.title,
-    fileBlobUrl: resume.fileBlobUrl,
     createdAt: resume.createdAt.toISOString(),
   });
 }
 
+/**
+ * Delete a résumé.
+ *
+ * A résumé that no application references is erased outright — row and stored
+ * file. One that an employer has already received with an application is only
+ * hidden from the owner (`deletedAt`): the employer's copy of what was
+ * submitted is not the candidate's to recall, `JobApplication.resumeId` is a
+ * RESTRICT foreign key, and the retention sweep removes the file once the
+ * applications that reference it are gone.
+ */
 export async function deleteResume(resumeId: string): Promise<void> {
   const user = await requireRole('JOB_SEEKER');
   const resume = await db.resume.findFirst({
     where: { id: resumeId, userId: user.id, deletedAt: null },
-    select: { id: true },
+    select: { id: true, fileBlobUrl: true },
   });
   if (!resume) throw new AuthError('FORBIDDEN');
+
+  const referenced = await db.jobApplication.count({ where: { resumeId: resume.id } });
+  if (referenced === 0) {
+    await db.resume.delete({ where: { id: resume.id } });
+    await deleteStored(resume.fileBlobUrl, 'private');
+    return;
+  }
   await db.resume.update({ where: { id: resume.id }, data: { deletedAt: new Date() } });
 }
 
-export async function registerLogo(input: { url: string }): Promise<void> {
-  const user = await requireRole('COMPANY');
-  const url = z.string().url().parse(input.url);
-  if (!isAllowedLogoUrl(url, user.id)) {
-    throw new AuthError('FORBIDDEN');
-  }
-  await db.companyProfile.updateMany({ where: { userId: user.id }, data: { logoUrl: url } });
-}
-
 /**
- * Direct server-side upload fallback for company logos when Vercel Blob client token
- * is not configured or fails.
+ * Company logo upload. Logos are <= 2 MB, so they go straight through this
+ * Server Action: validated by magic bytes, stored in the PUBLIC store (they are
+ * shown to anonymous visitors), and any logo they replace is deleted.
  */
 export async function uploadLogoDirect(formData: FormData): Promise<ActionResult<string>> {
   const user = await requireRole('COMPANY');
@@ -228,29 +254,41 @@ export async function uploadLogoDirect(formData: FormData): Promise<ActionResult
 
   const buffer = Buffer.from(await file.arrayBuffer());
   const detected = await fileTypeFromBuffer(buffer);
-  const mime = detected?.mime || file.type;
   if (!detected || !IMAGE_MIME.includes(detected.mime as (typeof IMAGE_MIME)[number])) {
     return fail('Invalid image format. Please upload a PNG, JPEG, or WebP file.');
   }
+  const mime = detected.mime;
+  const name = safeFileName(file.name);
 
-  const safe = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
   let logoUrl: string;
-
-  if (process.env.BLOB_READ_WRITE_TOKEN) {
+  if (storeConfigured('public')) {
     try {
-      const blob = await put(`logos/${user.id}/${safe}`, buffer, {
-        access: 'public',
-        contentType: mime,
-      });
-      logoUrl = blob.url;
+      const stored = await putStored('public', `${logoPathPrefix(user.id)}${name}`, buffer, mime);
+      logoUrl = stored.url;
     } catch (err) {
-      logger.warn({ err }, 'Vercel Blob put failed for logo, falling back to data URL');
-      logoUrl = `data:${mime};base64,${buffer.toString('base64')}`;
+      logger.error({ err, userId: user.id }, 'public blob put failed (logo upload)');
+      return fail('We could not store your logo right now. Please try again in a few minutes.');
     }
-  } else {
+  } else if (DEV_INLINE_FALLBACK) {
     logoUrl = `data:${mime};base64,${buffer.toString('base64')}`;
+  } else {
+    logger.error('logo upload attempted but no public Blob store is configured');
+    return fail('Logo uploads are temporarily unavailable. Please try again later.');
   }
 
-  await db.companyProfile.updateMany({ where: { userId: user.id }, data: { logoUrl } });
+  await replaceLogo(user.id, logoUrl);
   return succeed(logoUrl);
+}
+
+// Set the new logo, then remove the file it replaces so superseded logos do
+// not accumulate in the store.
+async function replaceLogo(userId: string, logoUrl: string): Promise<void> {
+  const previous = await db.companyProfile.findUnique({
+    where: { userId },
+    select: { logoUrl: true },
+  });
+  await db.companyProfile.updateMany({ where: { userId }, data: { logoUrl } });
+  if (previous?.logoUrl && previous.logoUrl !== logoUrl) {
+    await deleteStored(previous.logoUrl, 'public');
+  }
 }

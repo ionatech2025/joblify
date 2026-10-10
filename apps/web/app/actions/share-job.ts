@@ -8,6 +8,7 @@ import { db } from '@/lib/db';
 import { withAudit } from '@/lib/audit';
 import { tags } from '@/lib/cache';
 import { type ActionResult, fail, succeed } from '@/lib/action-result';
+import { clientIp } from '@/lib/security/client-ip';
 
 // FormData adapter for the jobseeker-directory share form (job picked from a
 // <select>, seeker id bound).
@@ -44,7 +45,7 @@ export async function shareJobWithJobseeker(
   });
 
   const h = await headers();
-  const ip = h.get('x-forwarded-for')?.split(',')[0]?.trim() ?? null;
+  const ip = clientIp(h);
   const ua = h.get('user-agent') ?? null;
 
   await withAudit(

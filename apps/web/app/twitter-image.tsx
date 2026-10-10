@@ -1,5 +1,5 @@
-// `runtime` can't be re-exported — Next's route-segment-config parser needs
-// it declared literally in this file, so it's duplicated from
-// opengraph-image.tsx rather than included in the re-export below.
-export const runtime = 'edge';
+// Same card as the Open Graph image. `runtime` is intentionally not declared:
+// Next 16.4 rejects the route-segment `runtime` option when
+// `cacheComponents` is on, and the Edge runtime it selected is deprecated. The
+// card uses no Node-only API, so the default (Node.js) runtime is fine.
 export { default, alt, size, contentType } from './opengraph-image';

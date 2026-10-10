@@ -84,10 +84,40 @@ describe('critical env', () => {
 
   it('says nothing at all when everything is present', () => {
     vi.stubEnv('VERCEL_ENV', 'production');
+    // The non-fatal deployment-config checks (contact addresses, unsubscribe,
+    // storage) are part of "everything": a fully configured production.
+    for (const [k, v] of Object.entries({
+      NEXT_PUBLIC_PRIVACY_EMAIL: 'privacy@joblify.com',
+      NEXT_PUBLIC_ACCESSIBILITY_EMAIL: 'a11y@joblify.com',
+      NEXT_PUBLIC_SITE_URL: 'https://joblify.com',
+      EMAIL_POSTAL_ADDRESS: '1 Main St',
+      BLOB_READ_WRITE_TOKEN: 'vercel_blob_rw_x_y',
+      BLOB_PUBLIC_READ_WRITE_TOKEN: 'vercel_blob_rw_z_y',
+    })) {
+      vi.stubEnv(k, v);
+    }
     const error = vi.spyOn(console, 'error').mockImplementation(() => {});
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     reportCriticalEnv();
     expect(error).not.toHaveBeenCalled();
     expect(warn).not.toHaveBeenCalled();
+  });
+
+  it('reports non-fatal config that breaks a promise to users (production only), and never throws', () => {
+    vi.stubEnv('VERCEL_ENV', 'production');
+    vi.stubEnv('NEXT_PUBLIC_PRIVACY_EMAIL', '');
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    expect(() => reportCriticalEnv()).not.toThrow();
+    expect(warn.mock.calls.map((c) => String(c[0])).join('\n')).toMatch(
+      /\[config\].*PRIVACY_EMAIL/,
+    );
+  });
+
+  it('stays quiet about deployment config outside production', () => {
+    vi.stubEnv('VERCEL_ENV', 'preview');
+    vi.stubEnv('NEXT_PUBLIC_PRIVACY_EMAIL', '');
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    reportCriticalEnv();
+    expect(warn.mock.calls.map((c) => String(c[0])).join('\n')).not.toMatch(/\[config\]/);
   });
 });

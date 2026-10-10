@@ -14,7 +14,8 @@ const m = vi.hoisted(() => ({
 
 vi.mock('@/lib/ratelimit', () => ({ searchLimit: m.searchLimit }));
 vi.mock('@/lib/search/algolia', () => ({
-  adminClient: () => ({ search: m.search }),
+  // The public query path uses the search-only client, not the admin one.
+  searchClient: () => ({ search: m.search }),
   INDEX: { jobs: 'jobs', jobsRecent: 'jobs_recent', jobsSalaryDesc: 'jobs_salary_desc' },
 }));
 vi.mock('@/lib/db', () => ({
@@ -47,6 +48,40 @@ describe('GET /api/v1/jobs/search', () => {
     expect(request.query).toBe('engineer');
     expect(request.filters).toBe('workMode:REMOTE');
     expect(request.page).toBe(1);
+  });
+
+  it('compares salary on the ANNUALISED fields, not the raw per-period numbers', async () => {
+    await GET(req('?salaryMin=60000&salaryMax=90000'));
+    const request = m.search.mock.calls[0]![0].requests[0];
+    expect(request.filters).toBe('salaryAnnualMax >= 60000 AND salaryAnnualMin <= 90000');
+  });
+
+  it("forwards the visitor's IP so near-me resolves their location, not the datacenter's", async () => {
+    const r = new NextRequest('http://localhost/api/v1/jobs/search?q=x&location=Kampala', {
+      headers: { 'x-forwarded-for': '203.0.113.7, 10.0.0.1' },
+    });
+    await GET(r);
+    expect(m.search.mock.calls[0]![1]).toEqual({ headers: { 'X-Forwarded-For': '203.0.113.7' } });
+  });
+
+  it('the Postgres fallback applies the same annualised salary overlap', async () => {
+    m.search.mockRejectedValue(new Error('algolia down'));
+    m.jobPostFindMany.mockResolvedValue([]);
+    m.jobPostCount.mockResolvedValue(0);
+    const res = await GET(req('?salaryMin=60000'));
+    expect(res.status).toBe(200);
+    const { where } = m.jobPostFindMany.mock.calls[0]![0];
+    // one branch per pay period: 5 000 / month ≈ 60 000 / year, and so on.
+    const periods = (where.OR as Array<{ salaryPeriod: string; salaryMax: { gte: number } }>).map(
+      (c) => [c.salaryPeriod, c.salaryMax.gte],
+    );
+    expect(periods).toEqual([
+      ['HOUR', 29], // ceil(60000 / 2080)
+      ['DAY', 231], // ceil(60000 / 260)
+      ['WEEK', 1154], // ceil(60000 / 52)
+      ['MONTH', 5000],
+      ['YEAR', 60000],
+    ]);
   });
 
   it('rejects a query string over the length cap before calling Algolia', async () => {

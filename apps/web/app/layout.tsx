@@ -9,6 +9,7 @@ import { Footer } from './components/footer';
 import { CookieBanner } from './components/cookie-banner';
 import { AnalyticsGate } from './components/analytics-gate';
 import { WebVitals } from './components/web-vitals';
+import { DraftOwnerGuard } from './components/draft-owner-guard';
 import { SwRegister } from './components/sw-register';
 import { AmbientCanvas } from './components/ui/ambient';
 import { Toaster } from './components/ui/toaster';
@@ -147,6 +148,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               the module comment for why this sits outside the consent gate
               AnalyticsGate applies to Vercel Analytics. */}
           <WebVitals />
+          <DraftOwnerGuard />
           {/* Global overlays. Both are client islands that render null until
               opened/populated, so they cost nothing to the static shell. */}
           <CommandPalette />

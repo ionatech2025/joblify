@@ -24,6 +24,9 @@ const m = vi.hoisted(() => {
     skillFindMany: vi.fn(),
     jpsDeleteMany: vi.fn(),
     jpsCreateMany: vi.fn(),
+    companyProfileFindUnique: vi.fn(),
+    seekersFindMany: vi.fn(),
+    notifCreateMany: vi.fn(),
     generateObject: vi.fn(),
     reindexJob: vi.fn(),
     embedJobPost: vi.fn(),
@@ -50,6 +53,9 @@ vi.mock('@/lib/db', () => ({
     jobPost: { findFirst: m.jobFindFirst },
     skill: { findMany: m.skillFindMany },
     jobPostSkill: { deleteMany: m.jpsDeleteMany, createMany: m.jpsCreateMany },
+    companyProfile: { findUnique: m.companyProfileFindUnique },
+    jobSeekerProfile: { findMany: m.seekersFindMany },
+    notification: { createMany: m.notifCreateMany },
   },
 }));
 vi.mock('@/lib/audit', () => ({
@@ -57,7 +63,11 @@ vi.mock('@/lib/audit', () => ({
     fn({ jobPost: { create: m.jobCreate, update: m.jobUpdate } }),
 }));
 vi.mock('ai', () => ({ generateObject: m.generateObject }));
-vi.mock('@/lib/ai/gateway', () => ({ gateway: () => ({}), MODELS: { haiku: 'h' } }));
+vi.mock('@/lib/ai/gateway', () => ({
+  gateway: () => ({}),
+  MODELS: { haiku: 'h' },
+  aiProviderOptions: () => ({}),
+}));
 vi.mock('@/lib/search/index-job', () => ({ reindexJob: m.reindexJob }));
 vi.mock('@/workflows/match-score.workflow', () => ({ embedJobPost: m.embedJobPost }));
 vi.mock('@sentry/nextjs', () => ({ captureException: m.captureException }));
@@ -89,6 +99,7 @@ function input(over: Record<string, unknown> = {}) {
     salaryMin: 100000,
     salaryMax: 140000,
     salaryCurrency: 'EUR',
+    salaryPeriod: 'YEAR',
     applicationDeadline: '',
     publish: true,
     ...over,
@@ -105,6 +116,12 @@ beforeEach(() => {
   m.embedJobPost.mockResolvedValue([0.1, 0.2]);
   m.requireRole.mockResolvedValue({ id: 'company1', plan: 'PRO' });
   m.postJobLimit.mockResolvedValue({ success: true });
+  m.companyProfileFindUnique.mockResolvedValue({
+    verificationStatus: 'VERIFIED',
+    companyName: 'Acme',
+  });
+  m.seekersFindMany.mockResolvedValue([]);
+  m.notifCreateMany.mockResolvedValue({ count: 0 });
   m.jobFindFirst.mockResolvedValue(null); // no duplicate title by default
   m.jobCreate.mockResolvedValue({ id: JOB_ID, status: 'PUBLISHED', title: 'Senior Rust Engineer' });
   m.jobUpdate.mockResolvedValue({ id: JOB_ID, status: 'PUBLISHED', title: 'Senior Rust Engineer' });
@@ -128,7 +145,9 @@ describe('postJob', () => {
   });
 
   it('rejects invalid input (short description) before writing', async () => {
-    await expect(postJob(input({ description: 'too short' }))).rejects.toThrow();
+    // Expected failures are RETURNED (a thrown message is redacted in prod).
+    const res = await postJob(input({ description: 'too short' }));
+    expect(res.ok).toBe(false);
     expect(m.jobCreate).not.toHaveBeenCalled();
   });
 

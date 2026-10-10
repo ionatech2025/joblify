@@ -7,7 +7,12 @@ import { SheetField, SheetGroup, SheetGroups, SheetTitle } from '@/app/component
 import { Notebook } from '@/app/components/console/notebook';
 import { Statusbar, type Stage } from '@/app/components/console/statusbar';
 import { JOB_STATUS_LABEL } from './job-status';
-import { INDUSTRIES, type PostJobFormValues } from './job-form-schema';
+import {
+  INDUSTRIES,
+  SALARY_PERIODS,
+  SALARY_PERIOD_LABEL,
+  type PostJobFormValues,
+} from './job-form-schema';
 
 // Shared job form fields, used by both the create (/company/jobs/new) and edit
 // (/company/jobs/[id]/edit) forms so they can't drift. The schema lives in
@@ -96,8 +101,25 @@ export function JobFormFields({
               placeholder="Berlin, DE"
             />
           </SheetField>
-          <SheetField label="Salary range" hint="Leave blank to omit from the posting.">
-            <span className="grid grid-cols-[1fr_1fr_4.5rem] gap-1.5">
+          <SheetField
+            label="Country"
+            hint="2-letter code (e.g. UG, KE, DE). Needed for Google Jobs."
+            error={errors.locationCountry?.message}
+          >
+            <Input
+              {...register('locationCountry')}
+              autoComplete="country"
+              maxLength={2}
+              placeholder="UG"
+              className="uppercase"
+            />
+          </SheetField>
+          <SheetField
+            label="Salary range"
+            hint="Leave blank to omit from the posting. State what the amount is per."
+            error={errors.salaryMax?.message}
+          >
+            <span className="grid grid-cols-[1fr_1fr_4.5rem_6.5rem] gap-1.5">
               <Input
                 type="number"
                 {...register('salaryMin')}
@@ -116,6 +138,13 @@ export function JobFormFields({
                 aria-label="Salary currency"
                 className="uppercase"
               />
+              <Select {...register('salaryPeriod')} aria-label="Salary period">
+                {SALARY_PERIODS.map((p) => (
+                  <option key={p} value={p}>
+                    {SALARY_PERIOD_LABEL[p]}
+                  </option>
+                ))}
+              </Select>
             </span>
           </SheetField>
           <SheetField label="Deadline">

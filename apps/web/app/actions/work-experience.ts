@@ -7,6 +7,7 @@ import { requireRole } from '@/lib/auth';
 import { withAudit } from '@/lib/audit';
 import { tags } from '@/lib/cache';
 import { logger } from '@/lib/observability/logger';
+import { clientIp } from '@/lib/security/client-ip';
 
 const WorkExperienceEntry = z.object({
   company: z.string().trim().min(1).max(200),
@@ -28,7 +29,7 @@ export async function saveWorkExperiences(entries: WorkExperienceInput[]): Promi
   const parsed = SaveInput.parse({ entries });
 
   const h = await headers();
-  const ip = h.get('x-forwarded-for')?.split(',')[0]?.trim() ?? null;
+  const ip = clientIp(h);
   const ua = h.get('user-agent') ?? null;
 
   await withAudit(

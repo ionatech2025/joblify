@@ -1,6 +1,7 @@
 import { requireRole } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { NotificationsList } from './notifications-list';
+import { DigestPreference } from './digest-preference';
 import type { NotificationItem } from '@/lib/query/notifications';
 import { Breadcrumb, ControlPanel } from '@/app/components/console/control-panel';
 
@@ -26,6 +27,10 @@ export default async function NotificationsPage() {
     <main>
       <ControlPanel breadcrumb={<Breadcrumb items={[{ label: 'Notifications' }]} />} />
       <div className="mx-auto w-full max-w-4xl px-3 py-3 sm:px-4">
+        <DigestPreference
+          initialOptIn={user.digestOptIn}
+          addressSuppressed={user.emailSuppressedAt !== null}
+        />
         <NotificationsList initial={initial} />
       </div>
     </main>

@@ -4,11 +4,22 @@ const m = vi.hoisted(() => ({
   verify: vi.fn(),
   upsert: vi.fn(),
   updateMany: vi.fn(),
+  findUnique: vi.fn(),
+  jobUpdateMany: vi.fn(),
 }));
 
-vi.mock('svix', () => ({ Webhook: vi.fn().mockImplementation(() => ({ verify: m.verify })) }));
+// A class, not vi.fn(() => …): Vitest >= 4 only honours `new` on function/class
+// implementations, and the route does `new Webhook(secret)`.
+vi.mock('svix', () => ({
+  Webhook: class {
+    verify = m.verify;
+  },
+}));
 vi.mock('@/lib/db', () => ({
-  db: { user: { upsert: m.upsert, updateMany: m.updateMany } },
+  db: {
+    user: { upsert: m.upsert, updateMany: m.updateMany, findUnique: m.findUnique },
+    jobPost: { updateMany: m.jobUpdateMany },
+  },
 }));
 vi.mock('@/lib/observability/logger', () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
@@ -110,17 +121,37 @@ describe('clerk webhook', () => {
   });
 
   describe('user.deleted', () => {
-    it('soft-deletes by clerkUserId', async () => {
+    it('soft-deletes by clerkUserId and switches the digest off', async () => {
+      m.findUnique.mockResolvedValue({ id: 'u5' });
       m.verify.mockReturnValue({ type: 'user.deleted', data: { id: 'user_5' } });
       await POST(req());
       const arg = m.updateMany.mock.calls[0]![0];
       expect(arg.where).toEqual({ clerkUserId: 'user_5' });
       expect(arg.data.deletedAt).toBeInstanceOf(Date);
+      expect(arg.data.digestOptIn).toBe(false);
+    });
+
+    it('closes the departed user’s job postings immediately', async () => {
+      m.findUnique.mockResolvedValue({ id: 'u5' });
+      m.verify.mockReturnValue({ type: 'user.deleted', data: { id: 'user_5' } });
+      await POST(req());
+      expect(m.jobUpdateMany).toHaveBeenCalledWith({
+        where: { companyId: 'u5', deletedAt: null },
+        data: { status: 'ARCHIVED', deletedAt: expect.any(Date) },
+      });
+    });
+
+    it('is a no-op for a Clerk user we never mirrored', async () => {
+      m.findUnique.mockResolvedValue(null);
+      m.verify.mockReturnValue({ type: 'user.deleted', data: { id: 'ghost' } });
+      const res = await POST(req());
+      expect(res.status).toBe(200);
+      expect(m.jobUpdateMany).not.toHaveBeenCalled();
     });
   });
 
   describe('organizationMembership.created', () => {
-    it('flips the member to COMPANY', async () => {
+    it('does NOT promote the member to COMPANY (roles are not derived from Clerk orgs)', async () => {
       m.verify.mockReturnValue({
         type: 'organizationMembership.created',
         data: {
@@ -128,10 +159,13 @@ describe('clerk webhook', () => {
           public_user_data: { user_id: 'user_6' },
         },
       });
-      await POST(req());
-      const arg = m.updateMany.mock.calls[0]![0];
-      expect(arg.where).toEqual({ clerkUserId: 'user_6' });
-      expect(arg.data.userType).toBe('COMPANY');
+      const res = await POST(req());
+      expect(res.status).toBe(200);
+      // It used to set userType = COMPANY for anyone joining any organization,
+      // which — with Organizations enabled in Clerk — let a user mint a
+      // COMPANY account with no company profile and no verification.
+      expect(m.updateMany).not.toHaveBeenCalled();
+      expect(m.upsert).not.toHaveBeenCalled();
     });
   });
 

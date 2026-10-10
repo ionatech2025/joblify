@@ -17,7 +17,6 @@ export default async function CompanySettingsPage() {
       <ControlPanel breadcrumb={<Breadcrumb items={[{ label: 'Settings' }]} />} />
       <ConsoleWidth className="max-w-5xl py-3">
         <CompanySettingsForm
-          userId={user.id}
           logoUrl={profile.logoUrl ?? null}
           initial={{
             companyName: profile.companyName,

@@ -4,7 +4,7 @@ How Joblify is structured. Read this once on day one; revisit when a decision fe
 
 ## One-line summary
 
-A single Next.js 16 App Router app on Vercel Fluid Compute, fronted by Clerk auth and Vercel BotID, backed by Neon Postgres + Upstash Redis + Algolia + Vercel Blob, with AI features routed through Vercel AI Gateway and background work run off the response path via Next's `after()` (durable Workflow DevKit steps are a planned upgrade).
+A single Next.js 16 App Router app on Vercel Fluid Compute, fronted by Clerk auth and Vercel BotID, backed by Neon Postgres + Upstash Redis + Algolia + Vercel Blob (private + public stores), with AI features routed through Vercel AI Gateway and background work run off the response path via Next's `after()` (durable Workflow DevKit steps are a planned upgrade).
 
 ## Top-down system diagram
 
@@ -12,7 +12,7 @@ A single Next.js 16 App Router app on Vercel Fluid Compute, fronted by Clerk aut
                        ┌─────────────────────────────────────────────┐
                        │                  VERCEL EDGE                 │
                        │                                              │
-                       │  BotID Pro  │  Middleware  │  Rolling        │
+                       │  BotID Pro  │  Proxy       │  Rolling        │
                        │  on apply   │  (Clerk +    │  Releases       │
                        │             │   role gate) │  (canary)       │
                        │                                              │
@@ -63,20 +63,20 @@ A single Next.js 16 App Router app on Vercel Fluid Compute, fronted by Clerk aut
 
 ## Route group layout
 
-| Group             | Purpose                                                   | Auth                                                              | Rendering                                          |
-| ----------------- | --------------------------------------------------------- | ----------------------------------------------------------------- | -------------------------------------------------- |
-| `(marketing)`     | Public, SEO-critical, indexed                             | None                                                              | PPR: `'use cache' + cacheTag + cacheLife('hours')` |
-| `(auth)`          | Clerk SignIn / SignUp                                     | Public                                                            | Dynamic (Clerk widget)                             |
-| `(authenticated)` | Jobseeker dashboards + account                            | `auth().protect()` in layout                                      | Dynamic RSC, no cache                              |
-| `company`         | Company dashboards (real `company/` segment, not a group) | `auth().protect((has) => has({ role: 'org:company' }))` in layout | Dynamic RSC, no cache                              |
-| `(admin)`         | Admin (not in V1)                                         | —                                                                 | —                                                  |
+| Group             | Purpose                                                   | Auth                                                                           | Rendering                                          |
+| ----------------- | --------------------------------------------------------- | ------------------------------------------------------------------------------ | -------------------------------------------------- |
+| `(marketing)`     | Public, SEO-critical, indexed                             | None                                                                           | PPR: `'use cache' + cacheTag + cacheLife('hours')` |
+| `(auth)`          | Clerk SignIn / SignUp                                     | Public                                                                         | Dynamic (Clerk widget)                             |
+| `(authenticated)` | Jobseeker dashboards + account                            | `auth().protect()` in layout                                                   | Dynamic RSC, no cache                              |
+| `company`         | Company dashboards (real `company/` segment, not a group) | `requireRole('COMPANY')` in layout (+ `VERIFIED` for post/publish/apply gates) | Dynamic RSC, no cache                              |
+| `(admin)`         | Admin (not in V1)                                         | —                                                                              | —                                                  |
 
 ## Request lifecycle examples
 
 ### Public JD page (`/jobs/[slug]`)
 
-1. Vercel edge receives request, runs `middleware.ts`.
-2. `middleware.ts` falls through (public path, no auth required).
+1. Vercel edge receives request, runs `proxy.ts` (Next 16's name for middleware).
+2. `proxy.ts` falls through (public path, no auth required).
 3. Cached JD shell is served from Vercel edge cache, keyed on `cacheTag('job:'+id)`.
 4. `<Suspense>` boundary streams `<ApplyPanel>` — a dynamic island that reads the Clerk session and renders one of three CTAs (sign-in, apply, already-applied).
 5. JSON-LD `JobPosting` injected into HTML for Google Jobs.
@@ -99,7 +99,7 @@ A single Next.js 16 App Router app on Vercel Fluid Compute, fronted by Clerk aut
 
 1. Vercel Cron hits `GET /api/v1/cron/digest-email` at `0 8 * * *` UTC.
 2. Route Handler verifies `Authorization: Bearer ${CRON_SECRET}`.
-3. Calls `runDigest()` workflow → query Postgres for active jobseekers + new jobs in last 24h → batch send via Resend.
+3. Calls `runDigest()` workflow → query Postgres for jobseekers who **opted in** (`User.digestOptIn`) + new jobs in last 24h → batch send via Resend, each with a signed one-click unsubscribe. Refuses to run without the means to build that link.
 4. Returns `{ ok, ran, at, sent, skipped }` for cron logs.
 
 ## Data flow: apply → match badge
@@ -148,7 +148,7 @@ Browser ──> /sign-in (Clerk component) ──> Clerk hosted flow ──> ses
 Subsequent requests:
 
 ```
-Browser ──> /jobseeker/applications ──> middleware.ts (auth.protect)
+Browser ──> /jobseeker/applications ──> proxy.ts (auth.protect)
                                               │
                                               ▼
                                       layout.tsx (requireUser)
@@ -168,12 +168,12 @@ Browser ──> /jobseeker/applications ──> middleware.ts (auth.protect)
 | `resume-parse` | apply Server Action; algolia-reconcile cron re-runs stranded rows (parseAttempts-capped)                                                              | 8–20s        | yes (skips completed work; repairs a missing embedding from the stored parse)                           |
 | `match-score`  | apply Server Action; its `embedJobPost` step also runs on JD publish/edit (post-job Server Action, in `after()`) and from the algolia-reconcile sweep | 1–5s         | yes (writes to existing application row)                                                                |
 | `digest-email` | daily cron                                                                                                                                            | 30–120s      | yes (per-user `lastDigestAt` watermark, stamped per chunk — a re-run resumes instead of double-sending) |
-| `gdpr-export`  | account export endpoint                                                                                                                               | 5–30s        | yes (signed URL, can run twice)                                                                         |
-| `retention`    | daily cron                                                                                                                                            | 5–60s        | yes (deleteMany is idempotent)                                                                          |
+| `gdpr-export`  | account export endpoint (streams the JSON to the requester; stores nothing)                                                                           | 1–10s        | yes (read-only)                                                                                         |
+| `retention`    | daily cron (user erasure incl. files, résumés, audit scrub/purge, legacy exports)                                                                     | 5–60s        | yes (deleteMany is idempotent)                                                                          |
 
 ## What's intentionally simple
 
-- **No outbox table for Algolia.** Server Actions call `algolia.partialUpdateObject` directly; failure path falls back to a 15-min reconcile cron that re-scans recently-updated jobs. Add a real outbox in V1.5 if drift becomes a problem.
+- **Algolia sync is write-through with a durable retry queue.** Server Actions push to Algolia inside `after()`; a failure upserts an `index_outbox` row that the reconcile cron drains (10 attempts, then dropped + Sentry). The cron also re-scans a window as wide as its own interval (`RECONCILE_WINDOW_MINUTES`, default 26 h for the daily schedule).
 - **Chat without a realtime transport.** Job-specific + virtual-intern chat areas shipped 2026-07-03 (flowchart / JOB_UC_11–14: `ChatArea`/`ChatParticipant`/`ChatMessage`, `/company/chats`, `/jobseeker/chats`) as plain request/response Server Actions — new messages appear on submit or reload. A push transport (SSE/WebSocket) is the part still deferred to V1.5.
 - **No personalized search ranking yet.** Pure Algolia + the composite signal in `lib/search/ranking.ts`. AI vector reranking is V1.5.
 - **No screening summaries.** The most expensive AI feature is deferred until paying recruiter customers exist.
@@ -184,7 +184,10 @@ Browser ──> /jobseeker/applications ──> middleware.ts (auth.protect)
 - **PII redaction at the logger.** `lib/observability/logger.ts` redacts `password`, `token`, `authorization`, `cookie`, `refreshToken` even if you log a whole request. Adding a new sensitive field? Update the redact list at the same PR.
 - **Tenancy checks in every controller.** Every `prisma.*.findFirst({ where: { id, companyId: user.id } })` exists for a reason — never trust the URL `:id`.
 - **`withAudit` on every state-changing op.** If a mutation skips audit, it's a bug.
-- **Soft-delete first, hard-delete via cron.** `deletedAt` lets us recover from honest mistakes and stays within GDPR's 30-day window.
+- **Soft-delete first, hard-delete via cron.** `deletedAt` lets us recover from honest mistakes and stays within GDPR's 30-day window. A company's postings are archived at the moment of deletion; stored files are removed before the rows.
+- **Storage is split by sensitivity.** Résumés/CVs live in a _private_ Blob store and are readable only through `GET /api/v1/resumes/[id]/file` (owner, or a company with a live application using it); logos live in a _public_ store. See `lib/storage/blob.ts`.
+- **The server never fetches a URL it was handed.** Client-supplied storage URLs are verified against our own store (host + prefix pinned, existence via the SDK) and re-derived from the store's answer.
+- **Limiters degrade, never disappear.** Redis absent/erroring → the same limit is enforced in-process.
 
 ## File-tree map
 
@@ -208,7 +211,7 @@ apps/web/
 ├── prisma/seed.ts          # reproducible seed (prisma db seed): skills + demo
 ├── scripts/                # one-shot: migrate-mongo-to-neon
 ├── tests/                  # vitest unit, playwright e2e + a11y, k6 load
-├── middleware.ts           # Clerk + BotID + security headers
+├── proxy.ts                # Clerk route gates (was middleware.ts)
 ├── instrumentation.ts      # Sentry boot
 ├── next.config.ts
 └── vercel.ts               # regions + crons + install/build commands

@@ -11,6 +11,7 @@ import { tags } from '@/lib/cache';
 import { inviteLimit } from '@/lib/ratelimit';
 import { logger } from '@/lib/observability/logger';
 import { type ActionResult, fail, succeed } from '@/lib/action-result';
+import { clientIp } from '@/lib/security/client-ip';
 
 const INVITATION_TTL_DAYS = 30;
 
@@ -18,7 +19,7 @@ async function auditCtx(actorId: string) {
   const h = await headers();
   return {
     actorId,
-    ip: h.get('x-forwarded-for')?.split(',')[0]?.trim() ?? null,
+    ip: clientIp(h),
     ua: h.get('user-agent') ?? null,
   };
 }
@@ -46,7 +47,10 @@ export async function inviteJobseeker(
     where: { userId: user.id },
     select: { companyName: true, verificationStatus: true, user: { select: { deletedAt: true } } },
   });
-  if (profile?.user?.deletedAt || (profile?.verificationStatus && profile.verificationStatus !== 'VERIFIED')) {
+  if (
+    profile?.user?.deletedAt ||
+    (profile?.verificationStatus && profile.verificationStatus !== 'VERIFIED')
+  ) {
     return fail('Only verified companies can send invitations.');
   }
 

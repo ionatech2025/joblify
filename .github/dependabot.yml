@@ -1,0 +1,55 @@
+# Dependabot version updates.
+#
+# Why this exists: the audit found 74 advisories in the production dependency
+# closure, including three critical ones in `next`, and no mechanism that would
+# ever have raised a PR for them. The CI `bun audit` gate catches a regression;
+# this is what keeps the tree from drifting into one.
+#
+# `bun` (not `npm`) is the ecosystem on purpose: the repo locks with bun.lock,
+# and the npm updater edits package.json only — every PR it opened would fail
+# `bun install --frozen-lockfile`. Note the bun ecosystem does version updates
+# only; security-advisory PRs come from the Dependabot *alerts* setting, which
+# should be enabled under Settings → Code security.
+version: 2
+
+updates:
+  - package-ecosystem: bun
+    directory: /apps/web
+    schedule:
+      interval: weekly
+      day: monday
+    # A freshly published version is the window in which a compromised release
+    # is live and unnoticed (the Sep/Nov 2025 npm worm waves). Waiting a few
+    # days costs nothing for a job board and removes most of that exposure.
+    cooldown:
+      default-days: 3
+      semver-major-days: 14
+    open-pull-requests-limit: 8
+    groups:
+      # Patch/minor bumps arrive as one reviewable PR per week; majors always
+      # arrive alone because each one needs its own migration notes.
+      minor-and-patch:
+        update-types: [minor, patch]
+    ignore:
+      # Majors that are tracked as deliberate migrations (see
+      # apps/web/docs/REMAINING_STEPS.md "Deliberately deferred") rather than
+      # something to accept from a bot.
+      - dependency-name: prisma
+        update-types: [version-update:semver-major]
+      - dependency-name: "@prisma/client"
+        update-types: [version-update:semver-major]
+      - dependency-name: "@clerk/nextjs"
+        update-types: [version-update:semver-major]
+      - dependency-name: zod
+        update-types: [version-update:semver-major]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    cooldown:
+      default-days: 3
+    groups:
+      actions:
+        patterns: ["*"]
