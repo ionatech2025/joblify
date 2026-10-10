@@ -120,6 +120,14 @@ AI requests can be forced onto zero-data-retention providers with `AI_GATEWAY_ZD
 AI Gateway Pro/Enterprise feature; the Gateway fails closed if no ZDR provider is available).
 Without it, do not claim ZDR anywhere — `/legal/ai` switches its wording on that variable.
 
+**Groq** is called directly with our own key (`lib/ai/groq.ts`), so it is a separate processor and
+`AI_GATEWAY_ZDR` does not cover it. `/legal/processors` and `/legal/ai` list it — and name the tasks —
+only while `AI_PROVIDER_<TASK>=groq` (or `AI_PROVIDER=groq`) _and_ `GROQ_API_KEY` are set, from the
+same `lib/ai/groq-config.ts` that routes the calls. Set `NEXT_PUBLIC_REGION_GROQ` only to a region
+Groq's account is actually configured for; until then the page reads "Not yet published". **Still
+open for the owner:** a DPA with Groq and its retention terms checked against what `/legal/ai` says —
+the page deliberately makes no retention claim for Groq.
+
 ## Data residency
 
 Not guaranteed by the code. Function region is a Vercel project setting (`vercel.ts` carries no

@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-10-11 — Legal pages state the real AI routing (Groq)
+
+- `/legal/processors` lists Groq, with the tasks routed to it, and narrows the Gateway row to what
+  still goes only there (match score, other features) plus the fallback. `/legal/ai` says the same in
+  prose and notes that `AI_GATEWAY_ZDR` does not cover direct Groq calls.
+- Both are driven by `lib/ai/groq-config.ts` — the module that routes the calls — so a page cannot
+  claim Groq is used when it is not, or the reverse. Tested for each switch combination.
+- Region comes from `NEXT_PUBLIC_REGION_GROQ` and reads "Not yet published" until set. No retention
+  claim is made for Groq: a DPA and its terms are still an owner item (COMPLIANCE.md).
+
 ## 2026-10-10 — Performance pass: live results, and a mobile Lighthouse gate
 
 Lighthouse 13.5 against the production URL, median of 3, before (after the #77 layout fixes) and

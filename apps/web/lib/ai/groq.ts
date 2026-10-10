@@ -2,6 +2,9 @@ import { createGroq } from '@ai-sdk/groq';
 import type { LanguageModelV3 } from '@ai-sdk/provider';
 import { gateway, MODELS, aiProviderOptions } from '@/lib/ai/gateway';
 import { logger } from '@/lib/observability/logger';
+import { TASK_ENV, groqEnabledFor, type AiTask } from '@/lib/ai/groq-config';
+
+export { groqEnabledFor, type AiTask };
 
 // Per-task model chains: Groq first (latency is the point), the Gateway model
 // last (the quality/availability floor the app already ran on).
@@ -18,31 +21,23 @@ import { logger } from '@/lib/observability/logger';
 // returns 404 model_not_found, which is why the chains below are what they are
 // and why every chain has a Gateway model at its end.
 
-export type AiTask = 'bio-coach' | 'resume-parse' | 'skill-extraction';
-
-const TASKS: Record<
-  AiTask,
-  { groq: string[]; gateway: string; env: string; reasoning: 'low' | 'medium' }
-> = {
+const TASKS: Record<AiTask, { groq: string[]; gateway: string; reasoning: 'low' | 'medium' }> = {
   // Streams to someone watching it type; wants the strongest model.
   'bio-coach': {
     groq: ['openai/gpt-oss-120b', 'qwen/qwen3.8-27b'],
     gateway: MODELS.sonnet,
-    env: 'BIO_COACH',
     reasoning: 'low',
   },
   // Structured JSON from a whole résumé; accuracy over speed.
   'resume-parse': {
     groq: ['openai/gpt-oss-120b', 'qwen/qwen3.8-27b'],
     gateway: MODELS.haiku,
-    env: 'RESUME_PARSE',
     reasoning: 'low',
   },
   // Short structured extraction on every job post; the small fast model.
   'skill-extraction': {
     groq: ['openai/gpt-oss-20b', 'qwen/qwen3.8-27b'],
     gateway: MODELS.haiku,
-    env: 'SKILL_EXTRACTION',
     reasoning: 'low',
   },
 };
@@ -57,19 +52,9 @@ export function groq() {
   return client;
 }
 
-/**
- * Whether `task` should try Groq first: `AI_PROVIDER_<TASK>=groq`, or the
- * blanket `AI_PROVIDER=groq`, *and* a key. Neither alone routes data to Groq.
- */
-export function groqEnabledFor(task: AiTask): boolean {
-  const specific = process.env[`AI_PROVIDER_${TASKS[task].env}`];
-  const chosen = specific ?? process.env.AI_PROVIDER;
-  return chosen === 'groq' && Boolean(process.env.GROQ_API_KEY);
-}
-
 /** Groq ids for `task`: AI_GROQ_MODELS_<TASK> (comma-separated) or the defaults. */
 export function groqModelIds(task: AiTask): string[] {
-  const override = process.env[`AI_GROQ_MODELS_${TASKS[task].env}`];
+  const override = process.env[`AI_GROQ_MODELS_${TASK_ENV[task]}`];
   const ids = override
     ?.split(',')
     .map((s) => s.trim())
