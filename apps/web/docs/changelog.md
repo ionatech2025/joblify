@@ -26,6 +26,18 @@ handshake redirect (TTFB), which only production Clerk keys remove.
   visible: React ships a streamed Suspense boundary in a `hidden` container that an inline script
   reveals, so with scripts off the listing is in the markup (what crawlers read) but not painted.
 
+## 2026-10-10 — Groq: per-task model chains with fallback (opt-in)
+
+- `lib/ai/groq.ts`: bio coach, résumé parse and JD skill extraction each get their own chain of Groq
+  models (`gpt-oss-120b`/`gpt-oss-20b` → `qwen3.8-27b`) ending at the Gateway model they already used.
+  `withFallback` moves to the next model when a call fails to start. Opt-in per task
+  (`AI_PROVIDER_<TASK>=groq` or `AI_PROVIDER=groq`, plus `GROQ_API_KEY`); off by default because Groq
+  is a separate processor.
+- `llama-3.3-70b-versatile` is no longer in Groq's catalogue (404 `model_not_found`); defaults come
+  from `GET /openai/v1/models`.
+- Verified in the app: signed-in call to `/api/v1/ai/bio-coach` returned a streamed answer in 1.5 s
+  with the first model deliberately dead — the log shows the fallback.
+
 ## 2026-10-10 — Performance: Clerk's browser SDK loads only where it is used
 
 Every page used to load Clerk — one `<ClerkProvider>` wrapped the whole tree — including the legal

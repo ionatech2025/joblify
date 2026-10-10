@@ -34,6 +34,8 @@
     "seed": "bun run prisma/seed.ts"
   },
   "dependencies": {
+    "@ai-sdk/groq": "^3.0.72",
+    "@ai-sdk/provider": "^3.0.18",
     "@ai-sdk/react": "^3.0.306",
     "@clerk/clerk-react": "^5.61.10",
     "@clerk/nextjs": "^6.39.7",
