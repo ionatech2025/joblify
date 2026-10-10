@@ -10,7 +10,7 @@ import { requireRole, assertPlan, AuthError } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { withAudit } from '@/lib/audit';
 import { tags } from '@/lib/cache';
-import { aiModelFor } from '@/lib/ai/groq';
+import { aiModelFor, logAiCall } from '@/lib/ai/groq';
 import { JdSkillsSchema, JD_SKILLS_SYSTEM } from '@/lib/ai/prompts/jd-skills';
 import { fenceUntrusted, sanitizeUntrustedText, untrustedInputNotice } from '@/lib/ai/untrusted';
 import { clientIp } from '@/lib/security/client-ip';
@@ -476,7 +476,8 @@ async function extractAndLinkSkills(
   const text = sanitizeUntrustedText(`${title}\n\n${description}\n\n${requirements}`, 30_000);
 
   const { model, providerOptions } = aiModelFor('skill-extraction');
-  const { object } = await generateObject({
+  const startedAt = Date.now();
+  const { object, response, usage, finishReason } = await generateObject({
     model,
     schema: JdSkillsSchema,
     system: `${JD_SKILLS_SYSTEM}\n\n${untrustedInputNotice('job-description')}`,
@@ -484,6 +485,7 @@ async function extractAndLinkSkills(
     temperature: 0,
     providerOptions,
   });
+  logAiCall('skill-extraction', { response, usage, finishReason, startedAt });
 
   const allSlugs = [...object.requiredSkills, ...object.niceToHave].map((s) =>
     s

@@ -122,3 +122,38 @@ export function aiModelFor(task: AiTask): {
     providerOptions: aiProviderOptions({ groq: { reasoningEffort: cfg.reasoning } }),
   };
 }
+
+type Usage = { inputTokens?: number; outputTokens?: number; totalTokens?: number };
+
+/**
+ * One structured log line per finished AI call: which model *actually*
+ * answered (after any fallback), what it cost in tokens, and how long it took.
+ * Metadata only — never the prompt or the output, which are personal data.
+ *
+ * `response.modelId` is what the provider reported, so a call that fell back
+ * from Groq to the Gateway says so here, where the chain's own name
+ * ("a > b > c") would not. This is how "is Groq really serving this?" is
+ * answered in production without reading anyone's text.
+ */
+export function logAiCall(
+  task: AiTask,
+  call: {
+    response?: { modelId?: string };
+    usage?: Usage;
+    finishReason?: string;
+    startedAt: number;
+  },
+): void {
+  logger.info(
+    {
+      task,
+      model: call.response?.modelId ?? 'unknown',
+      viaGroq: Boolean(groqEnabledFor(task)),
+      inputTokens: call.usage?.inputTokens,
+      outputTokens: call.usage?.outputTokens,
+      finishReason: call.finishReason,
+      ms: Date.now() - call.startedAt,
+    },
+    'ai call',
+  );
+}
