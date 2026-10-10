@@ -1,6 +1,7 @@
 import { clerkSetup, setupClerkTestingToken } from '@clerk/testing/playwright';
 import { test, expect, type Page } from '@playwright/test';
 import { STORAGE } from './storage-paths';
+import { skipUnlessCompanyVerified } from './company-state';
 
 /**
  * Console-register regression — locks the Odoo-enterprise back office.
@@ -38,6 +39,9 @@ function consoleToken(page: Page, name: string): Promise<string> {
 test.describe('console register', () => {
   test.skip(!hasCompany, 'requires Clerk dev company creds (E2E_TEST_*)');
   test.use({ storageState: hasCompany ? STORAGE.company : undefined });
+  test.beforeEach(async ({ page }) => {
+    await skipUnlessCompanyVerified(page);
+  });
 
   test('the .o-console scope flattens radii and repaints the canvas', async ({ page }) => {
     await page.goto('/company/jobs');

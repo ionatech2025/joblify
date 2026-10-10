@@ -1,6 +1,7 @@
 import { clerkSetup, setupClerkTestingToken } from '@clerk/testing/playwright';
 import { test, expect, type Page } from '@playwright/test';
 import { STORAGE } from './storage-paths';
+import { skipUnlessCompanyVerified } from './company-state';
 
 // Waits for the mutation POST back to the CURRENT route to resolve. Next
 // Server Actions triggered from a page POST back to that same pathname, so
@@ -178,6 +179,9 @@ test.describe('jobseeker workflows', () => {
 test.describe('company workflows', () => {
   test.skip(!hasCompany, 'requires Clerk dev company creds (E2E_TEST_*)');
   test.use({ storageState: hasCompany ? STORAGE.company : undefined });
+  test.beforeEach(async ({ page }) => {
+    await skipUnlessCompanyVerified(page);
+  });
 
   test('jobseeker directory lists public seekers and filters by type', async ({ page }) => {
     await page.goto('/company/jobseekers');

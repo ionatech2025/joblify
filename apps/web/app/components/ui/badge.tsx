@@ -36,7 +36,9 @@ export function Badge({
   return (
     <span
       className={cn(
-        'inline-flex items-center rounded-pill px-2 py-0.5 text-xs font-medium',
+        // max-w-full + overflow-wrap: a long label in a narrow card (an industry
+        // name at 200% text) breaks instead of pushing the page sideways.
+        'inline-flex max-w-full items-center rounded-pill px-2 py-0.5 text-xs font-medium [overflow-wrap:anywhere]',
         tones[tone],
         corner && 'absolute top-3 right-3 z-10 shadow-sm',
         className,

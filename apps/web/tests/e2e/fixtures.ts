@@ -27,6 +27,18 @@ export async function ensureE2eFixtures(
   ]);
   if (!jobseeker || !company) return; // sign-in above didn't complete; nothing to provision
 
+  // Opt-in only. Verification is the admin's decision in the product, and on a
+  // database shared with production it lets this account publish listings that
+  // real users see - the e2e suite then creates one per run. Set it for a
+  // preview/ephemeral database; otherwise approve the account in /admin (or
+  // leave it pending and the company specs skip with that reason).
+  if (process.env.E2E_VERIFY_COMPANY === '1') {
+    await db.companyProfile.updateMany({
+      where: { userId: company.id },
+      data: { verificationStatus: 'VERIFIED' },
+    });
+  }
+
   const resume = await db.resume.upsert({
     where: { id: FIXTURE_RESUME_ID },
     create: {
@@ -39,7 +51,10 @@ export async function ensureE2eFixtures(
       fileSizeBytes: 123_456,
       isDefault: true,
     },
-    update: {},
+    // Revived, not left alone: retention soft-deletes a résumé whose blob it
+    // cannot find (this one's URL is a placeholder), and `update: {}` kept it
+    // hidden from the list for good.
+    update: { deletedAt: null, userId: jobseeker.id },
   });
 
   // A job the e2e company "owns", with a chat area both e2e accounts share —
@@ -63,7 +78,7 @@ export async function ensureE2eFixtures(
       status: 'PUBLISHED',
       publishedAt: new Date(),
     },
-    update: {},
+    update: { deletedAt: null, status: 'PUBLISHED' },
     select: { id: true, title: true },
   });
 

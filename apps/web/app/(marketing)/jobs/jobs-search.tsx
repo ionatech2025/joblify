@@ -13,6 +13,7 @@ import { Button } from '@/app/components/ui/button';
 import { Input, Select } from '@/app/components/ui/form';
 import { EmptyState } from '@/app/components/ui/empty-state';
 import { SaveSearchButton } from './save-search-button';
+import { JobResultsSkeleton } from './jobs-search-skeleton';
 import { formatSalary } from '@/lib/ui/salary';
 
 type SearchResponse = { hits: JobSearchRecord[]; nbHits: number; page: number; nbPages: number };
@@ -210,9 +211,9 @@ export function JobsSearch() {
                 <SaveSearchButton key={qs} query={qs} />
               </SignedIn>
             )}
-            <label className="flex items-center gap-2 text-sm text-fg-muted">
+            <label className="flex flex-wrap items-center gap-2 text-sm text-fg-muted">
               Sort
-              <span className="w-40">
+              <span className="w-40 max-w-full">
                 <Select
                   value={getp('sort')}
                   onChange={(e) => patch({ sort: e.target.value, page: '' })}
@@ -225,6 +226,8 @@ export function JobsSearch() {
             </label>
           </div>
         </div>
+
+        {isLoading && !data && <JobResultsSkeleton />}
 
         {isError && (
           <p className="rounded-card border border-danger/30 bg-danger-subtle px-4 py-3 text-danger">

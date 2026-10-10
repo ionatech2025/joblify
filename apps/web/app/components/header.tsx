@@ -75,13 +75,16 @@ export function Header({ auth }: { auth?: ReactNode }) {
           {auth}
         </nav>
 
-        {/* Mobile controls */}
+        {/* Mobile controls. The buttons are 36px in px, not size-9 (2.25rem):
+            at a 200% root font size (Android's largest text setting) three
+            rem-sized buttons total 248px and pushed "Toggle menu" off the
+            right edge, out of reach without horizontal scrolling. */}
         <div className="flex items-center gap-2 sm:hidden">
           <button
             type="button"
             onClick={() => setPaletteOpen(true)}
             aria-label="Search"
-            className="text-fg-muted hover:text-fg border-border grid size-9 place-items-center rounded-full border transition-colors"
+            className="text-fg-muted hover:text-fg border-border grid size-[36px] place-items-center rounded-full border transition-colors"
           >
             <Search aria-hidden className="size-4" />
           </button>
@@ -94,7 +97,7 @@ export function Header({ auth }: { auth?: ReactNode }) {
             onClick={() => setOpen(!open)}
             aria-label="Toggle menu"
             aria-expanded={open}
-            className="border-border text-fg-muted grid size-9 place-items-center rounded-full border"
+            className="border-border text-fg-muted grid size-[36px] place-items-center rounded-full border"
           >
             {open ? <X aria-hidden className="size-4" /> : <Menu aria-hidden className="size-4" />}
           </button>

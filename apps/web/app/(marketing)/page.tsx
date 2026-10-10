@@ -236,12 +236,12 @@ function HeroStatRowSkeleton() {
   return (
     <div
       aria-hidden="true"
-      className="grid grid-cols-2 gap-6 px-2 py-10 sm:grid-cols-3 sm:gap-10 sm:py-12"
+      className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,9rem),1fr))] gap-6 px-2 py-10 sm:grid-cols-3 sm:gap-10 sm:py-12"
     >
       {[0, 1, 2].map((i) => (
         <div key={i} className={i === 2 ? 'hidden sm:block' : ''}>
-          <Skeleton className="h-8 w-24" />
-          <Skeleton className="mt-2 h-3 w-28" />
+          <Skeleton className="h-8 w-24 max-w-full" />
+          <Skeleton className="mt-2 h-3 w-28 max-w-full" />
         </div>
       ))}
     </div>

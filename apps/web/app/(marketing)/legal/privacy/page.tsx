@@ -17,7 +17,7 @@ export default function PrivacyPage() {
   return (
     <main>
       <PageHeader eyebrow="Legal" title="Privacy policy" width="max-w-3xl" />
-      <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
+      <div className="prose-links mx-auto max-w-3xl px-4 py-10 sm:px-6">
         <p className="text-fg-subtle text-sm">Last updated {LAST_UPDATED}.</p>
 
         <p>

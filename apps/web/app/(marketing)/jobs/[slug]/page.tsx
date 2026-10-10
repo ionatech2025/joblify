@@ -95,7 +95,7 @@ async function JobDetailBody({ slug }: { slug: string }) {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000';
 
   return (
-    <main>
+    <main className="min-h-svh">
       <ViewTracker jobId={job.id} />
       <script
         type="application/ld+json"

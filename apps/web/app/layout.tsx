@@ -61,6 +61,11 @@ export const metadata: Metadata = {
   title: { default: 'Joblify — Find your next role', template: '%s · Joblify' },
   description: 'A job marketplace for jobseekers and companies.',
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'),
+  // './' resolves against each route's own pathname, so every page declares
+  // itself canonical with its query string stripped: /jobs?q=react&page=3 and
+  // /jobs/some-role?utm_source=x no longer compete with their clean URL. None
+  // was emitted before (checked on the live site for every user agent).
+  alternates: { canonical: './' },
   applicationName: 'Joblify',
   appleWebApp: { capable: true, title: 'Joblify', statusBarStyle: 'default' },
   icons: { apple: '/apple-touch-icon.png' },

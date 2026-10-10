@@ -68,7 +68,7 @@ async function CompanyDetailBody({ slug }: { slug: string }) {
   });
 
   return (
-    <main>
+    <main className="min-h-svh">
       <AmbientBand>
         <header className="mx-auto flex max-w-4xl flex-wrap items-center gap-4 px-4 py-10 sm:px-6">
           {company.logoUrl && (

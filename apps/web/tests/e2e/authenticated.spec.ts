@@ -1,6 +1,7 @@
 import { clerkSetup, setupClerkTestingToken } from '@clerk/testing/playwright';
 import { test, expect } from '@playwright/test';
 import { STORAGE } from './storage-paths';
+import { skipUnlessCompanyVerified } from './company-state';
 
 // Authenticated critical paths. Require a Clerk dev instance + E2E_TEST_* creds;
 // skip cleanly without them so CI stays green. Selectors target confirmed UI —
@@ -55,6 +56,9 @@ test.describe('jobseeker (authenticated)', () => {
 test.describe('company (authenticated)', () => {
   test.skip(!hasCompany, 'requires Clerk dev company creds (E2E_TEST_*)');
   test.use({ storageState: hasCompany ? STORAGE.company : undefined });
+  test.beforeEach(async ({ page }) => {
+    await skipUnlessCompanyVerified(page);
+  });
 
   test('post a job and see it on the company jobs list', async ({ page }) => {
     const title = `E2E Engineer ${Date.now()}`;

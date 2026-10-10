@@ -497,6 +497,16 @@
     color: var(--brand);
   }
 
+  /* Published by <CookieBanner> while its fixed bar is showing (0 otherwise).
+     Keeps a focused element, and the last row of the page, clear of the bar —
+     WCAG 2.2 SC 2.4.11. */
+  html {
+    scroll-padding-bottom: var(--consent-banner-h, 0px);
+  }
+  body {
+    padding-bottom: var(--consent-banner-h, 0px);
+  }
+
   /* Honour the OS setting everywhere. The cobe globe additionally parks its
      rAF loop (components/globe.tsx) — a canvas animation can't be reached
      from CSS. */
@@ -513,6 +523,16 @@
 }
 
 @layer components {
+  /* Links inside running text must not rely on colour alone (WCAG 1.4.1; axe
+     "link-in-text-block"). Opt-in on prose containers rather than a global
+     `p a`/`li a` rule: nav menus and card lists are also <li> + <a> and are
+     deliberately not underlined. Components that opt out say so explicitly
+     with `no-underline`, which still wins (utilities layer). */
+  .prose-links a:not([class*='no-underline']) {
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+  }
+
   /* Editorial display headline (marketing heroes, page titles that want
      weight). Pair with a size utility at the call site (text-4xl…text-7xl).
      Archivo carries the weight; next/font generates the metric-matched

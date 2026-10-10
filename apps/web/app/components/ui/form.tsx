@@ -16,8 +16,14 @@ import { cn } from '@/lib/cn';
 
 // Shared form-control primitives. forwardRef so React Hook Form's register()
 // can attach its ref; spread props pass name/onChange/onBlur straight through.
+//
+// Font size: 14px suits a pointer device, but iOS Safari zooms the page when a
+// focused field's font is under 16px and does not zoom back out. Viewport width
+// is the wrong predicate for that (a landscape iPhone is 844px wide, well past
+// `sm`), so touch pointers get 16px at every width and narrow viewports get it
+// regardless of pointer type.
 const controlBase =
-  'w-full rounded-control border border-border-strong bg-surface px-3.5 py-2.5 text-sm text-fg placeholder:text-fg-subtle focus:border-brand focus:ring-2 focus:ring-brand/25 focus:outline-none disabled:bg-surface-sunken disabled:text-fg-subtle';
+  'w-full rounded-control border border-border-strong bg-surface px-3.5 py-2.5 text-sm text-fg placeholder:text-fg-subtle max-sm:text-base pointer-coarse:text-base focus:border-brand focus:ring-2 focus:ring-brand/25 focus:outline-none disabled:bg-surface-sunken disabled:text-fg-subtle';
 
 export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(
   function Input({ className, onWheel, ...props }, ref) {

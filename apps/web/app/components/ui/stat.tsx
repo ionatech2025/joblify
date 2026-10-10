@@ -69,7 +69,11 @@ export function StatRow({
   return (
     <div
       className={cn(
-        'grid grid-cols-2 gap-6 sm:grid-cols-3 sm:gap-10',
+        // Phones auto-fit: two columns at normal text size (as before), one when
+        // text is enlarged. A fixed grid-cols-2 cannot shrink below its items'
+        // min-content, so at 200% text the row overflowed by ~45px on a 390px
+        // screen and the page scrolled sideways. From `sm` it is exactly 3.
+        'grid grid-cols-[repeat(auto-fit,minmax(min(100%,9rem),1fr))] gap-6 sm:grid-cols-3 sm:gap-10',
         divided && '[&>*]:border-border [&>*]:border-l [&>*]:pl-5 sm:[&>*]:pl-6',
         className,
       )}
