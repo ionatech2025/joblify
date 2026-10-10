@@ -1,22 +1,17 @@
 'use client';
 
 import { useEffect, useId, useState, type ReactNode } from 'react';
-import { useClerkSlots } from '@/lib/stores/clerk-slots';
-
-// A page that renders a slot is about to need the provider. Ask for its chunk
-// when this module loads rather than when the slot registers after hydration,
-// so that request overlaps hydration instead of following it. clerk-host.tsx
-// imports the same module, so this is the same request, not a second one.
-if (typeof window !== 'undefined') void import('./clerk-runtime');
+import { useClerkSlots, type ClerkWidget } from '@/lib/stores/clerk-slots';
 
 /**
  * Where a Clerk widget goes. See clerk-host.tsx for how they fit together.
  *
- * Wrap the widget (`<UserButton />`, `<SignIn />`) in this instead of rendering
- * it in place. The widget is *not* rendered here: it is handed to the host,
- * which mounts it — inside the one Clerk provider, loaded on demand — into the
+ * Use this instead of rendering the widget in place, and name the widget rather
+ * than importing it: `<ClerkSlot widget="userButton" />`. The widget is mounted
+ * by the host — inside the one Clerk provider, loaded on demand — into the
  * empty element this renders. That is what lets the pages that never show a
- * widget skip Clerk's SDK entirely.
+ * widget skip Clerk's SDK entirely, and importing a Clerk component from a
+ * server component would undo it (see lib/stores/clerk-slots.ts).
  *
  * `fallback` is shown until clerk-js has loaded, so the box is not empty (and
  * does not shift) while it does. It should be the same size as the widget.
@@ -26,16 +21,28 @@ if (typeof window !== 'undefined') void import('./clerk-runtime');
  * layout exactly as the widget did when it was rendered in place, so adopting a
  * slot changes no spacing, and the placeholder-to-widget swap shifts nothing.
  */
-export function ClerkSlot({ children, fallback }: { children: ReactNode; fallback?: ReactNode }) {
+export function ClerkSlot({
+  fallback,
+  ...widget
+}: ClerkWidget & {
+  fallback?: ReactNode;
+}) {
   const id = useId();
   const [node, setNode] = useState<HTMLElement | null>(null);
   const register = useClerkSlots((s) => s.register);
   const ready = useClerkSlots((s) => s.ready);
 
+  // Props arrive from the server as a fresh object on every render of the
+  // parent; key the registration on their content so an equal re-render does
+  // not unregister and re-register the slot.
+  const name = widget.widget;
+  const propsKey = JSON.stringify(widget.props ?? null);
+
   useEffect(() => {
     if (!node) return;
-    return register({ id, node, element: children });
-  }, [id, node, children, register]);
+    const entry = { id, node, widget: name, props: JSON.parse(propsKey) ?? undefined };
+    return register(entry as Parameters<typeof register>[0]);
+  }, [id, node, name, propsKey, register]);
 
   return (
     <>

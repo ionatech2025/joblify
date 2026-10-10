@@ -62,9 +62,13 @@ const CLERK_ELEMENTS = {
 const APPEARANCE_LIGHT = { variables: CLERK_LIGHT, elements: CLERK_ELEMENTS };
 const APPEARANCE_DARK = { variables: CLERK_DARK, elements: CLERK_ELEMENTS };
 
-// Root Clerk context, built directly on @clerk/clerk-react — the library
-// @clerk/nextjs re-exports every component and hook from, so <SignedIn>,
-// <UserButton>, <SignIn> etc. all consume this provider's context.
+// The Clerk context, built directly on @clerk/clerk-react — the library
+// @clerk/nextjs re-exports every component and hook from, so <UserButton>,
+// <SignIn> etc. all consume this provider's context.
+//
+// It is mounted by clerk-runtime.tsx, which clerk-host.tsx loads on demand —
+// not around the tree. Pages with no Clerk widget never construct it, so they
+// never load clerk-js either.
 //
 // Why not @clerk/nextjs's own <ClerkProvider>: in v6 its router glue calls
 // usePathname() during render (useAwaitablePush/Replace → useInternalNavFun),

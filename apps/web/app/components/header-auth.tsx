@@ -2,7 +2,6 @@ import { Suspense } from 'react';
 import Link from 'next/link';
 import { preconnect } from 'react-dom';
 import { auth } from '@clerk/nextjs/server';
-import { UserButton } from '@clerk/nextjs';
 import { clerkFrontendOrigin } from '@/lib/clerk-origin';
 import { AuthHint } from './auth-hint';
 import { ClerkSlot } from './clerk-slot';
@@ -19,7 +18,9 @@ const navLink = 'text-fg-muted transition-colors hover:text-fg';
 //
 // These are also what decide whether the page loads Clerk's browser SDK at
 // all: a signed-out visitor gets plain links and nothing else; only a
-// signed-in one gets a <UserButton>, which needs it (see clerk-host.tsx).
+// signed-in one gets an avatar menu, which needs it (see clerk-host.tsx). The
+// widget is named, not imported: a server component that imports a Clerk
+// component puts its chunk in every page's scripts (lib/stores/clerk-slots.ts).
 export function HeaderAuth() {
   return (
     <div className="flex min-w-36 items-center justify-end gap-6">
@@ -46,11 +47,7 @@ export function HeaderUserMobile() {
 // The same size as Clerk's avatar, so the swap when clerk-js arrives moves
 // nothing.
 function UserButtonSlot() {
-  return (
-    <ClerkSlot fallback={<UserButtonPlaceholder />}>
-      <UserButton />
-    </ClerkSlot>
-  );
+  return <ClerkSlot widget="userButton" fallback={<UserButtonPlaceholder />} />;
 }
 
 async function HeaderAuthState() {

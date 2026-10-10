@@ -3,33 +3,37 @@ import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 
 // Clerk's browser SDK is loaded on demand (app/components/clerk-host.tsx). That
-// is only true while nothing on the first-load path imports it statically — one
-// `import { SignedIn } from '@clerk/nextjs'` in a shared client component puts
-// ~40 KB gzip back on every page and starts clerk-js for every visitor, with no
-// error and no visible change. The build cannot see that; this can.
+// is only true while nothing on the first-load path imports it — and "imports"
+// includes a *server* component importing a Clerk component to render it only
+// for a signed-in visitor: Next ships the client chunks a server module
+// references with every page of its layout, rendered or not. That is exactly
+// how the first version of this feature still carried @clerk/clerk-react
+// (~27 KB gzip) in every page's scripts while its tests passed.
 //
-// Two specifiers carry the browser SDK:
+// So the rule is: widgets are named, not imported (<ClerkSlot widget="…"/>), and
+// only the lazily loaded runtime imports them. Two specifiers carry the SDK:
 //   '@clerk/clerk-react'  the provider and hooks
 //   '@clerk/nextjs'       the same, re-exported with Next glue (the root
-//                         specifier only; '/server', '/errors' are server-side)
-// Both are listed with the reason each file may import them. Adding a file here
-// is a decision, not a formality.
+//                         specifier only; '/server' and '/errors' are
+//                         server-side and cost the browser nothing)
+// Type-only imports are erased and are fine. Adding a file to ALLOWED is a
+// decision, not a formality; scripts/check-bundle-budget.ts independently checks
+// the built chunks.
 
 const ROOT = join(__dirname, '..', '..');
 
 const ALLOWED: Record<string, string> = {
   'app/components/clerk-provider.tsx':
-    'the hand-built provider; reached only through clerk-runtime.tsx',
-  'app/components/clerk-runtime.tsx': 'the lazily loaded runtime that mounts the provider',
-  'app/components/header-auth.tsx':
-    'server component: <UserButton/> is a client reference rendered only for a signed-in visitor, through a ClerkSlot',
-  'app/(auth)/sign-in/[[...sign-in]]/page.tsx':
-    'server page: <SignIn/> is a client reference, rendered through a ClerkSlot',
-  'app/(auth)/sign-up/[[...sign-up]]/page.tsx':
-    'server page: <SignUp/> is a client reference, rendered through a ClerkSlot',
+    'the hand-built provider; imported only by clerk-runtime.tsx',
+  'app/components/clerk-runtime.tsx':
+    'the lazily loaded runtime that mounts the provider and the named widgets',
 };
 
-const BROWSER_SDK = /from\s+['"](@clerk\/clerk-react|@clerk\/nextjs)['"]/;
+// A value import: `import x from`, `import { a } from`, `import * as c from`,
+// `import 'side-effect'`-style are not used for these packages. `import type`
+// is excluded (erased by the compiler).
+const BROWSER_SDK =
+  /^\s*import\s+(?!type\b)[^;]*?from\s+['"](@clerk\/clerk-react|@clerk\/nextjs)['"]/m;
 
 function walk(dir: string): string[] {
   const out: string[] = [];
@@ -73,6 +77,20 @@ describe('Clerk browser SDK imports', () => {
       expect(text, rel).not.toMatch(
         /ClerkProvider|ClerkClientProvider|<SignedIn|<SignedOut|<UserButton/,
       );
+    }
+  });
+
+  it('server components name their widget; they do not import one', () => {
+    // The files that place widgets today. Importing the component here would
+    // put its chunk — and @clerk/clerk-react with it — in every page's scripts.
+    for (const rel of [
+      'app/components/header-auth.tsx',
+      'app/(auth)/sign-in/[[...sign-in]]/page.tsx',
+      'app/(auth)/sign-up/[[...sign-up]]/page.tsx',
+    ]) {
+      const text = readFileSync(join(ROOT, rel), 'utf8');
+      expect(text, rel).toMatch(/<ClerkSlot\b/);
+      expect(text, rel).not.toMatch(/from\s+['"]@clerk\/nextjs['"]/);
     }
   });
 });

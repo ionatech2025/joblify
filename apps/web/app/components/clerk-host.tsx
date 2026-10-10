@@ -1,6 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
+import { IslandBoundary } from '@/app/components/island-boundary';
 import { useClerkSlots } from '@/lib/stores/clerk-slots';
 
 // Clerk's browser SDK, on demand.
@@ -32,5 +33,16 @@ const ClerkRuntime = dynamic(() => import('./clerk-runtime'), { ssr: false });
 
 export function ClerkHost() {
   const started = useClerkSlots((s) => s.started);
-  return started ? <ClerkRuntime /> : null;
+  if (!started) return null;
+
+  // The runtime is its own chunk, so it can fail to load — offline, or a deploy
+  // that has since replaced it under an open tab. That must cost the avatar menu
+  // (the slots keep their placeholders), not the page: a chunk error with no
+  // boundary of its own reaches the root error page, which is a far worse
+  // outcome than the one widget it was fetched for.
+  return (
+    <IslandBoundary fallback={null}>
+      <ClerkRuntime />
+    </IslandBoundary>
+  );
 }

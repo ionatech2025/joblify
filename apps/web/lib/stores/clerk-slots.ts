@@ -1,5 +1,8 @@
 import { create } from 'zustand';
-import type { ReactNode } from 'react';
+import type { ComponentProps } from 'react';
+// Type-only: erased at build time. The values are imported by clerk-runtime.tsx
+// and by nothing on the first-load path.
+import type { SignIn, SignUp, UserButton } from '@clerk/nextjs';
 
 // Registry behind <ClerkSlot> / <ClerkHost>. See clerk-host.tsx for the design;
 // this is only the state.
@@ -7,12 +10,27 @@ import type { ReactNode } from 'react';
 // Not persisted and not shared with the UI store: nothing here should ever
 // outlive the page.
 
-export type ClerkSlotEntry = {
+/**
+ * The Clerk widgets a slot can show, by name.
+ *
+ * Named rather than passed as elements on purpose. A server component that
+ * imports `UserButton` from '@clerk/nextjs' — even to render it only for a
+ * signed-in visitor — puts that module's chunk, and with it all of
+ * @clerk/clerk-react (~27 KB gzip), into the scripts of every page the
+ * component's layout is part of: Next ships the client chunks a server module
+ * references whether or not the render reaches them. So the server says
+ * *which* widget and with what (serialisable) props, and only the lazily
+ * loaded runtime imports the components.
+ */
+export type ClerkWidget =
+  | { widget: 'userButton'; props?: ComponentProps<typeof UserButton> }
+  | { widget: 'signIn'; props?: ComponentProps<typeof SignIn> }
+  | { widget: 'signUp'; props?: ComponentProps<typeof SignUp> };
+
+export type ClerkSlotEntry = ClerkWidget & {
   id: string;
-  /** DOM node the slot's element is portalled into. */
+  /** DOM node the widget is portalled into. */
   node: HTMLElement;
-  /** The Clerk widget (or any element that needs the Clerk context). */
-  element: ReactNode;
 };
 
 type ClerkSlotsState = {
@@ -37,7 +55,7 @@ export const useClerkSlots = create<ClerkSlotsState>()((set) => ({
   register: (entry) => {
     set((s) => ({
       started: true,
-      // Replace by id: a slot whose children changed re-registers.
+      // Replace by id: a slot whose props changed re-registers.
       slots: [...s.slots.filter((x) => x.id !== entry.id), entry],
     }));
     return () => set((s) => ({ slots: s.slots.filter((x) => x.id !== entry.id) }));

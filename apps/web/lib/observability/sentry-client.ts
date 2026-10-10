@@ -7,8 +7,10 @@
 //
 // Everything now goes through this module, which imports the SDK dynamically:
 //
-//   - no DSN at build time  → the import is unreachable and the bundler drops
-//     it; the SDK is not in the client build at all;
+//   - no DSN at build time  → `loadSentry()` returns before it reaches the
+//     import, so the SDK is never requested (it is not in any chunk a page
+//     loads, and the first-load budget in scripts/check-bundle-budget.ts
+//     counts none of it);
 //   - DSN present           → the SDK is its own async chunk, fetched after the
 //     page has loaded (see instrumentation-client.ts), off the path hydration
 //     and first interaction depend on.

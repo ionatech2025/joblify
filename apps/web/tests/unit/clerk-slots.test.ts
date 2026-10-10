@@ -1,5 +1,4 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import type { ReactNode } from 'react';
 import { useClerkSlots, type ClerkSlotEntry } from '@/lib/stores/clerk-slots';
 import { useAuthHint } from '@/lib/stores/auth-hint';
 
@@ -8,11 +7,11 @@ import { useAuthHint } from '@/lib/stores/auth-hint';
 // widget never loads Clerk), and once started it stays started (a slot that
 // unmounts on a client navigation must not tear the provider down).
 
-const entry = (id: string, element: ReactNode = null): ClerkSlotEntry => ({
+const entry = (id: string, widget: ClerkSlotEntry['widget'] = 'userButton'): ClerkSlotEntry => ({
   id,
   // The registry never touches the node; it only hands it to createPortal.
   node: { id } as unknown as HTMLElement,
-  element,
+  widget,
 });
 
 beforeEach(() => {
@@ -43,12 +42,12 @@ describe('useClerkSlots', () => {
 
   it('replaces a slot that re-registers under the same id, rather than duplicating it', () => {
     const { register } = useClerkSlots.getState();
-    register(entry('a', 'first'));
+    register(entry('a', 'signIn'));
     register(entry('b'));
-    register(entry('a', 'second'));
+    register(entry('a', 'signUp'));
     const slots = useClerkSlots.getState().slots;
     expect(slots.map((s) => s.id)).toEqual(['b', 'a']);
-    expect(slots.find((s) => s.id === 'a')?.element).toBe('second');
+    expect(slots.find((s) => s.id === 'a')?.widget).toBe('signUp');
   });
 
   it('unregisters a slot but stays started', () => {

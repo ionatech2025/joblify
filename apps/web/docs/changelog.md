@@ -12,10 +12,16 @@ Best Practices at 77 — to render nothing: the header's links are server-render
 - **No provider around the tree.** `app/components/clerk-host.tsx` mounts the one provider on
   demand, when a `<ClerkSlot>` registers (`clerk-slot.tsx`); slots are portalled into it. A host
   with portals rather than a wrapper because a wrapper cannot appear later without remounting
-  everything beneath it, and two `ClerkProvider`s are an error in `@clerk/clerk-react`.
-- **What needs a slot:** the header's `<UserButton>` (rendered only for a signed-in visitor — the
-  server decides from the session cookie) and the `<SignIn>`/`<SignUp>` cards. Everything else
-  renders without Clerk.
+  everything beneath it, and two `ClerkProvider`s are an error in `@clerk/clerk-react`. The runtime
+  chunk sits behind an error boundary, so a failed chunk load costs the avatar menu, not the page.
+- **Widgets are named, not imported** (`<ClerkSlot widget="userButton" />`, `widget="signIn"` with
+  its props). A server component that imports a Clerk component puts that component's chunk — and
+  `@clerk/clerk-react`, ~27 KB gzip — in the scripts of every page of its layout, whether or not the
+  render reaches it. The first version of this change did exactly that and passed every test;
+  only a look at the built chunks found it. Only `clerk-runtime.tsx` imports Clerk's components now.
+- **What needs a slot:** the header's avatar menu (rendered only for a signed-in visitor — the
+  server decides from the session cookie, desktop and mobile) and the sign-in / sign-up cards, which
+  keep their skeleton until clerk-js is ready.
 - **Server → client auth state.** `<AuthHint>` (rendered by the header island) carries `auth()`'s
   answer into a small store: the mobile menu's links and the save-search button read it instead of
   Clerk's `<SignedIn>`/`<SignedOut>`. It also replaces `DraftOwnerGuard`: drafts are reconciled
@@ -23,12 +29,14 @@ Best Practices at 77 — to render nothing: the header's links are server-render
   rather than after a script.
 - **Connection hint** to the Clerk frontend API moved from every page to the pages that load it
   (auth layout, signed-in header).
-- **First-load JS** (gzip): `/legal/terms` 284.1 → 254.4 KB, `/jobs` 294.2 → 264.7, `/company/jobs/new`
-  322.7 → 293.2 — **360.2 → 254.4 KB (−29 %) on the lightest routes since the start of this pass**.
-- `tests/unit/clerk-boundary.test.ts` fails if a file outside a short allow-list imports the Clerk
-  browser SDK, so a stray `import { SignedIn } from '@clerk/nextjs'` cannot put it back on every page
-  unnoticed. e2e: public pages load no clerk-js; `/sign-in` and `/sign-up` still do and show their
-  cards; the signed-in header shows Dashboard and the avatar menu.
+- **First-load JS** (gzip): `/legal/terms` 284.1 → 221.8 KB, `/jobs` 294.2 → 232.1,
+  `/company/jobs/new` 322.7 → 260.6 — **360.2 → 221.8 KB (−38 %) on the lightest routes since the
+  start of this pass**. Budgets lowered to match (default 396 → 285).
+- **Two guards.** `tests/unit/clerk-boundary.test.ts` fails if a file outside a short allow-list
+  imports the Clerk browser SDK (mutation-checked); `scripts/check-bundle-budget.ts` now also fails
+  if the Clerk or Sentry SDK appears _by name_ in any route's first-load chunks, which is the check
+  that would have caught the leak above. e2e: public pages load no clerk-js; `/sign-in` and
+  `/sign-up` still do and show their cards; the signed-in header shows Dashboard and the avatar menu.
 
 ## 2026-10-10 — Performance: Sentry, the theme menu and the globe off the critical path
 
