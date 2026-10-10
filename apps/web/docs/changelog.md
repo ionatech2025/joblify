@@ -1,5 +1,31 @@
 # Changelog
 
+## 2026-10-10 — Performance pass: live results, and a mobile Lighthouse gate
+
+Lighthouse 13.5 against the production URL, median of 3, before (after the #77 layout fixes) and
+after #80–#82:
+
+| Page (preset)             | Performance | Best Practices | SEO          | LCP             | TBT                | JS transferred | Unused JS   |
+| ------------------------- | ----------- | -------------- | ------------ | --------------- | ------------------ | -------------- | ----------- |
+| `/` (mobile)              | 32 → **76** | 77 → **100**   | 100          | 3.2 → 3.3 s     | 139 s → **0.43 s** | 655 → 193 KB   | 301 → 29 KB |
+| `/jobs` (mobile)          | 50 → **72** | 77 → **100**   | 100          | 5.1 → **3.7 s** | 1.5 s → **0.38 s** | 653 → 209 KB   | 303 → 29 KB |
+| `/legal/privacy` (mobile) | 49 → **76** | 77 → **100**   | 92 → **100** | 3.1 → 3.0 s     | 1.4 s → **0.49 s** | 637 → 193 KB   | 304 → 29 KB |
+| `/jobs` (desktop)         | 81 → **91** | 77 → **100**   | 92 → **100** | 1.4 → 1.3 s     | 18 → 0 ms          | 281 → 209 KB   | 158 → 28 KB |
+
+Third-party cookies 2 → 0 on every page. LCP on the static pages is mostly the development-instance
+handshake redirect (TTFB), which only production Clerk keys remove.
+
+- **`lighthouserc.mobile.js` + a second step in `lighthouse.yml`.** The gate had only ever run the
+  desktop preset; mobile is how Core Web Vitals are scored. Warn-level, thresholds just beyond the
+  numbers above, so a regression is visible on the PR without failing it.
+- **`deploy-preview.yml` uploads with `--archive=tgz`.** The CLI deploy uploaded a few thousand files
+  per run and hit the Hobby plan's 5,000-per-day cap (`api-upload-free`, "try again in 24 hours"),
+  turning that check red on every PR for the rest of the day. Not yet verified: the quota had not
+  reset when this was written.
+- `responsive.spec.ts › jobs listing is server-rendered` asserts the links are _in the document_, not
+  visible: React ships a streamed Suspense boundary in a `hidden` container that an inline script
+  reveals, so with scripts off the listing is in the markup (what crawlers read) but not painted.
+
 ## 2026-10-10 — Performance: Clerk's browser SDK loads only where it is used
 
 Every page used to load Clerk — one `<ClerkProvider>` wrapped the whole tree — including the legal

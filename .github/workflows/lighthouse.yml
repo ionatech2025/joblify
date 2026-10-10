@@ -21,7 +21,8 @@ jobs:
       github.event.deployment_status.state == 'success' &&
       github.event.deployment_status.environment != 'Production'
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    # Two collections now (desktop, then mobile): ~2.5 min each.
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -60,6 +61,22 @@ jobs:
             ${{ github.event.deployment_status.target_url }}/jobs
             ${{ github.event.deployment_status.target_url }}/sign-up
           configPath: ./apps/web/lighthouserc.js
+          temporaryPublicStorage: true
+      # The same site through Lighthouse's default mobile emulation and
+      # simulated throttling — the profile Google scores Core Web Vitals with,
+      # and the one the 2026-10-10 live audit's layout, payload and main-thread
+      # defects showed up in. The desktop run above let all of them through.
+      # Warn-level (see lighthouserc.mobile.js): it makes a regression visible
+      # on the PR without failing it.
+      - name: Run Lighthouse CI (mobile)
+        uses: treosh/lighthouse-ci-action@3e7e23fb74242897f95c0ba9cabad3d0227b9b18 # v12
+        env:
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+        with:
+          urls: |
+            ${{ github.event.deployment_status.target_url }}
+            ${{ github.event.deployment_status.target_url }}/jobs
+          configPath: ./apps/web/lighthouserc.mobile.js
           temporaryPublicStorage: true
 
   # Blocking axe gate: runs the Playwright axe spec against the preview URL
