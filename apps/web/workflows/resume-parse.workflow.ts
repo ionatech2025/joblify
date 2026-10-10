@@ -25,7 +25,7 @@
 import { generateObject } from 'ai';
 import { fileTypeFromBuffer } from 'file-type';
 import { MODELS } from '@/lib/ai/gateway';
-import { aiModelFor } from '@/lib/ai/groq';
+import { aiModelFor, logAiCall } from '@/lib/ai/groq';
 import { embedText, toVectorLiteral } from '@/lib/ai/embeddings';
 import {
   ResumeSchema,
@@ -147,7 +147,8 @@ export async function runResumeParse({ resumeId }: ResumeParseInput): Promise<vo
   let source: ParseSource = 'model';
   try {
     const { model, providerOptions } = aiModelFor('resume-parse');
-    const { object } = await generateObject({
+    const startedAt = Date.now();
+    const { object, response, usage, finishReason } = await generateObject({
       model,
       schema: ResumeSchema,
       system: `${RESUME_PARSE_SYSTEM}\n\n${untrustedInputNotice('resume')}`,
@@ -155,6 +156,7 @@ export async function runResumeParse({ resumeId }: ResumeParseInput): Promise<vo
       temperature: 0,
       providerOptions,
     });
+    logAiCall('resume-parse', { response, usage, finishReason, startedAt });
     parsed = object;
   } catch (aiErr) {
     logger.warn(

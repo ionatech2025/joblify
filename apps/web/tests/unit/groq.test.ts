@@ -4,9 +4,8 @@ import type { LanguageModelV3 } from '@ai-sdk/provider';
 // Groq is a separate processor, so a task only uses it when asked to *and* a key
 // exists; and whatever the chain, a failure must end at the Gateway model.
 
-vi.mock('@/lib/observability/logger', () => ({
-  logger: { warn: vi.fn(), info: vi.fn(), error: vi.fn() },
-}));
+const log = vi.hoisted(() => ({ warn: vi.fn(), info: vi.fn(), error: vi.fn() }));
+vi.mock('@/lib/observability/logger', () => ({ logger: log }));
 
 const KEYS = [
   'GROQ_API_KEY',
@@ -130,5 +129,39 @@ describe('withFallback', () => {
   it('names the whole chain', async () => {
     const { withFallback } = await load();
     expect(withFallback([fake('a', 'ok'), fake('b', 'ok')]).modelId).toBe('a > b');
+  });
+});
+
+describe('logAiCall', () => {
+  it('records the model that actually answered, token counts and duration — and no content', async () => {
+    process.env.GROQ_API_KEY = 'gsk_test';
+    process.env.AI_PROVIDER = 'groq';
+    const { logAiCall } = await load();
+    vi.spyOn(Date, 'now').mockReturnValue(1_500);
+    logAiCall('bio-coach', {
+      response: { modelId: 'qwen/qwen3.8-27b' },
+      usage: { inputTokens: 90, outputTokens: 40 },
+      finishReason: 'stop',
+      startedAt: 1_000,
+    });
+    expect(log.info).toHaveBeenCalledWith(
+      {
+        task: 'bio-coach',
+        model: 'qwen/qwen3.8-27b',
+        viaGroq: true,
+        inputTokens: 90,
+        outputTokens: 40,
+        finishReason: 'stop',
+        ms: 500,
+      },
+      'ai call',
+    );
+    vi.restoreAllMocks();
+  });
+
+  it('says so when the provider reported no model', async () => {
+    const { logAiCall } = await load();
+    logAiCall('resume-parse', { startedAt: Date.now() });
+    expect(log.info.mock.calls.at(-1)![0]).toMatchObject({ model: 'unknown', viaGroq: false });
   });
 });

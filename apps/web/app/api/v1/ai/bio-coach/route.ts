@@ -1,7 +1,7 @@
 import { streamText, convertToModelMessages, type UIMessage } from 'ai';
 import { z } from 'zod';
 import { requireRole, AuthError } from '@/lib/auth';
-import { aiModelFor } from '@/lib/ai/groq';
+import { aiModelFor, logAiCall } from '@/lib/ai/groq';
 import { BIO_COACH_SYSTEM } from '@/lib/ai/prompts/bio-coach';
 import { fenceUntrusted, sanitizeUntrustedText, untrustedInputNotice } from '@/lib/ai/untrusted';
 import { bioCoachLimit } from '@/lib/ratelimit';
@@ -96,6 +96,7 @@ export async function POST(req: Request) {
   // Groq models first when selected (AI_PROVIDER_BIO_COACH=groq + GROQ_API_KEY),
   // falling back through the chain to the Gateway model — see lib/ai/groq.ts.
   const { model, providerOptions } = aiModelFor('bio-coach');
+  const startedAt = Date.now();
   const result = streamText({
     model,
     system,
@@ -103,6 +104,8 @@ export async function POST(req: Request) {
     temperature: 0.4,
     maxOutputTokens: 600,
     providerOptions,
+    onFinish: ({ response, usage, finishReason }) =>
+      logAiCall('bio-coach', { response, usage, finishReason, startedAt }),
   });
 
   return result.toUIMessageStreamResponse();
