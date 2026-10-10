@@ -12,20 +12,23 @@
 // beyond what the live pages measured on 2026-10-10 (mobile medians of 3: perf
 // 72-76, LCP 3.0-3.7 s, TBT 380-490 ms, ~330-355 KB); tighten them as the
 // numbers come down, and never loosen one without saying what got slower.
-const desktop = require('./lighthouserc.js');
-
-// Drop `preset: 'desktop'`; everything else (extraHeaders) carries over.
-const { preset: _desktopPreset, ...settings } = desktop.ci.collect.settings;
+// Self-contained rather than derived from lighthouserc.js: that file's settings
+// are one header and one preset, and a require() here is a lint error in this
+// repo. Keep the bypass header in step with it.
+const bypassSecret = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
 
 module.exports = {
   ci: {
     collect: {
-      ...desktop.ci.collect,
+      numberOfRuns: 3,
       // The home page and the job board: the two public pages that carry real
       // content and the most JavaScript. The sign-in/sign-up pages are left to
       // the desktop run; they load Clerk by design.
       url: ['/', '/jobs'],
-      settings,
+      // No `preset`: Lighthouse's default is mobile emulation + simulated throttling.
+      settings: bypassSecret
+        ? { extraHeaders: { 'x-vercel-protection-bypass': bypassSecret } }
+        : {},
     },
     assert: {
       assertions: {
@@ -39,6 +42,6 @@ module.exports = {
         'total-byte-weight': ['warn', { maxNumericValue: 500_000 }],
       },
     },
-    upload: desktop.ci.upload,
+    upload: { target: 'temporary-public-storage' },
   },
 };
