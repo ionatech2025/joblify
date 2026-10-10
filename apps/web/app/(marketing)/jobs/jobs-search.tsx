@@ -1,12 +1,16 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import { SignedIn } from '@clerk/nextjs';
 import { ChevronLeft, ChevronRight, SearchX } from 'lucide-react';
-import type { JobSearchRecord } from '@/lib/search/algolia';
+import {
+  canonicalSearchString,
+  type JobCardRecord,
+  type JobSearchPage,
+} from '@/lib/search/job-search-query';
 import { Badge } from '@/app/components/ui/badge';
 import { Card } from '@/app/components/ui/card';
 import { Button } from '@/app/components/ui/button';
@@ -15,8 +19,6 @@ import { EmptyState } from '@/app/components/ui/empty-state';
 import { SaveSearchButton } from './save-search-button';
 import { JobResultsSkeleton } from './jobs-search-skeleton';
 import { formatSalary } from '@/lib/ui/salary';
-
-type SearchResponse = { hits: JobSearchRecord[]; nbHits: number; page: number; nbPages: number };
 
 const SELECTS = {
   workMode: [
@@ -53,10 +55,22 @@ const FILTER_LABELS: Record<keyof typeof SELECTS, string> = {
 // bookmarkable, and survive refresh / back-forward. Text + salary inputs keep
 // local state for smooth typing and debounce back into the URL; selects, sort,
 // and pagination write to the URL directly. Results query off the URL string.
-export function JobsSearch() {
-  const router = useRouter();
+//
+// `initialData` is the server-rendered first page for `initialQs` (see
+// page.tsx). It seeds the query for that exact search only: once the URL moves
+// to a different one the query key changes and the page is fetched as usual.
+export function JobsSearch({
+  initialQs = '',
+  initialData = null,
+}: {
+  initialQs?: string;
+  initialData?: JobSearchPage | null;
+}) {
   const searchParams = useSearchParams();
   const qs = searchParams.toString();
+  // The search's identity, independent of parameter order or a spelled-out
+  // `page=0`; this, not `qs`, is what the query is keyed and fetched by.
+  const searchKey = canonicalSearchString(searchParams);
   const getp = (k: string) => searchParams.get(k) ?? '';
   const page = Number(searchParams.get('page') ?? '0') || 0;
 
@@ -114,17 +128,27 @@ export function JobsSearch() {
       if (v === '' || v == null) next.delete(k);
       else next.set(k, String(v));
     }
-    const query = next.toString();
-    router.replace(query ? `/jobs?${query}` : '/jobs', { scroll: false });
+    navigate(next.toString());
+  }
+
+  // history.replaceState rather than router.replace(). The page is a server
+  // component that runs the first search, so a router navigation would re-run
+  // that search on the server for every filter change — while the query below
+  // fetches the same page from the API. Next integrates native history calls
+  // with useSearchParams(), so the URL and everything keyed off it update
+  // exactly as before, without the round trip.
+  function navigate(query: string) {
+    window.history.replaceState(null, '', query ? `/jobs?${query}` : '/jobs');
   }
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['jobs-search', qs],
-    queryFn: async (): Promise<SearchResponse> => {
-      const res = await fetch(`/api/v1/jobs/search?${qs}`);
+    queryKey: ['jobs-search', searchKey],
+    queryFn: async (): Promise<JobSearchPage> => {
+      const res = await fetch(`/api/v1/jobs/search?${searchKey}`);
       if (!res.ok) throw Object.assign(new Error('search failed'), { status: res.status });
       return res.json();
     },
+    initialData: initialData && searchKey === initialQs ? initialData : undefined,
     staleTime: 30_000,
     placeholderData: keepPreviousData,
   });
@@ -179,11 +203,7 @@ export function JobsSearch() {
           />
         </div>
         {qs.length > 0 && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => router.replace('/jobs', { scroll: false })}
-          >
+          <Button variant="ghost" size="sm" onClick={() => navigate('')}>
             Clear filters
           </Button>
         )}
@@ -195,14 +215,14 @@ export function JobsSearch() {
             {isLoading && !data
               ? 'Searching…'
               : data
-                ? `${data.nbHits.toLocaleString()} ${data.nbHits === 1 ? 'job' : 'jobs'}`
+                ? `${data.nbHits.toLocaleString('en-US')} ${data.nbHits === 1 ? 'job' : 'jobs'}`
                 : ''}
           </p>
           {/* Visually-hidden twin of the count above: politely announces the
               result count to screen readers whenever results settle. */}
           <p role="status" aria-live="polite" className="sr-only">
             {data
-              ? `${data.nbHits.toLocaleString()} ${data.nbHits === 1 ? 'job' : 'jobs'} found`
+              ? `${data.nbHits.toLocaleString('en-US')} ${data.nbHits === 1 ? 'job' : 'jobs'} found`
               : ''}
           </p>
           <div className="flex flex-wrap items-center gap-3">
@@ -282,7 +302,7 @@ export function JobsSearch() {
   );
 }
 
-function JobCard({ hit }: { hit: JobSearchRecord }) {
+function JobCard({ hit }: { hit: JobCardRecord }) {
   return (
     <li>
       <Link href={`/jobs/${hit.slug}`} className="block no-underline">
@@ -305,7 +325,10 @@ function JobCard({ hit }: { hit: JobSearchRecord }) {
           <div className="min-w-0">
             {/* h2: the page h1 is "Search jobs"; card titles are the next level */}
             <h2 className="m-0 text-base font-semibold text-fg">{hit.title}</h2>
-            <p className="m-0 text-sm text-fg-muted">
+            {/* "3 days ago" is computed from the clock at render time, so the
+                server's HTML and the browser's first render can straddle a day
+                boundary; the text is a label, not state, so let it differ. */}
+            <p className="m-0 text-sm text-fg-muted" suppressHydrationWarning>
               {hit.companyName}
               {hit.location ? ` · ${hit.location}` : ''}
               {hit.workMode === 'REMOTE'
