@@ -17,7 +17,15 @@ import { test, type Page } from '@playwright/test';
  */
 export async function skipUnlessCompanyVerified(page: Page): Promise<void> {
   await page.goto('/company/jobs', { waitUntil: 'domcontentloaded' });
-  const pending = /\/employer-setup/.test(page.url());
+  await page.waitForLoadState('networkidle', { timeout: 10_000 }).catch(() => undefined);
+  // The pending screen renders at /company/jobs itself (no redirect), so the
+  // URL alone does not tell; look for the screen.
+  const pending =
+    /\/employer-setup/.test(page.url()) ||
+    (await page
+      .getByRole('heading', { name: /pending verification/i })
+      .isVisible()
+      .catch(() => false));
   test.skip(
     pending,
     'the e2e company is not verified - approve it in /admin or run with E2E_VERIFY_COMPANY=1',

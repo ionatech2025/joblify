@@ -1,10 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import {
-  ProfileSchema,
-  StrictProfileSchema,
-  saveProfile,
-  type ProfileInput,
-} from '@/app/actions/profile';
+import { saveProfile, type ProfileInput } from '@/app/actions/profile';
+import { ProfileSchema, StrictProfileSchema } from '@/app/actions/profile-schema';
 import { CompanyProfileSchema } from '@/app/company/company-profile-schema';
 import { createCompanyProfile, updateCompanyProfile } from '@/app/actions/company';
 import { IMAGE_MIME } from '@/lib/storage/blob';

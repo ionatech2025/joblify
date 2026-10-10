@@ -2,93 +2,12 @@
 
 import { headers } from 'next/headers';
 import { updateTag } from 'next/cache';
-import { z } from 'zod';
 import { requireRole } from '@/lib/auth';
 import { withAudit } from '@/lib/audit';
 import { tags } from '@/lib/cache';
 import { logger } from '@/lib/observability/logger';
 import { clientIp } from '@/lib/security/client-ip';
-import { MAX_PROFILE_SKILLS, PROFILE_SKILLS_LIMIT_MESSAGE } from '@/lib/profile-limits';
-
-export const ProfileSchema = z.object({
-  profileType: z.enum(['EMPLOYABLE', 'VIRTUAL_INTERN']),
-  headline: z.string().max(140).optional().or(z.literal('')),
-  bio: z.string().max(2000).optional().or(z.literal('')),
-  yearsExperience: z.preprocess(
-    (val) => (val === '' || val === null || val === undefined ? null : val),
-    z.coerce.number().int().min(0).max(70).nullable().optional(),
-  ),
-  location: z.string().max(140).optional().or(z.literal('')),
-  phone: z
-    .string()
-    .trim()
-    .regex(/^\d{10}$/, 'Phone number must be exactly 10 numeric digits')
-    .optional()
-    .or(z.literal('')),
-  desiredSalaryMin: z.preprocess(
-    (val) => (val === '' || val === null || val === undefined ? null : val),
-    z.coerce.number().int().min(0).nullable().optional(),
-  ),
-  desiredSalaryMax: z.preprocess(
-    (val) => (val === '' || val === null || val === undefined ? null : val),
-    z.coerce.number().int().min(0).nullable().optional(),
-  ),
-  desiredWorkMode: z.preprocess(
-    (val) => (val === '' || val === null || val === undefined ? null : val),
-    z.enum(['REMOTE', 'HYBRID', 'ONSITE']).nullable().optional(),
-  ),
-  visibility: z.enum(['PUBLIC', 'PRIVATE']).default('PUBLIC'),
-  // Virtual-intern extras (JOB_UC_05.0): stored only for VI profiles.
-  careerInterest: z.string().max(140).optional().or(z.literal('')),
-  availabilityHoursPerWeek: z.preprocess(
-    (val) => (val === '' || val === null || val === undefined ? null : val),
-    z.coerce.number().int().min(1).max(80).nullable().optional(),
-  ),
-  learningGoal: z.string().max(500).optional().or(z.literal('')),
-  // JOB_UC_05.0 profile-completeness: academic background, certifications, a
-  // portfolio link, and skills picked from the canonical Skill catalog.
-  education: z.string().max(1000).optional().or(z.literal('')),
-  certifications: z.string().max(1000).optional().or(z.literal('')),
-  portfolioUrl: z
-    .string()
-    .trim()
-    .max(300)
-    .optional()
-    .or(z.literal(''))
-    .refine((val) => !val || z.string().url().safeParse(val).success, {
-      message: 'Invalid portfolio URL',
-    }),
-  skillSlugs: z.array(z.string()).max(MAX_PROFILE_SKILLS, PROFILE_SKILLS_LIMIT_MESSAGE).default([]),
-});
-
-export type ProfileInput = z.infer<typeof ProfileSchema>;
-
-// Strict validation schema for complete profile submission (JOB_UC_05.0)
-export const StrictProfileSchema = ProfileSchema.superRefine((data, ctx) => {
-  if (data.profileType === 'EMPLOYABLE') {
-    if (!data.skillSlugs || data.skillSlugs.length === 0) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['skillSlugs'],
-        message: 'An employable profile must have at least one skill selected.',
-      });
-    }
-  }
-  if (!data.bio || data.bio.trim().length === 0) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ['bio'],
-      message: 'Bio is required.',
-    });
-  }
-  if (!data.education || data.education.trim().length === 0) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ['education'],
-      message: 'Education is required.',
-    });
-  }
-});
+import { ProfileSchema, type ProfileInput } from './profile-schema';
 
 // VI extras only persist on VIRTUAL_INTERN profiles; switching to EMPLOYABLE
 // clears them so stale intern data never leaks into the directory.
@@ -102,6 +21,8 @@ function viFields(parsed: ProfileInput) {
     learningGoal: parsed.learningGoal || null,
   };
 }
+
+export type { ProfileInput };
 
 export async function saveProfile(input: ProfileInput): Promise<void> {
   const user = await requireRole('JOB_SEEKER');
