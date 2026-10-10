@@ -2,6 +2,7 @@ import { clerkSetup, setupClerkTestingToken } from '@clerk/testing/playwright';
 import { test, expect, type Page } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import { STORAGE } from './storage-paths';
+import { skipUnlessCompanyVerified } from './company-state';
 
 // Pages we promise to keep accessibility-clean, scanned in BOTH themes. axe-core
 // only — covers the automation-detectable subset (~30-40% of WCAG); manual SR
@@ -213,6 +214,11 @@ for (const theme of THEMES) {
     test.use({
       colorScheme: theme.colorScheme,
       storageState: hasCompany ? STORAGE.company : undefined,
+    });
+    // An unverified company only ever sees the pending-verification screen at
+    // these paths, so a scan would test that screen under four different names.
+    test.beforeEach(async ({ page }) => {
+      await skipUnlessCompanyVerified(page);
     });
 
     for (const target of COMPANY_PAGES) {
