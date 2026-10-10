@@ -1,5 +1,33 @@
 # Changelog
 
+## 2026-10-10 — Performance: Sentry, the theme menu and the globe off the critical path
+
+Measured with `next experimental-analyze` and the live site (Lighthouse 13.5, 3 runs per page).
+
+- **First-load JS −21 %** on the lightest routes (360.2 → 284.1 KB gzip; `/jobs` 370.0 → 294.2;
+  console form routes 390–403 → 315–327). Two modules were on every page and did nothing for most
+  visits:
+  - **Sentry browser SDK (~67 KB).** Imported statically by `instrumentation-client.ts` and both
+    error boundaries — on a deployment with no DSN, where `init()` never runs. Everything now goes
+    through `lib/observability/sentry-client.ts`: without `NEXT_PUBLIC_SENTRY_DSN` the dynamic
+    import is unreachable and the SDK is not in the client build; with one it is its own chunk,
+    started at idle after `load`. Errors thrown before it arrives are buffered and replayed into it;
+    web vitals wait for it (`withSentry`) instead of loading it.
+  - **Radix dropdown menu (~25 KB)** behind the header theme control. The trigger is a plain button
+    with the same `aria-haspopup`/`aria-expanded` that is swapped for the Radix one — opening the
+    menu as it mounts — on first activation; hover/focus start the fetch. The theme effect stays
+    outside the lazy part.
+- **Home page main thread.** Under a software rasteriser (headless Chrome — Lighthouse, PageSpeed
+  Insights, Googlebot's renderer — and some VMs/remote desktops) the globe's every frame held the
+  main thread for ~1 s: 149 s of main-thread time, 200 tasks over 100 ms, **TBT 139 s**, Lighthouse
+  performance 32 on the live `/`. The globe now runs only when
+  `getContext('webgl', { failIfMajorPerformanceCaveat: true })` succeeds and the renderer is not a
+  software one; otherwise a static disc fills the same box. TBT was 139 s on the live site; a
+  local production build of this change under the same headless Chrome measures 1.6 s.
+- **Budgets lowered** to what the routes now measure (`scripts/check-bundle-budget.ts`).
+- Tests: `sentry-client.test.ts` (7), theme control e2e (open → choose → persists across reload;
+  keyboard open/Escape/focus return).
+
 ## 2026-10-10 — Performance: the first page of /jobs is rendered on the server
 
 `/jobs` used to ship a filter form and an empty list: the results were fetched by the browser

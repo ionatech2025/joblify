@@ -1,6 +1,7 @@
 'use client';
 
 import { useReportWebVitals } from 'next/web-vitals';
+import { withSentry } from '@/lib/observability/sentry-client';
 
 /**
  * Field Core Web Vitals, reported as Sentry measurements.
@@ -28,27 +29,25 @@ import { useReportWebVitals } from 'next/web-vitals';
  */
 export function WebVitals() {
   useReportWebVitals((metric) => {
-    // Fire-and-forget: never let telemetry throw into a page, and never let it
-    // load Sentry on the critical path — the import resolves from the chunk the
-    // client instrumentation has already pulled in.
-    void import('@sentry/nextjs')
-      .then(({ setMeasurement, captureMessage }) => {
-        const unit = metric.name === 'CLS' ? 'none' : 'millisecond';
-        setMeasurement(`webvital.${metric.name}`, metric.value, unit);
+    // Rides along with the SDK rather than loading it: vitals are reported as
+    // they happen (FCP, LCP, TTFB all land before the SDK's idle-time start),
+    // and withSentry() holds them until it is up. Pulling it in from here would
+    // put the SDK back on the load path this module is trying to stay off.
+    // No-op when the build has no DSN.
+    withSentry(({ setMeasurement, captureMessage }) => {
+      const unit = metric.name === 'CLS' ? 'none' : 'millisecond';
+      setMeasurement(`webvital.${metric.name}`, metric.value, unit);
 
-        // A 'poor' INP is the signal worth an actual event rather than only a
-        // measurement attached to whatever transaction happens to be open.
-        if (metric.name === 'INP' && metric.rating === 'poor') {
-          captureMessage('poor INP', {
-            level: 'warning',
-            tags: { metric: 'INP', rating: metric.rating },
-            extra: { value: metric.value, navigationType: metric.navigationType },
-          });
-        }
-      })
-      .catch(() => {
-        /* telemetry is best-effort */
-      });
+      // A 'poor' INP is the signal worth an actual event rather than only a
+      // measurement attached to whatever transaction happens to be open.
+      if (metric.name === 'INP' && metric.rating === 'poor') {
+        captureMessage('poor INP', {
+          level: 'warning',
+          tags: { metric: 'INP', rating: metric.rating },
+          extra: { value: metric.value, navigationType: metric.navigationType },
+        });
+      }
+    });
   });
 
   return null;
