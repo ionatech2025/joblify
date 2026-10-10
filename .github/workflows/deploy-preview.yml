@@ -27,7 +27,17 @@ permissions:
 jobs:
   deploy:
     name: Vercel preview deploy
-    runs-on: ubuntu-latest
+    # Not run when the workflow has no access to the repo secrets. Dependabot
+    # runs read the separate "Dependabot secrets" store and fork PRs get none,
+    # so VERCEL_TOKEN is empty and `vercel pull` dies with "No existing
+    # credentials found" - a red check on every dependency PR that says nothing
+    # about the change. The native Vercel Git integration still deploys those
+    # PRs, and the Lighthouse / axe / E2E gates run off its deployment_status.
+    if: >
+      github.actor != 'dependabot[bot]' &&
+      (github.event_name != 'pull_request' ||
+       github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     # Deliberately NOT scoped to apps/web: the project's rootDirectory setting
     # (fixed 2026-07-30 — it had drifted to a path from an unrelated project)

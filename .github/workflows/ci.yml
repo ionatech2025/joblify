@@ -19,7 +19,11 @@ permissions:
 jobs:
   web:
     name: web (apps/web)
-    runs-on: ubuntu-latest
+    # Pinned, not `ubuntu-latest`: GitHub moves that label to Ubuntu 26 from
+    # 2026-10-19, which swaps the toolchain (glibc, OpenSSL, Chrome for the
+    # Playwright/Lighthouse jobs) under a green pipeline with no commit to
+    # blame. Move all workflows together, deliberately, once 26 has been tried.
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     defaults:
       run:
@@ -131,7 +135,7 @@ jobs:
 
   gitleaks:
     name: gitleaks
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
