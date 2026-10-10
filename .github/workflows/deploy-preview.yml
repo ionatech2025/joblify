@@ -105,10 +105,17 @@ jobs:
       - name: Build via Vercel (runs vercel.ts buildCommand)
         run: bunx vercel@63.1.2 build
 
+      # --archive=tgz uploads the prebuilt output as one tarball instead of one
+      # request per file. Without it each run uploads a few thousand files, and
+      # the Hobby plan caps uploads at 5,000 per day ("Too many requests - try
+      # again in 24 hours", code api-upload-free): a handful of PR pushes in a
+      # day turned this check red for everyone until the window reset, which
+      # said nothing about the change under test. The CLI suggests the flag
+      # itself in that error.
       - name: Deploy prebuilt output
         id: deploy
         run: |
-          url=$(bunx vercel@63.1.2 deploy --prebuilt)
+          url=$(bunx vercel@63.1.2 deploy --prebuilt --archive=tgz)
           echo "url=$url" >> "$GITHUB_OUTPUT"
 
       - name: Summary
