@@ -23,6 +23,14 @@ CLI, and a new Playwright gate that loads every route at 11 viewports
   previously kept waking the main thread ~60×/s for the rest of the visit).
 - **Node engine pinned to `24.x`** — `>=24.0.0` would have let Vercel move production to Node 26
   the day it ships.
+- **Save profile was throwing on production.** `app/actions/profile.ts` exported zod schemas from a
+  `'use server'` file; Next 16.4 rejects that when the module loads in a production build, while
+  `next build` passes. Found by the existing "edits the profile headline" flow, which had never run
+  with credentials in CI. Schemas moved to `profile-schema.ts`; a unit test now scans every
+  `'use server'` module.
+- **AI match scoring and job embedding never ran.** `embedding::float8[]` is not a pgvector cast
+  (only `real[]` is): SQLSTATE 42846, swallowed by each caller's try/catch, which is why the database
+  held no embeddings at all. Fixed to `::real[]`; a unit test scans for the pattern.
 - **CI.** Dependabot runs skip the secret-dependent preview deploy; runners pinned to
   `ubuntu-24.04` ahead of `ubuntu-latest` moving to 26 on 2026-10-19.
 - **Not fixable from the repo:** the Clerk _development_ instance costs every first visit a

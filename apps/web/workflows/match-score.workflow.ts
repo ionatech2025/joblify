@@ -41,6 +41,13 @@ export type MatchScoreInput = {
 
 type EmbeddingRow = { embedding: number[] | null; embeddingModel?: string | null };
 
+// Reading a vector back into JS: pgvector registers vector -> real[] (float4),
+// NOT double precision[]. `embedding::float8[]` is rejected by Postgres
+// ("cannot cast type vector to double precision[]", SQLSTATE 42846), and since
+// every caller wraps this in a try/catch the failure was logged and swallowed:
+// match scores and job embeddings were never produced, and the database held no
+// embeddings at all. float4 is ample precision for a cosine score.
+
 // Embed a job post's JD text (title + description + requirements) and persist
 // it to `job_posts.embedding` (pgvector, raw SQL — Unsupported() column).
 // Idempotent by default: an existing embedding from the CURRENT model is
@@ -53,7 +60,7 @@ export async function embedJobPost(
 ): Promise<number[] | null> {
   if (!force) {
     const existing = await db.$queryRaw<EmbeddingRow[]>`
-      SELECT embedding::float8[] AS embedding, "embeddingModel" AS "embeddingModel"
+      SELECT embedding::real[] AS embedding, "embeddingModel" AS "embeddingModel"
         FROM job_posts WHERE id = ${jobPostId}::uuid LIMIT 1
     `;
     const current = existing[0]?.embedding;
@@ -90,7 +97,7 @@ export async function runMatchScore({
   // since deleted it (the employer still holds that copy).
   const resumeRow = resumeId
     ? await db.$queryRaw<EmbeddingRow[]>`
-        SELECT embedding::float8[] AS embedding, "embeddingModel" AS "embeddingModel"
+        SELECT embedding::real[] AS embedding, "embeddingModel" AS "embeddingModel"
           FROM resumes
          WHERE id = ${resumeId}::uuid
            AND "userId" = ${jobSeekerId}::uuid
@@ -98,7 +105,7 @@ export async function runMatchScore({
          LIMIT 1
       `
     : await db.$queryRaw<EmbeddingRow[]>`
-        SELECT embedding::float8[] AS embedding, "embeddingModel" AS "embeddingModel"
+        SELECT embedding::real[] AS embedding, "embeddingModel" AS "embeddingModel"
           FROM resumes
          WHERE "userId" = ${jobSeekerId}::uuid
            AND "deletedAt" IS NULL
