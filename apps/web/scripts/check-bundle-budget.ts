@@ -51,8 +51,27 @@ const NEXT_DIR = join(process.cwd(), '.next');
  *
  * All three close a gap the previous ceiling was set without. Tighten back
  * toward 375 by splitting the console's form routes, not by dropping these.
+ *
+ * LOWERED 2026-10-10, 396 -> 340 (the per-route overrides by 56 to 90). Measured on the
+ * lightest routes: 360.2 KB -> 284.1 KB (-76 KB, -21%). Two things account for
+ * it, sized from `next experimental-analyze` (its compressed estimate, so the
+ * two figures are indicative and do not sum exactly to the gzip delta):
+ *
+ *   ~67 KB  the Sentry browser SDK. It was imported statically by
+ *           instrumentation-client.ts and both error boundaries, so every page
+ *           carried it - including this deployment, where there is no DSN and
+ *           init() never runs. It is now a dynamic import that does not exist
+ *           without a DSN, and loads at idle with one (lib/observability/
+ *           sentry-client.ts).
+ *   ~25 KB  @radix-ui/react-dropdown-menu, which the header theme control
+ *           pulled onto every page. The menu is fetched on first use
+ *           (app/components/ui/theme-menu.tsx).
+ *
+ * The ceilings sit ~15-20 KB above what each route measures, which is the
+ * convention above - not a new floor to be spent. /_global-error carries no
+ * shared UI and keeps the default.
  */
-const DEFAULT_BUDGET_KB = 396;
+const DEFAULT_BUDGET_KB = 340;
 
 /**
  * Per-route overrides. Every route here carries a react-hook-form + zod
@@ -61,13 +80,13 @@ const DEFAULT_BUDGET_KB = 396;
  * *without* a form cannot quietly grow into the same allowance.
  */
 const BUDGET_KB: Record<string, number> = {
-  '/company/settings': 430,
-  '/company/jobs/new': 420,
-  '/company/jobs/[id]/edit': 420,
-  '/jobseeker/profile': 420,
-  '/jobseeker/resumes/builder': 420,
-  '/jobseeker/resumes': 406,
-  '/employer-setup': 412,
+  '/company/settings': 340,
+  '/company/jobs/new': 345,
+  '/company/jobs/[id]/edit': 345,
+  '/jobseeker/profile': 345,
+  '/jobseeker/resumes/builder': 345,
+  '/jobseeker/resumes': 350,
+  '/employer-setup': 340,
 };
 
 const budgetFor = (route: string): number => BUDGET_KB[route] ?? DEFAULT_BUDGET_KB;

@@ -49,6 +49,45 @@ test.describe('Joblify critical paths', () => {
     await expect(page).toHaveURL(/\/sign-in/);
   });
 
+  // The Radix menu behind this control is fetched on first use rather than with
+  // the page (app/components/ui/theme-toggle.tsx), so the first activation is
+  // the path that has to keep working.
+  test.describe('theme control', () => {
+    test.use({ viewport: { width: 1280, height: 800 } });
+
+    test('opens its menu, applies the choice and keeps it across a reload', async ({ page }) => {
+      await page.goto('/legal/terms');
+      const trigger = page.getByRole('button', { name: 'Change theme' });
+      await expect(trigger).toHaveAttribute('aria-haspopup', 'menu');
+
+      await trigger.click();
+      await expect(page.getByRole('menu')).toBeVisible();
+      for (const name of ['Light', 'Dark', 'System']) {
+        await expect(page.getByRole('menuitem', { name })).toBeVisible();
+      }
+
+      await page.getByRole('menuitem', { name: 'Dark' }).click();
+      await expect(page.locator('html')).toHaveClass(/\bdark\b/);
+      await expect(page.getByRole('menu')).toBeHidden();
+
+      // The pre-paint script reads the persisted choice on the next load.
+      await page.reload();
+      await expect(page.locator('html')).toHaveClass(/\bdark\b/);
+    });
+
+    test('is operable from the keyboard and returns focus to its trigger', async ({ page }) => {
+      await page.goto('/legal/terms');
+      const trigger = page.getByRole('button', { name: 'Change theme' });
+      await trigger.focus();
+      await page.keyboard.press('Enter');
+      await expect(page.getByRole('menu')).toBeVisible();
+
+      await page.keyboard.press('Escape');
+      await expect(page.getByRole('menu')).toBeHidden();
+      await expect(trigger).toBeFocused();
+    });
+  });
+
   // Authenticated critical paths live in authenticated.spec.ts — they require a
   // Clerk dev instance + E2E_TEST_* creds and skip automatically without them.
 });

@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import Link from 'next/link';
-import * as Sentry from '@sentry/nextjs';
+import { reportClientError } from '@/lib/observability/sentry-client';
 import { AmbientCanvas } from '@/app/components/ui/ambient';
 import { buttonClasses } from '@/app/components/ui/button';
 
@@ -14,7 +14,7 @@ export default function Error({
   reset: () => void;
 }) {
   useEffect(() => {
-    Sentry.captureException(error);
+    reportClientError(error);
   }, [error]);
 
   return (

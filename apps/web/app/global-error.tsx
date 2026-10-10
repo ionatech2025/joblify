@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import * as Sentry from '@sentry/nextjs';
+import { reportClientError } from '@/lib/observability/sentry-client';
 
 // Catches errors in the root layout itself. Must render its own <html>/<body>,
 // and the compiled stylesheet may not be available here — so the design
@@ -90,7 +90,7 @@ export default function GlobalError({
   reset: () => void;
 }) {
   useEffect(() => {
-    Sentry.captureException(error);
+    reportClientError(error);
   }, [error]);
 
   return (
