@@ -42,6 +42,25 @@ updates:
         update-types: [version-update:semver-major]
       - dependency-name: zod
         update-types: [version-update:semver-major]
+      # Each of these either has to track something else or needs a code
+      # migration that a version bump alone cannot do - the PRs the bot opened
+      # for them failed typecheck or mismatched a sibling package.
+      #   @types/node         must equal the Node runtime major (24), not the
+      #                       newest Node's API surface
+      #   ai, @ai-sdk/react   one major: @ai-sdk/react@4 is built for ai@7
+      #   @hookform/resolvers v5's generics are typed around Zod 4
+      #   svix                2.x changed what verify() returns; the Clerk and
+      #                       Resend webhook verifiers need a deliberate edit
+      - dependency-name: "@types/node"
+        update-types: [version-update:semver-major]
+      - dependency-name: ai
+        update-types: [version-update:semver-major]
+      - dependency-name: "@ai-sdk/react"
+        update-types: [version-update:semver-major]
+      - dependency-name: "@hookform/resolvers"
+        update-types: [version-update:semver-major]
+      - dependency-name: svix
+        update-types: [version-update:semver-major]
 
   - package-ecosystem: github-actions
     directory: /
