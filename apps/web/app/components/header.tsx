@@ -3,8 +3,8 @@
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { Menu, Search, X } from 'lucide-react';
-import { SignedIn, SignedOut, UserButton } from '@clerk/nextjs';
 import { useUiStore } from '@/lib/stores/ui';
+import { useAuthHint } from '@/lib/stores/auth-hint';
 import { Container } from './ui/container';
 import { ThemeToggle } from './ui/theme-toggle';
 import { Kbd } from './ui/kbd';
@@ -17,18 +17,23 @@ const NAV = [
   { href: '/employer-setup', label: 'Post a job' },
 ];
 
-// `auth` is the server-rendered auth island (<HeaderAuth> in the root layout):
-// the only session-dependent slice of the header, streamed inside its own
-// Suspense boundary so the rest of the header stays in the static shell. The
-// mobile controls/menu keep Clerk's client control components — they resolve
-// after hydration, behind a user interaction, exactly as before.
-export function Header({ auth }: { auth?: ReactNode }) {
+// `auth` and `mobileUser` are the server-rendered auth islands (<HeaderAuth>,
+// <HeaderUserMobile> in the root layout): the only session-dependent slices of
+// the header, each streamed inside its own Suspense boundary so the rest of the
+// header stays in the static shell. Nothing here imports Clerk — the avatar
+// menus are rendered by those islands (through a <ClerkSlot>, only for a
+// signed-in visitor), and the mobile menu's links follow the server's answer
+// through useAuthHint(). A signed-out visitor's header therefore costs no Clerk
+// code at all.
+export function Header({ auth, mobileUser }: { auth?: ReactNode; mobileUser?: ReactNode }) {
   // Mobile-menu state lives in the shared UI store rather than local useState
   // so the command palette and future surfaces can close it.
   const open = useUiStore((s) => s.isMobileMenuOpen);
   const setOpen = useUiStore((s) => s.setMobileMenuOpen);
   const setPaletteOpen = useUiStore((s) => s.setCommandPaletteOpen);
   const close = () => setOpen(false);
+  // undefined until the server's answer arrives, null when signed out.
+  const userId = useAuthHint((s) => s.userId);
 
   // No aria-current on these links, deliberately. Marking the active one needs
   // usePathname(), which is uncached data — reading it here, at root-layout
@@ -89,9 +94,7 @@ export function Header({ auth }: { auth?: ReactNode }) {
             <Search aria-hidden className="size-4" />
           </button>
           <ThemeToggle />
-          <SignedIn>
-            <UserButton />
-          </SignedIn>
+          {mobileUser}
           <button
             type="button"
             onClick={() => setOpen(!open)}
@@ -118,23 +121,25 @@ export function Header({ auth }: { auth?: ReactNode }) {
                 {item.label}
               </Link>
             ))}
-            <SignedOut>
-              <Link href="/sign-in" onClick={close} className="text-fg-muted py-2 no-underline">
-                Sign in
-              </Link>
-              <Link
-                href="/sign-up"
-                onClick={close}
-                className="text-fg py-2 font-semibold no-underline"
-              >
-                Sign up
-              </Link>
-            </SignedOut>
-            <SignedIn>
+            {userId === null && (
+              <>
+                <Link href="/sign-in" onClick={close} className="text-fg-muted py-2 no-underline">
+                  Sign in
+                </Link>
+                <Link
+                  href="/sign-up"
+                  onClick={close}
+                  className="text-fg py-2 font-semibold no-underline"
+                >
+                  Sign up
+                </Link>
+              </>
+            )}
+            {userId && (
               <Link href="/dashboard" onClick={close} className="text-fg-muted py-2 no-underline">
                 Dashboard
               </Link>
-            </SignedIn>
+            )}
           </Container>
         </nav>
       )}

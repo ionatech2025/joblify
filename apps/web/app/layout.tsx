@@ -1,15 +1,14 @@
 import type { Metadata, Viewport } from 'next';
 import { Archivo, Inter } from 'next/font/google';
-import { ClerkClientProvider } from './components/clerk-provider';
+import { ClerkHost } from './components/clerk-host';
 import { ThemeScript } from './components/theme-script';
 import { Providers } from './providers';
 import { Header } from './components/header';
-import { HeaderAuth } from './components/header-auth';
+import { HeaderAuth, HeaderUserMobile } from './components/header-auth';
 import { Footer } from './components/footer';
 import { CookieBanner } from './components/cookie-banner';
 import { AnalyticsGate } from './components/analytics-gate';
 import { WebVitals } from './components/web-vitals';
-import { DraftOwnerGuard } from './components/draft-owner-guard';
 import { SwRegister } from './components/sw-register';
 import { AmbientCanvas } from './components/ui/ambient';
 import { Toaster } from './components/ui/toaster';
@@ -34,28 +33,6 @@ const archivo = Archivo({
   variable: '--font-archivo',
   display: 'swap',
 });
-
-/**
- * Clerk's frontend API origin, decoded from the publishable key (which encodes
- * the host, base64, after the pk_test_/pk_live_ prefix). Derived rather than
- * hardcoded so it follows the dev -> production instance switch on its own.
- *
- * It earns a preconnect because clerk-js is a render-blocking dependency of the
- * thing people came to /sign-up to use: the sign-up card cannot paint until an
- * 88 KB script arrives from an origin the browser has otherwise never seen, and
- * that origin is only discovered when React hydrates and mounts ClerkProvider.
- * The hint moves DNS + TCP + TLS to the start of the document instead.
- */
-function clerkFrontendOrigin(): string | null {
-  const key = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
-  if (!key) return null;
-  try {
-    const host = atob(key.replace(/^pk_(test|live)_/, '')).replace(/\$$/, '');
-    return /^[a-z0-9.-]+$/i.test(host) ? `https://${host}` : null;
-  } catch {
-    return null;
-  }
-}
 
 export const metadata: Metadata = {
   title: { default: 'Joblify — Find your next role', template: '%s · Joblify' },
@@ -99,28 +76,21 @@ export const viewport: Viewport = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  const clerkOrigin = clerkFrontendOrigin();
-
-  // ClerkClientProvider is a pure context provider (see its module comment) —
-  // it never reads the request, so nothing here may wrap the whole tree in a
-  // Suspense boundary that would collapse every route's static shell to a
-  // fallback. The only session-dependent server read at layout scope is the
-  // header's auth island (<HeaderAuth>), which suspends on its own; pages
-  // stream their own dynamic holes.
+  // Nothing here may read the request or wrap the whole tree in a Suspense
+  // boundary: that would collapse every route's static shell to a fallback. The
+  // only session-dependent server reads at layout scope are the header's auth
+  // islands (<HeaderAuth>, <HeaderUserMobile>), which suspend on their own;
+  // pages stream their own dynamic holes.
+  //
+  // There is no Clerk provider around the tree. Clerk's browser SDK is loaded
+  // on demand by <ClerkHost> (below) when something on the page needs a Clerk
+  // widget; see app/components/clerk-host.tsx.
   return (
     // suppressHydrationWarning: ThemeScript sets the `dark` class on <html>
     // before React hydrates, so the server and client class lists differ by
     // design on a dark-theme load.
     <html lang="en" className={`${inter.variable} ${archivo.variable}`} suppressHydrationWarning>
       <body>
-        {/* React hoists these into <head>. dns-prefetch is the fallback for the
-            handful of browsers that ignore preconnect. */}
-        {clerkOrigin && (
-          <>
-            <link rel="preconnect" href={clerkOrigin} crossOrigin="anonymous" />
-            <link rel="dns-prefetch" href={clerkOrigin} />
-          </>
-        )}
         {/* Must stay the first child of <body> — it runs before anything below
             is painted, which is what prevents a flash of the wrong theme. */}
         <ThemeScript />
@@ -139,26 +109,25 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <AmbientCanvas variant="page" />
         </div>
         <SwRegister />
-        <ClerkClientProvider>
-          <Header auth={<HeaderAuth />} />
-          <Providers>
-            <div id="main-content" tabIndex={-1} className="focus:outline-none">
-              {children}
-            </div>
-          </Providers>
-          <Footer />
-          <CookieBanner />
-          <AnalyticsGate />
-          {/* Field Core Web Vitals -> Sentry. Metric name and number only; see
-              the module comment for why this sits outside the consent gate
-              AnalyticsGate applies to Vercel Analytics. */}
-          <WebVitals />
-          <DraftOwnerGuard />
-          {/* Global overlays. Both are client islands that render null until
-              opened/populated, so they cost nothing to the static shell. */}
-          <CommandPalette />
-          <Toaster />
-        </ClerkClientProvider>
+        <Header auth={<HeaderAuth />} mobileUser={<HeaderUserMobile />} />
+        <Providers>
+          <div id="main-content" tabIndex={-1} className="focus:outline-none">
+            {children}
+          </div>
+        </Providers>
+        <Footer />
+        <CookieBanner />
+        <AnalyticsGate />
+        {/* Field Core Web Vitals -> Sentry. Metric name and number only; see
+            the module comment for why this sits outside the consent gate
+            AnalyticsGate applies to Vercel Analytics. */}
+        <WebVitals />
+        {/* Renders nothing until a Clerk widget registers a slot. */}
+        <ClerkHost />
+        {/* Global overlays. Both are client islands that render null until
+            opened/populated, so they cost nothing to the static shell. */}
+        <CommandPalette />
+        <Toaster />
       </body>
     </html>
   );

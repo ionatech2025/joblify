@@ -70,8 +70,15 @@ const NEXT_DIR = join(process.cwd(), '.next');
  * The ceilings sit ~15-20 KB above what each route measures, which is the
  * convention above - not a new floor to be spent. /_global-error carries no
  * shared UI and keeps the default.
+ *
+ * LOWERED again 2026-10-10, 340 -> 315 (overrides 310-320), when Clerk's
+ * browser SDK left the first-load chunks: the lightest routes went 284.1 ->
+ * 254.4 KB, console form routes 315-327 -> 285-297. The provider and every
+ * Clerk component now load on demand (app/components/clerk-host.tsx), and
+ * tests/unit/clerk-boundary.test.ts fails if a stray static import puts them
+ * back. Cumulative since the start of the pass: 360.2 -> 254.4 KB (-29%).
  */
-const DEFAULT_BUDGET_KB = 340;
+const DEFAULT_BUDGET_KB = 315;
 
 /**
  * Per-route overrides. Every route here carries a react-hook-form + zod
@@ -80,13 +87,13 @@ const DEFAULT_BUDGET_KB = 340;
  * *without* a form cannot quietly grow into the same allowance.
  */
 const BUDGET_KB: Record<string, number> = {
-  '/company/settings': 340,
-  '/company/jobs/new': 345,
-  '/company/jobs/[id]/edit': 345,
-  '/jobseeker/profile': 345,
-  '/jobseeker/resumes/builder': 345,
-  '/jobseeker/resumes': 350,
-  '/employer-setup': 340,
+  '/company/settings': 310,
+  '/company/jobs/new': 315,
+  '/company/jobs/[id]/edit': 315,
+  '/jobseeker/profile': 315,
+  '/jobseeker/resumes/builder': 315,
+  '/jobseeker/resumes': 320,
+  '/employer-setup': 310,
 };
 
 const budgetFor = (route: string): number => BUDGET_KB[route] ?? DEFAULT_BUDGET_KB;

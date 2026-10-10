@@ -72,7 +72,6 @@ that need a decision or a feature-sized change:
 | Finding                                                                                                                                                              | Evidence                                                                                                                                                                      | Suggested fix                                                                                                                                      |
 | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **The Lighthouse gate is desktop-only** (`lighthouserc.js` → `preset: 'desktop'`). Mobile is where Google scores Core Web Vitals and where every defect above lived. | Mobile preset, 14 live runs: Performance 32–71, LCP 2.4–4.3 s, TBT 0.6–1.6 s (146 s before the globe fix, software GL), CLS up to 0.41. Desktop: 38–79.                       | Add a second `collect` run with the mobile preset at `warn`, thresholds set just under the baseline so it ratchets, not nags. Costs ~3 min per PR. |
-| **Mobile main-thread cost on public pages**                                                                                                                          | Even with the globe static: TBT 1.1–2.2 s at 4× CPU. Top two items on `/sign-in`: one first-party chunk (775 ms scripting) and `clerk-js` (~890 ms), 157 KiB unused.          | See §0b — scope `ClerkProvider`, or load the headless variant on marketing routes.                                                                 |
 | **`<title>`/description are streamed into `<body>` for browsers**                                                                                                    | Lighthouse SEO flags `meta-description` on JD pages (92). Googlebot and the AI answer crawlers now get them in `<head>`; browsers and Lighthouse's UA still stream by design. | Accept, or set `htmlLimitedBots: /.*/` to make metadata blocking for everyone (costs first paint on dynamic routes).                               |
 | **Unknown job slug is HTTP 200** (404 UI + `noindex`)                                                                                                                | Documented contract in `critical-paths.spec.ts`: PPR commits the shell before the streamed body can `notFound()`.                                                             | Accept; `noindex` covers the soft-404 risk.                                                                                                        |
 
@@ -155,14 +154,17 @@ footnote:
   `/sign-in` and `/sign-up` (TTFB 1.6–2.4 s of that). A production instance serves the
   frontend API from `clerk.<domain>` on the same site, so a signed-out first visit needs no
   handshake.
-- **Two third-party cookies** are set on every page, which is what holds Best Practices at
-  **77** everywhere (`third-party-cookies`, `inspector-issues`; 100 is otherwise within
-  reach). First-party on a production instance.
-- Not fixed by the keys, but visible in the same runs: `clerk-js` is ~0.9 s of main-thread
-  time at 4× CPU and ~157 KiB of unused JavaScript on every public page, because
-  `ClerkProvider` wraps the whole tree. Scoping it to the routes that render auth UI (or
-  loading the headless variant on marketing pages) is a design decision, so it is listed
-  here rather than done.
+- **Two third-party cookies** are set whenever clerk-js runs, which is what held Best Practices
+  at **77** (`third-party-cookies`, `inspector-issues`; 100 is otherwise within reach). Since
+  2026-10-10 clerk-js no longer runs on pages without a Clerk widget, so they are gone from
+  those; they remain on `/sign-in`, `/sign-up` and for signed-in visitors. First-party on a
+  production instance.
+- **Fixed in code (2026-10-10):** `clerk-js` was ~0.8–1.1 s of main-thread time at 4× CPU and
+  305 KB over eight requests on every public page, because `ClerkProvider` wrapped the whole
+  tree. Clerk now loads only on pages with a Clerk widget (sign-in, sign-up, and the avatar menu
+  of a signed-in visitor) — see `app/components/clerk-host.tsx`. What the keys still fix: the
+  handshake redirect on _every_ document request while the instance is a development one, and
+  the cookies on the pages that do load Clerk.
 
 ### 0c. Vercel Web Analytics is not enabled for the project
 
