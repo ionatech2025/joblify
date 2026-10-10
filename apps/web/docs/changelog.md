@@ -1,5 +1,28 @@
 # Changelog
 
+## 2026-10-10 — Performance: the first page of /jobs is rendered on the server
+
+`/jobs` used to ship a filter form and an empty list: the results were fetched by the browser
+after the JavaScript had downloaded and hydrated (HTML → JS → hydrate → `fetch` → render), so
+they sat at the end of a waterfall under the LCP and were absent from the HTML crawlers read.
+
+- The search moved out of `app/api/v1/jobs/search/route.ts` into `lib/search/jobs.ts`; the route is
+  now only the transport (rate limit, validate, status codes) and the page runs the same code.
+- `app/(marketing)/jobs/page.tsx` runs the first page inside its Suspense boundary and hands it to
+  `useQuery` as `initialData`. The unfiltered page is a `'use cache'` entry tagged `jobs` (the tag
+  publish/unpublish already invalidates), so a plain `/jobs` costs no search; filtered pages run
+  live, behind the same rate limit as the API, with a 3 s budget. Anything that goes wrong
+  (rate-limited, timeout, backend down, invalid parameters) renders the page without results and the
+  client fetches them as before — never a worse first paint, never an error page.
+- Only the fields a result card renders are serialised into the page, with the description cut to
+  the 151 characters the card can show.
+- Filter changes use `history.replaceState` instead of `router.replace`: a router navigation would
+  re-run the server search for every change while the client query fetched the same page.
+- Query keys use a canonical form of the search (`canonicalSearchString`), so `?q=a&sort=b` and
+  `?sort=b&q=a` share a cache entry and the server's page is recognised for either spelling.
+- `responsive.spec.ts › jobs listing is server-rendered` is now a plain assertion (it was a tracked
+  `test.fail`).
+
 ## 2026-10-10 — Live responsive / UX / SEO verification pass
 
 Measured against the production URL with Lighthouse 13.5 (mobile and desktop, 14 runs), the Vercel

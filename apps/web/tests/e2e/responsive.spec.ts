@@ -757,17 +757,13 @@ test.describe('works without JavaScript (SSR / progressive enhancement)', () => 
   });
 
   test('jobs listing is server-rendered', async ({ page }) => {
-    // KNOWN GAP, tracked: /jobs fetches its results client-side
-    // (jobs-search.tsx -> /api/v1/jobs/search), so without JavaScript the page
-    // is a filter form with no listings. Crawlers that do not execute JS see
-    // no links from this page; individual JDs are still reachable via the
-    // sitemap and the home page's featured jobs. Fix: run the search on the
-    // server for the first page and hand it to useQuery as initialData.
-    // test.fail() inverts the result and goes red when the gap is closed, which
-    // is the prompt to delete this line.
-    test.fail(true, 'tracked: /jobs results are client-rendered (REMAINING_STEPS.md)');
+    // The first page of results is run on the server (page.tsx ->
+    // lib/search/jobs-first-page.ts) so it is in the HTML: crawlers that do not
+    // execute JavaScript, and visitors whose script is slow or blocked, get
+    // links to the postings instead of a bare filter form.
     await page.goto('/jobs');
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+    await expect(page.locator('a[href^="/jobs/"]').first()).toBeVisible();
     expect(await page.locator('a[href^="/jobs/"]').count()).toBeGreaterThan(0);
   });
 });
