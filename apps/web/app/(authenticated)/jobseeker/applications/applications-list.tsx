@@ -136,7 +136,9 @@ export function ApplicationsList({
             type="button"
             onClick={() => onWithdraw(a)}
             disabled={withdraw.isPending}
-            className="text-danger hover:underline disabled:opacity-50"
+            // min-h-8 inline-flex: the text link was 59x20 px, under the 24 px floor
+            // of WCAG 2.5.8 (target size) on desktop and phones alike.
+            className="text-danger -mx-1 inline-flex min-h-8 items-center px-1 hover:underline disabled:opacity-50"
           >
             Withdraw
           </button>

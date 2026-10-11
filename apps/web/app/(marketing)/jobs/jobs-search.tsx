@@ -157,7 +157,9 @@ export function JobsSearch({
 
   return (
     <div className="grid grid-cols-1 gap-8 md:grid-cols-[260px_minmax(0,1fr)]">
-      <aside className="flex flex-col gap-3">
+      {/* role="search": the filters are the page's search, so assistive tech can
+          jump to them by landmark (they were an unnamed <aside>). */}
+      <div role="search" aria-label="Filter jobs" className="flex flex-col gap-3">
         <Input
           type="search"
           placeholder="Title, company, or keyword"
@@ -209,7 +211,7 @@ export function JobsSearch({
             Clear filters
           </Button>
         )}
-      </aside>
+      </div>
 
       <section>
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">

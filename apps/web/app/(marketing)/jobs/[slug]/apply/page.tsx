@@ -1,4 +1,5 @@
 import { Suspense } from 'react';
+import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { db } from '@/lib/db';
 import { requireRole } from '@/lib/auth';
@@ -60,6 +61,22 @@ async function ApplyContent({ slug }: { slug: string }) {
         width="max-w-3xl"
       />
       <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
+        {/* The way back to what is being applied for. The page used to offer
+            only the browser's back button, which is not there in an installed
+            PWA and says nothing about where it goes. */}
+        <nav aria-label="Breadcrumb" className="mb-6 text-sm text-fg-muted">
+          <ol className="m-0 flex list-none flex-wrap items-center gap-x-2 gap-y-1 p-0">
+            <li>
+              <Link href="/jobs">Jobs</Link>
+            </li>
+            <li aria-hidden>/</li>
+            <li>
+              <Link href={`/jobs/${job.slug}`}>{job.title}</Link>
+            </li>
+            <li aria-hidden>/</li>
+            <li aria-current="page">Apply</li>
+          </ol>
+        </nav>
         <ApplyForm jobId={job.id} jobSlug={job.slug} resumes={resumes} />
       </div>
     </main>

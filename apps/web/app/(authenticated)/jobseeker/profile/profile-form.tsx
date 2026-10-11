@@ -142,7 +142,13 @@ export function ProfileForm({
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="mt-6 flex flex-col gap-4">
+    // noValidate: the zod schema above owns validation, with messages written for
+    // this form. Without it the browser's own check ran first for type=url and
+    // blocked the submit with an unstyled, transient bubble ("Please enter a
+    // URL.") — no inline error, no aria-invalid, nothing announced — and the
+    // schema's message ("Invalid portfolio URL (e.g. https://github.com/…)")
+    // never showed.
+    <form onSubmit={handleSubmit(onSubmit)} noValidate className="mt-6 flex flex-col gap-4">
       <Field label="Profile type" error={errors.profileType?.message}>
         <Select {...register('profileType')}>
           <option value="EMPLOYABLE">Employable — looking for a role</option>
@@ -179,7 +185,7 @@ export function ProfileForm({
         />
       </Field>
 
-      <Field label="Bio *" error={errors.bio?.message}>
+      <Field label="Bio" required error={errors.bio?.message}>
         <Textarea
           {...register('bio')}
           rows={6}
@@ -187,9 +193,13 @@ export function ProfileForm({
         />
       </Field>
 
-      <fieldset className="flex flex-col gap-1">
+      <fieldset
+        className="flex flex-col gap-1"
+        aria-describedby={errors.skillSlugs?.message ? 'skills-error' : undefined}
+        aria-invalid={errors.skillSlugs?.message ? true : undefined}
+      >
         <legend className="text-sm font-medium text-fg-muted">
-          Skills {isVirtualIntern ? '(optional)' : '*(at least 1 required)'}
+          Skills {isVirtualIntern ? '(optional)' : '(choose at least 1)'}
         </legend>
         <div className="grid grid-cols-2 gap-x-4 gap-y-2 rounded-control border border-border-strong bg-surface p-3 sm:grid-cols-3">
           {allSkills.map((skill) => (
@@ -203,7 +213,9 @@ export function ProfileForm({
           ))}
         </div>
         {errors.skillSlugs?.message && (
-          <span className="text-sm text-danger">{errors.skillSlugs.message}</span>
+          <span id="skills-error" role="alert" className="text-sm text-danger">
+            {errors.skillSlugs.message}
+          </span>
         )}
       </fieldset>
 
@@ -211,7 +223,7 @@ export function ProfileForm({
         <Input type="number" {...register('yearsExperience')} min={0} max={70} />
       </Field>
 
-      <Field label="Education *" error={errors.education?.message}>
+      <Field label="Education" required error={errors.education?.message}>
         <Textarea
           {...register('education')}
           rows={3}
@@ -274,7 +286,11 @@ export function ProfileForm({
         </Select>
       </Field>
 
-      {error && <p className="m-0 text-danger">{error}</p>}
+      {error && (
+        <p role="alert" className="m-0 text-danger">
+          {error}
+        </p>
+      )}
       {saved && <p className="m-0 text-success">Saved.</p>}
 
       <Button type="submit" disabled={isPending || !isDirty} className="self-start">
