@@ -1,5 +1,20 @@
 # Changelog
 
+## 2026-10-11 — Company console forms audited (after approving the E2E company)
+
+The E2E company was approved (direct, scoped DB update — no audit-log entry or notification), so the
+console forms could be audited live for the first time: `/company/jobs`, `/company/jobs/new`,
+`/company/settings`. They were already ahead of the jobseeker forms (`noValidate`, `role="alert"`,
+`aria-required`, hints, `autocomplete` on location/country/website, a sticky save bar, no overflow at
+320 px, no sub-24 px targets). Fixed:
+
+- **Two hand-rolled inputs were 13–14 px on phones** — the console search box and the command
+  palette — so iOS Safari zoomed the page on focus and did not zoom back. 16 px on phones and touch
+  pointers now, and `tests/unit/form-font-size.test.ts` fails on any raw text `<input>` with a small
+  fixed size and no touch override.
+- **Salary range** put Min, Max, currency and period in four columns inside a ~290 px column: Min and
+  Max were ~47 px wide, too narrow for a six-figure number. Two rows now; numeric keypad on both.
+
 ## 2026-10-11 — Form UX: the findings that were left for the owner
 
 - **Phone numbers** accept international numbers. The rule was `^\d{10}$` in four places, which
