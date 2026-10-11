@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-10-11 — Removed the legacy registration schema and its suite
+
+`lib/auth/registration-schema.ts` (Mongo-era registration/login zod schemas) was imported by nothing
+but `tests/unit/usecases-phase1-auth.test.ts`; sign-up and sign-in are Clerk's. Deleted both. Of that
+suite's 29 cases only one exercised live code — `createCompanyProfile` rejecting a duplicate company
+name — and it lives on in `create-company-profile.test.ts`; the rest asserted the deleted schema or
+inline functions that proved only themselves. Coverage after: 47.1 % statements / 43.8 % branches /
+34.4 % functions (up, because the removed tests covered a module nothing used), so the ratchet in
+`vitest.config.ts` moves to 46 / 42 / 33 / 46.
+
 ## 2026-10-11 — Company form audit: the rest
 
 Follow-up to the console fixes; the same defects the jobseeker forms had, in the forms the audit
@@ -38,8 +48,8 @@ console forms could be audited live for the first time: `/company/jobs`, `/compa
 - **Phone numbers** accept international numbers. The rule was `^\d{10}$` in four places, which
   rejected exactly what browsers autofill (`+256 743 535 678`). One rule now
   (`lib/validation/phone.ts`): optional `+`, 7–15 digits, spaces/dashes/parentheses allowed, stored
-  normalised (`+256743535678`). Applied to the profile (client + server) and company profile. The
-  legacy `registration-schema.ts` — imported by nothing but its own tests — still says ten digits.
+  normalised (`+256743535678`). Applied to the profile (client + server) and company profile. (The
+  legacy `registration-schema.ts`, which still said ten digits, was deleted — see below.)
 - **Skills picker** has a filter (62 flat checkboxes before) and a "n selected" status; filtered-out
   checkboxes are hidden, not removed, so selections survive and are still submitted. Enter in the
   filter no longer submits the profile.
