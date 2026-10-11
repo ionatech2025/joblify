@@ -168,7 +168,12 @@ export function ApplyForm({
         </p>
       )}
 
-      <Button type="submit" disabled={isPending || resumes.length === 0} className="self-start">
+      <Button
+        type="submit"
+        loading={isPending}
+        disabled={resumes.length === 0 ? true : undefined}
+        className="self-start"
+      >
         {isPending ? 'Submitting…' : 'Submit application'}
       </Button>
     </form>

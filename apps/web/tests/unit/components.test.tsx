@@ -256,7 +256,10 @@ describe('ProfileForm inline field validation (JOB_UC_05.0)', () => {
     render(<ProfileForm initial={initial} allSkills={skills} />);
 
     await user.type(screen.getByLabelText('Headline'), 'Graphics designer');
-    await user.type(screen.getByLabelText(/Bio/i), 'I am a detail oriented designer with 10 years of experience.');
+    await user.type(
+      screen.getByLabelText(/Bio/i),
+      'I am a detail oriented designer with 10 years of experience.',
+    );
     await user.type(screen.getByLabelText(/Education/i), 'B.A. Graphic Design');
     await user.click(screen.getByLabelText('Graphic Design'));
 
@@ -276,9 +279,15 @@ describe('ProfileForm inline field validation (JOB_UC_05.0)', () => {
     render(<ProfileForm initial={initial} allSkills={skills} />);
 
     await user.type(screen.getByLabelText('Headline'), 'Senior Designer');
+    // Five digits is too short for any phone number; the rule is 7-15 digits with an
+    // optional leading + (lib/validation/phone.ts), not "exactly 10".
     await user.type(screen.getByLabelText(/Phone/i), '12345');
     await user.click(screen.getByRole('button', { name: /Save profile/i }));
 
-    expect(await screen.findByText('Phone number must be exactly 10 numeric digits')).toBeDefined();
+    expect(
+      await screen.findByText(
+        'Enter a phone number with 7 to 15 digits. A leading + and spaces or dashes are fine.',
+      ),
+    ).toBeDefined();
   });
 });

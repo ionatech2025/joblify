@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { optionalPhone } from '@/lib/validation/phone';
 import { MAX_PROFILE_SKILLS, PROFILE_SKILLS_LIMIT_MESSAGE } from '@/lib/profile-limits';
 
 // Validation schemas for the profile Server Action.
@@ -19,12 +20,7 @@ export const ProfileSchema = z.object({
     z.coerce.number().int().min(0).max(70).nullable().optional(),
   ),
   location: z.string().max(140).optional().or(z.literal('')),
-  phone: z
-    .string()
-    .trim()
-    .regex(/^\d{10}$/, 'Phone number must be exactly 10 numeric digits')
-    .optional()
-    .or(z.literal('')),
+  phone: optionalPhone,
   desiredSalaryMin: z.preprocess(
     (val) => (val === '' || val === null || val === undefined ? null : val),
     z.coerce.number().int().min(0).nullable().optional(),

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { optionalPhone } from '@/lib/validation/phone';
 
 // Shared by the create (/employer-setup) and edit (/company/settings) forms and
 // the company Server Actions. Plain module (no 'use server'/'use client') so it
@@ -51,7 +52,7 @@ export const CompanyProfileSchema = z.object({
   description: z.string().trim().min(20, 'Description must be at least 20 characters').max(4000),
   contactPersonName: z.string().trim().max(100).optional().or(z.literal('')),
   contactPersonPosition: z.string().trim().max(100).optional().or(z.literal('')),
-  phone: z.string().trim().regex(/^\d{10}$/, 'Phone number must be exactly 10 numeric digits').optional().or(z.literal('')),
+  phone: optionalPhone,
   address: z.string().trim().max(255).optional().or(z.literal('')),
   website: z.string().trim().url('Invalid website URL').max(200).optional().or(z.literal('')),
   linkedin: z.string().trim().url('Invalid LinkedIn URL').max(200).optional().or(z.literal('')),
