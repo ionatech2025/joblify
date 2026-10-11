@@ -25,10 +25,10 @@ export default defineConfig({
       // most of which is JSX that only the (self-skipping) Playwright suites
       // reach. Judge a change by the delta, not the number.
       thresholds: {
-        statements: 44,
-        branches: 40,
-        functions: 29,
-        lines: 44,
+        statements: 46,
+        branches: 42,
+        functions: 33,
+        lines: 46,
       },
     },
   },
