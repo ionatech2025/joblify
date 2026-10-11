@@ -45,6 +45,34 @@ test.describe('jobseeker (authenticated)', () => {
     await expect(header.locator('.cl-userButtonTrigger').first()).toBeVisible({ timeout: 30_000 });
   });
 
+  test('profile form reports a bad URL inline, announced, instead of the browser bubble', async ({
+    page,
+  }) => {
+    // Non-mutating: the URL is invalid, so nothing is saved. The form opts out
+    // of native validation and shows the schema's own message with role=alert.
+    await page.goto('/jobseeker/profile');
+    const headline = page.getByLabel('Headline');
+    await headline.fill(`${await headline.inputValue()} `);
+    const url = page.getByLabel('Portfolio / GitHub link');
+    await url.fill('not a url');
+    await page.getByRole('button', { name: /save profile/i }).click();
+
+    const message = page.getByText(/Invalid portfolio URL/);
+    await expect(message).toBeVisible();
+    await expect(message).toHaveAttribute('role', 'alert');
+    await expect(url).toHaveAttribute('aria-invalid', 'true');
+  });
+
+  test('the apply page offers a way back to the job it is for', async ({ page }) => {
+    await page.goto('/jobs');
+    const first = page.locator('a[href^="/jobs/"]:not([href="/jobs"])').first();
+    const href = await first.getAttribute('href');
+    await page.goto(`${href}/apply`);
+    const crumbs = page.getByRole('navigation', { name: 'Breadcrumb' });
+    await expect(crumbs.getByRole('link', { name: 'Jobs' })).toBeVisible();
+    await expect(crumbs.locator('[aria-current="page"]')).toHaveText('Apply');
+  });
+
   test('GDPR export downloads a JSON file straight to the browser', async ({ page }) => {
     // No Blob store is involved any more: the export is the response itself,
     // so there is no stored copy and no emailed link.

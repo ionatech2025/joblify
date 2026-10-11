@@ -1,5 +1,35 @@
 # Changelog
 
+## 2026-10-11 — Form UX audit: findings and fixes
+
+Audited every form and journey the E2E accounts can reach on the live site (66 controls on the
+profile form alone), read-only, at 1280/390/320 px, with keyboard tabbing, 200 % zoom and WCAG 1.4.12
+text spacing. **Already sound:** every control has a programmatic name (no placeholder-only), 60/60
+tab stops have a visible focus ring, no horizontal overflow at 320 px or 200 % zoom, no clipped text
+under 1.4.12 spacing, 16 px fields on phones, `autocomplete` tokens where personal data is collected,
+drafts survive a reload (WCAG 3.3.7), the console forms already use `noValidate`/`role="alert"`.
+
+Fixed (jobseeker forms had drifted behind the console's):
+
+- **Native validation bubble preempted the form's own errors.** Profile: an invalid portfolio URL
+  was blocked by the browser's unstyled, transient "Please enter a URL." — no inline text, no
+  `aria-invalid`, nothing announced — and the schema's message never appeared. `noValidate` on the
+  profile and apply forms; messages are inline with `role="alert"`, first problem focused.
+- **`required` was a `*` in the label text** ("Bio *" reads as "Bio star") with nothing on the
+  control. `Field` takes `required` → `aria-required` and a decorative marker.
+- **Skills error** had no `role="alert"` and no association with the group; it now does.
+- **Apply:** missing resume / consent are inline errors; server failure is `role="alert"`; the cover
+  letter says how much is left near its 5,000 limit (it silently truncated paste); the external
+  link announces "(opens in a new tab)"; and there is a breadcrumb back to the job.
+- **"Withdraw"** was 59×20 px — under WCAG 2.5.8's 24 px floor on desktop and phones. Now ≥ 32 px.
+- **/jobs filters** are a named `role="search"` landmark instead of an unnamed `<aside>`.
+
+Not changed, for the owner: phone numbers must be exactly 10 digits everywhere (registration,
+profile, company) — an international number (`+256 …`) cannot be entered; the résumé builder's dates
+are free text ("Jan 2022"/"Present") with no format check; 62 skills are one flat checkbox list with
+no search; the company console forms could not be audited live because the E2E company is pending
+verification.
+
 ## 2026-10-11 — Legal pages state the real AI routing (Groq)
 
 - `/legal/processors` lists Groq, with the tasks routed to it, and narrows the Gateway row to what

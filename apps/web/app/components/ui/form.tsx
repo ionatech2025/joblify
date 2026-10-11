@@ -68,6 +68,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectHTMLAttributes<HTMLSel
 type FieldControlProps = {
   id?: string;
   'aria-invalid'?: boolean;
+  'aria-required'?: boolean;
   'aria-describedby'?: string;
 };
 
@@ -75,11 +76,19 @@ export function Field({
   label,
   error,
   hint,
+  required = false,
   children,
 }: {
   label: string;
   error?: string;
   hint?: string;
+  /**
+   * Marks the control required for assistive tech (aria-required) and shows the
+   * marker. Labels used to carry a literal "*" ("Bio *"), which a screen reader
+   * reads as "Bio star" and which told the control nothing. The marker here is
+   * decorative; the state is on the control.
+   */
+  required?: boolean;
   children: ReactNode;
 }) {
   // Programmatically associate the control with its error: the error line gets
@@ -104,6 +113,7 @@ export function Field({
     ? cloneElement(children, {
         id: controlId,
         'aria-invalid': error ? true : undefined,
+        'aria-required': required || undefined,
         'aria-describedby':
           [
             children.props['aria-describedby'],
@@ -119,6 +129,11 @@ export function Field({
     <div className="flex flex-col gap-1">
       <label htmlFor={controlId} className="text-fg text-sm font-medium">
         {label}
+        {required ? (
+          <span aria-hidden className="text-danger ml-0.5">
+            *
+          </span>
+        ) : null}
       </label>
       {hint && (
         <span id={hintId} className="text-fg-subtle text-xs">
