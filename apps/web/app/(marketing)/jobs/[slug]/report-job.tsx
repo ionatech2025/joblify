@@ -85,7 +85,7 @@ export function ReportJob({ jobPostId }: { jobPostId: string }) {
             onChange={(e) => setDetails(e.target.value)}
           />
           <div>
-            <Button type="submit" size="sm" disabled={pending}>
+            <Button type="submit" size="sm" loading={pending}>
               {pending ? 'Sending…' : 'Send report'}
             </Button>
           </div>

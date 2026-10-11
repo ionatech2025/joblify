@@ -1,5 +1,23 @@
 # Changelog
 
+## 2026-10-11 — Company form audit: the rest
+
+Follow-up to the console fixes; the same defects the jobseeker forms had, in the forms the audit
+could only read about until the E2E company was approved.
+
+- **Company settings:** "About the company" is required by the schema (20+ characters) but was not
+  marked — the first sign was an error after saving. Required marker, `aria-required`, and the
+  20-character floor as a hint.
+- **Employer setup** (the form that turns an account into a company): `noValidate` (the browser's
+  `type=url` bubble ran first), required markers on name and description, the 20-character floor
+  as a hint, the server error as `role="alert"`, and a busy state that keeps focus.
+- **Delete account:** the failure message is `role="alert"`; the button stays disabled until the
+  email matches (that is the gate) but its pending state no longer disables it under focus.
+- **Report a job:** busy state keeps focus.
+- Checked and left alone: the unlabeled, ring-less focus stop on the new-job form was the native
+  date field, not a defect; the console search box's focus ring is on its container
+  (`focus-within`), which the audit's per-element check cannot see.
+
 ## 2026-10-11 — Company console forms audited (after approving the E2E company)
 
 The E2E company was approved (direct, scoped DB update — no audit-log entry or notification), so the

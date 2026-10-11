@@ -206,7 +206,15 @@ export function CompanySettingsForm({
           </SheetGroup>
 
           <SheetGroup title="About" wide>
-            <SheetField label="About the company" error={errors.description?.message} wide>
+            {/* Required by the schema (20+ characters) — it was not marked, so the
+                first sign of it was an error after saving. */}
+            <SheetField
+              label="About the company"
+              required
+              hint="At least 20 characters: what you do and what it is like to work there."
+              error={errors.description?.message}
+              wide
+            >
               <Textarea {...register('description')} rows={6} />
             </SheetField>
           </SheetGroup>

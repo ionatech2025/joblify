@@ -44,8 +44,20 @@ export function DeleteForm({ expectedConfirmation }: { expectedConfirmation: str
           autoComplete="off"
         />
       </label>
-      {error && <p className="m-0 text-danger">{error}</p>}
-      <Button type="submit" variant="danger" disabled={!ready || isPending} className="self-start">
+      {error && (
+        <p role="alert" className="m-0 text-danger">
+          {error}
+        </p>
+      )}
+      {/* disabled until the email matches is the point of this gate; the pending
+          state is `loading` so focus is not dropped mid-request. */}
+      <Button
+        type="submit"
+        variant="danger"
+        disabled={!ready}
+        loading={isPending}
+        className="self-start"
+      >
         {isPending ? 'Deleting…' : 'Delete my account permanently'}
       </Button>
     </form>
