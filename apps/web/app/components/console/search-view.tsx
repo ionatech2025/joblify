@@ -47,7 +47,9 @@ export function SearchBox({
         defaultValue={defaultValue}
         placeholder={placeholder}
         aria-label={placeholder}
-        className="text-fg placeholder:text-fg-subtle w-full min-w-0 bg-transparent py-1 pr-2 text-[13px] outline-none"
+        // 16px on phones and touch pointers: iOS Safari zooms the page when a focused
+        // field is under 16px, and does not zoom back (same rule as ui/form.tsx).
+        className="text-fg placeholder:text-fg-subtle w-full min-w-0 bg-transparent py-1 pr-2 text-[13px] outline-none max-sm:text-base pointer-coarse:text-base"
       />
     </form>
   );

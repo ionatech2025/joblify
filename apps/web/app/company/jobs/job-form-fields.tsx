@@ -119,32 +119,39 @@ export function JobFormFields({
             hint="Leave blank to omit from the posting. State what the amount is per."
             error={errors.salaryMax?.message}
           >
-            <span className="grid grid-cols-[1fr_1fr_4.5rem_6.5rem] gap-1.5">
+            {/* Two rows. Four across left Min and Max ~47px each in the form's
+                right-hand column — a six-figure salary did not fit in the box. */}
+            <span className="grid grid-cols-2 gap-1.5">
               <Input
                 type="number"
+                inputMode="numeric"
                 {...register('salaryMin')}
                 aria-label="Salary minimum"
                 placeholder="Min"
               />
               <Input
                 type="number"
+                inputMode="numeric"
                 {...register('salaryMax')}
                 aria-label="Salary maximum"
                 placeholder="Max"
               />
-              <Input
-                {...register('salaryCurrency')}
-                maxLength={3}
-                aria-label="Salary currency"
-                className="uppercase"
-              />
-              <Select {...register('salaryPeriod')} aria-label="Salary period">
-                {SALARY_PERIODS.map((p) => (
-                  <option key={p} value={p}>
-                    {SALARY_PERIOD_LABEL[p]}
-                  </option>
-                ))}
-              </Select>
+              <span className="col-span-2 grid grid-cols-[4.5rem_minmax(0,1fr)] gap-1.5">
+                <Input
+                  {...register('salaryCurrency')}
+                  maxLength={3}
+                  autoCapitalize="characters"
+                  aria-label="Salary currency"
+                  className="uppercase"
+                />
+                <Select {...register('salaryPeriod')} aria-label="Salary period">
+                  {SALARY_PERIODS.map((p) => (
+                    <option key={p} value={p}>
+                      {SALARY_PERIOD_LABEL[p]}
+                    </option>
+                  ))}
+                </Select>
+              </span>
             </span>
           </SheetField>
           <SheetField label="Deadline">

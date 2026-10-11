@@ -200,7 +200,7 @@ function PaletteDialog() {
             aria-controls={`${baseId}-list`}
             aria-activedescendant={results[active] ? `${baseId}-${results[active].id}` : undefined}
             autoComplete="off"
-            className="text-fg placeholder:text-fg-subtle w-full bg-transparent py-3.5 text-sm outline-none"
+            className="text-fg placeholder:text-fg-subtle w-full bg-transparent py-3.5 text-sm outline-none max-sm:text-base pointer-coarse:text-base"
           />
           <Kbd className="hidden sm:inline-flex">esc</Kbd>
         </div>
