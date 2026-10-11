@@ -3,6 +3,7 @@
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { optionalPhone } from '@/lib/validation/phone';
 import { useState, useTransition } from 'react';
 import { saveProfile } from '@/app/actions/profile';
 import { Checkbox, Field, Input, Select, Textarea } from '@/app/components/ui/form';
@@ -28,12 +29,7 @@ const ProfileFormSchema = z
         .optional(),
     ),
     location: z.string().max(140).optional().or(z.literal('')),
-    phone: z
-      .string()
-      .trim()
-      .regex(/^\d{10}$/, 'Phone number must be exactly 10 numeric digits')
-      .optional()
-      .or(z.literal('')),
+    phone: optionalPhone,
     desiredSalaryMin: z.preprocess(
       (val) => (val === '' || val === null || val === undefined ? null : val),
       z.coerce.number().int().min(0, 'Salary cannot be negative.').nullable().optional(),
@@ -109,13 +105,22 @@ export function ProfileForm({
     control,
     watch,
     reset,
-    formState: { errors, isDirty },
+    formState: { errors },
   } = useForm<ProfileFormValues>({
     resolver: zodResolver(ProfileFormSchema),
     defaultValues: initial,
   });
 
   const isVirtualIntern = useWatch({ control, name: 'profileType' }) === 'VIRTUAL_INTERN';
+  const selectedSkills = useWatch({ control, name: 'skillSlugs' });
+  const selectedCount = Array.isArray(selectedSkills) ? selectedSkills.length : 0;
+  // Narrows the list below; every checkbox stays mounted (hidden, not removed),
+  // so a selection made before filtering is still submitted.
+  const [skillQuery, setSkillQuery] = useState('');
+  const needle = skillQuery.trim().toLowerCase();
+  const visibleSkills = needle
+    ? allSkills.filter((s) => s.label.toLowerCase().includes(needle)).length
+    : allSkills.length;
 
   // Restore on mount, then persist on a debounce. See lib/use-form-draft.ts.
   useFormDraft({ store: useProfileDraftStore, watch, reset, initial });
@@ -201,16 +206,42 @@ export function ProfileForm({
         <legend className="text-sm font-medium text-fg-muted">
           Skills {isVirtualIntern ? '(optional)' : '(choose at least 1)'}
         </legend>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <Input
+            type="search"
+            value={skillQuery}
+            onChange={(e) => setSkillQuery(e.target.value)}
+            // Enter would submit the profile; here it only means "done typing".
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') e.preventDefault();
+            }}
+            aria-label="Filter skills"
+            placeholder="Filter skills…"
+            autoComplete="off"
+            className="sm:max-w-xs"
+          />
+          {/* Polite, and only what changed: how many are chosen, and how many
+              match the filter. */}
+          <p role="status" className="m-0 text-sm text-fg-muted">
+            {selectedCount} selected
+            {needle ? ` · ${visibleSkills} match${visibleSkills === 1 ? '' : 'es'}` : ''}
+          </p>
+        </div>
         <div className="grid grid-cols-2 gap-x-4 gap-y-2 rounded-control border border-border-strong bg-surface p-3 sm:grid-cols-3">
           {allSkills.map((skill) => (
             <Checkbox
               key={skill.slug}
               value={skill.slug}
               label={skill.label}
-              className="py-1"
+              className={`py-1${needle && !skill.label.toLowerCase().includes(needle) ? ' hidden' : ''}`}
               {...register('skillSlugs')}
             />
           ))}
+          {needle && visibleSkills === 0 ? (
+            <p className="col-span-full m-0 text-sm text-fg-muted">
+              No skill matches &ldquo;{skillQuery.trim()}&rdquo;.
+            </p>
+          ) : null}
         </div>
         {errors.skillSlugs?.message && (
           <span id="skills-error" role="alert" className="text-sm text-danger">
@@ -220,7 +251,13 @@ export function ProfileForm({
       </fieldset>
 
       <Field label="Years of professional experience" error={errors.yearsExperience?.message}>
-        <Input type="number" {...register('yearsExperience')} min={0} max={70} />
+        <Input
+          type="number"
+          inputMode="numeric"
+          {...register('yearsExperience')}
+          min={0}
+          max={70}
+        />
       </Field>
 
       <Field label="Education" required error={errors.education?.message}>
@@ -254,19 +291,24 @@ export function ProfileForm({
         </Field>
         <Field
           label="Phone number"
-          hint="Optional 10-digit mobile number"
+          hint="Optional. Add the country code for an international number, e.g. +256 743 535 678"
           error={errors.phone?.message}
         >
-          <Input type="tel" {...register('phone')} autoComplete="tel" placeholder="0743535678" />
+          <Input
+            type="tel"
+            {...register('phone')}
+            autoComplete="tel"
+            placeholder="+256 743 535 678"
+          />
         </Field>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Field label="Desired min salary (annual)" error={errors.desiredSalaryMin?.message}>
-          <Input type="number" {...register('desiredSalaryMin')} />
+          <Input type="number" inputMode="numeric" {...register('desiredSalaryMin')} />
         </Field>
         <Field label="Desired max salary (annual)" error={errors.desiredSalaryMax?.message}>
-          <Input type="number" {...register('desiredSalaryMax')} />
+          <Input type="number" inputMode="numeric" {...register('desiredSalaryMax')} />
         </Field>
       </div>
 
@@ -293,7 +335,9 @@ export function ProfileForm({
       )}
       {saved && <p className="m-0 text-success">Saved.</p>}
 
-      <Button type="submit" disabled={isPending || !isDirty} className="self-start">
+      {/* Not gated on isDirty: a disabled Save gives no hint what to change and
+          drops out of the tab order. Saving unchanged data is harmless. */}
+      <Button type="submit" loading={isPending} className="self-start">
         {isPending ? 'Saving…' : 'Save profile'}
       </Button>
     </form>

@@ -9,6 +9,7 @@ import { describe, it, expect, afterEach, vi } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Field, Input } from '@/app/components/ui/form';
+import { Button } from '@/app/components/ui/button';
 import { ApplyForm } from '@/app/(marketing)/jobs/[slug]/apply/apply-form';
 import { ProfileForm } from '@/app/(authenticated)/jobseeker/profile/profile-form';
 import { useProfileDraftStore } from '@/lib/stores/profile-draft';
@@ -160,5 +161,128 @@ describe('ProfileForm', () => {
     expect(screen.getByRole('group', { name: /skills/i }).getAttribute('aria-describedby')).toBe(
       err.id,
     );
+  });
+});
+
+describe('Button loading', () => {
+  it('keeps focus and blocks activation instead of disabling itself', async () => {
+    const user = userEvent.setup();
+    const onClick = vi.fn();
+    render(
+      <Button loading onClick={onClick}>
+        Saving…
+      </Button>,
+    );
+    const button = screen.getByRole('button');
+    // Not `disabled`: a focused control that disables itself drops keyboard
+    // users out of the page.
+    expect((button as HTMLButtonElement).disabled).toBe(false);
+    expect(button.getAttribute('aria-disabled')).toBe('true');
+    expect(button.getAttribute('aria-busy')).toBe('true');
+    button.focus();
+    expect(document.activeElement).toBe(button);
+    await user.click(button);
+    await user.keyboard('{Enter}');
+    expect(onClick).not.toHaveBeenCalled();
+  });
+
+  it('does not submit a form while loading', async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn((e: React.FormEvent) => e.preventDefault());
+    render(
+      <form onSubmit={onSubmit}>
+        <Button type="submit" loading>
+          Send
+        </Button>
+      </form>,
+    );
+    await user.click(screen.getByRole('button'));
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it('still honours an explicit disabled, and is inert-free when idle', async () => {
+    const user = userEvent.setup();
+    const onClick = vi.fn();
+    const { rerender } = render(
+      <Button disabled onClick={onClick}>
+        Go
+      </Button>,
+    );
+    expect((screen.getByRole('button') as HTMLButtonElement).disabled).toBe(true);
+    rerender(<Button onClick={onClick}>Go</Button>);
+    await user.click(screen.getByRole('button'));
+    expect(onClick).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole('button').getAttribute('aria-disabled')).toBeNull();
+  });
+});
+
+describe('ProfileForm skills filter and save', () => {
+  const initial = {
+    profileType: 'EMPLOYABLE' as const,
+    headline: '',
+    bio: 'A bio.',
+    yearsExperience: null,
+    location: '',
+    phone: '',
+    desiredSalaryMin: null,
+    desiredSalaryMax: null,
+    desiredWorkMode: null,
+    visibility: 'PRIVATE' as const,
+    careerInterest: '',
+    availabilityHoursPerWeek: null,
+    learningGoal: '',
+    education: 'BSc',
+    certifications: '',
+    portfolioUrl: '',
+    skillSlugs: ['react'],
+  };
+  const skills = [
+    { slug: 'react', label: 'React' },
+    { slug: 'rust', label: 'Rust' },
+    { slug: 'figma', label: 'Figma' },
+  ];
+
+  it('narrows the list as you type, keeps selections, and says how many match', async () => {
+    const user = userEvent.setup();
+    render(<ProfileForm initial={initial} allSkills={skills} />);
+    expect(screen.getByRole('status').textContent).toContain('1 selected');
+
+    await user.type(screen.getByRole('searchbox', { name: 'Filter skills' }), 'ru');
+    expect(screen.getByRole('status').textContent).toContain('1 match');
+    // Hidden, not removed: the selected React checkbox is still in the form.
+    expect(screen.getByLabelText('React', { selector: 'input' })).toBeDefined();
+    expect(
+      (screen.getByLabelText('React', { selector: 'input' }) as HTMLInputElement).checked,
+    ).toBe(true);
+    expect(screen.getByLabelText('Rust').closest('label')?.className).not.toContain('hidden');
+    expect(screen.getByLabelText('Figma').closest('label')?.className).toContain('hidden');
+
+    await user.clear(screen.getByRole('searchbox', { name: 'Filter skills' }));
+    await user.type(screen.getByRole('searchbox', { name: 'Filter skills' }), 'zzz');
+    expect(screen.getByText(/No skill matches/)).toBeDefined();
+  });
+
+  it('does not submit the profile when Enter is pressed in the filter', async () => {
+    const user = userEvent.setup();
+    const { saveProfile } = await import('@/app/actions/profile');
+    render(<ProfileForm initial={initial} allSkills={skills} />);
+    await user.type(screen.getByRole('searchbox', { name: 'Filter skills' }), 'ru{Enter}');
+    expect(saveProfile).not.toHaveBeenCalled();
+  });
+
+  it('leaves Save available before anything has changed', () => {
+    render(<ProfileForm initial={initial} allSkills={skills} />);
+    const save = screen.getByRole('button', { name: /save profile/i }) as HTMLButtonElement;
+    expect(save.disabled).toBe(false);
+  });
+
+  it('accepts an international phone number', async () => {
+    const user = userEvent.setup();
+    const { saveProfile } = await import('@/app/actions/profile');
+    render(<ProfileForm initial={initial} allSkills={skills} />);
+    await user.type(screen.getByLabelText('Phone number'), '+256 743 535 678');
+    await user.click(screen.getByRole('button', { name: /save profile/i }));
+    await vi.waitFor(() => expect(saveProfile).toHaveBeenCalled(), { timeout: 5000 });
+    expect(vi.mocked(saveProfile).mock.calls.at(-1)![0]).toMatchObject({ phone: '+256743535678' });
   });
 });

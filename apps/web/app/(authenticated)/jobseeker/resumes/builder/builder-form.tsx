@@ -10,14 +10,23 @@ import { generateResume } from '@/app/actions/generate-resume';
 import { Field, Input, Textarea } from '@/app/components/ui/form';
 import { Button } from '@/app/components/ui/button';
 import { toast } from '@/lib/stores/ui';
+import { endsBeforeStart } from '@/lib/resume/date-order';
 
-const EntrySchema = z.object({
-  company: z.string().trim().min(1, 'Company is required').max(200),
-  title: z.string().trim().min(1, 'Title is required').max(200),
-  startDate: z.string().max(40).optional().or(z.literal('')),
-  endDate: z.string().max(40).optional().or(z.literal('')),
-  description: z.string().max(1000).optional().or(z.literal('')),
-});
+const EntrySchema = z
+  .object({
+    company: z.string().trim().min(1, 'Company is required').max(200),
+    title: z.string().trim().min(1, 'Title is required').max(200),
+    startDate: z.string().max(40).optional().or(z.literal('')),
+    endDate: z.string().max(40).optional().or(z.literal('')),
+    description: z.string().max(1000).optional().or(z.literal('')),
+  })
+  // Dates are free text on purpose (parsed résumés give "2021", "Jan 2022",
+  // "Summer 2019", "Present"), so they are not rejected for their shape. The one
+  // thing that is checkable whatever the spelling is the order of the years.
+  .refine((e) => !endsBeforeStart(e.startDate, e.endDate), {
+    path: ['endDate'],
+    message: 'The end date is before the start date.',
+  });
 const FormSchema = z.object({ entries: z.array(EntrySchema).max(20) });
 type FormValues = z.infer<typeof FormSchema>;
 
@@ -112,11 +121,27 @@ export function ResumeBuilderForm({ initialEntries }: { initialEntries: FormValu
               </Field>
             </div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <Field label="Start date" error={errors.entries?.[index]?.startDate?.message}>
-                <Input {...register(`entries.${index}.startDate`)} placeholder="Jan 2022" />
+              <Field
+                label="Start date"
+                hint="A month and year, or just a year — e.g. Jan 2022"
+                error={errors.entries?.[index]?.startDate?.message}
+              >
+                <Input
+                  {...register(`entries.${index}.startDate`)}
+                  autoComplete="off"
+                  placeholder="Jan 2022"
+                />
               </Field>
-              <Field label="End date" error={errors.entries?.[index]?.endDate?.message}>
-                <Input {...register(`entries.${index}.endDate`)} placeholder="Present" />
+              <Field
+                label="End date"
+                hint="Write Present if you still work here"
+                error={errors.entries?.[index]?.endDate?.message}
+              >
+                <Input
+                  {...register(`entries.${index}.endDate`)}
+                  autoComplete="off"
+                  placeholder="Present"
+                />
               </Field>
             </div>
             <Field label="Description" error={errors.entries?.[index]?.description?.message}>

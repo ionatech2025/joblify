@@ -32,7 +32,7 @@ const sizes: Record<Size, string> = {
 // page rather than Tailwind's hardcoded white, which would read as a bright
 // halo in dark mode.
 const base =
-  'inline-flex items-center justify-center gap-2 rounded-pill font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-canvas disabled:cursor-not-allowed disabled:opacity-50';
+  'inline-flex items-center justify-center gap-2 rounded-pill font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-canvas disabled:cursor-not-allowed disabled:opacity-50 aria-disabled:cursor-wait aria-disabled:opacity-70';
 
 export function Button({
   variant = 'primary',
@@ -43,21 +43,38 @@ export function Button({
   className,
   children,
   disabled,
+  onClick,
   ...props
 }: ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: Variant;
   size?: Size;
-  /** Shows a spinner and blocks input. Keeps the label so width doesn't jump. */
+  /**
+   * Shows a spinner and blocks activation. Keeps the label so width doesn't
+   * jump — and keeps focus: the button is aria-disabled, not `disabled`, because
+   * a button that disables itself under a keyboard user's focus drops them to
+   * the top of the page mid-submit. Clicks (and the Enter/Space that become
+   * clicks, and implicit form submission) are swallowed while loading.
+   */
   loading?: boolean;
   icon?: ReactNode;
   iconPosition?: 'start' | 'end';
 }) {
   const glyph = loading ? <Loader2 aria-hidden className="size-4 animate-spin" /> : icon;
+  // An explicit `disabled` still means disabled; `loading` alone does not.
+  const blocked = loading && !disabled;
   return (
     <button
       className={cn(base, sizes[size], variants[variant], className)}
-      disabled={disabled ?? loading}
+      disabled={disabled}
+      aria-disabled={blocked || undefined}
       aria-busy={loading || undefined}
+      onClick={(e) => {
+        if (blocked) {
+          e.preventDefault();
+          return;
+        }
+        onClick?.(e);
+      }}
       {...props}
     >
       {glyph && iconPosition === 'start' ? glyph : null}

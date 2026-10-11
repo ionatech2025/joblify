@@ -6,16 +6,22 @@ import { z } from 'zod';
 import { requireRole } from '@/lib/auth';
 import { withAudit } from '@/lib/audit';
 import { tags } from '@/lib/cache';
+import { endsBeforeStart } from '@/lib/resume/date-order';
 import { logger } from '@/lib/observability/logger';
 import { clientIp } from '@/lib/security/client-ip';
 
-const WorkExperienceEntry = z.object({
-  company: z.string().trim().min(1).max(200),
-  title: z.string().trim().min(1).max(200),
-  startDate: z.string().trim().max(40).optional().or(z.literal('')),
-  endDate: z.string().trim().max(40).optional().or(z.literal('')),
-  description: z.string().trim().max(1000).optional().or(z.literal('')),
-});
+const WorkExperienceEntry = z
+  .object({
+    company: z.string().trim().min(1).max(200),
+    title: z.string().trim().min(1).max(200),
+    startDate: z.string().trim().max(40).optional().or(z.literal('')),
+    endDate: z.string().trim().max(40).optional().or(z.literal('')),
+    description: z.string().trim().max(1000).optional().or(z.literal('')),
+  })
+  .refine((e) => !endsBeforeStart(e.startDate, e.endDate), {
+    path: ['endDate'],
+    message: 'The end date is before the start date.',
+  });
 
 const SaveInput = z.object({ entries: z.array(WorkExperienceEntry).max(20) });
 

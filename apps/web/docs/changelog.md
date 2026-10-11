@@ -1,5 +1,25 @@
 # Changelog
 
+## 2026-10-11 — Form UX: the findings that were left for the owner
+
+- **Phone numbers** accept international numbers. The rule was `^\d{10}$` in four places, which
+  rejected exactly what browsers autofill (`+256 743 535 678`). One rule now
+  (`lib/validation/phone.ts`): optional `+`, 7–15 digits, spaces/dashes/parentheses allowed, stored
+  normalised (`+256743535678`). Applied to the profile (client + server) and company profile. The
+  legacy `registration-schema.ts` — imported by nothing but its own tests — still says ten digits.
+- **Skills picker** has a filter (62 flat checkboxes before) and a "n selected" status; filtered-out
+  checkboxes are hidden, not removed, so selections survive and are still submitted. Enter in the
+  filter no longer submits the profile.
+- **Résumé builder dates** stay free text (parsed résumés produce "2021", "Jan 2022", "Present"), with
+  a hint, `autocomplete="off"`, and the one check that holds for any spelling: an end year before the
+  start year is an error (client and server).
+- **Save profile** is no longer disabled until something changes — a disabled primary action gives no
+  hint what to do and leaves the tab order.
+- **`Button loading`** is `aria-disabled` + `aria-busy`, not `disabled`: a control that disables
+  itself under a keyboard user's focus drops them out of the page mid-submit. Clicks, Enter/Space and
+  implicit form submission are still swallowed while loading.
+- Integer fields (years, salary) request a numeric keypad (`inputmode="numeric"`).
+
 ## 2026-10-11 — Form UX audit: findings and fixes
 
 Audited every form and journey the E2E accounts can reach on the live site (66 controls on the
