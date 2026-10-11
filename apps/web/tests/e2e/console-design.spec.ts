@@ -1,4 +1,5 @@
-import { clerkSetup, setupClerkTestingToken } from '@clerk/testing/playwright';
+import { setupClerkTestingToken } from '@clerk/testing/playwright';
+import { clerkSetupWithRetry } from './clerk-setup';
 import { test, expect, type Page } from '@playwright/test';
 import { STORAGE } from './storage-paths';
 import { skipUnlessCompanyVerified } from './company-state';
@@ -21,7 +22,7 @@ const hasCompany = Boolean(process.env.E2E_TEST_PASSWORD && process.env.E2E_TEST
 const hasJobseeker = Boolean(process.env.E2E_TEST_PASSWORD && process.env.E2E_TEST_EMAIL_JOBSEEKER);
 
 test.beforeAll(async () => {
-  if (hasCompany || hasJobseeker) await clerkSetup();
+  if (hasCompany || hasJobseeker) await clerkSetupWithRetry();
 });
 test.beforeEach(async ({ page }) => {
   await setupClerkTestingToken({ page });

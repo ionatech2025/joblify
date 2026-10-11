@@ -47,6 +47,11 @@ const browserProjects = [
 
 export default defineConfig({
   testDir: './tests/e2e',
+  // 5 s (the default) is shorter than a Clerk development-instance handshake: a
+  // document request after the 60 s session token has lapsed is a 307 to the
+  // frontend API and back (1.9-4 s measured, more from a slow link), and the
+  // first assertion after a click ran out of time on pages that were fine.
+  expect: { timeout: 15_000 },
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,

@@ -1,4 +1,5 @@
-import { clerkSetup, setupClerkTestingToken } from '@clerk/testing/playwright';
+import { setupClerkTestingToken } from '@clerk/testing/playwright';
+import { clerkSetupWithRetry } from './clerk-setup';
 import { test, expect } from '@playwright/test';
 import { STORAGE } from './storage-paths';
 import { skipUnlessCompanyVerified } from './company-state';
@@ -15,7 +16,7 @@ const hasCompany = Boolean(process.env.E2E_TEST_PASSWORD && process.env.E2E_TEST
 // navigation, which the dev-instance bot check blocks without a testing token.
 // Fetch one per worker and inject it on every page so the handshake succeeds.
 test.beforeAll(async () => {
-  if (hasJobseeker || hasCompany) await clerkSetup();
+  if (hasJobseeker || hasCompany) await clerkSetupWithRetry();
 });
 test.beforeEach(async ({ page }) => {
   await setupClerkTestingToken({ page });

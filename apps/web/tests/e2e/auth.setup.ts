@@ -1,4 +1,5 @@
-import { clerkSetup, setupClerkTestingToken } from '@clerk/testing/playwright';
+import { setupClerkTestingToken } from '@clerk/testing/playwright';
+import { clerkSetupWithRetry } from './clerk-setup';
 import { test as setup } from '@playwright/test';
 import { STORAGE } from './storage-paths';
 import { ensureE2eFixtures } from './fixtures';
@@ -12,8 +13,11 @@ import { ensureE2eFixtures } from './fixtures';
 setup('authenticate test users', async ({ browser }) => {
   // clerkSetup() + two live two-factor sign-ins run over the network and reliably
   // exceed Playwright's default 30s per-test budget; give the setup real headroom.
-  setup.setTimeout(120_000);
-  await clerkSetup();
+  // Two sign-ins, each with a dev-instance handshake and an emailed second factor.
+  // 120 s was enough from CI; from a slower link the second role's landing page ran
+  // out of budget, so it is configurable.
+  setup.setTimeout(Number(process.env.E2E_SETUP_TIMEOUT_MS ?? 120_000));
+  await clerkSetupWithRetry();
   const password = process.env.E2E_TEST_PASSWORD;
   if (!password) return;
 
@@ -32,9 +36,12 @@ setup('authenticate test users', async ({ browser }) => {
     // Inject Clerk's testing token so the dev-instance bot check lets the sign-in
     // handshake through (without it the landing nav bounces back to /sign-in).
     await setupClerkTestingToken({ page });
-    await page.goto('/');
+    // /sign-in, not /: clerk-js loads only on pages with a Clerk widget (see
+    // app/components/clerk-host.tsx), so on `/` there is no window.Clerk to wait
+    // for. The sign-in card is also where a person would do this.
+    await page.goto('/sign-in');
     await page.waitForFunction(() => (window as unknown as ClerkWindow).Clerk?.loaded === true, {
-      timeout: 30_000,
+      timeout: 60_000,
     });
     await page.evaluate(
       async ({ identifier, password }) => {
