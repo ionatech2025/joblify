@@ -14,10 +14,17 @@ import { ApplyForm } from '@/app/(marketing)/jobs/[slug]/apply/apply-form';
 import { ProfileForm } from '@/app/(authenticated)/jobseeker/profile/profile-form';
 import { useProfileDraftStore } from '@/lib/stores/profile-draft';
 import { useApplyDraftStore } from '@/lib/stores/apply-draft';
+import { useEmployerSetupDraftStore } from '@/lib/stores/employer-setup-draft';
+import { EmployerSetupForm } from '@/app/(authenticated)/employer-setup/employer-setup-form';
+import { DeleteForm } from '@/app/(authenticated)/account/delete/delete-form';
 
 const submit = vi.hoisted(() => vi.fn());
 vi.mock('@/app/actions/apply', () => ({ submitApplication: submit }));
 vi.mock('@/app/actions/profile', () => ({ saveProfile: vi.fn().mockResolvedValue(undefined) }));
+const createCompany = vi.hoisted(() => vi.fn());
+vi.mock('@/app/actions/company', () => ({ createCompanyProfile: createCompany }));
+const deleteAccount = vi.hoisted(() => vi.fn());
+vi.mock('@/app/actions/account', () => ({ deleteMyAccount: deleteAccount }));
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }),
 }));
@@ -31,6 +38,9 @@ afterEach(() => {
   // next test's form (it made a no-skills case look like it had skills).
   useProfileDraftStore.getState().clear();
   useApplyDraftStore.getState().clear('job_1');
+  useEmployerSetupDraftStore.getState().clear();
+  createCompany.mockReset();
+  deleteAccount.mockReset();
 });
 
 describe('Field required', () => {
@@ -284,5 +294,52 @@ describe('ProfileForm skills filter and save', () => {
     await user.click(screen.getByRole('button', { name: /save profile/i }));
     await vi.waitFor(() => expect(saveProfile).toHaveBeenCalled(), { timeout: 5000 });
     expect(vi.mocked(saveProfile).mock.calls.at(-1)![0]).toMatchObject({ phone: '+256743535678' });
+  });
+});
+
+describe('EmployerSetupForm', () => {
+  it('opts out of native validation and marks what the schema requires', () => {
+    const { container } = render(<EmployerSetupForm hasJobSeekerIdentity={false} />);
+    expect(container.querySelector('form')?.noValidate).toBe(true);
+    expect(
+      screen.getByRole('textbox', { name: 'Company name' }).getAttribute('aria-required'),
+    ).toBe('true');
+    const about = screen.getByRole('textbox', { name: 'About the company' });
+    expect(about.getAttribute('aria-required')).toBe('true');
+    // The 20-character floor is said up front, not discovered after submitting.
+    expect(screen.getByText(/At least 20 characters/)).toBeDefined();
+  });
+
+  it('reports a too-short description inline, as an alert, without calling the server', async () => {
+    const user = userEvent.setup();
+    render(<EmployerSetupForm hasJobSeekerIdentity={false} />);
+    await user.type(screen.getByRole('textbox', { name: 'Company name' }), 'Acme');
+    await user.type(screen.getByRole('textbox', { name: 'About the company' }), 'Too short');
+    await user.click(screen.getByRole('button', { name: /create company/i }));
+    // The hint also says "at least 20 characters"; the error is the alert.
+    const alert = await screen.findByRole('alert', {}, { timeout: 10_000 });
+    expect(alert.textContent).toMatch(/at least 20 characters/i);
+    expect(createCompany).not.toHaveBeenCalled();
+  }, 30_000);
+});
+
+describe('DeleteForm', () => {
+  it('keeps the destructive action disabled until the email matches, then enables it', async () => {
+    const user = userEvent.setup();
+    render(<DeleteForm expectedConfirmation="me@example.com" />);
+    const button = screen.getByRole('button', { name: /delete my account/i }) as HTMLButtonElement;
+    expect(button.disabled).toBe(true);
+    await user.type(screen.getByRole('textbox'), 'me@example.com');
+    expect(button.disabled).toBe(false);
+  });
+
+  it('announces a failure as an alert', async () => {
+    const user = userEvent.setup();
+    deleteAccount.mockResolvedValue({ ok: false, error: 'Could not delete right now.' });
+    render(<DeleteForm expectedConfirmation="me@example.com" />);
+    await user.type(screen.getByRole('textbox'), 'me@example.com');
+    await user.click(screen.getByRole('button', { name: /delete my account/i }));
+    const alert = await screen.findByRole('alert', {}, { timeout: 5000 });
+    expect(alert.textContent).toContain('Could not delete right now.');
   });
 });

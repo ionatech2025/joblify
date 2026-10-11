@@ -84,7 +84,9 @@ export function EmployerSetupForm({ hasJobSeekerIdentity }: { hasJobSeekerIdenti
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="mt-6 flex flex-col gap-4">
+    // noValidate: the schema owns validation and its messages (the browser's
+    // own check ran first for type=url and showed a transient, unannounced bubble).
+    <form onSubmit={handleSubmit(onSubmit)} noValidate className="mt-6 flex flex-col gap-4">
       {hasJobSeekerIdentity && (
         <p className="text-warn bg-warn-subtle rounded-card border-warn/25 m-0 border px-4 py-3 text-sm">
           You already have a jobseeker profile. Creating a company switches your account to an
@@ -93,7 +95,7 @@ export function EmployerSetupForm({ hasJobSeekerIdentity }: { hasJobSeekerIdenti
         </p>
       )}
 
-      <Field label="Company name" error={errors.companyName?.message}>
+      <Field label="Company name" required error={errors.companyName?.message}>
         <Input {...register('companyName')} autoComplete="organization" placeholder="Acme Inc." />
       </Field>
 
@@ -117,7 +119,12 @@ export function EmployerSetupForm({ hasJobSeekerIdentity }: { hasJobSeekerIdenti
         </Select>
       </Field>
 
-      <Field label="About the company" error={errors.description?.message}>
+      <Field
+        label="About the company"
+        required
+        hint="At least 20 characters: what you do and what it is like to work there."
+        error={errors.description?.message}
+      >
         <Textarea
           {...register('description')}
           rows={5}
@@ -134,9 +141,13 @@ export function EmployerSetupForm({ hasJobSeekerIdentity }: { hasJobSeekerIdenti
         />
       </Field>
 
-      {error && <p className="m-0 text-danger">{error}</p>}
+      {error && (
+        <p role="alert" className="m-0 text-danger">
+          {error}
+        </p>
+      )}
 
-      <Button type="submit" disabled={pending} className="self-start">
+      <Button type="submit" loading={pending} className="self-start">
         {pending ? 'Creating…' : 'Create company & continue'}
       </Button>
     </form>
