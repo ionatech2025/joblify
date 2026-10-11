@@ -6,9 +6,11 @@ import { Sparkles } from 'lucide-react';
 import { Button } from '@/app/components/ui/button';
 import { Skeleton } from '@/app/components/ui/skeleton';
 
-// Bio coach — streams suggestions from Sonnet via AI Gateway. Lives on the
-// profile page as an "Improve my bio" assist. The current bio is sent as request
-// context; the server folds it into the system prompt.
+// Bio coach — streams suggestions from the model chain for the `bio-coach` task
+// (lib/ai/groq.ts: Groq models when switched on, the Gateway's Sonnet otherwise
+// and as the fallback). Lives on the profile page as an "Improve my bio" assist.
+// The current bio is sent as request context; the server folds it into the
+// system prompt.
 //
 // Only the trigger is in the page bundle. The panel — and with it the whole AI
 // SDK — is fetched on first open. This page is where onboarding lands every new
