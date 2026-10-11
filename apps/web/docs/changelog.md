@@ -1,5 +1,26 @@
 # Changelog
 
+## 2026-10-11 — The company e2e specs run for the first time (and the harness catches up)
+
+With the E2E company approved, the specs that had always self-skipped ran against production:
+**101 passed, 6 failed** on the first full pass (0 skipped, previously 13). None of the six was a
+product defect; the suite had simply been dead code for months:
+
+- **`auth.setup.ts` waited for `window.Clerk` on `/`** — which stopped being true when clerk-js
+  became on-demand (#82). CI never noticed (the setup self-skips without credentials). It signs in
+  from `/sign-in` now.
+- **Stale selectors from the console redesign:** the talent filters are dropdown menus, not links;
+  an applicant's status is a stage stepper (back / advance / stage menu), not a `<select>`; the
+  applicants link is found by `href`, not by position in the row.
+- **Not idempotent:** the status test chose a status the fixture was often already in (no change
+  event, so the mutation wait sat out the whole timeout). It steps whichever way is available.
+- **Typing before hydration:** react-hook-form fills fields on hydration, so the saved value is not in
+  the server HTML and text typed before it is overwritten or merged. The settings test now waits for
+  the field to be populated. (The product behaviour is recorded in REMAINING_STEPS.md.)
+- **Dev-instance handshake timing:** `expect` timeout 5 s → 15 s (a request after the 60 s session
+  token lapses is a 307 to Clerk and back); the status test refreshes the session before clicking;
+  `clerkSetup()` is retried (one dropped connection used to fail every authenticated spec).
+
 ## 2026-10-11 — Removed the legacy registration schema and its suite
 
 `lib/auth/registration-schema.ts` (Mongo-era registration/login zod schemas) was imported by nothing

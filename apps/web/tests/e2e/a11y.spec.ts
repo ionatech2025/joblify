@@ -1,4 +1,5 @@
-import { clerkSetup, setupClerkTestingToken } from '@clerk/testing/playwright';
+import { setupClerkTestingToken } from '@clerk/testing/playwright';
+import { clerkSetupWithRetry } from './clerk-setup';
 import { test, expect, type Page } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import { STORAGE } from './storage-paths';
@@ -186,7 +187,7 @@ for (const theme of THEMES) {
 // the short-lived `__session` cookie via a FAPI handshake on each protected
 // navigation, which the dev-instance bot check blocks without a testing token.
 test.beforeAll(async () => {
-  if (hasJobseeker || hasCompany) await clerkSetup();
+  if (hasJobseeker || hasCompany) await clerkSetupWithRetry();
 });
 test.beforeEach(async ({ page }) => {
   if (hasJobseeker || hasCompany) await setupClerkTestingToken({ page });

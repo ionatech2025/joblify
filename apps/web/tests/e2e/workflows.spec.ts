@@ -185,16 +185,26 @@ test.describe('company workflows', () => {
 
   test('jobseeker directory lists public seekers and filters by type', async ({ page }) => {
     await page.goto('/company/jobseekers');
-    await expect(page.locator('a:visible', { hasText: 'On site' }).first()).toBeVisible();
+    // Audience and Type are dropdown filters (console FilterMenu), not links —
+    // the console was redesigned after this spec was written, and it could not
+    // run until the E2E company was verified.
+    await expect(page.getByRole('button', { name: /^Audience/ })).toBeVisible();
     await expect(page.getByText('Ada Lovelace').first()).toBeVisible();
-    await page.locator('a:visible', { hasText: 'Virtual interns' }).first().click();
+    await page.getByRole('button', { name: /^Type/ }).click();
+    await page.getByRole('menuitem', { name: 'Virtual interns' }).click();
+    await expect(page).toHaveURL(/type=VIRTUAL_INTERN/);
     await expect(page.getByText('Grace Hopper').first()).toBeVisible();
   });
 
   test('edits company settings', async ({ page }) => {
     const description = `E2E-updated description ${Date.now()}`;
     await page.goto('/company/settings');
-    await page.locator('textarea[name="description"]:visible').fill(description);
+    const about = page.locator('textarea[name="description"]:visible');
+    // The saved value is not in the server HTML (react-hook-form fills fields on
+    // hydration), and anything typed before that is overwritten or merged with
+    // it. The description is required, so a hydrated form never has it empty.
+    await expect(about).not.toHaveValue('');
+    await about.fill(description);
     await Promise.all([
       waitForAppMutation(page),
       page.locator('button[type="submit"]:visible', { hasText: /Save changes/i }).click(),
@@ -205,20 +215,54 @@ test.describe('company workflows', () => {
 
   test('changes an applicant status on the fixture job', async ({ page }) => {
     await page.goto('/company/jobs');
+    // Soft navigations are RSC fetches, and on a Clerk development instance the
+    // middleware answers one that carries a lapsed 60 s session token with a
+    // redirect to /sign-in, not a handshake — so the click appears to do nothing.
+    // clerk-js refreshes the token in the background once it has loaded (it loads
+    // on demand, after hydration); make that explicit before navigating.
+    await page.waitForFunction(
+      () => Boolean((window as { Clerk?: { session?: unknown } }).Clerk?.session),
+      undefined,
+      {
+        timeout: 60_000,
+      },
+    );
+    await page.evaluate(() =>
+      (
+        window as unknown as {
+          Clerk: { session: { getToken: (o: { skipCache: boolean }) => Promise<string | null> } };
+        }
+      ).Clerk.session.getToken({ skipCache: true }),
+    );
     const row = page.locator('tr', { hasText: FIXTURE_JOB_TITLE });
-    // Row links in order: title (/jobs/slug), applicants count
-    // (/company/applicants/id), Edit (/company/jobs/id/edit) — the middle one.
-    await row.locator('a:visible').nth(1).click();
+    // The applicants count is the row's link to /company/applicants/<id>. Found by
+    // href rather than position: the console redesign moved the row's links.
+    await row.locator('a[href^="/company/applicants/"]').first().click();
     await expect(page).toHaveURL(/\/company\/applicants\//);
-    const statusSelect = page.locator('select:visible[aria-label^="Change status for"]').first();
-    // ApplicantsBoard updates its select optimistically before
-    // updateApplicantStatus() resolves, so assert on the option chosen, then
-    // wait for the mutation and reload to confirm it actually persisted.
-    await Promise.all([waitForAppMutation(page), statusSelect.selectOption('SHORTLISTED')]);
+    // Each applicant has a stage stepper (ApplicantsBoard's StageStepper): back
+    // and advance arrows around a menu naming the current stage. It replaced a
+    // <select> of every status, which this spec still drove.
+    const advance = page.getByRole('button', { name: /^Advance .+ to .+/ }).first();
+    const back = page.getByRole('button', { name: /^Move .+ back to .+/ }).first();
+    await expect(advance.or(back)).toBeVisible();
+
+    // Step whichever way is available, so the test is repeatable against a
+    // database that remembers the last run (advancing forever would end at the
+    // last open stage, where only "back" remains).
+    // A disabled arrow is labelled 'No later stage', which `advance` does not match.
+    const step = (await advance.count()) > 0 ? advance : back;
+    const label = await step.getAttribute('aria-label');
+    const target = /to (.+)$/.exec(label ?? '')?.[1];
+    expect(target, `a stage to step to, from ${label}`).toBeTruthy();
+
+    await Promise.all([waitForAppMutation(page), step.click()]);
     await page.reload();
     await expect(
-      page.locator('select:visible[aria-label^="Change status for"]').first(),
-    ).toHaveValue('SHORTLISTED', { timeout: 10_000 });
+      page
+        .getByRole('button', { name: /Change stage for/ })
+        .first()
+        .locator('span.truncate'),
+    ).toHaveText(target!, { timeout: 15_000 });
   });
 
   test('sends a message in the fixture job chat area', async ({ page }) => {

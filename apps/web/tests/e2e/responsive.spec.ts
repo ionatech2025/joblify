@@ -1,4 +1,5 @@
-import { clerkSetup, setupClerkTestingToken } from '@clerk/testing/playwright';
+import { setupClerkTestingToken } from '@clerk/testing/playwright';
+import { clerkSetupWithRetry } from './clerk-setup';
 import { test, expect, type Page } from '@playwright/test';
 import { STORAGE } from './storage-paths';
 import { skipUnlessCompanyVerified } from './company-state';
@@ -106,7 +107,7 @@ const hasCompany = Boolean(process.env.E2E_TEST_PASSWORD && process.env.E2E_TEST
 let jobSlug = '/jobs';
 
 test.beforeAll(async ({ playwright }) => {
-  if (hasJobseeker || hasCompany) await clerkSetup();
+  if (hasJobseeker || hasCompany) await clerkSetupWithRetry();
   // A real, published job for the detail template. Prefer a seeded listing over
   // e2e-created ones so the page has realistic content to lay out.
   const ctx = await playwright.request.newContext({
