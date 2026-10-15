@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { requireRole } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { ArrowRight, MessagesSquare } from 'lucide-react';
+import { ConsoleWidth } from '@/app/components/console/shell';
 import { Breadcrumb, ControlPanel } from '@/app/components/console/control-panel';
 import { EmptyState } from '@/app/components/ui/empty-state';
 import { ChatAreaButton } from './chat-area-button';
@@ -40,7 +41,7 @@ export default async function CompanyChatsPage() {
         breadcrumb={<Breadcrumb items={[{ label: 'Chats' }]} />}
         actions={!hasViArea ? <ChatAreaButton kind="virtual-intern" /> : undefined}
       />
-      <div className="mx-auto w-full max-w-5xl px-3 py-3 sm:px-4">
+      <ConsoleWidth className="max-w-5xl py-3">
         <p className="text-fg-muted mb-2 text-[13px]">
           Job-specific rooms for shortlisted applicants, plus one room for your virtual interns.
         </p>
@@ -102,7 +103,7 @@ export default async function CompanyChatsPage() {
             </ul>
           </section>
         )}
-      </div>
+      </ConsoleWidth>
     </main>
   );
 }

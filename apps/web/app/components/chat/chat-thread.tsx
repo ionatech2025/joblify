@@ -55,7 +55,7 @@ export function ChatThread({
                 }`}
               >
                 <p
-                  className={`m-0 text-xs font-medium ${own ? 'text-ink-fg/70' : 'text-fg-subtle'}`}
+                  className={`m-0 text-xs font-medium ${own ? 'text-ink-fg/90' : 'text-fg-subtle'}`}
                 >
                   {own ? 'You' : m.senderName}
                   {badge && (
@@ -77,15 +77,17 @@ export function ChatThread({
                     // platform does not vouch for where it goes.
                     rel="noopener noreferrer nofollow ugc"
                     className={`mt-1 inline-flex items-center gap-1 text-sm hover:underline ${
-                      own ? 'text-ink-fg/80' : 'text-brand'
+                      own ? 'text-ink-fg underline' : 'text-brand'
                     }`}
                   >
                     View attachment
-                    <span className="text-fg-subtle">({hostOf(m.attachmentUrl)})</span>
+                    <span className={own ? 'text-ink-fg/90' : 'text-fg-subtle'}>
+                      ({hostOf(m.attachmentUrl)})
+                    </span>
                     <ExternalLink aria-hidden className="size-3.5" />
                   </a>
                 )}
-                <p className="mt-1 mb-0 text-xs text-fg-subtle">
+                <p className={`mt-1 mb-0 text-xs ${own ? 'text-ink-fg/90' : 'text-fg-subtle'}`}>
                   <TimeStamp value={m.createdAt} mode="datetime" />
                 </p>
               </div>

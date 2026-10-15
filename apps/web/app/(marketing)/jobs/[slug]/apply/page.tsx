@@ -34,7 +34,7 @@ async function ApplyContent({ slug }: { slug: string }) {
     where: { slug },
     include: { company: { include: { companyProfile: true } } },
   });
-  if (!job || job.deletedAt || job.status !== 'PUBLISHED') notFound();
+  if (!job || job.deletedAt || job.status !== 'PUBLISHED' || job.company.deletedAt) notFound();
 
   const existing = await db.jobApplication.findUnique({
     where: { jobPostId_jobSeekerId: { jobPostId: job.id, jobSeekerId: user.id } },

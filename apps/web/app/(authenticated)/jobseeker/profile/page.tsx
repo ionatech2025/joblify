@@ -2,6 +2,7 @@ import { requireRole } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { ProfileForm } from './profile-form';
 import { BioCoach } from './bio-coach';
+import { ConsoleWidth } from '@/app/components/console/shell';
 import { Breadcrumb, ControlPanel } from '@/app/components/console/control-panel';
 
 export const metadata = { title: 'My profile' };
@@ -31,10 +32,7 @@ export default async function JobseekerProfilePage() {
   return (
     <main>
       <ControlPanel breadcrumb={<Breadcrumb items={[{ label: 'Profile' }]} />} />
-      <div className="mx-auto w-full max-w-5xl px-3 py-3 sm:px-4">
-        <p className="text-fg-muted mb-2 text-[13px]">
-          These fields show up to recruiters when you apply. Keep your headline and skills current.
-        </p>
+      <ConsoleWidth className="max-w-5xl py-3">
         <ProfileForm
           allSkills={allSkills}
           initial={{
@@ -58,10 +56,10 @@ export default async function JobseekerProfilePage() {
           }}
         />
 
-        <div className="mt-8">
+        <div className="mt-4">
           <BioCoach currentBio={profile?.bio ?? ''} />
         </div>
-      </div>
+      </ConsoleWidth>
     </main>
   );
 }

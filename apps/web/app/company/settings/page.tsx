@@ -23,6 +23,10 @@ export default async function CompanySettingsPage() {
             industry: profile.industry,
             companySize: profile.companySize,
             description: profile.description,
+            address: profile.address ?? '',
+            phone: user.phone ?? '',
+            contactPersonName: profile.contactPersonName ?? '',
+            contactPersonPosition: profile.contactPersonPosition ?? '',
             website: profile.website ?? '',
             linkedin: profile.linkedin ?? '',
           }}

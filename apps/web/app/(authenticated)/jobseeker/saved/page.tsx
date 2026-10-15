@@ -1,8 +1,11 @@
+import Link from 'next/link';
 import { requireRole } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { SavedList } from './saved-list';
 import { SavedSearchList } from './saved-search-list';
+import { ConsoleWidth } from '@/app/components/console/shell';
 import { Breadcrumb, ControlPanel } from '@/app/components/console/control-panel';
+import { buttonClasses } from '@/app/components/ui/button';
 
 export const metadata = { title: 'Saved' };
 
@@ -46,8 +49,15 @@ export default async function SavedJobsPage() {
 
   return (
     <main>
-      <ControlPanel breadcrumb={<Breadcrumb items={[{ label: 'Saved' }]} />} />
-      <div className="mx-auto w-full max-w-5xl px-3 py-3 sm:px-4">
+      <ControlPanel
+        breadcrumb={<Breadcrumb items={[{ label: 'Saved' }]} />}
+        actions={
+          <Link href="/jobs" className={`${buttonClasses('secondary', 'sm')} no-underline`}>
+            Browse jobs
+          </Link>
+        }
+      />
+      <ConsoleWidth className="max-w-5xl py-3">
         {savedSearches.length > 0 && (
           <section className="mt-0">
             <h2 className="text-lg font-semibold text-fg">Saved searches</h2>
@@ -58,11 +68,11 @@ export default async function SavedJobsPage() {
           </section>
         )}
 
-        <section className="mt-8">
+        <section className={savedSearches.length > 0 ? 'mt-8' : 'mt-0'}>
           <h2 className="text-lg font-semibold text-fg">Saved jobs</h2>
           <SavedList initial={jobs} />
         </section>
-      </div>
+      </ConsoleWidth>
     </main>
   );
 }

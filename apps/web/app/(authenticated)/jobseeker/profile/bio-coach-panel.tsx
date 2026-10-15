@@ -8,6 +8,7 @@ import { cn } from '@/lib/cn';
 import { Button, IconButton } from '@/app/components/ui/button';
 import { EmptyState } from '@/app/components/ui/empty-state';
 import { Input } from '@/app/components/ui/form';
+import { useProfileDraftStore } from '@/lib/stores/profile-draft';
 
 // The heavy half of the bio coach: everything that needs the AI SDK. Split out
 // of bio-coach.tsx so `@ai-sdk/react` + `ai` (83 KB gzip, measured) live in
@@ -21,10 +22,12 @@ export function BioCoachPanel({
   onClose: () => void;
 }) {
   const [input, setInput] = useState('');
+  const draftBio = useProfileDraftStore((s) => s.draft.bio);
+  const effectiveBio = draftBio && draftBio.trim().length > 0 ? draftBio : currentBio;
   const { messages, sendMessage, status, error, regenerate, clearError } = useChat({
     transport: new DefaultChatTransport({
       api: '/api/v1/ai/bio-coach',
-      body: { currentBio },
+      body: { currentBio: effectiveBio },
     }),
   });
 

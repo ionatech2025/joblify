@@ -130,7 +130,12 @@ async function getFeaturedJobs() {
   cacheLife('hours');
 
   return db.jobPost.findMany({
-    where: { status: 'PUBLISHED', deletedAt: null, company: { deletedAt: null } },
+    where: {
+      status: 'PUBLISHED',
+      deletedAt: null,
+      company: { deletedAt: null },
+      OR: [{ applicationDeadline: null }, { applicationDeadline: { gt: new Date() } }],
+    },
     orderBy: { publishedAt: 'desc' },
     take: 6,
     include: {

@@ -45,11 +45,19 @@ export function ExportButton() {
 
   return (
     <div className="mt-6">
-      <Button onClick={start} disabled={isPending}>
+      <Button onClick={start} loading={isPending}>
         {isPending ? 'Building export…' : 'Request data export'}
       </Button>
-      {message && <p className="mt-4 text-success">{message}</p>}
-      {error && <p className="mt-4 text-danger">{error}</p>}
+      {message && (
+        <p role="status" className="mt-4 text-success">
+          {message}
+        </p>
+      )}
+      {error && (
+        <p role="alert" className="mt-4 text-danger">
+          {error}
+        </p>
+      )}
     </div>
   );
 }

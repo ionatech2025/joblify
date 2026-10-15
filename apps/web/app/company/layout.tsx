@@ -14,6 +14,7 @@ const LINKS: ConsoleNavLink[] = [
   { href: '/company/jobs', label: 'Jobs', icon: 'Briefcase' },
   { href: '/company/jobseekers', label: 'Talent', icon: 'Users' },
   { href: '/company/chats', label: 'Chats', icon: 'MessagesSquare' },
+  { href: '/company/notifications', label: 'Notifications', icon: 'Bell' },
   { href: '/company/settings', label: 'Settings', icon: 'Settings' },
 ];
 

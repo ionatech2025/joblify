@@ -53,6 +53,7 @@ const COMPANY_PAGES = [
   { path: '/company/jobs', label: 'company jobs' },
   { path: '/company/jobs/new', label: 'post a job' },
   { path: '/company/jobseekers', label: 'jobseeker directory' },
+  { path: '/company/notifications', label: 'company notifications' },
   { path: '/company/settings', label: 'company settings' },
 ];
 

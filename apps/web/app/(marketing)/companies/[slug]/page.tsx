@@ -62,7 +62,12 @@ async function CompanyDetailBody({ slug }: { slug: string }) {
   if (!company) notFound();
 
   const openJobs = await db.jobPost.findMany({
-    where: { companyId: company.userId, status: 'PUBLISHED', deletedAt: null },
+    where: {
+      companyId: company.userId,
+      status: 'PUBLISHED',
+      deletedAt: null,
+      OR: [{ applicationDeadline: null }, { applicationDeadline: { gt: new Date() } }],
+    },
     orderBy: { publishedAt: 'desc' },
     take: 20,
   });
@@ -155,8 +160,17 @@ export async function getCompanyBySlug(slug: string) {
   const { cacheTag, cacheLife } = await import('next/cache');
   cacheLife('hours');
 
-  const profile = await db.companyProfile.findUnique({ where: { slug } });
-  if (!profile) return null;
+  const profile = await db.companyProfile.findUnique({
+    where: { slug },
+    include: { user: { select: { deletedAt: true } } },
+  });
+  if (
+    !profile ||
+    profile.user?.deletedAt ||
+    (profile.verificationStatus && profile.verificationStatus !== 'VERIFIED')
+  ) {
+    return null;
+  }
 
   cacheTag(tags.company(profile.userId));
   return profile;

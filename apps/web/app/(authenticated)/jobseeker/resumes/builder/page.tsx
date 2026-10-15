@@ -1,6 +1,7 @@
 import { requireRole } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { ResumeBuilderForm } from './builder-form';
+import { ConsoleWidth } from '@/app/components/console/shell';
 import { Breadcrumb, ControlPanel } from '@/app/components/console/control-panel';
 
 export const metadata = { title: 'Build a resume' };
@@ -29,12 +30,9 @@ export default async function ResumeBuilderPage() {
           />
         }
       />
-      <div className="mx-auto w-full max-w-5xl px-3 py-3 sm:px-4">
-        <p className="text-fg-muted mb-2 text-[13px]">
-          Generate a PDF resume from your profile — headline, bio, skills, and experience.
-        </p>
+      <ConsoleWidth className="max-w-5xl py-3">
         <ResumeBuilderForm initialEntries={initialEntries} />
-      </div>
+      </ConsoleWidth>
     </main>
   );
 }

@@ -26,14 +26,14 @@ export function InvitationActions({ invitationId }: { invitationId: string }) {
 
   return (
     <div className="flex gap-2">
-      <Button type="button" size="sm" disabled={isPending} onClick={() => respond('ACCEPT')}>
+      <Button type="button" size="sm" loading={isPending} onClick={() => respond('ACCEPT')}>
         Accept
       </Button>
       <Button
         type="button"
         variant="secondary"
         size="sm"
-        disabled={isPending}
+        loading={isPending}
         onClick={() => respond('DECLINE')}
       >
         Decline

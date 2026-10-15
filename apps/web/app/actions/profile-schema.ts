@@ -17,17 +17,23 @@ export const ProfileSchema = z.object({
   bio: z.string().max(2000).optional().or(z.literal('')),
   yearsExperience: z.preprocess(
     (val) => (val === '' || val === null || val === undefined ? null : val),
-    z.coerce.number().int().min(0).max(70).nullable().optional(),
+    z.coerce
+      .number()
+      .int()
+      .min(0, 'Years of experience cannot be negative.')
+      .max(70, 'Years of experience cannot exceed 70.')
+      .nullable()
+      .optional(),
   ),
   location: z.string().max(140).optional().or(z.literal('')),
   phone: optionalPhone,
   desiredSalaryMin: z.preprocess(
     (val) => (val === '' || val === null || val === undefined ? null : val),
-    z.coerce.number().int().min(0).nullable().optional(),
+    z.coerce.number().int().min(0, 'Salary cannot be negative.').nullable().optional(),
   ),
   desiredSalaryMax: z.preprocess(
     (val) => (val === '' || val === null || val === undefined ? null : val),
-    z.coerce.number().int().min(0).nullable().optional(),
+    z.coerce.number().int().min(0, 'Salary cannot be negative.').nullable().optional(),
   ),
   desiredWorkMode: z.preprocess(
     (val) => (val === '' || val === null || val === undefined ? null : val),
@@ -38,7 +44,13 @@ export const ProfileSchema = z.object({
   careerInterest: z.string().max(140).optional().or(z.literal('')),
   availabilityHoursPerWeek: z.preprocess(
     (val) => (val === '' || val === null || val === undefined ? null : val),
-    z.coerce.number().int().min(1).max(80).nullable().optional(),
+    z.coerce
+      .number()
+      .int()
+      .min(1, 'Hours per week must be between 1 and 80.')
+      .max(80, 'Hours per week must be between 1 and 80.')
+      .nullable()
+      .optional(),
   ),
   learningGoal: z.string().max(500).optional().or(z.literal('')),
   // JOB_UC_05.0 profile-completeness: academic background, certifications, a
@@ -52,7 +64,7 @@ export const ProfileSchema = z.object({
     .optional()
     .or(z.literal(''))
     .refine((val) => !val || z.string().url().safeParse(val).success, {
-      message: 'Invalid portfolio URL',
+      message: 'Invalid portfolio URL (e.g. https://github.com/yourname)',
     }),
   skillSlugs: z.array(z.string()).max(MAX_PROFILE_SKILLS, PROFILE_SKILLS_LIMIT_MESSAGE).default([]),
 });

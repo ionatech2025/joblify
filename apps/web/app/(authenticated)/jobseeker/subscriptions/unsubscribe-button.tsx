@@ -36,7 +36,7 @@ export function UnsubscribeButton({
   }
 
   return (
-    <Button type="button" variant="ghost" size="sm" disabled={isPending} onClick={onClick}>
+    <Button type="button" variant="ghost" size="sm" loading={isPending} onClick={onClick}>
       Unsubscribe
     </Button>
   );

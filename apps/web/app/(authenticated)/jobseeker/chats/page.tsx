@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { requireRole } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { ArrowRight, MessagesSquare } from 'lucide-react';
+import { ConsoleWidth } from '@/app/components/console/shell';
 import { Breadcrumb, ControlPanel } from '@/app/components/console/control-panel';
 import { EmptyState } from '@/app/components/ui/empty-state';
 import { buttonClasses } from '@/app/components/ui/button';
@@ -31,7 +32,7 @@ export default async function JobseekerChatsPage() {
   return (
     <main>
       <ControlPanel breadcrumb={<Breadcrumb items={[{ label: 'Chats' }]} />} />
-      <div className="mx-auto w-full max-w-5xl px-3 py-3 sm:px-4">
+      <ConsoleWidth className="max-w-5xl py-3">
         <p className="text-fg-muted mb-2 text-[13px]">
           Companies add you here when you're shortlisted for a job or invited as a virtual intern.
         </p>
@@ -80,7 +81,7 @@ export default async function JobseekerChatsPage() {
             ))}
           </ul>
         )}
-      </div>
+      </ConsoleWidth>
     </main>
   );
 }

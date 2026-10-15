@@ -33,7 +33,7 @@ export function AddParticipantButton({
   }
 
   return (
-    <Button type="button" variant="secondary" size="sm" onClick={onClick} disabled={isPending}>
+    <Button type="button" variant="secondary" size="sm" onClick={onClick} loading={isPending}>
       Add
     </Button>
   );

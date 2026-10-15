@@ -4,14 +4,22 @@ import { vi, describe, it, expect, beforeEach } from 'vitest';
 // into a PDF, then stores it through the same Resume model as an upload so it
 // shows up in "My resumes" without any separate list UI.
 
-const m = vi.hoisted(() => ({
-  requireRole: vi.fn(),
-  profileFindUnique: vi.fn(),
-  resumeCreate: vi.fn(),
-  renderToBuffer: vi.fn(),
-  putStored: vi.fn(),
-  storeConfigured: vi.fn(),
-}));
+const m = vi.hoisted(() => {
+  const afterCallbacks: Array<() => unknown> = [];
+  return {
+    afterCallbacks,
+    after: vi.fn((fn: () => unknown) => {
+      afterCallbacks.push(fn);
+    }),
+    requireRole: vi.fn(),
+    profileFindUnique: vi.fn(),
+    resumeCreate: vi.fn(),
+    renderToBuffer: vi.fn(),
+    putStored: vi.fn(),
+    storeConfigured: vi.fn(),
+    runResumeParse: vi.fn(),
+  };
+});
 
 vi.mock('@/lib/auth', () => ({ requireRole: m.requireRole }));
 vi.mock('@/lib/db', () => ({ db: { jobSeekerProfile: { findUnique: m.profileFindUnique } } }));
@@ -20,6 +28,7 @@ vi.mock('@/lib/audit', () => ({
     fn({ resume: { create: m.resumeCreate } }),
 }));
 vi.mock('@/lib/storage/blob', () => ({
+  MAX_ACTIVE_RESUMES: 10,
   putStored: m.putStored,
   storeConfigured: m.storeConfigured,
   resumePathPrefix: (userId: string) => `resumes/${userId}/`,
@@ -33,11 +42,19 @@ vi.mock('@react-pdf/renderer', () => ({
   StyleSheet: { create: (styles: unknown) => styles },
 }));
 vi.mock('next/headers', () => ({ headers: async () => new Map() }));
+vi.mock('next/server', () => ({ after: m.after }));
+vi.mock('@/workflows/resume-parse.workflow', () => ({ runResumeParse: m.runResumeParse }));
+vi.mock('@/lib/observability/logger', () => ({ logger: { error: vi.fn() } }));
 
 import { generateResume } from '@/app/actions/generate-resume';
 
 beforeEach(() => {
   vi.clearAllMocks();
+  m.afterCallbacks.length = 0;
+  m.after.mockImplementation((fn: () => unknown) => {
+    m.afterCallbacks.push(fn);
+  });
+  m.runResumeParse.mockResolvedValue(undefined);
   m.requireRole.mockResolvedValue({
     id: 'seeker1',
     email: 'ada@example.com',
@@ -149,5 +166,13 @@ describe('generateResume', () => {
       education: null,
       certifications: null,
     });
+  });
+
+  it('schedules runResumeParse via after() so the generated resume is embedded for matches', async () => {
+    await generateResume();
+    expect(m.after).toHaveBeenCalledTimes(1);
+    expect(m.runResumeParse).not.toHaveBeenCalled();
+    for (const cb of m.afterCallbacks.splice(0)) await cb();
+    expect(m.runResumeParse).toHaveBeenCalledWith({ resumeId: 'resume1' });
   });
 });

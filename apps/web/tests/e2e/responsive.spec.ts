@@ -97,6 +97,7 @@ const COMPANY_ROUTES = [
   '/company/jobs',
   '/company/jobs/new',
   '/company/jobseekers',
+  '/company/notifications',
   '/company/settings',
   '/company/chats',
 ];

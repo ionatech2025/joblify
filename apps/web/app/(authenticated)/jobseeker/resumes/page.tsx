@@ -2,7 +2,9 @@ import Link from 'next/link';
 import { requireRole } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { ResumeManager } from './resume-manager';
+import { ConsoleWidth } from '@/app/components/console/shell';
 import { Breadcrumb, ControlPanel } from '@/app/components/console/control-panel';
+import { buttonClasses } from '@/app/components/ui/button';
 
 export const metadata = { title: 'My resumes' };
 
@@ -30,8 +32,18 @@ export default async function ResumesPage() {
 
   return (
     <main>
-      <ControlPanel breadcrumb={<Breadcrumb items={[{ label: 'Resumes' }]} />} />
-      <div className="mx-auto w-full max-w-5xl px-3 py-3 sm:px-4">
+      <ControlPanel
+        breadcrumb={<Breadcrumb items={[{ label: 'Resumes' }]} />}
+        actions={
+          <Link
+            href="/jobseeker/resumes/builder"
+            className={`${buttonClasses('secondary', 'sm')} no-underline`}
+          >
+            Build from profile
+          </Link>
+        }
+      />
+      <ConsoleWidth className="max-w-5xl py-3">
         <p className="text-fg-muted mb-2 text-[13px]">
           Upload a PDF or Word (.docx) resume. We parse it to autofill applications and score your
           matches.
@@ -44,7 +56,7 @@ export default async function ResumesPage() {
           .
         </p>
         <ResumeManager userId={user.id} initialResumes={resumes} />
-      </div>
+      </ConsoleWidth>
     </main>
   );
 }

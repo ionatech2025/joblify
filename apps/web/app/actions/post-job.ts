@@ -249,9 +249,10 @@ export async function updateJob(
   const parsed = result.data;
 
   // Publishing (or re-publishing) is gated on verification exactly like
-  // creation; saving as a draft / unpublishing is always allowed. Without this a
+  // creation; saving as a draft / closing / unpublishing is always allowed. Without this a
   // company that lost its verification could keep editing live postings.
-  if (parsed.publish) {
+  const isPublishing = parsed.publish && !parsed.closed;
+  if (isPublishing) {
     const blocked = await verificationBlock(user.id);
     if (blocked) return fail(blocked);
   }
@@ -330,8 +331,8 @@ export async function updateJob(
           applicationDeadline: parsed.applicationDeadline
             ? new Date(parsed.applicationDeadline)
             : null,
-          status: parsed.publish ? 'PUBLISHED' : 'DRAFT',
-          publishedAt: parsed.publish ? (existing.publishedAt ?? new Date()) : existing.publishedAt,
+          status: parsed.closed ? 'CLOSED' : parsed.publish ? 'PUBLISHED' : 'DRAFT',
+          publishedAt: isPublishing ? (existing.publishedAt ?? new Date()) : existing.publishedAt,
           ...(parsed.createChatArea && !existing.chatArea
             ? {
                 chatArea: {
@@ -371,7 +372,7 @@ export async function updateJob(
       logger.warn({ err, jobId }, 'Algolia reindex failed (non-blocking)');
       Sentry.captureException(err, { tags: { jobId } });
     }
-    if (parsed.publish) {
+    if (isPublishing) {
       try {
         await embedJobPost(jobId, { force: jdTextChanged });
       } catch (err) {

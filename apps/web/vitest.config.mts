@@ -25,16 +25,16 @@ export default defineConfig({
       // most of which is JSX that only the (self-skipping) Playwright suites
       // reach. Judge a change by the delta, not the number.
       thresholds: {
-        statements: 46,
-        branches: 42,
-        functions: 33,
-        lines: 46,
+        statements: 50,
+        branches: 46,
+        functions: 36,
+        lines: 50,
       },
     },
   },
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, '.'),
+      '@': path.resolve(import.meta.dirname, '.'),
     },
   },
 });

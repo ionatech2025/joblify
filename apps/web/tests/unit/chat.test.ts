@@ -84,6 +84,7 @@ import {
   openJobChatArea,
   openVirtualInternChatArea,
   addChatParticipant,
+  addVirtualInternToChat,
   sendChatMessage,
 } from '@/app/actions/chat';
 
@@ -216,6 +217,20 @@ describe('addChatParticipant', () => {
     expect(notif.kind).toBe('CHAT_AREA_ADDED');
     expect(notif.payload.chatAreaId).toBe('area1');
     expect(m.updateTag).toHaveBeenCalledWith('user:seeker1:notifications');
+  });
+
+  it('addVirtualInternToChat enforces Pro before creating an area and forwards the ActionResult', async () => {
+    m.requireRole.mockResolvedValue({ id: 'company1', plan: 'FREE' });
+    await expect(addVirtualInternToChat('seeker1')).rejects.toThrow('UPGRADE_REQUIRED');
+    expect(m.areaCreate).not.toHaveBeenCalled();
+
+    m.requireRole.mockResolvedValue({ id: 'company1', plan: 'PRO' });
+    m.areaFindFirst.mockResolvedValue({ id: 'vi1', kind: 'VIRTUAL_INTERN', title: 'VI' });
+    m.userFindFirst.mockResolvedValue(null);
+    expect(await addVirtualInternToChat('seeker1')).toMatchObject({
+      ok: false,
+      error: expect.stringMatching('Job seeker not found'),
+    });
   });
 });
 

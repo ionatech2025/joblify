@@ -20,5 +20,6 @@ export async function GET() {
       readAt: n.readAt?.toISOString() ?? null,
       createdAt: n.createdAt.toISOString(),
     })),
+    { headers: { 'Cache-Control': 'private, no-store' } },
   );
 }

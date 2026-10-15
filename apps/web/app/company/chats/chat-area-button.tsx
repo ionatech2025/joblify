@@ -31,14 +31,14 @@ export function ChatAreaButton(props: Props) {
 
   if (props.kind === 'virtual-intern') {
     return (
-      <Button type="button" onClick={onClick} disabled={isPending}>
+      <Button type="button" onClick={onClick} loading={isPending}>
         Create virtual-intern chat area
       </Button>
     );
   }
 
   return (
-    <Button type="button" variant="secondary" size="sm" onClick={onClick} disabled={isPending}>
+    <Button type="button" variant="secondary" size="sm" onClick={onClick} loading={isPending}>
       Create chat area
     </Button>
   );

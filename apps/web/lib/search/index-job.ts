@@ -29,7 +29,8 @@ export async function syncJobToAlgolia(jobId: string): Promise<void> {
     },
   });
 
-  if (!job || job.deletedAt || job.status !== 'PUBLISHED') {
+  const expired = job?.applicationDeadline != null && job.applicationDeadline < new Date();
+  if (!job || job.deletedAt || job.status !== 'PUBLISHED' || expired) {
     await deleteJob(jobId);
     return;
   }

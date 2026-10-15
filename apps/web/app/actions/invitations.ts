@@ -48,8 +48,9 @@ export async function inviteJobseeker(
     select: { companyName: true, verificationStatus: true, user: { select: { deletedAt: true } } },
   });
   if (
-    profile?.user?.deletedAt ||
-    (profile?.verificationStatus && profile.verificationStatus !== 'VERIFIED')
+    !profile ||
+    profile.user?.deletedAt ||
+    (profile.verificationStatus && profile.verificationStatus !== 'VERIFIED')
   ) {
     return fail('Only verified companies can send invitations.');
   }

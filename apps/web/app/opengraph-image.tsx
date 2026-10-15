@@ -38,7 +38,7 @@ export default function Image() {
             width: 16,
             height: 16,
             borderRadius: 999,
-            background: '#818cf8',
+            background: '#d9aecb',
           }}
         />
         <div
@@ -48,7 +48,7 @@ export default function Image() {
             fontWeight: 700,
             letterSpacing: '0.2em',
             textTransform: 'uppercase',
-            color: '#818cf8',
+            color: '#d9aecb',
           }}
         >
           Joblify

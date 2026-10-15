@@ -53,7 +53,7 @@ export function SubscribeToggle({
         type="button"
         variant="secondary"
         onClick={onClick}
-        disabled={isPending}
+        loading={isPending}
         icon={<CheckCircle2 aria-hidden className="size-4 text-success" />}
         iconPosition="end"
       >
@@ -63,7 +63,7 @@ export function SubscribeToggle({
   }
 
   return (
-    <Button type="button" onClick={onClick} disabled={isPending}>
+    <Button type="button" onClick={onClick} loading={isPending}>
       Subscribe as {typeLabel}
     </Button>
   );

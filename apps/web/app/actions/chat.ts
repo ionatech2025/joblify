@@ -138,6 +138,14 @@ export async function addChatParticipant(
   });
   if (!area) throw new AuthError('FORBIDDEN');
 
+  const profile = await db.companyProfile.findUnique({
+    where: { userId: user.id },
+    select: { verificationStatus: true },
+  });
+  if (profile?.verificationStatus && profile.verificationStatus !== 'VERIFIED') {
+    return fail('Only verified companies can add participants to chat.');
+  }
+
   const seeker = await db.user.findFirst({
     where: { id: jobSeekerUserId, userType: 'JOB_SEEKER', deletedAt: null },
     select: { id: true, jobSeekerProfile: { select: { profileType: true } } },
@@ -182,10 +190,11 @@ export async function addChatParticipant(
 
 // Directory shortcut: put a virtual intern straight into the company's VI
 // area, creating the area on first use.
-export async function addVirtualInternToChat(jobSeekerUserId: string): Promise<void> {
+export async function addVirtualInternToChat(jobSeekerUserId: string): Promise<ActionResult> {
   const user = await requireRole('COMPANY');
+  assertPlan(user, 'PRO');
   const area = await ensureVirtualInternChatArea(user.id);
-  await addChatParticipant(area.id, jobSeekerUserId);
+  return addChatParticipant(area.id, jobSeekerUserId);
 }
 
 const MessageSchema = z.object({

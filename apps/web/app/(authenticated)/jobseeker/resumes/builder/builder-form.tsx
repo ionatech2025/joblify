@@ -9,6 +9,7 @@ import { saveWorkExperiences } from '@/app/actions/work-experience';
 import { generateResume } from '@/app/actions/generate-resume';
 import { Field, Input, Textarea } from '@/app/components/ui/form';
 import { Button } from '@/app/components/ui/button';
+import { FormSheet, SheetTitle } from '@/app/components/console/sheet';
 import { toast } from '@/lib/stores/ui';
 import { endsBeforeStart } from '@/lib/resume/date-order';
 
@@ -89,31 +90,38 @@ export function ResumeBuilderForm({ initialEntries }: { initialEntries: FormValu
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <p className="m-0 text-sm text-fg-muted">
-        Your headline, bio, skills, education, and certifications come from{' '}
-        <Link href="/jobseeker/profile" className="text-brand underline">
-          your profile
-        </Link>
-        . Add work history below, then generate a PDF.
-      </p>
+    <FormSheet>
+      <SheetTitle
+        title="Resume builder"
+        subtitle={
+          <>
+            Your headline, bio, skills, education, and certifications come from{' '}
+            <Link href="/jobseeker/profile" className="text-brand underline">
+              your profile
+            </Link>
+            . Add work history below, then generate a PDF.
+          </>
+        }
+      />
 
-      <form onSubmit={handleSubmit(onSave)} className="flex flex-col gap-4">
+      <form onSubmit={handleSubmit(onSave)} noValidate className="flex flex-col gap-4">
         {fields.map((field, index) => (
           <div
             key={field.id}
             className="flex flex-col gap-3 rounded-card border border-border bg-surface p-4 shadow-soft"
           >
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <Field label="Company" error={errors.entries?.[index]?.company?.message}>
+              <Field label="Company" required error={errors.entries?.[index]?.company?.message}>
                 <Input
+                  defaultValue={field.company}
                   {...register(`entries.${index}.company`)}
                   autoComplete="organization"
                   placeholder="Acme Inc."
                 />
               </Field>
-              <Field label="Title" error={errors.entries?.[index]?.title?.message}>
+              <Field label="Title" required error={errors.entries?.[index]?.title?.message}>
                 <Input
+                  defaultValue={field.title}
                   {...register(`entries.${index}.title`)}
                   autoComplete="organization-title"
                   placeholder="Software Engineer"
@@ -127,6 +135,7 @@ export function ResumeBuilderForm({ initialEntries }: { initialEntries: FormValu
                 error={errors.entries?.[index]?.startDate?.message}
               >
                 <Input
+                  defaultValue={field.startDate}
                   {...register(`entries.${index}.startDate`)}
                   autoComplete="off"
                   placeholder="Jan 2022"
@@ -138,6 +147,7 @@ export function ResumeBuilderForm({ initialEntries }: { initialEntries: FormValu
                 error={errors.entries?.[index]?.endDate?.message}
               >
                 <Input
+                  defaultValue={field.endDate}
                   {...register(`entries.${index}.endDate`)}
                   autoComplete="off"
                   placeholder="Present"
@@ -146,6 +156,7 @@ export function ResumeBuilderForm({ initialEntries }: { initialEntries: FormValu
             </div>
             <Field label="Description" error={errors.entries?.[index]?.description?.message}>
               <Textarea
+                defaultValue={field.description}
                 {...register(`entries.${index}.description`)}
                 rows={3}
                 placeholder="What did you do?"
@@ -173,17 +184,22 @@ export function ResumeBuilderForm({ initialEntries }: { initialEntries: FormValu
           + Add work experience
         </Button>
 
-        {error && <p className="m-0 text-danger">{error}</p>}
+        {error && (
+          <p role="alert" className="m-0 text-danger">
+            {error}
+          </p>
+        )}
         {saved && <p className="m-0 text-success">Saved.</p>}
 
         <div className="flex flex-wrap items-center gap-3">
-          <Button type="submit" disabled={isSaving || !isDirty}>
+          <Button type="submit" loading={isSaving} disabled={!isDirty}>
             {isSaving ? 'Saving…' : 'Save work experience'}
           </Button>
           <Button
             type="button"
             variant="secondary"
-            disabled={isGenerating || isDirty}
+            loading={isGenerating}
+            disabled={isDirty}
             title={isDirty ? 'Save your changes first' : undefined}
             onClick={onGenerate}
           >
@@ -205,6 +221,6 @@ export function ResumeBuilderForm({ initialEntries }: { initialEntries: FormValu
           </p>
         )}
       </form>
-    </div>
+    </FormSheet>
   );
 }

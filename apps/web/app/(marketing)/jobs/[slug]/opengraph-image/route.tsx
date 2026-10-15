@@ -1,5 +1,6 @@
 import { ImageResponse } from 'next/og';
 import { getJobBySlug } from '../page';
+import { formatSalary } from '@/lib/ui/salary';
 
 // Node.js runtime (not edge, unlike the root default): this needs Prisma,
 // which this app runs on Node everywhere else.
@@ -29,10 +30,14 @@ export async function GET(_request: Request, { params }: { params: Params }) {
   if (workModeLabel && job?.location?.trim().toLowerCase() !== workModeLabel.toLowerCase()) {
     meta.push(workModeLabel);
   }
-  if (job?.salaryMin && job?.salaryMax) {
-    meta.push(
-      `${job.salaryCurrency} ${job.salaryMin.toLocaleString('en-US')}–${job.salaryMax.toLocaleString('en-US')}`,
-    );
+  if (job) {
+    const pay = formatSalary({
+      min: job.salaryMin,
+      max: job.salaryMax,
+      currency: job.salaryCurrency,
+      period: job.salaryPeriod,
+    });
+    if (pay) meta.push(pay);
   }
 
   return new ImageResponse(
@@ -55,7 +60,7 @@ export async function GET(_request: Request, { params }: { params: Params }) {
           fontWeight: 700,
           letterSpacing: '0.2em',
           textTransform: 'uppercase',
-          color: '#818cf8',
+          color: '#d9aecb',
         }}
       >
         Joblify
