@@ -40,6 +40,7 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return; // Clerk / Algolia / analytics
   if (url.pathname.startsWith('/api/')) return; // never cache API responses
+  if (url.searchParams.has('__clerk_handshake')) return; // never intercept Clerk auth handshakes
 
   // Immutable hashed build assets → cache-first.
   if (url.pathname.startsWith('/_next/static/')) {

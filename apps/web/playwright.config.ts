@@ -59,6 +59,9 @@ export default defineConfig({
   reporter: process.env.CI ? [['html'], ['github']] : 'list',
   use: {
     baseURL,
+    // The service worker intercepts navigations and interferes with Clerk's
+    // dev-instance 307 handshake redirects and axe-core page analysis.
+    serviceWorkers: 'block',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     ...(loopbackTarget ? { storageState: anonClerkState } : {}),

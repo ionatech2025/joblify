@@ -2,7 +2,7 @@ import { setupClerkTestingToken } from '@clerk/testing/playwright';
 import { clerkSetupWithRetry } from './clerk-setup';
 import { test, expect, type Page } from '@playwright/test';
 import { STORAGE } from './storage-paths';
-import { skipUnlessCompanyVerified } from './company-state';
+import { refreshClerkSession, skipUnlessCompanyVerified } from './company-state';
 
 /**
  * Console-register regression — locks the Odoo-enterprise back office.
@@ -93,6 +93,7 @@ test.describe('console register', () => {
 
   test('list view sorts through the URL and states its own total', async ({ page }) => {
     await page.goto('/company/jobs');
+    await refreshClerkSession(page);
     const table = page.getByRole('table', { name: /job posts/i });
     await expect(table).toBeVisible();
 
@@ -111,6 +112,7 @@ test.describe('console register', () => {
 
   test('status filter applies as a removable facet', async ({ page }) => {
     await page.goto('/company/jobs');
+    await refreshClerkSession(page);
     await page
       .getByRole('button', { name: /status/i })
       .first()
