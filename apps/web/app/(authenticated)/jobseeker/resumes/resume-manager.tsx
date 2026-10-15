@@ -125,11 +125,15 @@ export function ResumeManager({
         className="hidden"
         aria-hidden="true"
       />
-      <Button type="button" onClick={() => inputRef.current?.click()} disabled={busy}>
+      <Button type="button" onClick={() => inputRef.current?.click()} loading={busy}>
         {busy ? 'Uploading…' : 'Upload a resume'}
       </Button>
 
-      {error && <p className="mt-3 text-danger">{error}</p>}
+      {error && (
+        <p role="alert" className="mt-3 text-danger">
+          {error}
+        </p>
+      )}
 
       {resumes.length === 0 ? (
         <EmptyState

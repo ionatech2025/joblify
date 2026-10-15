@@ -59,7 +59,7 @@ export function Header({ auth, mobileUser }: { auth?: ReactNode; mobileUser?: Re
         </Link>
 
         {/* Desktop nav */}
-        <nav className="hidden items-center gap-6 text-sm sm:flex">
+        <nav aria-label="Main" className="hidden items-center gap-6 text-sm sm:flex">
           {NAV.map((item) => (
             <Link key={item.href} href={item.href} className={navLink}>
               {item.label}
@@ -87,9 +87,12 @@ export function Header({ auth, mobileUser }: { auth?: ReactNode; mobileUser?: Re
         <div className="flex items-center gap-2 sm:hidden">
           <button
             type="button"
-            onClick={() => setPaletteOpen(true)}
+            onClick={() => {
+              close();
+              setPaletteOpen(true);
+            }}
             aria-label="Search"
-            className="text-fg-muted hover:text-fg border-border grid size-[36px] place-items-center rounded-full border transition-colors"
+            className="text-fg-muted hover:bg-surface-sunken hover:text-fg border-border focus-visible:ring-brand focus-visible:ring-offset-canvas grid size-[36px] place-items-center rounded-full border transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
           >
             <Search aria-hidden className="size-4" />
           </button>
@@ -100,7 +103,7 @@ export function Header({ auth, mobileUser }: { auth?: ReactNode; mobileUser?: Re
             onClick={() => setOpen(!open)}
             aria-label="Toggle menu"
             aria-expanded={open}
-            className="border-border text-fg-muted grid size-[36px] place-items-center rounded-full border"
+            className="border-border text-fg-muted hover:bg-surface-sunken hover:text-fg focus-visible:ring-brand focus-visible:ring-offset-canvas grid size-[36px] place-items-center rounded-full border transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
           >
             {open ? <X aria-hidden className="size-4" /> : <Menu aria-hidden className="size-4" />}
           </button>
@@ -109,7 +112,7 @@ export function Header({ auth, mobileUser }: { auth?: ReactNode; mobileUser?: Re
 
       {/* Mobile menu panel */}
       {open && (
-        <nav className="glass border-border border-t sm:hidden">
+        <nav aria-label="Mobile" className="glass border-border border-t sm:hidden">
           <Container className="flex flex-col py-2 text-sm">
             {NAV.map((item) => (
               <Link

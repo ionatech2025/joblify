@@ -1,5 +1,55 @@
 # Changelog
 
+## 2026-10-15 — Flow & UI/UX completeness, consistency, reliability, and performance pass
+
+- **Pre-hydration form values (`defaultValue` / `defaultChecked`):** `CompanySettingsForm`,
+  `JobFormFields` (`EditJobForm` and `PostJobForm`), `ProfileForm`, `EmployerSetupForm`, and
+  `ResumeBuilderForm` emit their saved values directly into the server HTML alongside `register()`,
+  closing the live-verification finding where uncontrolled RHF inputs rendered blank until hydration.
+- **Console register parity (`FormSheet`, `DirtyBar`, `ChatThreadSkeleton`, `ConsoleWidth`):**
+  - Upgraded `ProfileForm`, `EmployerSetupForm`, and `ResumeBuilderForm` to `<FormSheet>` +
+    `<SheetTitle>` + `<SheetGroups>` + `<SheetField>` + `<DirtyBar>` so every form matches its
+    `<ConsoleSheetSkeleton />` fallback and carries a sticky save/discard bar with `beforeunload`
+    protection.
+  - Wired `<ChatThreadSkeleton />` into `/company/chats/[id]/loading.tsx` and
+    `/jobseeker/chats/[id]/loading.tsx` (replacing `<ConsoleSheetSkeleton />` to eliminate layout
+    shift when the thread streams in).
+  - Standardised `<ConsoleWidth>` and `<ControlPanel actions>` across `/jobseeker/*`,
+    `/company/chats`, `/employer-setup`, and `/account/*`.
+  - Added `/company/notifications` and a `Notifications` module link in `/company` so employers can
+    view and act on `NEW_APPLICANT`, `NEW_SUBSCRIBER`, `INVITATION_RESPONDED`, and moderation
+    notifications.
+  - Added `address`, `phone`, `contactPersonName`, and `contactPersonPosition` fields to
+    `CompanySettingsForm` (and `address`/`phone` to `EmployerSetupForm`) so companies can populate
+    the location field that `/companies` filters on.
+- **Console `Notebook` ARIA integrity & validation tab switching:** all tab panels stay mounted in
+  the DOM (`hidden` when inactive) so every tab button's `aria-controls` always resolves to a real
+  element and background form fields keep their refs/values. When a validation error lands on an
+  inactive tab (e.g. `Description` or `Requirements` on the job form), `Notebook` automatically
+  switches to the first tab with `hasError`.
+- **Job lifecycle & expired-job filtering:**
+  - `EditJobForm` now passes `{ force: true }` to `archiveJob` inside `unwrap()` after confirmation
+    so deleting a job with active applications commits and surfaces any error inline.
+  - Added interactive `CLOSED` stage support to `JobStatusbar` and `updateJob` when editing a role.
+  - Excluded expired jobs (`applicationDeadline < now`) from `getFeaturedJobs`, company profile open
+    positions, the Postgres search fallback, and Algolia sync (`syncJobToAlgolia`).
+- **Outreach, AI & API hardening:**
+  - `addVirtualInternToChat` checks `assertPlan(user, 'PRO')` before creating an area and returns
+    `ActionResult`; `shareJobWithJobseeker` and `addChatParticipant` verify company status.
+  - `generateResume` enforces `MAX_ACTIVE_RESUMES` and schedules `runResumeParse` via `after()` so
+    generated PDFs immediately compute their 1536-dim pgvector embedding.
+  - `BioCoachPanel` reads any unsaved draft bio from `useProfileDraftStore` before falling back to
+    the persisted `currentBio`.
+  - Added `Cache-Control: private, no-store` to `/api/v1/applications` and `/api/v1/notifications`.
+- **Contrast, focus retention, & token consistency:** fixed `ChatThread` own-message metadata
+  contrast (`text-ink-fg/90` on `--ink` plum); converted `DirtyBar` and action buttons to
+  focus-preserving `loading`/`aria-disabled` states; labelled header `<nav>` landmarks (`Main` /
+  `Mobile`); aligned `global-error.tsx` and OpenGraph cards with the plum `--brand` token.
+- **Testing & tooling:** renamed `vitest.config.ts` → `vitest.config.mts` with
+  `import.meta.dirname` (eliminating Vite 8's native CJS warning); added unit suites for
+  `saved-jobs.ts`, `saved-searches.ts`, and API routes (`applications`, `notifications`, `consent`,
+  `uploads/sign`), raising coverage past 50% and ratcheting `vitest.config.mts` to `50/46/36/50`.
+
 ## 2026-10-11 — The company e2e specs run for the first time (and the harness catches up)
 
 With the E2E company approved, the specs that had always self-skipped ran against production:

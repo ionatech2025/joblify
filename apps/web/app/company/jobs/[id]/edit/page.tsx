@@ -59,6 +59,7 @@ export default async function EditJobPage({
       ? job.applicationDeadline.toISOString().slice(0, 10)
       : '',
     publish: job.status === 'PUBLISHED',
+    closed: job.status === 'CLOSED',
     createChatArea: !!job.chatArea,
   };
 

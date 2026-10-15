@@ -82,7 +82,11 @@ export function CompanySettingsForm({
         router.refresh();
         toast.success('Company profile saved');
       } catch (err) {
-        const message = err instanceof Error ? err.message : 'Could not save. Try again.';
+        let message = err instanceof Error ? err.message : 'Could not save. Try again.';
+        if (message.includes('Server Components render') || message.includes('digest')) {
+          message =
+            'A company with this name may already be registered, or your changes could not be saved.';
+        }
         setError(message);
         toast.error("Couldn't save", message);
       }
@@ -165,10 +169,14 @@ export function CompanySettingsForm({
         <SheetGroups>
           <SheetGroup title="Identity">
             <SheetField label="Company name" error={errors.companyName?.message} required>
-              <Input {...register('companyName')} autoComplete="organization" />
+              <Input
+                defaultValue={initial.companyName}
+                {...register('companyName')}
+                autoComplete="organization"
+              />
             </SheetField>
             <SheetField label="Industry">
-              <Select {...register('industry')}>
+              <Select defaultValue={initial.industry} {...register('industry')}>
                 {INDUSTRY_OPTIONS.map((i) => (
                   <option key={i} value={i}>
                     {titleCase(i)}
@@ -177,7 +185,7 @@ export function CompanySettingsForm({
               </Select>
             </SheetField>
             <SheetField label="Company size">
-              <Select {...register('companySize')}>
+              <Select defaultValue={initial.companySize} {...register('companySize')}>
                 {SIZE_VALUES.map((s) => (
                   <option key={s} value={s}>
                     {SIZE_LABELS[s]}
@@ -185,12 +193,46 @@ export function CompanySettingsForm({
                 ))}
               </Select>
             </SheetField>
+            <SheetField label="Address / location" error={errors.address?.message}>
+              <Input
+                defaultValue={initial.address ?? ''}
+                {...register('address')}
+                autoComplete="street-address"
+                placeholder="Kampala, Uganda"
+              />
+            </SheetField>
           </SheetGroup>
 
-          <SheetGroup title="Links">
+          <SheetGroup title="Contact & links">
+            <SheetField label="Contact person" error={errors.contactPersonName?.message}>
+              <Input
+                defaultValue={initial.contactPersonName ?? ''}
+                {...register('contactPersonName')}
+                autoComplete="name"
+                placeholder="Jane Doe"
+              />
+            </SheetField>
+            <SheetField label="Contact role" error={errors.contactPersonPosition?.message}>
+              <Input
+                defaultValue={initial.contactPersonPosition ?? ''}
+                {...register('contactPersonPosition')}
+                autoComplete="organization-title"
+                placeholder="Head of Talent"
+              />
+            </SheetField>
+            <SheetField label="Phone" error={errors.phone?.message}>
+              <Input
+                type="tel"
+                defaultValue={initial.phone ?? ''}
+                {...register('phone')}
+                autoComplete="tel"
+                placeholder="+256 743 535 678"
+              />
+            </SheetField>
             <SheetField label="Website" error={errors.website?.message}>
               <Input
                 type="url"
+                defaultValue={initial.website ?? ''}
                 {...register('website')}
                 autoComplete="url"
                 placeholder="https://acme.com"
@@ -199,6 +241,7 @@ export function CompanySettingsForm({
             <SheetField label="LinkedIn" error={errors.linkedin?.message}>
               <Input
                 type="url"
+                defaultValue={initial.linkedin ?? ''}
                 {...register('linkedin')}
                 placeholder="https://linkedin.com/company/acme"
               />
@@ -215,7 +258,7 @@ export function CompanySettingsForm({
               error={errors.description?.message}
               wide
             >
-              <Textarea {...register('description')} rows={6} />
+              <Textarea defaultValue={initial.description} {...register('description')} rows={6} />
             </SheetField>
           </SheetGroup>
         </SheetGroups>

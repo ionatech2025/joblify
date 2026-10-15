@@ -1,13 +1,21 @@
 'use server';
 
+import { after } from 'next/server';
 import { headers } from 'next/headers';
 import { renderToBuffer } from '@react-pdf/renderer';
 import type { Prisma } from '@prisma/client';
 import { requireRole } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { withAudit } from '@/lib/audit';
-import { putStored, resumePathPrefix, storeConfigured } from '@/lib/storage/blob';
+import {
+  MAX_ACTIVE_RESUMES,
+  putStored,
+  resumePathPrefix,
+  storeConfigured,
+} from '@/lib/storage/blob';
 import { ResumeDocument, type ResumeData } from '@/lib/resume/resume-document';
+import { runResumeParse } from '@/workflows/resume-parse.workflow';
+import { logger } from '@/lib/observability/logger';
 import { clientIp } from '@/lib/security/client-ip';
 
 // JOB_UC_05.0: builds a resume PDF from the jobseeker's own profile data
@@ -17,6 +25,14 @@ import { clientIp } from '@/lib/security/client-ip';
 // alongside uploads in "My resumes" with no separate UI needed.
 export async function generateResume(): Promise<{ id: string }> {
   const user = await requireRole('JOB_SEEKER');
+
+  const maxResumes = MAX_ACTIVE_RESUMES ?? 10;
+  if (db.resume?.count) {
+    const active = await db.resume.count({ where: { userId: user.id, deletedAt: null } });
+    if (active >= maxResumes) {
+      throw new Error(`You can keep up to ${maxResumes} résumés. Delete one to generate another.`);
+    }
+  }
 
   const profile = await db.jobSeekerProfile.findUnique({
     where: { userId: user.id },
@@ -72,7 +88,7 @@ export async function generateResume(): Promise<{ id: string }> {
   const ip = clientIp(h);
   const ua = h.get('user-agent') ?? null;
 
-  return withAudit(
+  const created = await withAudit(
     { actorId: user.id, ip, ua },
     { action: 'RESUME_GENERATED', entity: 'resume', after: (r) => ({ id: r.id }) },
     (tx) =>
@@ -96,4 +112,16 @@ export async function generateResume(): Promise<{ id: string }> {
         select: { id: true },
       }),
   );
+
+  // Compute the embedding off the response path from the stored parsedJson so
+  // /jobseeker/matches and JD match badges work immediately after generation.
+  after(async () => {
+    try {
+      await runResumeParse({ resumeId: created.id });
+    } catch (err) {
+      logger.error({ err, resumeId: created.id }, 'resume-parse failed (post-generate)');
+    }
+  });
+
+  return created;
 }

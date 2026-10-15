@@ -1,5 +1,7 @@
+import { Suspense } from 'react';
 import { ConsoleShell } from '@/app/components/console/shell';
 import { ConsoleNav } from '@/app/components/console/nav';
+import { ConsoleNavSkeleton } from '@/app/components/console/skeleton';
 
 // /admin sits outside the (authenticated) group, so it establishes the console
 // register itself. The role gate stays on the page (requireRole('ADMIN')) —
@@ -8,11 +10,13 @@ import { ConsoleNav } from '@/app/components/console/nav';
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
     <ConsoleShell>
-      <ConsoleNav
-        module="Administration"
-        moduleHref="/admin"
-        links={[{ href: '/admin', label: 'Trust & safety', icon: 'ShieldCheck' }]}
-      />
+      <Suspense fallback={<ConsoleNavSkeleton />}>
+        <ConsoleNav
+          module="Administration"
+          moduleHref="/admin"
+          links={[{ href: '/admin', label: 'Trust & safety', icon: 'ShieldCheck' }]}
+        />
+      </Suspense>
       {children}
     </ConsoleShell>
   );

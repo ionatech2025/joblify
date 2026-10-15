@@ -9,8 +9,9 @@ import { PageHeader } from '@/app/components/ui/ambient';
 import { EmptyState } from '@/app/components/ui/empty-state';
 import { SkeletonList } from '@/app/components/ui/skeleton';
 import { IslandBoundary } from '@/app/components/island-boundary';
-import { buttonClasses } from '@/app/components/ui/button';
-import { INDUSTRY_OPTIONS, SIZE_VALUES } from '@/app/company/company-profile-schema';
+import { Button, buttonClasses } from '@/app/components/ui/button';
+import { Input, Select } from '@/app/components/ui/form';
+import { INDUSTRY_OPTIONS, SIZE_LABELS, SIZE_VALUES } from '@/app/company/company-profile-schema';
 import type { IndustryType, CompanySize, Prisma } from '@prisma/client';
 
 export const metadata = {
@@ -62,58 +63,112 @@ function sanitizeQuery(raw?: string): string {
   return raw.replace(/<[^>]*>?/gm, '').trim();
 }
 
+function titleCase(s: string): string {
+  return s.charAt(0) + s.slice(1).toLowerCase().replace(/_/g, ' ');
+}
+
 async function CompaniesList({ searchParams }: { searchParams: SearchParams }) {
   await connection();
   const params = await searchParams;
   const companies = await getCompaniesList(params);
-
-  if (companies.length === 0) {
-    return (
-      <EmptyState
-        icon={<Building2 />}
-        title="No companies found"
-        description="Try adjusting your search or filters to find verified companies."
-        action={
-          <Link href="/companies" className={`${buttonClasses('secondary')} no-underline`}>
-            Clear filters
-          </Link>
-        }
-      />
-    );
-  }
+  const hasFilters = Boolean(params.q || params.industry || params.size || params.location);
 
   return (
-    <ul className="grid list-none grid-cols-1 gap-4 p-0 sm:grid-cols-2 lg:grid-cols-3">
-      {companies.map((c) => (
-        <li key={c.id}>
-          <Link href={`/companies/${c.slug}`} className="block h-full no-underline">
-            <Card className="flex h-full items-start gap-4 transition-shadow hover:shadow-md">
-              {c.logoUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element -- remote company logo, fixed small size
-                <img
-                  src={c.logoUrl}
-                  alt=""
-                  width={48}
-                  height={48}
-                  className="size-12 shrink-0 rounded-control object-cover"
-                />
-              ) : (
-                <div
-                  className="size-12 shrink-0 rounded-control bg-surface-sunken"
-                  aria-hidden="true"
-                />
-              )}
-              <div className="min-w-0">
-                <h3 className="m-0 text-base font-semibold text-fg">{c.companyName}</h3>
-                <div className="mt-2">
-                  <Badge tone="neutral">{c.industry.replace('_', ' ')}</Badge>
-                </div>
-              </div>
-            </Card>
-          </Link>
-        </li>
-      ))}
-    </ul>
+    <>
+      <form
+        method="get"
+        action="/companies"
+        role="search"
+        aria-label="Filter companies"
+        className="mb-8 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto]"
+      >
+        <Input
+          type="search"
+          name="q"
+          defaultValue={params.q ?? ''}
+          placeholder="Company name"
+          aria-label="Search companies by name"
+        />
+        <Select name="industry" defaultValue={params.industry ?? ''} aria-label="Industry">
+          <option value="">All industries</option>
+          {INDUSTRY_OPTIONS.map((ind) => (
+            <option key={ind} value={ind}>
+              {titleCase(ind)}
+            </option>
+          ))}
+        </Select>
+        <Select name="size" defaultValue={params.size ?? ''} aria-label="Company size">
+          <option value="">Any size</option>
+          {SIZE_VALUES.map((s) => (
+            <option key={s} value={s}>
+              {SIZE_LABELS[s]} employees
+            </option>
+          ))}
+        </Select>
+        <Input
+          type="text"
+          name="location"
+          defaultValue={params.location ?? ''}
+          placeholder="City or country"
+          aria-label="Location"
+        />
+        <div className="flex flex-wrap items-center gap-2">
+          <Button type="submit" variant="secondary">
+            Filter
+          </Button>
+          {hasFilters && (
+            <Link href="/companies" className={`${buttonClasses('ghost', 'sm')} no-underline`}>
+              Clear
+            </Link>
+          )}
+        </div>
+      </form>
+
+      {companies.length === 0 ? (
+        <EmptyState
+          icon={<Building2 />}
+          title="No companies found"
+          description="Try adjusting your search or filters to find verified companies."
+          action={
+            <Link href="/companies" className={`${buttonClasses('secondary')} no-underline`}>
+              Clear filters
+            </Link>
+          }
+        />
+      ) : (
+        <ul className="grid list-none grid-cols-1 gap-4 p-0 sm:grid-cols-2 lg:grid-cols-3">
+          {companies.map((c) => (
+            <li key={c.id}>
+              <Link href={`/companies/${c.slug}`} className="block h-full no-underline">
+                <Card className="flex h-full items-start gap-4 transition-shadow hover:shadow-md">
+                  {c.logoUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element -- remote company logo, fixed small size
+                    <img
+                      src={c.logoUrl}
+                      alt=""
+                      width={48}
+                      height={48}
+                      className="size-12 shrink-0 rounded-control object-cover"
+                    />
+                  ) : (
+                    <div
+                      className="size-12 shrink-0 rounded-control bg-surface-sunken"
+                      aria-hidden="true"
+                    />
+                  )}
+                  <div className="min-w-0">
+                    <h3 className="m-0 text-base font-semibold text-fg">{c.companyName}</h3>
+                    <div className="mt-2">
+                      <Badge tone="neutral">{c.industry.replace('_', ' ')}</Badge>
+                    </div>
+                  </div>
+                </Card>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+    </>
   );
 }
 
@@ -124,19 +179,20 @@ export async function getCompaniesList(filters?: {
   location?: string;
 }) {
   const query = sanitizeQuery(filters?.q);
-  const validIndustry = filters?.industry && INDUSTRY_OPTIONS.includes(filters.industry as (typeof INDUSTRY_OPTIONS)[number])
-    ? (filters.industry as IndustryType)
-    : undefined;
-  const validSize = filters?.size && SIZE_VALUES.includes(filters.size as (typeof SIZE_VALUES)[number])
-    ? (filters.size as CompanySize)
-    : undefined;
+  const validIndustry =
+    filters?.industry &&
+    INDUSTRY_OPTIONS.includes(filters.industry as (typeof INDUSTRY_OPTIONS)[number])
+      ? (filters.industry as IndustryType)
+      : undefined;
+  const validSize =
+    filters?.size && SIZE_VALUES.includes(filters.size as (typeof SIZE_VALUES)[number])
+      ? (filters.size as CompanySize)
+      : undefined;
   const location = sanitizeQuery(filters?.location);
 
   const where: Prisma.CompanyProfileWhereInput = {
     verificationStatus: 'VERIFIED',
-    ...(query
-      ? { companyName: { contains: query, mode: 'insensitive' } }
-      : {}),
+    ...(query ? { companyName: { contains: query, mode: 'insensitive' } } : {}),
     ...(validIndustry ? { industry: validIndustry } : {}),
     ...(validSize ? { companySize: validSize } : {}),
     ...(location ? { address: { contains: location, mode: 'insensitive' } } : {}),

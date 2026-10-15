@@ -17,8 +17,8 @@ const CRITICAL_STYLES = `
   :root {
     --ge-bg: #ffffff;
     --ge-fg: #171717;
-    --ge-muted: #666666;
-    --ge-brand: #4f46e5;
+    --ge-muted: #525252;
+    --ge-brand: #714b67;
     --ge-ink: #0a0a0a;
     --ge-ink-fg: #ffffff;
     color-scheme: light;
@@ -28,7 +28,7 @@ const CRITICAL_STYLES = `
       --ge-bg: #08080a;
       --ge-fg: #f5f5f5;
       --ge-muted: #a3a3a3;
-      --ge-brand: #a5b4fc;
+      --ge-brand: #d9aecb;
       --ge-ink: #fafafa;
       --ge-ink-fg: #0a0a0a;
       color-scheme: dark;
@@ -99,12 +99,14 @@ export default function GlobalError({
         <style>{CRITICAL_STYLES}</style>
       </head>
       <body className="ge-body">
-        <p className="ge-eyebrow">Error</p>
-        <h1 className="ge-title">Something went wrong</h1>
-        <p className="ge-lede">The app hit a critical error. Try reloading.</p>
-        <button type="button" onClick={reset} className="ge-action">
-          Reload
-        </button>
+        <main>
+          <p className="ge-eyebrow">Error</p>
+          <h1 className="ge-title">Something went wrong</h1>
+          <p className="ge-lede">The app hit a critical error. Try reloading.</p>
+          <button type="button" onClick={reset} className="ge-action">
+            Reload
+          </button>
+        </main>
       </body>
     </html>
   );

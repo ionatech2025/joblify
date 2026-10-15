@@ -92,9 +92,12 @@ export function DirtyBar({
         <button
           type="submit"
           form={form}
-          disabled={saving}
+          aria-disabled={saving || undefined}
           aria-busy={saving || undefined}
-          className="bg-ink text-ink-fg hover:bg-ink-hover focus-visible:ring-brand focus-visible:ring-offset-canvas rounded-control inline-flex items-center gap-1.5 px-4 py-1.5 text-[13px] font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+          onClick={(e) => {
+            if (saving) e.preventDefault();
+          }}
+          className="bg-ink text-ink-fg hover:bg-ink-hover focus-visible:ring-brand focus-visible:ring-offset-canvas rounded-control inline-flex items-center gap-1.5 px-4 py-1.5 text-[13px] font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none aria-disabled:cursor-wait aria-disabled:opacity-70"
         >
           {saving ? (
             <Loader2 aria-hidden className="size-3.5 animate-spin" />

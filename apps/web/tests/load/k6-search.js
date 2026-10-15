@@ -46,7 +46,7 @@ const QUERIES = [
 
 const BASE = __ENV.BASE_URL ?? 'http://localhost:3000';
 
-export default function () {
+export default function searchLoadTest() {
   const q = QUERIES[Math.floor(Math.random() * QUERIES.length)];
   const res = http.get(`${BASE}/api/v1/jobs/search?q=${encodeURIComponent(q)}`);
   check(res, {

@@ -86,7 +86,7 @@ test.describe('design system', () => {
 
     // Hero: headline copy is unchanged; the eyebrow label sits above it.
     await expect(page.getByRole('heading', { name: /find your next role/i })).toBeVisible();
-    await expect(page.locator('.eyebrow').first()).toBeVisible();
+    await expect(page.locator('.eyebrow:visible').first()).toBeVisible();
 
     // Paired CTAs: solid-ink primary + white secondary, both pill-shaped.
     const browse = page.getByRole('link', { name: /browse jobs/i }).first();
@@ -97,7 +97,7 @@ test.describe('design system', () => {
     expect(parseFloat(browseRadius)).toBeGreaterThanOrEqual(24); // pill, not rounded-lg
 
     // Stat row renders real (seeded) counts — at least one non-zero value.
-    const statValues = page.locator('.display.text-3xl');
+    const statValues = page.locator('.display.text-3xl:visible');
     await expect(statValues.first()).toBeVisible();
 
     // Footer is the dark ink band. Computed color serialization differs by
@@ -146,7 +146,7 @@ test.describe('design system', () => {
     await page.goto('/');
     // Featured jobs are Prisma-backed ('use cache'), so they exist without
     // Algolia. Click through to the first JD.
-    const featured = page.locator('a[href^="/jobs/"]:not([href="/jobs"])').first();
+    const featured = page.locator('a[href^="/jobs/"]:not([href="/jobs"]):visible').first();
     await expect(featured).toBeVisible();
     await featured.click();
     await page.waitForURL(/\/jobs\/.+/);

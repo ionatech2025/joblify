@@ -1,9 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import {
-  addChatParticipant,
-  addVirtualInternToChat,
-  sendChatMessage,
-} from '@/app/actions/chat';
+import { addChatParticipant, addVirtualInternToChat, sendChatMessage } from '@/app/actions/chat';
 import { shareJobWithJobseeker } from '@/app/actions/share-job';
 import { APPLICATION_STATUS_LABEL } from '@/lib/ui/status';
 
@@ -121,7 +117,16 @@ describe('Phase 6: Premium & Future Features (Tests 121–133)', () => {
 
   // 121 Phase 6: Premium & Future Features JOB_UC_09.0 Track Job Application (Premium)
   it('121. A Premium Jobseeker opens My Applications and sees the real-time status of a submitted application', () => {
-    const statuses = ['SUBMITTED', 'VIEWED', 'SHORTLISTED', 'INTERVIEW_SCHEDULED', 'OFFER_EXTENDED', 'HIRED', 'REJECTED', 'WITHDRAWN'] as const;
+    const statuses = [
+      'SUBMITTED',
+      'VIEWED',
+      'SHORTLISTED',
+      'INTERVIEW_SCHEDULED',
+      'OFFER_EXTENDED',
+      'HIRED',
+      'REJECTED',
+      'WITHDRAWN',
+    ] as const;
     for (const st of statuses) {
       expect(APPLICATION_STATUS_LABEL[st]).toBeDefined();
     }
@@ -160,7 +165,8 @@ describe('Phase 6: Premium & Future Features (Tests 121–133)', () => {
   // 125 Phase 6: Premium & Future Features JOB_UC_13.0 Participate in Job-Specific Chat Area (Premium)
   it("125. An applicant with Accepted status on a job with an enabled chat area sees a 'Join Chat' button and can enter the chat room", () => {
     const canJoinChat = (status: string, hasChatArea: boolean) =>
-      ['SHORTLISTED', 'INTERVIEW_SCHEDULED', 'OFFER_EXTENDED', 'HIRED'].includes(status) && hasChatArea;
+      ['SHORTLISTED', 'INTERVIEW_SCHEDULED', 'OFFER_EXTENDED', 'HIRED'].includes(status) &&
+      hasChatArea;
     expect(canJoinChat('SHORTLISTED', true)).toBe(true);
     expect(canJoinChat('SUBMITTED', true)).toBe(false);
   });
@@ -220,13 +226,17 @@ describe('Phase 6: Premium & Future Features (Tests 121–133)', () => {
 
   // 130 Phase 6: Premium & Future Features JOB_UC_14.0 Take Action on Jobseeker Profile (Premium Outreach)
   it('130. A company adds a Jobseeker to its VI chat area from the profile view and the Jobseeker is enrolled successfully', async () => {
-    m.chatAreaFindFirst.mockResolvedValue({ id: 'vi-chat-1', kind: 'VIRTUAL_INTERN', title: 'VI Chat' });
+    m.chatAreaFindFirst.mockResolvedValue({
+      id: 'vi-chat-1',
+      kind: 'VIRTUAL_INTERN',
+      title: 'VI Chat',
+    });
     m.userFindFirst.mockResolvedValue({
       id: USER_ID,
       userType: 'JOB_SEEKER',
       jobSeekerProfile: { profileType: 'VIRTUAL_INTERN' },
     });
-    await expect(addVirtualInternToChat(USER_ID)).resolves.toBeUndefined();
+    await expect(addVirtualInternToChat(USER_ID)).resolves.toEqual({ ok: true, data: undefined });
     expect(m.chatPartCreate).toHaveBeenCalled();
   });
 

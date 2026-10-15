@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { requireRole } from '@/lib/auth';
 import { getRecommendedJobs } from '@/lib/search/semantic-match';
 import { Sparkles } from 'lucide-react';
+import { ConsoleWidth } from '@/app/components/console/shell';
 import { Breadcrumb, ControlPanel } from '@/app/components/console/control-panel';
 import { Badge } from '@/app/components/ui/badge';
 import { EmptyState } from '@/app/components/ui/empty-state';
@@ -16,8 +17,18 @@ export default async function JobMatchesPage() {
 
   return (
     <main>
-      <ControlPanel breadcrumb={<Breadcrumb items={[{ label: 'Matches' }]} />} />
-      <div className="mx-auto w-full max-w-5xl px-3 py-3 sm:px-4">
+      <ControlPanel
+        breadcrumb={<Breadcrumb items={[{ label: 'Matches' }]} />}
+        actions={
+          <Link
+            href="/jobseeker/resumes"
+            className={`${buttonClasses('secondary', 'sm')} no-underline`}
+          >
+            Manage resumes
+          </Link>
+        }
+      />
+      <ConsoleWidth className="max-w-5xl py-3">
         <p className="text-fg-muted mb-2 text-[13px]">
           Jobs ranked by how closely they match your resume — not just keyword overlap.
         </p>
@@ -34,13 +45,13 @@ export default async function JobMatchesPage() {
             }
           />
         ) : (
-          <ul className="mt-6 flex list-none flex-col gap-3 p-0">
+          <ul className="mt-4 flex list-none flex-col gap-2 p-0">
             {jobs.map((j) => (
               <li
                 key={j.id}
-                className="flex items-center justify-between gap-4 rounded-card border border-border bg-surface p-4 shadow-soft"
+                className="flex items-center justify-between gap-4 rounded-card border border-border bg-surface px-4 py-3"
               >
-                <Link href={`/jobs/${j.slug}`} className="min-w-0 text-fg no-underline">
+                <Link href={`/jobs/${j.slug}`} className="min-w-0 text-fg no-underline hover:underline">
                   <strong>{j.title}</strong>
                   <span className="text-fg-muted">
                     {' — '}
@@ -55,7 +66,7 @@ export default async function JobMatchesPage() {
             ))}
           </ul>
         )}
-      </div>
+      </ConsoleWidth>
     </main>
   );
 }

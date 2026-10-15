@@ -5,6 +5,7 @@ import { db } from '@/lib/db';
 import { ChatThreadLive } from '@/app/components/chat/chat-thread-live';
 import { ChatComposer } from '@/app/components/chat/chat-composer';
 import { LATEST_MESSAGES_TAKE, toChatMessages } from '@/app/components/chat/latest-messages';
+import { ConsoleWidth } from '@/app/components/console/shell';
 import { Breadcrumb, ControlPanel } from '@/app/components/console/control-panel';
 
 export const metadata = { title: 'Chat' };
@@ -57,7 +58,7 @@ export default async function JobseekerChatAreaPage({ params }: { params: Params
           />
         }
       />
-      <div className="mx-auto w-full max-w-4xl px-3 py-3 sm:px-4">
+      <ConsoleWidth className="max-w-4xl py-3">
         <p className="text-fg-muted mb-2 text-[13px]">
           {companyName}
           {area.jobPost ? (
@@ -74,7 +75,7 @@ export default async function JobseekerChatAreaPage({ params }: { params: Params
         </p>
         <ChatThreadLive chatAreaId={area.id} currentUserId={user.id} initial={initial} />
         <ChatComposer chatAreaId={area.id} />
-      </div>
+      </ConsoleWidth>
     </main>
   );
 }

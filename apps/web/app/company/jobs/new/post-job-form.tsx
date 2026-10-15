@@ -99,6 +99,7 @@ export function PostJobForm() {
           errors={errors}
           publish={publish}
           onPublishChange={(next) => setValue('publish', next, { shouldDirty: true })}
+          defaults={initialValues}
         />
 
         {error && (

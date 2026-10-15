@@ -174,26 +174,29 @@ export async function searchJobs(
         db.jobPost.count({ where }),
       ]);
 
-      const hits: JobSearchRecord[] = jobs.map((j) => ({
-        objectID: j.id,
-        slug: j.slug,
-        title: j.title,
-        description: j.description,
-        companyId: j.companyId,
-        companyName: j.company.companyProfile?.companyName ?? 'Company',
-        companyLogoUrl: j.company.companyProfile?.logoUrl ?? null,
-        industry: j.company.companyProfile?.industry ?? '',
-        jobType: j.jobType,
-        experienceLevel: j.experienceLevel,
-        workMode: j.workMode,
-        location: j.location,
-        salaryMin: j.salaryMin,
-        salaryMax: j.salaryMax,
-        salaryCurrency: j.salaryCurrency,
-        salaryPeriod: j.salaryPeriod,
-        publishedAt: (j.publishedAt ?? j.createdAt).getTime(),
-        skills: j.skills.map((s) => s.skill.slug),
-      }));
+      const now = new Date();
+      const hits: JobSearchRecord[] = jobs
+        .filter((j) => !(j.applicationDeadline && j.applicationDeadline < now))
+        .map((j) => ({
+          objectID: j.id,
+          slug: j.slug,
+          title: j.title,
+          description: j.description,
+          companyId: j.companyId,
+          companyName: j.company.companyProfile?.companyName ?? 'Company',
+          companyLogoUrl: j.company.companyProfile?.logoUrl ?? null,
+          industry: j.company.companyProfile?.industry ?? '',
+          jobType: j.jobType,
+          experienceLevel: j.experienceLevel,
+          workMode: j.workMode,
+          location: j.location,
+          salaryMin: j.salaryMin,
+          salaryMax: j.salaryMax,
+          salaryCurrency: j.salaryCurrency,
+          salaryPeriod: j.salaryPeriod,
+          publishedAt: (j.publishedAt ?? j.createdAt).getTime(),
+          skills: j.skills.map((s) => s.skill.slug),
+        }));
 
       return { hits, nbHits: total, page, nbPages: Math.ceil(total / HITS_PER_PAGE) };
     } catch {

@@ -77,9 +77,9 @@ export function SheetGroup({
   return (
     <section className={cn(wide && 'md:col-span-2', className)}>
       {title ? (
-        <h3 className="border-border text-fg mb-2.5 border-b pb-1 text-[13px] font-semibold">
+        <h2 className="border-border text-fg mb-2.5 border-b pb-1 text-[13px] font-semibold">
           {title}
-        </h3>
+        </h2>
       ) : null}
       <div className="flex flex-col gap-2.5">{children}</div>
     </section>

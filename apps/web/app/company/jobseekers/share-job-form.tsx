@@ -54,7 +54,8 @@ export function ShareJobForm({
         variant="secondary"
         size="sm"
         onClick={onShare}
-        disabled={isPending || !jobPostId}
+        loading={isPending}
+        disabled={!jobPostId}
       >
         Share
       </Button>

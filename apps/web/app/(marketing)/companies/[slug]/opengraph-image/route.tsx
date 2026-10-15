@@ -33,7 +33,7 @@ export async function GET(_request: Request, { params }: { params: Params }) {
           fontWeight: 700,
           letterSpacing: '0.2em',
           textTransform: 'uppercase',
-          color: '#818cf8',
+          color: '#d9aecb',
         }}
       >
         Joblify

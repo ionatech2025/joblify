@@ -45,8 +45,8 @@ export function ChatComposer({ chatAreaId }: { chatAreaId: string }) {
   }
 
   return (
-    <form action={formAction} className="mt-6 flex flex-col gap-3">
-      <Field label="Message">
+    <form action={formAction} noValidate className="mt-6 flex flex-col gap-3">
+      <Field label="Message" required>
         <Textarea
           name="body"
           rows={3}
@@ -76,7 +76,7 @@ export function ChatComposer({ chatAreaId }: { chatAreaId: string }) {
         </Field>
       </div>
       <div className="flex flex-wrap items-center gap-3">
-        <Button type="submit" disabled={isPending}>
+        <Button type="submit" loading={isPending}>
           {isPending ? 'Sending…' : 'Send'}
         </Button>
         {state && !state.ok && (

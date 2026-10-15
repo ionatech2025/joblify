@@ -12,8 +12,15 @@ import {
   SIZE_LABELS,
 } from '@/app/company/company-profile-schema';
 import { createCompanyProfile } from '@/app/actions/company';
-import { Field, Input, Select, Textarea } from '@/app/components/ui/form';
-import { Button } from '@/app/components/ui/button';
+import { Input, Select, Textarea } from '@/app/components/ui/form';
+import {
+  FormSheet,
+  SheetField,
+  SheetGroup,
+  SheetGroups,
+  SheetTitle,
+} from '@/app/components/console/sheet';
+import { DirtyBar } from '@/app/components/console/dirty-bar';
 import { useEmployerSetupDraftStore } from '@/lib/stores/employer-setup-draft';
 import { useFormDraft } from '@/lib/use-form-draft';
 import { toast } from '@/lib/stores/ui';
@@ -27,6 +34,8 @@ const initialValues: CompanyProfileInput = {
   industry: 'TECHNOLOGY',
   companySize: 'SIZE_1_10',
   description: '',
+  address: '',
+  phone: '',
   website: '',
   linkedin: '',
 };
@@ -35,20 +44,27 @@ export function EmployerSetupForm({ hasJobSeekerIdentity }: { hasJobSeekerIdenti
   const router = useRouter();
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [restoredDraft, setRestoredDraft] = useState(false);
   const clearDraft = useEmployerSetupDraftStore((s) => s.clear);
   const {
     register,
     handleSubmit,
     watch,
     reset,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<CompanyProfileInput>({
     resolver: zodResolver(CompanyProfileSchema),
     defaultValues: initialValues,
   });
 
   // Restore on mount, then persist on a debounce. See lib/use-form-draft.ts.
-  useFormDraft({ store: useEmployerSetupDraftStore, watch, reset, initial: initialValues });
+  useFormDraft({
+    store: useEmployerSetupDraftStore,
+    watch,
+    reset,
+    initial: initialValues,
+    onRestore: () => setRestoredDraft(true),
+  });
 
   function onSubmit(values: CompanyProfileInput) {
     // createCompanyProfile flips the account's userType to COMPANY (see
@@ -71,12 +87,17 @@ export function EmployerSetupForm({ hasJobSeekerIdentity }: { hasJobSeekerIdenti
       try {
         await createCompanyProfile(values);
         clearDraft();
+        setRestoredDraft(false);
         toast.success('Company created', "Let's post your first job.");
         router.push('/company/jobs');
         router.refresh();
       } catch (err) {
-        const message =
+        let message =
           err instanceof Error ? err.message : 'Could not create your company. Try again.';
+        if (message.includes('Server Components render') || message.includes('digest')) {
+          message =
+            'A company with this name may already be registered, or your details could not be saved.';
+        }
         setError(message);
         toast.error("Couldn't create your company", message);
       }
@@ -86,70 +107,116 @@ export function EmployerSetupForm({ hasJobSeekerIdentity }: { hasJobSeekerIdenti
   return (
     // noValidate: the schema owns validation and its messages (the browser's
     // own check ran first for type=url and showed a transient, unannounced bubble).
-    <form onSubmit={handleSubmit(onSubmit)} noValidate className="mt-6 flex flex-col gap-4">
-      {hasJobSeekerIdentity && (
-        <p className="text-warn bg-warn-subtle rounded-card border-warn/25 m-0 border px-4 py-3 text-sm">
-          You already have a jobseeker profile. Creating a company switches your account to an
-          employer — you&apos;ll lose access to your jobseeker profile, applications, and saved
-          jobs.
-        </p>
-      )}
-
-      <Field label="Company name" required error={errors.companyName?.message}>
-        <Input {...register('companyName')} autoComplete="organization" placeholder="Acme Inc." />
-      </Field>
-
-      <Field label="Industry">
-        <Select {...register('industry')}>
-          {INDUSTRY_OPTIONS.map((i) => (
-            <option key={i} value={i}>
-              {titleCase(i)}
-            </option>
-          ))}
-        </Select>
-      </Field>
-
-      <Field label="Company size">
-        <Select {...register('companySize')}>
-          {SIZE_VALUES.map((s) => (
-            <option key={s} value={s}>
-              {SIZE_LABELS[s]}
-            </option>
-          ))}
-        </Select>
-      </Field>
-
-      <Field
-        label="About the company"
-        required
-        hint="At least 20 characters: what you do and what it is like to work there."
-        error={errors.description?.message}
-      >
-        <Textarea
-          {...register('description')}
-          rows={5}
-          placeholder="What you do, your mission, and what it's like to work there."
+    <form onSubmit={handleSubmit(onSubmit)} noValidate>
+      <FormSheet>
+        <SheetTitle
+          title="Company profile"
+          subtitle="Create your company profile to start posting jobs and reviewing applicants."
         />
-      </Field>
 
-      <Field label="Website (optional)" error={errors.website?.message}>
-        <Input
-          type="url"
-          {...register('website')}
-          autoComplete="url"
-          placeholder="https://acme.com"
+        {hasJobSeekerIdentity && (
+          <p className="text-warn bg-warn-subtle rounded-card border-warn/25 m-0 mb-4 border px-4 py-3 text-sm">
+            You already have a jobseeker profile. Creating a company switches your account to an
+            employer — you&apos;ll lose access to your jobseeker profile, applications, and saved
+            jobs.
+          </p>
+        )}
+
+        <SheetGroups>
+          <SheetGroup title="Identity">
+            <SheetField label="Company name" required error={errors.companyName?.message}>
+              <Input
+                defaultValue={initialValues.companyName}
+                {...register('companyName')}
+                autoComplete="organization"
+                placeholder="Acme Inc."
+              />
+            </SheetField>
+            <SheetField label="Industry">
+              <Select defaultValue={initialValues.industry} {...register('industry')}>
+                {INDUSTRY_OPTIONS.map((i) => (
+                  <option key={i} value={i}>
+                    {titleCase(i)}
+                  </option>
+                ))}
+              </Select>
+            </SheetField>
+            <SheetField label="Company size">
+              <Select defaultValue={initialValues.companySize} {...register('companySize')}>
+                {SIZE_VALUES.map((s) => (
+                  <option key={s} value={s}>
+                    {SIZE_LABELS[s]}
+                  </option>
+                ))}
+              </Select>
+            </SheetField>
+          </SheetGroup>
+
+          <SheetGroup title="Location & links">
+            <SheetField label="Address / location" error={errors.address?.message}>
+              <Input
+                defaultValue={initialValues.address ?? ''}
+                {...register('address')}
+                autoComplete="street-address"
+                placeholder="Kampala, Uganda"
+              />
+            </SheetField>
+            <SheetField label="Phone (optional)" error={errors.phone?.message}>
+              <Input
+                type="tel"
+                defaultValue={initialValues.phone ?? ''}
+                {...register('phone')}
+                autoComplete="tel"
+                placeholder="+256 743 535 678"
+              />
+            </SheetField>
+            <SheetField label="Website (optional)" error={errors.website?.message}>
+              <Input
+                type="url"
+                defaultValue={initialValues.website ?? ''}
+                {...register('website')}
+                autoComplete="url"
+                placeholder="https://acme.com"
+              />
+            </SheetField>
+          </SheetGroup>
+
+          <SheetGroup title="About" wide>
+            <SheetField
+              label="About the company"
+              required
+              hint="At least 20 characters: what you do and what it is like to work there."
+              error={errors.description?.message}
+              wide
+            >
+              <Textarea
+                defaultValue={initialValues.description}
+                {...register('description')}
+                rows={5}
+                placeholder="What you do, your mission, and what it's like to work there."
+              />
+            </SheetField>
+          </SheetGroup>
+        </SheetGroups>
+
+        {error && (
+          <p role="alert" className="m-0 mt-4 text-danger">
+            {error}
+          </p>
+        )}
+
+        <DirtyBar
+          dirty={isDirty || restoredDraft}
+          saving={pending}
+          onDiscard={() => {
+            clearDraft();
+            reset(initialValues);
+            setRestoredDraft(false);
+          }}
+          saveLabel="Create company & continue"
+          savingLabel="Creating…"
         />
-      </Field>
-
-      {error && (
-        <p role="alert" className="m-0 text-danger">
-          {error}
-        </p>
-      )}
-
-      <Button type="submit" loading={pending} className="self-start">
-        {pending ? 'Creating…' : 'Create company & continue'}
-      </Button>
+      </FormSheet>
     </form>
   );
 }

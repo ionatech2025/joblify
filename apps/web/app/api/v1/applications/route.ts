@@ -28,5 +28,6 @@ export async function GET() {
       appliedAt: r.appliedAt.toISOString(),
       matchScore: r.matchScore,
     })),
+    { headers: { 'Cache-Control': 'private, no-store' } },
   );
 }

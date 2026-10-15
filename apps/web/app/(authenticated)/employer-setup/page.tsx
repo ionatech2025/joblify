@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { requireUser } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { EmployerSetupForm } from './employer-setup-form';
+import { ConsoleWidth } from '@/app/components/console/shell';
 import { Breadcrumb, ControlPanel } from '@/app/components/console/control-panel';
 import { Building2, Clock } from 'lucide-react';
 
@@ -24,7 +25,7 @@ export default async function EmployerSetupPage() {
   return (
     <main>
       <ControlPanel breadcrumb={<Breadcrumb items={[{ label: 'Company setup' }]} />} />
-      <div className="mx-auto w-full max-w-3xl px-3 py-3 sm:px-4">
+      <ConsoleWidth className="max-w-5xl py-3">
         {existing?.verificationStatus === 'PENDING' ? (
           <div className="rounded-card border border-border bg-surface p-6 shadow-soft text-center mt-6">
             <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-full bg-warn/10 text-warn">
@@ -32,8 +33,9 @@ export default async function EmployerSetupPage() {
             </div>
             <h2 className="text-lg font-semibold text-fg m-0">Account Pending Verification</h2>
             <p className="mt-2 text-sm text-fg-muted max-w-md mx-auto">
-              <strong>{existing.companyName}</strong> has been submitted. An administrator is reviewing your company details.
-              You will receive full access to post jobs and review applicants once approved.
+              <strong>{existing.companyName}</strong> has been submitted. An administrator is
+              reviewing your company details. You will receive full access to post jobs and review
+              applicants once approved.
             </p>
           </div>
         ) : existing?.verificationStatus === 'REJECTED' ? (
@@ -43,18 +45,14 @@ export default async function EmployerSetupPage() {
             </div>
             <h2 className="text-lg font-semibold text-fg m-0">Verification Unsuccessful</h2>
             <p className="mt-2 text-sm text-fg-muted max-w-md mx-auto">
-              Your company verification could not be completed. Please check your notification inbox or contact support.
+              Your company verification could not be completed. Please contact support if you
+              believe this was an error.
             </p>
           </div>
         ) : (
-          <>
-            <p className="text-fg-muted mb-2 text-[13px]">
-              Create your company profile to start posting jobs and reviewing applicants.
-            </p>
-            <EmployerSetupForm hasJobSeekerIdentity={Boolean(jobSeekerProfile)} />
-          </>
+          <EmployerSetupForm hasJobSeekerIdentity={Boolean(jobSeekerProfile)} />
         )}
-      </div>
+      </ConsoleWidth>
     </main>
   );
 }

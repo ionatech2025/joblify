@@ -30,7 +30,7 @@ export const options = {
 
 const BASE = __ENV.BASE_URL ?? 'http://localhost:3000';
 
-export default function () {
+export default function applyLoadTest() {
   // Hit /api/v1/applications to exercise the auth + DB path; the actual
   // Server Action requires a full Clerk session which can't easily be
   // scripted in k6 — use this as a proxy for read-side cost.

@@ -41,8 +41,11 @@ export async function shareJobWithJobseeker(
 
   const profile = await db.companyProfile.findUnique({
     where: { userId: user.id },
-    select: { companyName: true },
+    select: { companyName: true, verificationStatus: true },
   });
+  if (profile?.verificationStatus && profile.verificationStatus !== 'VERIFIED') {
+    return fail('Only verified companies can share jobs.');
+  }
 
   const h = await headers();
   const ip = clientIp(h);

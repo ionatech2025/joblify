@@ -44,8 +44,10 @@ export function EditJobForm({
   // that React Compiler cannot memoize, which bailed this component out of
   // compilation entirely.
   const publish = useWatch({ control, name: 'publish' }) ?? false;
+  const closed = useWatch({ control, name: 'closed' }) ?? false;
 
   function onDelete() {
+    if (isDeleting) return;
     if (
       !window.confirm(
         'Delete this job post? Existing applications and chat history are kept, but the listing is removed from search and your active posts.',
@@ -56,7 +58,7 @@ export function EditJobForm({
     setError(null);
     startDelete(async () => {
       try {
-        await archiveJob(jobId);
+        unwrap(await archiveJob(jobId, { force: true }));
         toast.success('Job post deleted');
         router.push('/company/jobs');
       } catch (err) {
@@ -93,7 +95,10 @@ export function EditJobForm({
           errors={errors}
           publish={publish}
           onPublishChange={(next) => setValue('publish', next, { shouldDirty: true })}
+          closed={closed}
+          onClosedChange={(next) => setValue('closed', next, { shouldDirty: true })}
           status={status}
+          defaults={initial}
         />
 
         {error && (
@@ -110,9 +115,10 @@ export function EditJobForm({
         >
           <button
             type="button"
-            disabled={isDeleting}
+            aria-disabled={isDeleting || undefined}
+            aria-busy={isDeleting || undefined}
             onClick={onDelete}
-            className="border-danger/30 text-danger hover:bg-danger-subtle focus-visible:ring-danger rounded-control inline-flex items-center gap-1.5 border px-3 py-1.5 text-[13px] font-medium transition-colors focus-visible:ring-2 focus-visible:outline-none disabled:opacity-50"
+            className="border-danger/30 text-danger hover:bg-danger-subtle focus-visible:ring-danger rounded-control inline-flex items-center gap-1.5 border px-3 py-1.5 text-[13px] font-medium transition-colors focus-visible:ring-2 focus-visible:outline-none aria-disabled:cursor-wait aria-disabled:opacity-70"
           >
             <Trash2 aria-hidden className="size-3.5" />
             {isDeleting ? 'Deleting…' : 'Delete'}

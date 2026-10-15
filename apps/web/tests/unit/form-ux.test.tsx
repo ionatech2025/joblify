@@ -6,15 +6,22 @@
 // problem, and a counter near a length limit.
 
 import { describe, it, expect, afterEach, vi } from 'vitest';
+import { renderToString } from 'react-dom/server';
 import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Field, Input } from '@/app/components/ui/form';
 import { Button } from '@/app/components/ui/button';
+import { Notebook } from '@/app/components/console/notebook';
+import { DirtyBar } from '@/app/components/console/dirty-bar';
 import { ApplyForm } from '@/app/(marketing)/jobs/[slug]/apply/apply-form';
 import { ProfileForm } from '@/app/(authenticated)/jobseeker/profile/profile-form';
+import { CompanySettingsForm } from '@/app/company/settings/company-settings-form';
+import { EditJobForm } from '@/app/company/jobs/[id]/edit/edit-job-form';
+import { ResumeBuilderForm } from '@/app/(authenticated)/jobseeker/resumes/builder/builder-form';
 import { useProfileDraftStore } from '@/lib/stores/profile-draft';
 import { useApplyDraftStore } from '@/lib/stores/apply-draft';
 import { useEmployerSetupDraftStore } from '@/lib/stores/employer-setup-draft';
+import { useCompanySettingsDraftStore } from '@/lib/stores/company-settings-draft';
 import { EmployerSetupForm } from '@/app/(authenticated)/employer-setup/employer-setup-form';
 import { DeleteForm } from '@/app/(authenticated)/account/delete/delete-form';
 
@@ -22,7 +29,18 @@ const submit = vi.hoisted(() => vi.fn());
 vi.mock('@/app/actions/apply', () => ({ submitApplication: submit }));
 vi.mock('@/app/actions/profile', () => ({ saveProfile: vi.fn().mockResolvedValue(undefined) }));
 const createCompany = vi.hoisted(() => vi.fn());
-vi.mock('@/app/actions/company', () => ({ createCompanyProfile: createCompany }));
+const updateCompany = vi.hoisted(() => vi.fn());
+vi.mock('@/app/actions/company', () => ({
+  createCompanyProfile: createCompany,
+  updateCompanyProfile: updateCompany,
+}));
+const archiveJobMock = vi.hoisted(() => vi.fn());
+const updateJobMock = vi.hoisted(() => vi.fn());
+vi.mock('@/app/actions/post-job', () => ({
+  archiveJob: archiveJobMock,
+  updateJob: updateJobMock,
+  postJob: vi.fn(),
+}));
 const deleteAccount = vi.hoisted(() => vi.fn());
 vi.mock('@/app/actions/account', () => ({ deleteMyAccount: deleteAccount }));
 vi.mock('next/navigation', () => ({
@@ -39,7 +57,11 @@ afterEach(() => {
   useProfileDraftStore.getState().clear();
   useApplyDraftStore.getState().clear('job_1');
   useEmployerSetupDraftStore.getState().clear();
+  useCompanySettingsDraftStore.getState().clear();
   createCompany.mockReset();
+  updateCompany.mockReset();
+  archiveJobMock.mockReset();
+  updateJobMock.mockReset();
   deleteAccount.mockReset();
 });
 
@@ -341,5 +363,171 @@ describe('DeleteForm', () => {
     await user.click(screen.getByRole('button', { name: /delete my account/i }));
     const alert = await screen.findByRole('alert', {}, { timeout: 5000 });
     expect(alert.textContent).toContain('Could not delete right now.');
+  });
+});
+
+describe('Server HTML pre-hydration form values', () => {
+  it('renders saved values in the server HTML of CompanySettingsForm, ProfileForm, EditJobForm, and ResumeBuilderForm', () => {
+    const settingsHtml = renderToString(
+      <CompanySettingsForm
+        logoUrl={null}
+        initial={{
+          companyName: 'Acme Robotics',
+          industry: 'TECHNOLOGY',
+          companySize: 'SIZE_11_50',
+          description: 'Building autonomous warehouse systems since 2021.',
+          website: 'https://acme-robotics.example',
+          linkedin: 'https://linkedin.com/company/acme-robotics',
+        }}
+      />,
+    );
+    expect(settingsHtml).toContain('Acme Robotics');
+    expect(settingsHtml).toContain('Building autonomous warehouse systems since 2021.');
+    expect(settingsHtml).toContain('https://acme-robotics.example');
+
+    const editJobHtml = renderToString(
+      <EditJobForm
+        jobId="job_1"
+        status="PUBLISHED"
+        initial={{
+          title: 'Principal Systems Engineer',
+          description:
+            'Design and scale low-latency distributed storage systems across multiple regions.',
+          requirements: 'Rust, C++, distributed consensus.',
+          industry: 'TECHNOLOGY',
+          jobType: 'FULL_TIME',
+          experienceLevel: 'STAFF',
+          workMode: 'REMOTE',
+          location: 'Remote',
+          locationCountry: 'DE',
+          salaryMin: 150000,
+          salaryMax: 190000,
+          salaryCurrency: 'EUR',
+          salaryPeriod: 'YEAR',
+          applicationDeadline: '2026-12-31',
+          publish: true,
+          createChatArea: true,
+        }}
+      />,
+    );
+    expect(editJobHtml).toContain('Principal Systems Engineer');
+    expect(editJobHtml).toContain(
+      'Design and scale low-latency distributed storage systems across multiple regions.',
+    );
+    // Inactive Notebook tabs are also mounted (hidden) in SSR HTML with their saved values
+    expect(editJobHtml).toContain('Rust, C++, distributed consensus.');
+
+    const builderHtml = renderToString(
+      <ResumeBuilderForm
+        initialEntries={[
+          {
+            company: 'Byte Foundry',
+            title: 'Staff Engineer',
+            startDate: 'Jan 2022',
+            endDate: 'Present',
+            description: 'Architected event-driven pipelines.',
+          },
+        ]}
+      />,
+    );
+    expect(builderHtml).toContain('Byte Foundry');
+    expect(builderHtml).toContain('Staff Engineer');
+    expect(builderHtml).toContain('Architected event-driven pipelines.');
+  });
+});
+
+describe('Notebook ARIA integrity and error tab switching', () => {
+  it('mounts every tabpanel so aria-controls always resolves, and switches to a tab with hasError', () => {
+    const { rerender } = render(
+      <Notebook
+        defaultTab="options"
+        tabs={[
+          { id: 'description', label: 'Description', content: <p>Desc body</p>, hasError: false },
+          { id: 'options', label: 'Options', content: <p>Options body</p>, hasError: false },
+        ]}
+      />,
+    );
+
+    const tabs = screen.getAllByRole('tab');
+    for (const tab of tabs) {
+      const targetId = tab.getAttribute('aria-controls');
+      expect(targetId).toBeTruthy();
+      expect(document.getElementById(targetId!)).not.toBeNull();
+    }
+
+    expect(screen.getByRole('tab', { name: 'Options' }).getAttribute('aria-selected')).toBe('true');
+
+    // Simulate a validation error landing on the background "Description" tab
+    rerender(
+      <Notebook
+        defaultTab="options"
+        tabs={[
+          { id: 'description', label: 'Description', content: <p>Desc body</p>, hasError: true },
+          { id: 'options', label: 'Options', content: <p>Options body</p>, hasError: false },
+        ]}
+      />,
+    );
+
+    expect(screen.getByRole('tab', { name: 'Description' }).getAttribute('aria-selected')).toBe(
+      'true',
+    );
+  });
+});
+
+describe('DirtyBar and EditJobForm actions', () => {
+  it('DirtyBar keeps focus on Save while saving (aria-disabled + aria-busy, not disabled)', async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn((e: React.FormEvent) => e.preventDefault());
+    render(
+      <form onSubmit={onSubmit}>
+        <DirtyBar dirty saving saveLabel="Save changes" />
+      </form>,
+    );
+    const saveBtn = screen.getByRole('button', { name: /saving/i }) as HTMLButtonElement;
+    expect(saveBtn.disabled).toBe(false);
+    expect(saveBtn.getAttribute('aria-disabled')).toBe('true');
+    expect(saveBtn.getAttribute('aria-busy')).toBe('true');
+    saveBtn.focus();
+    expect(document.activeElement).toBe(saveBtn);
+    await user.click(saveBtn);
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it('EditJobForm passes { force: true } to archiveJob on confirmed delete and surfaces any failure as an alert', async () => {
+    const user = userEvent.setup();
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    archiveJobMock.mockResolvedValue({ ok: false, error: 'Database locked.' });
+
+    render(
+      <EditJobForm
+        jobId="job_99"
+        status="PUBLISHED"
+        initial={{
+          title: 'Backend Engineer',
+          description: 'Build reliable distributed services in TypeScript and Go.',
+          requirements: '',
+          industry: 'TECHNOLOGY',
+          jobType: 'FULL_TIME',
+          experienceLevel: 'MID',
+          workMode: 'REMOTE',
+          location: 'Remote',
+          locationCountry: '',
+          salaryMin: null,
+          salaryMax: null,
+          salaryCurrency: 'USD',
+          salaryPeriod: 'YEAR',
+          applicationDeadline: '',
+          publish: true,
+          createChatArea: false,
+        }}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: /^delete$/i }));
+    expect(confirmSpy).toHaveBeenCalled();
+    await vi.waitFor(() => expect(archiveJobMock).toHaveBeenCalledWith('job_99', { force: true }));
+    const alert = await screen.findByRole('alert', {}, { timeout: 5000 });
+    expect(alert.textContent).toContain('Database locked.');
+    confirmSpy.mockRestore();
   });
 });

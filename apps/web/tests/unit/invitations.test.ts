@@ -117,6 +117,15 @@ describe('inviteJobseeker', () => {
     expect(m.invCreate).not.toHaveBeenCalled();
   });
 
+  it('fails closed when the company has no profile row yet', async () => {
+    m.companyFindUnique.mockResolvedValue(null);
+    expect(await inviteJobseeker('seeker1', 'EMPLOYABLE')).toMatchObject({
+      ok: false,
+      error: expect.stringMatching(/verified companies/i),
+    });
+    expect(m.invCreate).not.toHaveBeenCalled();
+  });
+
   it('enforces the daily invitation rate limit', async () => {
     m.inviteLimit.mockResolvedValue({ success: false });
     expect(await inviteJobseeker('seeker1', 'EMPLOYABLE')).toMatchObject({

@@ -61,6 +61,7 @@ export const PostJobFormSchema = z
     salaryPeriod: z.enum(SALARY_PERIODS).default('YEAR'),
     applicationDeadline: z.string().optional().or(z.literal('')),
     publish: z.boolean().default(true),
+    closed: z.boolean().optional(),
     createChatArea: z.boolean().default(false),
   })
   .superRefine((v, ctx) => {

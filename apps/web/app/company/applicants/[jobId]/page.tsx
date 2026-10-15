@@ -2,14 +2,14 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requireRole } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { openJobChatArea } from '@/app/actions/chat';
+import { ChatAreaButton } from '@/app/company/chats/chat-area-button';
 import { ApplicantsBoard } from './applicants-board';
 import { ConsoleWidth } from '@/app/components/console/shell';
 import { Breadcrumb, ControlPanel, RecordPager } from '@/app/components/console/control-panel';
 import { FacetChips, type Facet } from '@/app/components/console/search-view';
 import { FilterMenu } from '@/app/components/console/filter-menu';
 import { makeHref } from '@/lib/ui/list-params';
-import { Button, buttonClasses } from '@/app/components/ui/button';
+import { buttonClasses } from '@/app/components/ui/button';
 
 export const metadata = { title: 'Applicants' };
 
@@ -187,11 +187,7 @@ export default async function ApplicantsPage({
               Open chat area
             </Link>
           ) : (
-            <form action={openJobChatArea.bind(null, job.id)}>
-              <Button type="submit" variant="secondary" size="sm">
-                Create chat area
-              </Button>
-            </form>
+            <ChatAreaButton kind="job" jobPostId={job.id} />
           )
         }
       />

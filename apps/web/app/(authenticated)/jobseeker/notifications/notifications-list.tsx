@@ -26,7 +26,13 @@ const KIND_LABEL: Record<string, string> = {
   INVITATION_RESPONDED: 'Invitation answered',
 };
 
-export function NotificationsList({ initial }: { initial: NotificationItem[] }) {
+export function NotificationsList({
+  initial,
+  role = 'JOB_SEEKER',
+}: {
+  initial: NotificationItem[];
+  role?: 'JOB_SEEKER' | 'COMPANY';
+}) {
   const { data, isError } = useNotifications(NOTIFICATION_POLL_MS.list);
   const mark = useMarkNotificationRead();
   const items = data ?? initial;
@@ -36,10 +42,17 @@ export function NotificationsList({ initial }: { initial: NotificationItem[] }) 
       <EmptyState
         icon={<BellOff />}
         title="You're all caught up"
-        description="Application updates, invitations and new messages will land here."
+        description={
+          role === 'COMPANY'
+            ? 'New applicants, subscriber activity, and account updates will land here.'
+            : 'Application updates, invitations and new messages will land here.'
+        }
         action={
-          <Link href="/jobs" className={`${buttonClasses()} no-underline`}>
-            Browse jobs
+          <Link
+            href={role === 'COMPANY' ? '/company/jobs' : '/jobs'}
+            className={`${buttonClasses()} no-underline`}
+          >
+            {role === 'COMPANY' ? 'View job posts' : 'Browse jobs'}
           </Link>
         }
       />
@@ -77,9 +90,32 @@ export function NotificationsList({ initial }: { initial: NotificationItem[] }) 
                     <ArrowRight aria-hidden className="size-3.5" />
                   </Link>
                 )}
+                {role === 'COMPANY' && typeof n.payload.jobId === 'string' && (
+                  <Link
+                    href={`/company/applicants/${n.payload.jobId}`}
+                    className="inline-flex items-center gap-1 text-sm text-brand underline"
+                  >
+                    Review applicants
+                    <ArrowRight aria-hidden className="size-3.5" />
+                  </Link>
+                )}
+                {role === 'COMPANY' &&
+                  (n.kind === 'NEW_SUBSCRIBER' || n.kind === 'INVITATION_RESPONDED') && (
+                    <Link
+                      href="/company/jobseekers?filter=subscribed"
+                      className="inline-flex items-center gap-1 text-sm text-brand underline"
+                    >
+                      View subscribers
+                      <ArrowRight aria-hidden className="size-3.5" />
+                    </Link>
+                  )}
                 {typeof n.payload.chatAreaId === 'string' && (
                   <Link
-                    href={`/jobseeker/chats/${n.payload.chatAreaId}`}
+                    href={
+                      role === 'COMPANY'
+                        ? `/company/chats/${n.payload.chatAreaId}`
+                        : `/jobseeker/chats/${n.payload.chatAreaId}`
+                    }
                     className="inline-flex items-center gap-1 text-sm text-brand underline"
                   >
                     Open chat

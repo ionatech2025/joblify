@@ -3,6 +3,7 @@ import { db } from '@/lib/db';
 import { NotificationsList } from './notifications-list';
 import { DigestPreference } from './digest-preference';
 import type { NotificationItem } from '@/lib/query/notifications';
+import { ConsoleWidth } from '@/app/components/console/shell';
 import { Breadcrumb, ControlPanel } from '@/app/components/console/control-panel';
 
 export const metadata = { title: 'Notifications' };
@@ -26,13 +27,13 @@ export default async function NotificationsPage() {
   return (
     <main>
       <ControlPanel breadcrumb={<Breadcrumb items={[{ label: 'Notifications' }]} />} />
-      <div className="mx-auto w-full max-w-4xl px-3 py-3 sm:px-4">
+      <ConsoleWidth className="max-w-4xl py-3">
         <DigestPreference
           initialOptIn={user.digestOptIn}
           addressSuppressed={user.emailSuppressedAt !== null}
         />
         <NotificationsList initial={initial} />
-      </div>
+      </ConsoleWidth>
     </main>
   );
 }

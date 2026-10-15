@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { requireRole } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { Building2 } from 'lucide-react';
+import { ConsoleWidth } from '@/app/components/console/shell';
 import { Breadcrumb, ControlPanel } from '@/app/components/console/control-panel';
 import { Badge } from '@/app/components/ui/badge';
 import { buttonClasses } from '@/app/components/ui/button';
@@ -42,8 +43,15 @@ export default async function JobseekerSubscriptionsPage() {
 
   return (
     <main>
-      <ControlPanel breadcrumb={<Breadcrumb items={[{ label: 'Following' }]} />} />
-      <div className="mx-auto w-full max-w-4xl px-3 py-3 sm:px-4">
+      <ControlPanel
+        breadcrumb={<Breadcrumb items={[{ label: 'Following' }]} />}
+        actions={
+          <Link href="/companies" className={`${buttonClasses('secondary', 'sm')} no-underline`}>
+            Browse companies
+          </Link>
+        }
+      />
+      <ConsoleWidth className="max-w-4xl py-3">
         <p className="text-fg-muted mb-2 text-[13px]">
           Companies you follow, and invitations from companies that want you.
         </p>
@@ -124,7 +132,7 @@ export default async function JobseekerSubscriptionsPage() {
             </ul>
           )}
         </section>
-      </div>
+      </ConsoleWidth>
     </main>
   );
 }

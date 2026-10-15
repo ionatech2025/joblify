@@ -22,7 +22,7 @@ export function InviteButtons({
   function onAddToChat() {
     startTransition(async () => {
       try {
-        await addVirtualInternToChat(jobSeekerUserId);
+        unwrap(await addVirtualInternToChat(jobSeekerUserId));
         toast.success('Added to virtual-intern chat');
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Something went wrong.';
@@ -53,13 +53,13 @@ export function InviteButtons({
           variant="secondary"
           size="sm"
           onClick={onAddToChat}
-          disabled={isPending}
+          loading={isPending}
         >
           Add to VI chat
         </Button>
       )}
       {!subscribed && (
-        <Button type="button" variant="secondary" size="sm" onClick={onInvite} disabled={isPending}>
+        <Button type="button" variant="secondary" size="sm" onClick={onInvite} loading={isPending}>
           Invite as {profileType === 'VIRTUAL_INTERN' ? 'VI' : 'employable'}
         </Button>
       )}

@@ -30,15 +30,23 @@ export function JobFormFields({
   errors,
   publish,
   onPublishChange,
+  closed = false,
+  onClosedChange,
   status,
+  defaults,
 }: {
   register: UseFormRegister<PostJobFormValues>;
   errors: FieldErrors<PostJobFormValues>;
   /** Current value of the `publish` field — drives the statusbar. */
   publish: boolean;
   onPublishChange: (publish: boolean) => void;
+  /** Whether the job is marked CLOSED (edit form only). */
+  closed?: boolean;
+  onClosedChange?: (closed: boolean) => void;
   /** Persisted status, on the edit form. Absent when creating. */
   status?: JobPostStatus;
+  /** Initial values rendered into the server HTML so fields are not blank before hydration. */
+  defaults?: Partial<PostJobFormValues>;
 }) {
   return (
     <>
@@ -46,19 +54,28 @@ export function JobFormFields({
         title={
           <SheetField label="Title" error={errors.title?.message} required wide>
             <Input
+              defaultValue={defaults?.title ?? ''}
               {...register('title')}
               placeholder="Senior Backend Engineer"
               className="text-base font-semibold"
             />
           </SheetField>
         }
-        aside={<JobStatusbar publish={publish} onPublishChange={onPublishChange} status={status} />}
+        aside={
+          <JobStatusbar
+            publish={publish}
+            onPublishChange={onPublishChange}
+            closed={closed}
+            onClosedChange={onClosedChange}
+            status={status}
+          />
+        }
       />
 
       <SheetGroups>
         <SheetGroup title="Classification">
           <SheetField label="Industry" error={errors.industry?.message}>
-            <Select {...register('industry')}>
+            <Select defaultValue={defaults?.industry ?? 'TECHNOLOGY'} {...register('industry')}>
               {INDUSTRIES.map((v) => (
                 <option key={v} value={v}>
                   {v.charAt(0) + v.slice(1).toLowerCase()}
@@ -67,7 +84,7 @@ export function JobFormFields({
             </Select>
           </SheetField>
           <SheetField label="Job type" error={errors.jobType?.message}>
-            <Select {...register('jobType')}>
+            <Select defaultValue={defaults?.jobType ?? 'FULL_TIME'} {...register('jobType')}>
               <option value="FULL_TIME">Full-time</option>
               <option value="PART_TIME">Part-time</option>
               <option value="CONTRACT">Contract</option>
@@ -76,7 +93,10 @@ export function JobFormFields({
             </Select>
           </SheetField>
           <SheetField label="Experience level">
-            <Select {...register('experienceLevel')}>
+            <Select
+              defaultValue={defaults?.experienceLevel ?? 'MID'}
+              {...register('experienceLevel')}
+            >
               <option value="ENTRY">Entry</option>
               <option value="MID">Mid</option>
               <option value="SENIOR">Senior</option>
@@ -85,7 +105,7 @@ export function JobFormFields({
             </Select>
           </SheetField>
           <SheetField label="Work mode">
-            <Select {...register('workMode')}>
+            <Select defaultValue={defaults?.workMode ?? 'ONSITE'} {...register('workMode')}>
               <option value="ONSITE">On-site</option>
               <option value="HYBRID">Hybrid</option>
               <option value="REMOTE">Remote</option>
@@ -96,6 +116,7 @@ export function JobFormFields({
         <SheetGroup title="Location & compensation">
           <SheetField label="Location">
             <Input
+              defaultValue={defaults?.location ?? ''}
               {...register('location')}
               autoComplete="address-level2"
               placeholder="Berlin, DE"
@@ -107,6 +128,7 @@ export function JobFormFields({
             error={errors.locationCountry?.message}
           >
             <Input
+              defaultValue={defaults?.locationCountry ?? ''}
               {...register('locationCountry')}
               autoComplete="country"
               maxLength={2}
@@ -125,6 +147,7 @@ export function JobFormFields({
               <Input
                 type="number"
                 inputMode="numeric"
+                defaultValue={defaults?.salaryMin ?? ''}
                 {...register('salaryMin')}
                 aria-label="Salary minimum"
                 placeholder="Min"
@@ -132,19 +155,25 @@ export function JobFormFields({
               <Input
                 type="number"
                 inputMode="numeric"
+                defaultValue={defaults?.salaryMax ?? ''}
                 {...register('salaryMax')}
                 aria-label="Salary maximum"
                 placeholder="Max"
               />
               <span className="col-span-2 grid grid-cols-[4.5rem_minmax(0,1fr)] gap-1.5">
                 <Input
+                  defaultValue={defaults?.salaryCurrency ?? 'USD'}
                   {...register('salaryCurrency')}
                   maxLength={3}
                   autoCapitalize="characters"
                   aria-label="Salary currency"
                   className="uppercase"
                 />
-                <Select {...register('salaryPeriod')} aria-label="Salary period">
+                <Select
+                  defaultValue={defaults?.salaryPeriod ?? 'YEAR'}
+                  {...register('salaryPeriod')}
+                  aria-label="Salary period"
+                >
                   {SALARY_PERIODS.map((p) => (
                     <option key={p} value={p}>
                       {SALARY_PERIOD_LABEL[p]}
@@ -155,7 +184,11 @@ export function JobFormFields({
             </span>
           </SheetField>
           <SheetField label="Deadline">
-            <Input type="date" {...register('applicationDeadline')} />
+            <Input
+              type="date"
+              defaultValue={defaults?.applicationDeadline ?? ''}
+              {...register('applicationDeadline')}
+            />
           </SheetField>
         </SheetGroup>
       </SheetGroups>
@@ -165,9 +198,11 @@ export function JobFormFields({
           {
             id: 'description',
             label: 'Description',
+            hasError: Boolean(errors.description),
             content: (
               <SheetField label="Description" error={errors.description?.message} required wide>
                 <Textarea
+                  defaultValue={defaults?.description ?? ''}
                   {...register('description')}
                   rows={12}
                   placeholder="The role, the team, what success looks like."
@@ -178,9 +213,11 @@ export function JobFormFields({
           {
             id: 'requirements',
             label: 'Requirements',
+            hasError: Boolean(errors.requirements),
             content: (
               <SheetField label="Requirements" error={errors.requirements?.message} required wide>
                 <Textarea
+                  defaultValue={defaults?.requirements ?? ''}
                   {...register('requirements')}
                   rows={10}
                   placeholder="Must-haves and nice-to-haves."
@@ -194,6 +231,7 @@ export function JobFormFields({
             content: (
               <div className="flex flex-col gap-3">
                 <Checkbox
+                  defaultChecked={Boolean(defaults?.createChatArea)}
                   {...register('createChatArea')}
                   label="Create a job-specific chat area (shortlisted applicants join it automatically)"
                 />
@@ -224,17 +262,28 @@ export function JobFormFields({
 function JobStatusbar({
   publish,
   onPublishChange,
+  closed = false,
+  onClosedChange,
   status,
 }: {
   publish: boolean;
   onPublishChange: (publish: boolean) => void;
+  closed?: boolean;
+  onClosedChange?: (closed: boolean) => void;
   status?: JobPostStatus;
 }) {
   const controllable: Stage[] = [
     { key: 'DRAFT', label: JOB_STATUS_LABEL.DRAFT, tone: 'neutral' },
     { key: 'PUBLISHED', label: JOB_STATUS_LABEL.PUBLISHED, tone: 'success' },
+    ...(onClosedChange
+      ? [{ key: 'CLOSED', label: JOB_STATUS_LABEL.CLOSED, tone: 'neutral' as const }]
+      : []),
   ];
-  const isOther = status !== undefined && status !== 'DRAFT' && status !== 'PUBLISHED';
+  const isOther =
+    status !== undefined &&
+    status !== 'DRAFT' &&
+    status !== 'PUBLISHED' &&
+    (status !== 'CLOSED' || !onClosedChange);
   const stages: Stage[] = isOther
     ? [
         ...controllable,
@@ -251,12 +300,21 @@ function JobStatusbar({
       label="Publication status"
       stages={stages}
       // While the record is in a state this form can't set, the bar shows that
-      // state as current; saving will move it to Draft or Published per the
-      // checkbox-equivalent below.
-      current={isOther ? status : publish ? 'PUBLISHED' : 'DRAFT'}
+      // state as current; saving will move it to Draft, Published, or Closed.
+      current={isOther ? status : closed ? 'CLOSED' : publish ? 'PUBLISHED' : 'DRAFT'}
       onSelect={(key) => {
-        if (key === 'DRAFT') onPublishChange(false);
-        if (key === 'PUBLISHED') onPublishChange(true);
+        if (key === 'DRAFT') {
+          onClosedChange?.(false);
+          onPublishChange(false);
+        }
+        if (key === 'PUBLISHED') {
+          onClosedChange?.(false);
+          onPublishChange(true);
+        }
+        if (key === 'CLOSED') {
+          onPublishChange(false);
+          onClosedChange?.(true);
+        }
       }}
     />
   );
