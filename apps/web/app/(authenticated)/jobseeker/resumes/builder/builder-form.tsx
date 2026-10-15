@@ -10,6 +10,7 @@ import { generateResume } from '@/app/actions/generate-resume';
 import { Field, Input, Textarea } from '@/app/components/ui/form';
 import { Button } from '@/app/components/ui/button';
 import { FormSheet, SheetTitle } from '@/app/components/console/sheet';
+import { useHydrated } from '@/lib/use-hydrated';
 import { toast } from '@/lib/stores/ui';
 import { endsBeforeStart } from '@/lib/resume/date-order';
 
@@ -34,6 +35,7 @@ type FormValues = z.infer<typeof FormSchema>;
 const EMPTY_ENTRY = { company: '', title: '', startDate: '', endDate: '', description: '' };
 
 export function ResumeBuilderForm({ initialEntries }: { initialEntries: FormValues['entries'] }) {
+  const hydrated = useHydrated();
   const [isSaving, startSaving] = useTransition();
   const [isGenerating, startGenerating] = useTransition();
   const [saved, setSaved] = useState(false);
@@ -105,121 +107,123 @@ export function ResumeBuilderForm({ initialEntries }: { initialEntries: FormValu
       />
 
       <form onSubmit={handleSubmit(onSave)} noValidate className="flex flex-col gap-4">
-        {fields.map((field, index) => (
-          <div
-            key={field.id}
-            className="flex flex-col gap-3 rounded-card border border-border bg-surface p-4 shadow-soft"
-          >
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <Field label="Company" required error={errors.entries?.[index]?.company?.message}>
-                <Input
-                  defaultValue={field.company}
-                  {...register(`entries.${index}.company`)}
-                  autoComplete="organization"
-                  placeholder="Acme Inc."
-                />
-              </Field>
-              <Field label="Title" required error={errors.entries?.[index]?.title?.message}>
-                <Input
-                  defaultValue={field.title}
-                  {...register(`entries.${index}.title`)}
-                  autoComplete="organization-title"
-                  placeholder="Software Engineer"
-                />
-              </Field>
-            </div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <Field
-                label="Start date"
-                hint="A month and year, or just a year — e.g. Jan 2022"
-                error={errors.entries?.[index]?.startDate?.message}
-              >
-                <Input
-                  defaultValue={field.startDate}
-                  {...register(`entries.${index}.startDate`)}
-                  autoComplete="off"
-                  placeholder="Jan 2022"
-                />
-              </Field>
-              <Field
-                label="End date"
-                hint="Write Present if you still work here"
-                error={errors.entries?.[index]?.endDate?.message}
-              >
-                <Input
-                  defaultValue={field.endDate}
-                  {...register(`entries.${index}.endDate`)}
-                  autoComplete="off"
-                  placeholder="Present"
-                />
-              </Field>
-            </div>
-            <Field label="Description" error={errors.entries?.[index]?.description?.message}>
-              <Textarea
-                defaultValue={field.description}
-                {...register(`entries.${index}.description`)}
-                rows={3}
-                placeholder="What did you do?"
-              />
-            </Field>
-            <Button
-              type="button"
-              variant="danger"
-              size="sm"
-              className="self-start"
-              onClick={() => remove(index)}
+        <fieldset disabled={!hydrated} className="m-0 contents border-0 p-0">
+          {fields.map((field, index) => (
+            <div
+              key={field.id}
+              className="flex flex-col gap-3 rounded-card border border-border bg-surface p-4 shadow-soft"
             >
-              Remove
-            </Button>
-          </div>
-        ))}
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <Field label="Company" required error={errors.entries?.[index]?.company?.message}>
+                  <Input
+                    defaultValue={field.company}
+                    {...register(`entries.${index}.company`)}
+                    autoComplete="organization"
+                    placeholder="Acme Inc."
+                  />
+                </Field>
+                <Field label="Title" required error={errors.entries?.[index]?.title?.message}>
+                  <Input
+                    defaultValue={field.title}
+                    {...register(`entries.${index}.title`)}
+                    autoComplete="organization-title"
+                    placeholder="Software Engineer"
+                  />
+                </Field>
+              </div>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <Field
+                  label="Start date"
+                  hint="A month and year, or just a year — e.g. Jan 2022"
+                  error={errors.entries?.[index]?.startDate?.message}
+                >
+                  <Input
+                    defaultValue={field.startDate}
+                    {...register(`entries.${index}.startDate`)}
+                    autoComplete="off"
+                    placeholder="Jan 2022"
+                  />
+                </Field>
+                <Field
+                  label="End date"
+                  hint="Write Present if you still work here"
+                  error={errors.entries?.[index]?.endDate?.message}
+                >
+                  <Input
+                    defaultValue={field.endDate}
+                    {...register(`entries.${index}.endDate`)}
+                    autoComplete="off"
+                    placeholder="Present"
+                  />
+                </Field>
+              </div>
+              <Field label="Description" error={errors.entries?.[index]?.description?.message}>
+                <Textarea
+                  defaultValue={field.description}
+                  {...register(`entries.${index}.description`)}
+                  rows={3}
+                  placeholder="What did you do?"
+                />
+              </Field>
+              <Button
+                type="button"
+                variant="danger"
+                size="sm"
+                className="self-start"
+                onClick={() => remove(index)}
+              >
+                Remove
+              </Button>
+            </div>
+          ))}
 
-        <Button
-          type="button"
-          variant="secondary"
-          size="sm"
-          className="self-start"
-          onClick={() => append(EMPTY_ENTRY)}
-        >
-          + Add work experience
-        </Button>
-
-        {error && (
-          <p role="alert" className="m-0 text-danger">
-            {error}
-          </p>
-        )}
-        {saved && <p className="m-0 text-success">Saved.</p>}
-
-        <div className="flex flex-wrap items-center gap-3">
-          <Button type="submit" loading={isSaving} disabled={!isDirty}>
-            {isSaving ? 'Saving…' : 'Save work experience'}
-          </Button>
           <Button
             type="button"
             variant="secondary"
-            loading={isGenerating}
-            disabled={isDirty}
-            title={isDirty ? 'Save your changes first' : undefined}
-            onClick={onGenerate}
+            size="sm"
+            className="self-start"
+            onClick={() => append(EMPTY_ENTRY)}
           >
-            {isGenerating ? 'Generating…' : 'Generate resume PDF'}
+            + Add work experience
           </Button>
-        </div>
 
-        {resumeUrl && (
-          <p className="m-0 text-success">
-            Resume ready —{' '}
-            <a href={resumeUrl} target="_blank" rel="noopener noreferrer" className="underline">
-              open it
-            </a>
-            , or find it anytime in{' '}
-            <Link href="/jobseeker/resumes" className="underline">
-              My resumes
-            </Link>
-            .
-          </p>
-        )}
+          {error && (
+            <p role="alert" className="m-0 text-danger">
+              {error}
+            </p>
+          )}
+          {saved && <p className="m-0 text-success">Saved.</p>}
+
+          <div className="flex flex-wrap items-center gap-3">
+            <Button type="submit" loading={isSaving} disabled={!isDirty}>
+              {isSaving ? 'Saving…' : 'Save work experience'}
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              loading={isGenerating}
+              disabled={isDirty}
+              title={isDirty ? 'Save your changes first' : undefined}
+              onClick={onGenerate}
+            >
+              {isGenerating ? 'Generating…' : 'Generate resume PDF'}
+            </Button>
+          </div>
+
+          {resumeUrl && (
+            <p className="m-0 text-success">
+              Resume ready —{' '}
+              <a href={resumeUrl} target="_blank" rel="noopener noreferrer" className="underline">
+                open it
+              </a>
+              , or find it anytime in{' '}
+              <Link href="/jobseeker/resumes" className="underline">
+                My resumes
+              </Link>
+              .
+            </p>
+          )}
+        </fieldset>
       </form>
     </FormSheet>
   );
