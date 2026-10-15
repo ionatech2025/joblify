@@ -26,6 +26,7 @@ import {
 import { DirtyBar } from '@/app/components/console/dirty-bar';
 import { useCompanySettingsDraftStore } from '@/lib/stores/company-settings-draft';
 import { useFormDraft } from '@/lib/use-form-draft';
+import { useHydrated } from '@/lib/use-hydrated';
 import { toast } from '@/lib/stores/ui';
 
 function titleCase(s: string): string {
@@ -40,6 +41,7 @@ export function CompanySettingsForm({
   logoUrl: string | null;
 }) {
   const router = useRouter();
+  const hydrated = useHydrated();
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
   // A restored draft is unsaved work; reset() rebases RHF's dirty baseline, so
@@ -124,162 +126,168 @@ export function CompanySettingsForm({
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} noValidate>
-      <FormSheet>
-        <SheetTitle
-          title="Company profile"
-          subtitle="This is what jobseekers see on your company page and job posts."
-          aside={
-            <div className="flex items-center gap-3">
-              {logo ? (
-                // eslint-disable-next-line @next/next/no-img-element -- user-supplied logo, no fixed dims
-                <img
-                  src={logo}
-                  alt="Company logo"
-                  width={48}
-                  height={48}
-                  className="rounded-control border-border size-12 border object-cover"
+      <fieldset disabled={!hydrated} className="m-0 contents border-0 p-0">
+        <FormSheet>
+          <SheetTitle
+            title="Company profile"
+            subtitle="This is what jobseekers see on your company page and job posts."
+            aside={
+              <div className="flex items-center gap-3">
+                {logo ? (
+                  // eslint-disable-next-line @next/next/no-img-element -- user-supplied logo, no fixed dims
+                  <img
+                    src={logo}
+                    alt="Company logo"
+                    width={48}
+                    height={48}
+                    className="rounded-control border-border size-12 border object-cover"
+                  />
+                ) : (
+                  <div className="rounded-control bg-surface-sunken text-fg-subtle border-border grid size-12 place-items-center border text-[11px]">
+                    Logo
+                  </div>
+                )}
+                <input
+                  ref={logoInput}
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  onChange={onLogo}
+                  className="hidden"
+                  aria-hidden="true"
                 />
-              ) : (
-                <div className="rounded-control bg-surface-sunken text-fg-subtle border-border grid size-12 place-items-center border text-[11px]">
-                  Logo
-                </div>
-              )}
-              <input
-                ref={logoInput}
-                type="file"
-                accept="image/png,image/jpeg,image/webp"
-                onChange={onLogo}
-                className="hidden"
-                aria-hidden="true"
-              />
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                onClick={() => logoInput.current?.click()}
-                disabled={logoBusy}
-                loading={logoBusy}
-              >
-                {logoBusy ? 'Uploading…' : 'Upload logo'}
-              </Button>
-            </div>
-          }
-        />
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => logoInput.current?.click()}
+                  disabled={logoBusy}
+                  loading={logoBusy}
+                >
+                  {logoBusy ? 'Uploading…' : 'Upload logo'}
+                </Button>
+              </div>
+            }
+          />
 
-        <SheetGroups>
-          <SheetGroup title="Identity">
-            <SheetField label="Company name" error={errors.companyName?.message} required>
-              <Input
-                defaultValue={initial.companyName}
-                {...register('companyName')}
-                autoComplete="organization"
-              />
-            </SheetField>
-            <SheetField label="Industry">
-              <Select defaultValue={initial.industry} {...register('industry')}>
-                {INDUSTRY_OPTIONS.map((i) => (
-                  <option key={i} value={i}>
-                    {titleCase(i)}
-                  </option>
-                ))}
-              </Select>
-            </SheetField>
-            <SheetField label="Company size">
-              <Select defaultValue={initial.companySize} {...register('companySize')}>
-                {SIZE_VALUES.map((s) => (
-                  <option key={s} value={s}>
-                    {SIZE_LABELS[s]}
-                  </option>
-                ))}
-              </Select>
-            </SheetField>
-            <SheetField label="Address / location" error={errors.address?.message}>
-              <Input
-                defaultValue={initial.address ?? ''}
-                {...register('address')}
-                autoComplete="street-address"
-                placeholder="Kampala, Uganda"
-              />
-            </SheetField>
-          </SheetGroup>
+          <SheetGroups>
+            <SheetGroup title="Identity">
+              <SheetField label="Company name" error={errors.companyName?.message} required>
+                <Input
+                  defaultValue={initial.companyName}
+                  {...register('companyName')}
+                  autoComplete="organization"
+                />
+              </SheetField>
+              <SheetField label="Industry">
+                <Select defaultValue={initial.industry} {...register('industry')}>
+                  {INDUSTRY_OPTIONS.map((i) => (
+                    <option key={i} value={i}>
+                      {titleCase(i)}
+                    </option>
+                  ))}
+                </Select>
+              </SheetField>
+              <SheetField label="Company size">
+                <Select defaultValue={initial.companySize} {...register('companySize')}>
+                  {SIZE_VALUES.map((s) => (
+                    <option key={s} value={s}>
+                      {SIZE_LABELS[s]}
+                    </option>
+                  ))}
+                </Select>
+              </SheetField>
+              <SheetField label="Address / location" error={errors.address?.message}>
+                <Input
+                  defaultValue={initial.address ?? ''}
+                  {...register('address')}
+                  autoComplete="street-address"
+                  placeholder="Kampala, Uganda"
+                />
+              </SheetField>
+            </SheetGroup>
 
-          <SheetGroup title="Contact & links">
-            <SheetField label="Contact person" error={errors.contactPersonName?.message}>
-              <Input
-                defaultValue={initial.contactPersonName ?? ''}
-                {...register('contactPersonName')}
-                autoComplete="name"
-                placeholder="Jane Doe"
-              />
-            </SheetField>
-            <SheetField label="Contact role" error={errors.contactPersonPosition?.message}>
-              <Input
-                defaultValue={initial.contactPersonPosition ?? ''}
-                {...register('contactPersonPosition')}
-                autoComplete="organization-title"
-                placeholder="Head of Talent"
-              />
-            </SheetField>
-            <SheetField label="Phone" error={errors.phone?.message}>
-              <Input
-                type="tel"
-                defaultValue={initial.phone ?? ''}
-                {...register('phone')}
-                autoComplete="tel"
-                placeholder="+256 743 535 678"
-              />
-            </SheetField>
-            <SheetField label="Website" error={errors.website?.message}>
-              <Input
-                type="url"
-                defaultValue={initial.website ?? ''}
-                {...register('website')}
-                autoComplete="url"
-                placeholder="https://acme.com"
-              />
-            </SheetField>
-            <SheetField label="LinkedIn" error={errors.linkedin?.message}>
-              <Input
-                type="url"
-                defaultValue={initial.linkedin ?? ''}
-                {...register('linkedin')}
-                placeholder="https://linkedin.com/company/acme"
-              />
-            </SheetField>
-          </SheetGroup>
+            <SheetGroup title="Contact & links">
+              <SheetField label="Contact person" error={errors.contactPersonName?.message}>
+                <Input
+                  defaultValue={initial.contactPersonName ?? ''}
+                  {...register('contactPersonName')}
+                  autoComplete="name"
+                  placeholder="Jane Doe"
+                />
+              </SheetField>
+              <SheetField label="Contact role" error={errors.contactPersonPosition?.message}>
+                <Input
+                  defaultValue={initial.contactPersonPosition ?? ''}
+                  {...register('contactPersonPosition')}
+                  autoComplete="organization-title"
+                  placeholder="Head of Talent"
+                />
+              </SheetField>
+              <SheetField label="Phone" error={errors.phone?.message}>
+                <Input
+                  type="tel"
+                  defaultValue={initial.phone ?? ''}
+                  {...register('phone')}
+                  autoComplete="tel"
+                  placeholder="+256 743 535 678"
+                />
+              </SheetField>
+              <SheetField label="Website" error={errors.website?.message}>
+                <Input
+                  type="url"
+                  defaultValue={initial.website ?? ''}
+                  {...register('website')}
+                  autoComplete="url"
+                  placeholder="https://acme.com"
+                />
+              </SheetField>
+              <SheetField label="LinkedIn" error={errors.linkedin?.message}>
+                <Input
+                  type="url"
+                  defaultValue={initial.linkedin ?? ''}
+                  {...register('linkedin')}
+                  placeholder="https://linkedin.com/company/acme"
+                />
+              </SheetField>
+            </SheetGroup>
 
-          <SheetGroup title="About" wide>
-            {/* Required by the schema (20+ characters) — it was not marked, so the
+            <SheetGroup title="About" wide>
+              {/* Required by the schema (20+ characters) — it was not marked, so the
                 first sign of it was an error after saving. */}
-            <SheetField
-              label="About the company"
-              required
-              hint="At least 20 characters: what you do and what it is like to work there."
-              error={errors.description?.message}
-              wide
-            >
-              <Textarea defaultValue={initial.description} {...register('description')} rows={6} />
-            </SheetField>
-          </SheetGroup>
-        </SheetGroups>
+              <SheetField
+                label="About the company"
+                required
+                hint="At least 20 characters: what you do and what it is like to work there."
+                error={errors.description?.message}
+                wide
+              >
+                <Textarea
+                  defaultValue={initial.description}
+                  {...register('description')}
+                  rows={6}
+                />
+              </SheetField>
+            </SheetGroup>
+          </SheetGroups>
 
-        {error && (
-          <p role="alert" className="text-danger mt-4 text-[13px]">
-            {error}
-          </p>
-        )}
+          {error && (
+            <p role="alert" className="text-danger mt-4 text-[13px]">
+              {error}
+            </p>
+          )}
 
-        <DirtyBar
-          dirty={isDirty || restoredDraft}
-          saving={pending}
-          onDiscard={() => {
-            clearDraft();
-            reset(initial);
-            setRestoredDraft(false);
-          }}
-          saveLabel="Save changes"
-        />
-      </FormSheet>
+          <DirtyBar
+            dirty={isDirty || restoredDraft}
+            saving={pending}
+            onDiscard={() => {
+              clearDraft();
+              reset(initial);
+              setRestoredDraft(false);
+            }}
+            saveLabel="Save changes"
+          />
+        </FormSheet>
+      </fieldset>
     </form>
   );
 }

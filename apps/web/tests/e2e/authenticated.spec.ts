@@ -66,7 +66,8 @@ test.describe('jobseeker (authenticated)', () => {
 
   test('the apply page offers a way back to the job it is for', async ({ page }) => {
     await page.goto('/jobs');
-    const first = page.locator('a[href^="/jobs/"]:not([href="/jobs"])').first();
+    const first = page.locator('a[href^="/jobs/"]:not([href="/jobs"]):visible').first();
+    await expect(first).toBeVisible();
     const href = await first.getAttribute('href');
     await page.goto(`${href}/apply`);
     const crumbs = page.getByRole('navigation', { name: 'Breadcrumb' });

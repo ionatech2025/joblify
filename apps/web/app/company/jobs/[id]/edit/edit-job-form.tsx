@@ -11,6 +11,7 @@ import { JobFormFields } from '@/app/company/jobs/job-form-fields';
 import { PostJobFormSchema, type PostJobFormValues } from '@/app/company/jobs/job-form-schema';
 import { FormSheet } from '@/app/components/console/sheet';
 import { DirtyBar } from '@/app/components/console/dirty-bar';
+import { useHydrated } from '@/lib/use-hydrated';
 import { toast } from '@/lib/stores/ui';
 import { unwrap } from '@/lib/action-result';
 
@@ -24,6 +25,7 @@ export function EditJobForm({
   status: JobPostStatus;
 }) {
   const router = useRouter();
+  const hydrated = useHydrated();
   const [isPending, startTransition] = useTransition();
   const [isDeleting, startDelete] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -89,42 +91,44 @@ export function EditJobForm({
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} noValidate>
-      <FormSheet>
-        <JobFormFields
-          register={register}
-          errors={errors}
-          publish={publish}
-          onPublishChange={(next) => setValue('publish', next, { shouldDirty: true })}
-          closed={closed}
-          onClosedChange={(next) => setValue('closed', next, { shouldDirty: true })}
-          status={status}
-          defaults={initial}
-        />
+      <fieldset disabled={!hydrated} className="m-0 contents border-0 p-0">
+        <FormSheet>
+          <JobFormFields
+            register={register}
+            errors={errors}
+            publish={publish}
+            onPublishChange={(next) => setValue('publish', next, { shouldDirty: true })}
+            closed={closed}
+            onClosedChange={(next) => setValue('closed', next, { shouldDirty: true })}
+            status={status}
+            defaults={initial}
+          />
 
-        {error && (
-          <p role="alert" className="text-danger mt-4 text-[13px]">
-            {error}
-          </p>
-        )}
+          {error && (
+            <p role="alert" className="text-danger mt-4 text-[13px]">
+              {error}
+            </p>
+          )}
 
-        <DirtyBar
-          dirty={isDirty}
-          saving={isPending}
-          onDiscard={() => reset(initial)}
-          saveLabel="Save changes"
-        >
-          <button
-            type="button"
-            aria-disabled={isDeleting || undefined}
-            aria-busy={isDeleting || undefined}
-            onClick={onDelete}
-            className="border-danger/30 text-danger hover:bg-danger-subtle focus-visible:ring-danger rounded-control inline-flex items-center gap-1.5 border px-3 py-1.5 text-[13px] font-medium transition-colors focus-visible:ring-2 focus-visible:outline-none aria-disabled:cursor-wait aria-disabled:opacity-70"
+          <DirtyBar
+            dirty={isDirty}
+            saving={isPending}
+            onDiscard={() => reset(initial)}
+            saveLabel="Save changes"
           >
-            <Trash2 aria-hidden className="size-3.5" />
-            {isDeleting ? 'Deleting…' : 'Delete'}
-          </button>
-        </DirtyBar>
-      </FormSheet>
+            <button
+              type="button"
+              aria-disabled={isDeleting || undefined}
+              aria-busy={isDeleting || undefined}
+              onClick={onDelete}
+              className="border-danger/30 text-danger hover:bg-danger-subtle focus-visible:ring-danger rounded-control inline-flex items-center gap-1.5 border px-3 py-1.5 text-[13px] font-medium transition-colors focus-visible:ring-2 focus-visible:outline-none aria-disabled:cursor-wait aria-disabled:opacity-70"
+            >
+              <Trash2 aria-hidden className="size-3.5" />
+              {isDeleting ? 'Deleting…' : 'Delete'}
+            </button>
+          </DirtyBar>
+        </FormSheet>
+      </fieldset>
     </form>
   );
 }

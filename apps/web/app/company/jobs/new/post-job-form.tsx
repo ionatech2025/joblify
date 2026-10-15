@@ -11,6 +11,7 @@ import { FormSheet } from '@/app/components/console/sheet';
 import { DirtyBar } from '@/app/components/console/dirty-bar';
 import { usePostJobDraftStore } from '@/lib/stores/post-job-draft';
 import { useFormDraft } from '@/lib/use-form-draft';
+import { useHydrated } from '@/lib/use-hydrated';
 import { toast } from '@/lib/stores/ui';
 import { unwrap } from '@/lib/action-result';
 
@@ -30,6 +31,7 @@ const initialValues: Partial<PostJobFormValues> = {
 
 export function PostJobForm() {
   const router = useRouter();
+  const hydrated = useHydrated();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   // A restored draft is unsaved work, but reset() rebases RHF's dirty baseline
@@ -93,29 +95,31 @@ export function PostJobForm() {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} noValidate>
-      <FormSheet>
-        <JobFormFields
-          register={register}
-          errors={errors}
-          publish={publish}
-          onPublishChange={(next) => setValue('publish', next, { shouldDirty: true })}
-          defaults={initialValues}
-        />
+      <fieldset disabled={!hydrated} className="m-0 contents border-0 p-0">
+        <FormSheet>
+          <JobFormFields
+            register={register}
+            errors={errors}
+            publish={publish}
+            onPublishChange={(next) => setValue('publish', next, { shouldDirty: true })}
+            defaults={initialValues}
+          />
 
-        {error && (
-          <p role="alert" className="text-danger mt-4 text-[13px]">
-            {error}
-          </p>
-        )}
+          {error && (
+            <p role="alert" className="text-danger mt-4 text-[13px]">
+              {error}
+            </p>
+          )}
 
-        <DirtyBar
-          dirty={isDirty || restoredDraft}
-          saving={isPending}
-          onDiscard={onDiscard}
-          saveLabel={publish ? 'Post job' : 'Save as draft'}
-          savingLabel="Saving…"
-        />
-      </FormSheet>
+          <DirtyBar
+            dirty={isDirty || restoredDraft}
+            saving={isPending}
+            onDiscard={onDiscard}
+            saveLabel={publish ? 'Post job' : 'Save as draft'}
+            savingLabel="Saving…"
+          />
+        </FormSheet>
+      </fieldset>
     </form>
   );
 }
