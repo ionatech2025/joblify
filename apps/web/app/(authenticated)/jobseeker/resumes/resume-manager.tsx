@@ -4,11 +4,13 @@ import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { upload } from '@vercel/blob/client';
 import Link from 'next/link';
-import { CheckCircle2, FileText, TriangleAlert } from 'lucide-react';
+import { CheckCircle2, FileText, TriangleAlert, Upload } from 'lucide-react';
 import { registerResume, deleteResume, uploadResumeDirect } from '@/app/actions/uploads';
 import { unwrap } from '@/lib/action-result';
+import { Badge } from '@/app/components/ui/badge';
 import { Button, buttonClasses } from '@/app/components/ui/button';
 import { EmptyState } from '@/app/components/ui/empty-state';
+import { ListView, type ListColumn } from '@/app/components/console/list-view';
 import { toast } from '@/lib/stores/ui';
 import { TimeStamp } from '@/app/components/ui/timestamp';
 
@@ -115,29 +117,119 @@ export function ResumeManager({
     }
   }
 
+  const columns: ListColumn<ResumeRow>[] = [
+    {
+      key: 'title',
+      header: 'Document',
+      cell: (r) => (
+        <div className="min-w-0">
+          {/* Authenticated download route — résumés are not publicly addressable. */}
+          <a
+            href={`/api/v1/resumes/${r.id}/file`}
+            rel="noopener noreferrer"
+            className="text-fg font-semibold no-underline hover:underline"
+          >
+            {r.title}
+          </a>
+          {r.parseFailed && (
+            <p className="text-fg-muted mt-1 mb-0 max-w-xl text-[12px]">
+              We couldn’t extract text from this file after several tries — it may be a scanned
+              image, corrupted, or password-protected. Match scores and autofill won’t work with it;
+              delete it and upload a different file.
+            </p>
+          )}
+        </div>
+      ),
+      aggregate: () => `${resumes.length} ${resumes.length === 1 ? 'resume' : 'resumes'}`,
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      cell: (r) =>
+        r.parsed ? (
+          <Badge tone="success" className="gap-1">
+            <CheckCircle2 aria-hidden className="size-3" />
+            Parsed
+          </Badge>
+        ) : r.parseFailed ? (
+          <Badge tone="danger" className="gap-1">
+            <TriangleAlert aria-hidden className="size-3" />
+            Couldn’t parse
+          </Badge>
+        ) : (
+          <Badge tone="neutral">Processing…</Badge>
+        ),
+    },
+    {
+      key: 'added',
+      header: 'Added',
+      align: 'end',
+      hideBelow: 'sm',
+      cell: (r) => <TimeStamp value={r.createdAt} className="text-fg-muted" />,
+    },
+    {
+      key: 'actions',
+      header: 'Actions',
+      align: 'end',
+      cell: (r) => (
+        <Button
+          variant="danger"
+          size="sm"
+          type="button"
+          onClick={() => onDelete(r.id, r.title)}
+          aria-label={`Delete ${r.title}`}
+        >
+          Delete
+        </Button>
+      ),
+    },
+  ];
+
   return (
-    <div className="mt-6">
-      <input
-        ref={inputRef}
-        type="file"
-        accept={ACCEPT}
-        onChange={onPick}
-        className="hidden"
-        aria-hidden="true"
-      />
-      <Button type="button" onClick={() => inputRef.current?.click()} loading={busy}>
-        {busy ? 'Uploading…' : 'Upload a resume'}
-      </Button>
+    <div>
+      <div className="o-sheet mb-3 flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+        <div className="min-w-0">
+          <p className="text-fg m-0 text-[13px] font-medium">
+            Upload a PDF or Word (.docx) résumé (up to 5 MB)
+          </p>
+          <p className="text-fg-muted m-0 mt-0.5 text-[12px]">
+            We parse it to autofill applications and score your matches. Don&apos;t have a file
+            handy?{' '}
+            <Link href="/jobseeker/resumes/builder" className="text-brand underline">
+              Build one from your profile
+            </Link>
+            .
+          </p>
+        </div>
+        <div className="shrink-0">
+          <input
+            ref={inputRef}
+            type="file"
+            accept={ACCEPT}
+            onChange={onPick}
+            className="hidden"
+            aria-hidden="true"
+          />
+          <Button
+            type="button"
+            size="sm"
+            icon={<Upload aria-hidden className="size-3.5" />}
+            onClick={() => inputRef.current?.click()}
+            loading={busy}
+          >
+            {busy ? 'Uploading…' : 'Upload a resume'}
+          </Button>
+        </div>
+      </div>
 
       {error && (
-        <p role="alert" className="mt-3 text-danger">
+        <p role="alert" className="text-danger mb-3 text-[13px]">
           {error}
         </p>
       )}
 
       {resumes.length === 0 ? (
         <EmptyState
-          className="mt-6"
           icon={<FileText />}
           title="No resumes yet"
           description="Upload a PDF or Word (.docx) document, or build one here. We parse it to prefill applications and score your match against every role."
@@ -151,57 +243,12 @@ export function ResumeManager({
           }
         />
       ) : (
-        <ul className="mt-6 flex list-none flex-col gap-3 p-0">
-          {resumes.map((r) => (
-            <li
-              key={r.id}
-              className="flex items-center justify-between gap-4 rounded-card border border-border bg-surface p-4 shadow-soft"
-            >
-              <div className="min-w-0">
-                {/* Authenticated download route — résumés are not publicly addressable. */}
-                <a
-                  href={`/api/v1/resumes/${r.id}/file`}
-                  rel="noopener noreferrer"
-                  className="font-semibold text-fg no-underline hover:underline"
-                >
-                  {r.title}
-                </a>
-                <p className="mt-1 mb-0 text-sm text-fg-subtle">
-                  {r.parsed ? (
-                    <span className="inline-flex items-center gap-1">
-                      <CheckCircle2 aria-hidden className="size-3.5 text-success" />
-                      Parsed
-                    </span>
-                  ) : r.parseFailed ? (
-                    <span className="inline-flex items-center gap-1 text-danger">
-                      <TriangleAlert aria-hidden className="size-3.5" />
-                      Couldn’t parse this file
-                    </span>
-                  ) : (
-                    'Processing…'
-                  )}{' '}
-                  · added <TimeStamp value={r.createdAt} />
-                </p>
-                {r.parseFailed && (
-                  <p className="mt-1 mb-0 text-sm text-fg-muted">
-                    We couldn’t extract text from this file after several tries — it may be a
-                    scanned image, corrupted, or password-protected. Match scores and autofill won’t
-                    work with it; delete it and upload a different file.
-                  </p>
-                )}
-              </div>
-              <Button
-                variant="danger"
-                size="sm"
-                type="button"
-                onClick={() => onDelete(r.id, r.title)}
-                aria-label={`Delete ${r.title}`}
-              >
-                Delete
-              </Button>
-            </li>
-          ))}
-        </ul>
+        <ListView
+          caption="Uploaded resumes"
+          rows={resumes}
+          rowKey={(r) => r.id}
+          columns={columns}
+        />
       )}
     </div>
   );

@@ -156,10 +156,17 @@ export function JobsSearch({
   });
 
   return (
-    <div className="grid grid-cols-1 gap-8 md:grid-cols-[260px_minmax(0,1fr)]">
+    <div className="grid grid-cols-1 items-start gap-8 md:grid-cols-[260px_minmax(0,1fr)]">
       {/* role="search": the filters are the page's search, so assistive tech can
           jump to them by landmark (they were an unnamed <aside>). */}
-      <div role="search" aria-label="Filter jobs" className="flex flex-col gap-3">
+      <div
+        role="search"
+        aria-label="Filter jobs"
+        className="rounded-card border-border bg-surface/80 shadow-soft flex min-w-0 flex-col gap-3 border p-4 backdrop-blur-sm"
+      >
+        <p aria-hidden="true" className="caption m-0">
+          Search &amp; location
+        </p>
         <Input
           type="search"
           placeholder="Title, company, or keyword"
@@ -174,6 +181,9 @@ export function JobsSearch({
           value={locText}
           onChange={(e) => setLocText(e.target.value)}
         />
+        <p aria-hidden="true" className="caption m-0 pt-1">
+          Role preferences
+        </p>
         {(['workMode', 'jobType', 'experienceLevel'] as const).map((field) => (
           <Select
             key={field}
@@ -188,7 +198,10 @@ export function JobsSearch({
             ))}
           </Select>
         ))}
-        <div className="flex gap-2">
+        <p aria-hidden="true" className="caption m-0 pt-1">
+          Annual salary
+        </p>
+        <div className="grid grid-cols-2 gap-2">
           <Input
             type="number"
             min={0}
@@ -213,9 +226,9 @@ export function JobsSearch({
         )}
       </div>
 
-      <section>
+      <section className="min-w-0">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <p className="m-0 text-sm text-fg-muted">
+          <p className="text-fg-muted m-0 text-sm font-medium tabular-nums">
             {isLoading && !data
               ? 'Searching…'
               : data
@@ -280,7 +293,7 @@ export function JobsSearch({
                 >
                   Prev
                 </Button>
-                <span className="text-sm text-fg-muted">
+                <span className="text-fg-muted text-sm tabular-nums">
                   Page {page + 1} of {data.nbPages}
                 </span>
                 <Button
@@ -322,7 +335,7 @@ function JobCard({ hit }: { hit: JobCardRecord }) {
               aria-hidden="true"
             />
           )}
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1 [overflow-wrap:anywhere]">
             {/* h2: the page h1 is "Search jobs"; card titles are the next level */}
             <h2 className="m-0 text-base font-semibold text-fg">{hit.title}</h2>
             {/* "3 days ago" is computed from the clock at render time, so the

@@ -66,25 +66,33 @@ export function NotificationsList({
           Live updates are paused — showing the last known list. Refresh to try again.
         </p>
       )}
-      <ul className="grid list-none grid-cols-1 gap-2 p-0">
+      <ul className="border-border bg-surface rounded-card divide-border m-0 list-none divide-y overflow-hidden border p-0">
         {items.map((n) => {
           const isRead = !!n.readAt;
           return (
             <li
               key={n.id}
-              className={`flex justify-between gap-4 rounded-card border px-4 py-3 shadow-soft ${
-                isRead ? 'border-border bg-surface' : 'border-border bg-brand-subtle'
+              className={`flex items-start justify-between gap-4 px-4 py-3 transition-colors ${
+                isRead ? 'bg-surface' : 'bg-brand-subtle/60'
               }`}
             >
-              <div>
-                <p className={`mb-1 text-fg ${isRead ? 'font-normal' : 'font-semibold'}`}>
+              <div className="min-w-0">
+                <p
+                  className={`text-fg mb-0.5 text-[13px] ${isRead ? 'font-medium' : 'font-semibold'}`}
+                >
+                  {!isRead && (
+                    <span
+                      aria-hidden
+                      className="bg-brand mr-1.5 inline-block size-2 rounded-full align-middle"
+                    />
+                  )}
                   {KIND_LABEL[n.kind] ?? n.kind}
                 </p>
-                <p className="m-0 text-sm text-fg-muted">{summarize(n.payload)}</p>
+                <p className="text-fg-muted m-0 text-[13px]">{summarize(n.payload)}</p>
                 {typeof n.payload.jobSlug === 'string' && (
                   <Link
                     href={`/jobs/${n.payload.jobSlug}`}
-                    className="inline-flex items-center gap-1 text-sm text-brand underline"
+                    className="text-brand mt-1 inline-flex min-h-6 items-center gap-1 text-[13px] underline"
                   >
                     View job
                     <ArrowRight aria-hidden className="size-3.5" />
@@ -93,7 +101,7 @@ export function NotificationsList({
                 {role === 'COMPANY' && typeof n.payload.jobId === 'string' && (
                   <Link
                     href={`/company/applicants/${n.payload.jobId}`}
-                    className="inline-flex items-center gap-1 text-sm text-brand underline"
+                    className="text-brand mt-1 inline-flex min-h-6 items-center gap-1 text-[13px] underline"
                   >
                     Review applicants
                     <ArrowRight aria-hidden className="size-3.5" />
@@ -103,7 +111,7 @@ export function NotificationsList({
                   (n.kind === 'NEW_SUBSCRIBER' || n.kind === 'INVITATION_RESPONDED') && (
                     <Link
                       href="/company/jobseekers?filter=subscribed"
-                      className="inline-flex items-center gap-1 text-sm text-brand underline"
+                      className="text-brand mt-1 inline-flex min-h-6 items-center gap-1 text-[13px] underline"
                     >
                       View subscribers
                       <ArrowRight aria-hidden className="size-3.5" />
@@ -116,7 +124,7 @@ export function NotificationsList({
                         ? `/company/chats/${n.payload.chatAreaId}`
                         : `/jobseeker/chats/${n.payload.chatAreaId}`
                     }
-                    className="inline-flex items-center gap-1 text-sm text-brand underline"
+                    className="text-brand mt-1 inline-flex min-h-6 items-center gap-1 text-[13px] underline"
                   >
                     Open chat
                     <ArrowRight aria-hidden className="size-3.5" />
@@ -125,21 +133,22 @@ export function NotificationsList({
                 {typeof n.payload.invitationId === 'string' && n.kind === 'INVITATION_RECEIVED' && (
                   <Link
                     href="/jobseeker/subscriptions"
-                    className="inline-flex items-center gap-1 text-sm text-brand underline"
+                    className="text-brand mt-1 inline-flex min-h-6 items-center gap-1 text-[13px] underline"
                   >
                     View invitation
                     <ArrowRight aria-hidden className="size-3.5" />
                   </Link>
                 )}
-                <p className="mt-1 mb-0 text-xs text-fg-subtle">
+                <p className="text-fg-subtle mt-1 mb-0 text-[12px]">
                   <TimeStamp value={n.createdAt} mode="datetime" />
                 </p>
               </div>
               {!isRead && (
                 <button
+                  type="button"
                   onClick={() => mark.mutate(n.id)}
                   disabled={mark.isPending}
-                  className="self-start text-sm text-brand underline disabled:opacity-50"
+                  className="text-brand inline-flex min-h-7 shrink-0 items-center self-start px-2 text-[13px] font-medium underline disabled:opacity-50"
                 >
                   Mark read
                 </button>

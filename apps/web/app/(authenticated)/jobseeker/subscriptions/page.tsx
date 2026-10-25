@@ -4,6 +4,7 @@ import { db } from '@/lib/db';
 import { Building2 } from 'lucide-react';
 import { ConsoleWidth } from '@/app/components/console/shell';
 import { Breadcrumb, ControlPanel } from '@/app/components/console/control-panel';
+import { ListView, type ListColumn } from '@/app/components/console/list-view';
 import { Badge } from '@/app/components/ui/badge';
 import { buttonClasses } from '@/app/components/ui/button';
 import { EmptyState } from '@/app/components/ui/empty-state';
@@ -41,6 +42,51 @@ export default async function JobseekerSubscriptionsPage() {
     }),
   ]);
 
+  type SubRow = (typeof subscriptions)[number];
+
+  const columns: ListColumn<SubRow>[] = [
+    {
+      key: 'company',
+      header: 'Company',
+      cell: (sub) =>
+        sub.company.companyProfile ? (
+          <Link
+            href={`/companies/${sub.company.companyProfile.slug}`}
+            className="text-fg font-medium no-underline hover:underline"
+          >
+            {sub.company.companyProfile.companyName}
+          </Link>
+        ) : (
+          <span className="text-fg font-medium">Company</span>
+        ),
+      aggregate: () => `${subscriptions.length} followed`,
+    },
+    {
+      key: 'type',
+      header: 'Subscription type',
+      cell: (sub) => <Badge tone="neutral">{typeLabel(sub.profileType)}</Badge>,
+    },
+    {
+      key: 'since',
+      header: 'Followed',
+      align: 'end',
+      hideBelow: 'sm',
+      cell: (sub) => <TimeStamp value={sub.createdAt} className="text-fg-muted" />,
+    },
+    {
+      key: 'actions',
+      header: 'Actions',
+      align: 'end',
+      cell: (sub) => (
+        <UnsubscribeButton
+          companyId={sub.companyId}
+          profileType={sub.profileType}
+          companyName={sub.company.companyProfile?.companyName ?? 'this company'}
+        />
+      ),
+    },
+  ];
+
   return (
     <main>
       <ControlPanel
@@ -52,28 +98,28 @@ export default async function JobseekerSubscriptionsPage() {
         }
       />
       <ConsoleWidth className="max-w-4xl py-3">
-        <p className="text-fg-muted mb-2 text-[13px]">
+        <p className="text-fg-muted mb-3 text-[13px]">
           Companies you follow, and invitations from companies that want you.
         </p>
         {invitations.length > 0 && (
-          <section className="mb-10">
-            <h2 className="text-lg font-semibold text-fg">Invitations</h2>
-            <ul className="mt-3 grid list-none grid-cols-1 gap-3 p-0">
+          <section className="mb-6">
+            <h2 className="text-fg mb-2 text-[14px] font-semibold">Invitations</h2>
+            <ul className="m-0 grid list-none grid-cols-1 gap-2 p-0">
               {invitations.map((inv) => (
                 <li
                   key={inv.id}
-                  className="rounded-card border border-border bg-brand-subtle p-4 shadow-soft"
+                  className="rounded-card border-brand/30 bg-brand-subtle border px-4 py-3"
                 >
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
-                      <p className="m-0 font-medium text-fg">
+                      <p className="text-fg m-0 text-[13px] font-medium">
                         {inv.company.companyProfile?.companyName ?? 'A company'} invited you as{' '}
                         <strong>{typeLabel(inv.profileType)}</strong>
                       </p>
                       {inv.message && (
-                        <p className="mt-1 mb-0 text-sm text-fg-muted">{inv.message}</p>
+                        <p className="text-fg-muted mt-1 mb-0 text-[13px]">{inv.message}</p>
                       )}
-                      <p className="mt-1 mb-0 text-xs text-fg-subtle">
+                      <p className="text-fg-subtle mt-1 mb-0 text-[12px]">
                         Sent <TimeStamp value={inv.createdAt} /> · expires{' '}
                         <TimeStamp value={inv.expiresAt} />
                       </p>
@@ -87,10 +133,9 @@ export default async function JobseekerSubscriptionsPage() {
         )}
 
         <section>
-          <h2 className="text-lg font-semibold text-fg">Subscribed companies</h2>
+          <h2 className="text-fg mb-2 text-[14px] font-semibold">Subscribed companies</h2>
           {subscriptions.length === 0 ? (
             <EmptyState
-              className="mt-3"
               icon={<Building2 />}
               title="Not following anyone yet"
               description="Subscribe to a company and they can invite you to roles and chats before those roles are public."
@@ -101,35 +146,12 @@ export default async function JobseekerSubscriptionsPage() {
               }
             />
           ) : (
-            <ul className="mt-3 grid list-none grid-cols-1 gap-2 p-0">
-              {subscriptions.map((sub) => (
-                <li
-                  key={sub.id}
-                  className="flex flex-wrap items-center justify-between gap-3 rounded-card border border-border bg-surface px-4 py-3 shadow-soft"
-                >
-                  <div>
-                    {sub.company.companyProfile ? (
-                      <Link
-                        href={`/companies/${sub.company.companyProfile.slug}`}
-                        className="font-medium text-fg hover:underline"
-                      >
-                        {sub.company.companyProfile.companyName}
-                      </Link>
-                    ) : (
-                      <span className="font-medium text-fg">Company</span>
-                    )}
-                    <Badge tone="neutral" className="ml-2">
-                      {typeLabel(sub.profileType)}
-                    </Badge>
-                  </div>
-                  <UnsubscribeButton
-                    companyId={sub.companyId}
-                    profileType={sub.profileType}
-                    companyName={sub.company.companyProfile?.companyName ?? 'this company'}
-                  />
-                </li>
-              ))}
-            </ul>
+            <ListView
+              caption="Subscribed companies"
+              rows={subscriptions}
+              rowKey={(sub) => sub.id}
+              columns={columns}
+            />
           )}
         </section>
       </ConsoleWidth>

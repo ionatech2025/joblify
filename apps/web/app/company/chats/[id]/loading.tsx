@@ -9,17 +9,17 @@ export default function Loading() {
   return (
     <main>
       <ControlPanelSkeleton />
-      <div className="mx-auto grid w-full max-w-6xl grid-cols-1 gap-4 px-3 py-3 sm:px-4 lg:grid-cols-[1fr_260px]">
+      <div className="mx-auto grid w-full max-w-6xl grid-cols-1 items-start gap-4 px-3 py-3 sm:px-4 lg:grid-cols-[minmax(0,1fr)_280px]">
         <section className="lg:col-span-2">
           <Skeleton className="h-4 w-56" />
         </section>
         <section>
           <ChatThreadSkeleton />
         </section>
-        <aside className="flex flex-col gap-2">
+        <aside className="o-sheet flex flex-col gap-3 p-3.5">
           <Skeleton className="h-4 w-24" />
-          <Skeleton className="rounded-card h-12 w-full" />
-          <Skeleton className="rounded-card h-12 w-full" />
+          <Skeleton className="rounded-control h-12 w-full" />
+          <Skeleton className="rounded-control h-12 w-full" />
         </aside>
       </div>
     </main>

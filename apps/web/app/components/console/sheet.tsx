@@ -77,11 +77,11 @@ export function SheetGroup({
   return (
     <section className={cn(wide && 'md:col-span-2', className)}>
       {title ? (
-        <h2 className="border-border text-fg mb-2.5 border-b pb-1 text-[13px] font-semibold">
+        <h2 className="border-border text-fg-muted mb-3 border-b pb-1.5 text-[12px] font-semibold tracking-wider uppercase">
           {title}
         </h2>
       ) : null}
-      <div className="flex flex-col gap-2.5">{children}</div>
+      <div className="flex flex-col gap-3">{children}</div>
     </section>
   );
 }
@@ -177,6 +177,32 @@ export function SheetField({
           </span>
         ) : null}
       </span>
+    </div>
+  );
+}
+
+/**
+ * Read-only label:value row inside a `SheetGroup`, matching `SheetField`'s
+ * two-column geometry for non-editable record attributes.
+ */
+export function SheetValue({
+  label,
+  children,
+  className,
+}: {
+  label: string;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div
+      className={cn(
+        'grid grid-cols-1 items-baseline gap-x-3 gap-y-1 sm:grid-cols-[minmax(0,9.5rem)_minmax(0,1fr)]',
+        className,
+      )}
+    >
+      <span className="text-fg-muted text-[13px] font-medium">{label}</span>
+      <span className="text-fg min-w-0 text-[13px]">{children}</span>
     </div>
   );
 }

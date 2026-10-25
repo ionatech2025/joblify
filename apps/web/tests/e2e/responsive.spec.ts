@@ -700,6 +700,11 @@ test.describe('user preferences and degraded conditions', () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/', { waitUntil: 'domcontentloaded' });
     await settle(page);
+    const hasGlobeCanvas = await page.evaluate(() => Boolean(document.querySelector('canvas')));
+    test.skip(
+      !hasGlobeCanvas,
+      'GlobeLazy rendered its static fallback (headless software WebGL without hardware GPU)',
+    );
     const onScreen = (await rafCount(page)) - 0;
     expect(onScreen, 'sanity: the hero animation runs while it is visible').toBeGreaterThan(10);
     // Scroll well past the hero, let any in-flight frame land, then measure.

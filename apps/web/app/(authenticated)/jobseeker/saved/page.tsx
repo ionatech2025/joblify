@@ -58,19 +58,27 @@ export default async function SavedJobsPage() {
         }
       />
       <ConsoleWidth className="max-w-5xl py-3">
-        {savedSearches.length > 0 && (
-          <section className="mt-0">
-            <h2 className="text-lg font-semibold text-fg">Saved searches</h2>
-            <p className="mt-1 text-sm text-fg-subtle">
-              Re-run a search, or get new matches in your daily digest.
-            </p>
-            <SavedSearchList initial={savedSearches} />
-          </section>
-        )}
-
-        <section className={savedSearches.length > 0 ? 'mt-8' : 'mt-0'}>
-          <h2 className="text-lg font-semibold text-fg">Saved jobs</h2>
+        <section>
+          <div className="mb-2 flex items-baseline justify-between gap-2">
+            <h2 className="text-fg text-[14px] font-semibold">Saved jobs</h2>
+            <span className="text-fg-muted text-[12px] tabular-nums">
+              {jobs.length} {jobs.length === 1 ? 'role' : 'roles'}
+            </span>
+          </div>
           <SavedList initial={jobs} />
+        </section>
+
+        <section className="mt-6">
+          <div className="mb-1 flex items-baseline justify-between gap-2">
+            <h2 className="text-fg text-[14px] font-semibold">Saved searches</h2>
+            <span className="text-fg-muted text-[12px] tabular-nums">
+              {savedSearches.length} / 20
+            </span>
+          </div>
+          <p className="text-fg-muted mb-2 text-[12px]">
+            Re-run a search in one click, or get new matches in your daily digest.
+          </p>
+          <SavedSearchList initial={savedSearches} />
         </section>
       </ConsoleWidth>
     </main>

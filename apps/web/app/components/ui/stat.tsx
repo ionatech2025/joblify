@@ -38,11 +38,11 @@ export function Stat({
       ) : null}
       <div className="flex items-baseline gap-2">
         {/* `.display.text-3xl` is asserted by tests/e2e/design-regression.spec.ts */}
-        <span className="display text-fg text-3xl">{value}</span>
+        <span className="display text-fg text-3xl tabular-nums">{value}</span>
         {delta && (
           <span
             className={cn(
-              'text-xs font-semibold',
+              'text-xs font-semibold tabular-nums',
               deltaTone === 'up' ? 'text-success' : 'text-danger',
             )}
           >

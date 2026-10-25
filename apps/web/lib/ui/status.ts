@@ -104,3 +104,47 @@ export const CHAT_KIND_BADGE: Partial<
  * company profile) rather than on an opaque card.
  */
 export const META_CHIP = 'bg-surface/70 backdrop-blur-sm';
+
+// --- Company taxonomy ------------------------------------------------------
+
+const INDUSTRY_LABELS: Record<string, string> = {
+  TECHNOLOGY: 'Technology',
+  HOSPITALITY: 'Hospitality',
+  EDUCATION: 'Education',
+  AGRICULTURE: 'Agriculture',
+  FINANCE: 'Finance',
+  MANUFACTURING: 'Manufacturing',
+  CONSTRUCTION: 'Construction',
+  HEALTHCARE: 'Healthcare',
+  RETAIL: 'Retail',
+  TRANSPORTATION: 'Transportation',
+  ENERGY: 'Energy',
+  MEDIA: 'Media',
+  GOVERNMENT: 'Government',
+  NONPROFIT: 'Non-profit',
+  OTHER: 'Other',
+};
+
+const COMPANY_SIZE_LABELS: Record<string, string> = {
+  SIZE_1_10: '1–10',
+  SIZE_11_50: '11–50',
+  SIZE_51_200: '51–200',
+  SIZE_201_500: '201–500',
+  SIZE_501_1000: '501–1,000',
+  SIZE_1001_PLUS: '1,001+',
+};
+
+export function industryLabel(industry: string): string {
+  if (INDUSTRY_LABELS[industry]) return INDUSTRY_LABELS[industry];
+  return industry.charAt(0).toUpperCase() + industry.slice(1).toLowerCase().replace(/_/g, ' ');
+}
+
+export function companySizeLabel(size: string, withUnit = false): string {
+  const base =
+    COMPANY_SIZE_LABELS[size] ??
+    size
+      .replace(/^SIZE_/, '')
+      .replace(/_/g, '–')
+      .replace('PLUS', '+');
+  return withUnit ? `${base} employees` : base;
+}

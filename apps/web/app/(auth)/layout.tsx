@@ -20,8 +20,8 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
   if (origin) preconnect(origin, { crossOrigin: 'anonymous' });
 
   return (
-    <main className="grid min-h-[80vh] lg:grid-cols-2">
-      <section className="flex flex-col items-center justify-center gap-8 px-4 py-12 sm:px-6">
+    <main className="grid min-h-[80vh] grid-cols-[minmax(0,1fr)] lg:grid-cols-2">
+      <section className="flex min-w-0 max-w-full flex-col items-center justify-center gap-8 overflow-x-hidden px-4 py-12 sm:px-6">
         <p className="text-fg m-0 flex items-center gap-2 text-lg font-extrabold tracking-tight">
           {/* eslint-disable-next-line @next/next/no-img-element -- small fixed-size brand mark */}
           <img src="/logo.png" alt="" width={28} height={28} className="size-7 rounded-md" />

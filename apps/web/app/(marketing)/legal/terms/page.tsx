@@ -1,6 +1,9 @@
 import { PageHeader } from '@/app/components/ui/ambient';
 
-export const metadata = { title: 'Terms of service' };
+export const metadata = {
+  title: 'Terms of service',
+  description: 'Acceptable use, account responsibilities, and service terms for Joblify.',
+};
 
 export default function TermsPage() {
   return (

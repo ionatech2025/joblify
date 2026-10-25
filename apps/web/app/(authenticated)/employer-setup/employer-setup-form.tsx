@@ -25,10 +25,7 @@ import { useEmployerSetupDraftStore } from '@/lib/stores/employer-setup-draft';
 import { useFormDraft } from '@/lib/use-form-draft';
 import { useHydrated } from '@/lib/use-hydrated';
 import { toast } from '@/lib/stores/ui';
-
-function titleCase(s: string): string {
-  return s.charAt(0) + s.slice(1).toLowerCase();
-}
+import { industryLabel } from '@/lib/ui/status';
 
 const initialValues: CompanyProfileInput = {
   companyName: '',
@@ -139,7 +136,7 @@ export function EmployerSetupForm({ hasJobSeekerIdentity }: { hasJobSeekerIdenti
                 <Select defaultValue={initialValues.industry} {...register('industry')}>
                   {INDUSTRY_OPTIONS.map((i) => (
                     <option key={i} value={i}>
-                      {titleCase(i)}
+                      {industryLabel(i)}
                     </option>
                   ))}
                 </Select>

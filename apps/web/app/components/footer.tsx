@@ -27,6 +27,9 @@ export function Footer() {
             <Link href="/about" className={link}>
               About
             </Link>
+            <Link href="/resources" className={link}>
+              Resources
+            </Link>
             <Link href="/legal/privacy" className={link}>
               Privacy
             </Link>
@@ -35,6 +38,9 @@ export function Footer() {
             </Link>
             <Link href="/legal/ai" className={link}>
               How we use AI
+            </Link>
+            <Link href="/legal/processors" className={link}>
+              Processors
             </Link>
             <Link href="/accessibility" className={link}>
               Accessibility

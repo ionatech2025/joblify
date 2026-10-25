@@ -27,11 +27,23 @@ export function JobResultsSkeleton({ count = 6 }: { count?: number }) {
  */
 export function JobsSearchSkeleton() {
   return (
-    <div aria-hidden="true" className="grid grid-cols-1 gap-8 md:grid-cols-[260px_minmax(0,1fr)]">
-      <div className="flex flex-col gap-3">
-        {Array.from({ length: 6 }, (_, i) => (
-          <Skeleton key={i} className="rounded-control h-11 w-full" />
-        ))}
+    <div
+      aria-hidden="true"
+      className="grid grid-cols-1 items-start gap-8 md:grid-cols-[260px_minmax(0,1fr)]"
+    >
+      <div className="rounded-card border-border bg-surface/80 shadow-soft flex flex-col gap-3 border p-4">
+        <Skeleton className="h-3 w-28" />
+        <Skeleton className="rounded-control h-10 w-full" />
+        <Skeleton className="rounded-control h-10 w-full" />
+        <Skeleton className="mt-1 h-3 w-28" />
+        <Skeleton className="rounded-control h-10 w-full" />
+        <Skeleton className="rounded-control h-10 w-full" />
+        <Skeleton className="rounded-control h-10 w-full" />
+        <Skeleton className="mt-1 h-3 w-24" />
+        <div className="flex gap-2">
+          <Skeleton className="rounded-control h-10 w-full" />
+          <Skeleton className="rounded-control h-10 w-full" />
+        </div>
       </div>
       <div>
         <Skeleton className="mb-4 h-5 w-24" />

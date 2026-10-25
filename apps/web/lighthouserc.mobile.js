@@ -33,13 +33,14 @@ module.exports = {
     assert: {
       assertions: {
         'categories:performance': ['warn', { minScore: 0.65 }],
-        'categories:accessibility': ['warn', { minScore: 0.9 }],
+        'categories:accessibility': ['error', { minScore: 0.9 }],
         'categories:best-practices': ['warn', { minScore: 0.9 }],
         'categories:seo': ['warn', { minScore: 0.9 }],
         'largest-contentful-paint': ['warn', { maxNumericValue: 4000 }],
         'cumulative-layout-shift': ['warn', { maxNumericValue: 0.1 }],
         'total-blocking-time': ['warn', { maxNumericValue: 800 }],
         'total-byte-weight': ['warn', { maxNumericValue: 500_000 }],
+        'uses-rel-preconnect': 'warn',
       },
     },
     upload: { target: 'temporary-public-storage' },

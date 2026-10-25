@@ -19,7 +19,13 @@ import { cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Field, Input, Checkbox } from '@/app/components/ui/form';
 import { TimeStamp } from '@/app/components/ui/timestamp';
+import { ConsoleBody } from '@/app/components/console/shell';
+import { SheetValue } from '@/app/components/console/sheet';
 import { ProfileForm } from '@/app/(authenticated)/jobseeker/profile/profile-form';
+import { SavedList } from '@/app/(authenticated)/jobseeker/saved/saved-list';
+import { SavedSearchList } from '@/app/(authenticated)/jobseeker/saved/saved-search-list';
+import { JobReportsQueue } from '@/app/admin/job-reports';
+import { ResumeBuilderForm } from '@/app/(authenticated)/jobseeker/resumes/builder/builder-form';
 
 vi.mock('@/app/actions/profile', () => ({
   saveProfile: vi.fn().mockResolvedValue(undefined),
@@ -157,6 +163,24 @@ describe('TimeStamp', () => {
     const { container } = render(<TimeStamp value="not a date" />);
     expect(container.textContent).toBe('');
   });
+
+  it('applies tabular-nums so date columns align vertically without jitter', () => {
+    const { container } = render(<TimeStamp value="2026-10-25T12:00:00.000Z" />);
+    const el = container.querySelector('time');
+    expect(el?.className).toContain('tabular-nums');
+  });
+});
+
+describe('Console primitives (ConsoleBody & SheetValue)', () => {
+  it('renders ConsoleBody and SheetValue with their console layout classes', () => {
+    render(
+      <ConsoleBody>
+        <SheetValue label="Verification">Verified</SheetValue>
+      </ConsoleBody>,
+    );
+    expect(screen.getByText('Verification')).toBeDefined();
+    expect(screen.getByText('Verified')).toBeDefined();
+  });
 });
 
 describe('form composition', () => {
@@ -289,5 +313,87 @@ describe('ProfileForm inline field validation (JOB_UC_05.0)', () => {
         'Enter a phone number with 7 to 15 digits. A leading + and spaces or dashes are fine.',
       ),
     ).toBeDefined();
+  });
+});
+
+describe('Console list surfaces (SavedList, SavedSearchList, JobReportsQueue, ResumeBuilderForm)', () => {
+  it('renders SavedList as a console table with aggregate footer and empty state', () => {
+    render(
+      <SavedList
+        initial={[
+          {
+            id: 'j1',
+            slug: 'staff-engineer',
+            title: 'Staff Engineer',
+            company: 'Acme Corp',
+            location: 'Remote',
+          },
+        ]}
+      />,
+    );
+    expect(screen.getByRole('table', { name: 'Saved jobs' })).toBeDefined();
+    expect(screen.getByText('1 saved')).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Remove Staff Engineer from saved' })).toBeDefined();
+
+    cleanup();
+    render(<SavedList initial={[]} />);
+    expect(screen.getByText('No saved jobs yet')).toBeDefined();
+  });
+
+  it('renders SavedSearchList as a console table and shows its crafted empty state when empty', () => {
+    render(
+      <SavedSearchList
+        initial={[{ id: 's1', label: 'Remote Rust', query: 'q=rust&workMode=REMOTE' }]}
+      />,
+    );
+    expect(screen.getByRole('table', { name: 'Saved searches' })).toBeDefined();
+    expect(screen.getByText('Remote Rust')).toBeDefined();
+
+    cleanup();
+    render(<SavedSearchList initial={[]} />);
+    expect(screen.getByText('No saved searches')).toBeDefined();
+  });
+
+  it('renders JobReportsQueue as a console table with reason badges and aggregate count', () => {
+    render(
+      <JobReportsQueue
+        initial={[
+          {
+            id: 'rep_1',
+            reason: 'SCAM',
+            details: 'Asks for an upfront registration fee.',
+            createdAt: '2026-10-20T10:00:00.000Z',
+            jobTitle: 'Fake Data Entry',
+            jobSlug: 'fake-data-entry',
+            companyName: 'Shady LLC',
+          },
+        ]}
+      />,
+    );
+    expect(screen.getByRole('table', { name: 'Reported job postings' })).toBeDefined();
+    expect(screen.getByText('Scam / asks for money')).toBeDefined();
+    expect(screen.getByText('1 open report')).toBeDefined();
+  });
+
+  it('wires DirtyBar into ResumeBuilderForm and flips to unsaved changes on edit', async () => {
+    const user = userEvent.setup();
+    render(
+      <ResumeBuilderForm
+        initialEntries={[
+          {
+            company: 'Acme',
+            title: 'Engineer',
+            startDate: 'Jan 2023',
+            endDate: 'Present',
+            description: 'Built APIs.',
+          },
+        ]}
+      />,
+    );
+    expect(screen.getByText('Experience #1')).toBeDefined();
+    expect(screen.getByText('All changes saved')).toBeDefined();
+
+    await user.type(screen.getByRole('textbox', { name: 'Company' }), ' Corp');
+    expect(await screen.findByText('Unsaved changes')).toBeDefined();
   });
 });

@@ -44,17 +44,6 @@ export default async function ResumesPage() {
         }
       />
       <ConsoleWidth className="max-w-5xl py-3">
-        <p className="text-fg-muted mb-2 text-[13px]">
-          Upload a PDF or Word (.docx) resume. We parse it to autofill applications and score your
-          matches.
-        </p>
-        <p className="m-0 text-sm text-fg-muted">
-          Don't have a resume file handy?{' '}
-          <Link href="/jobseeker/resumes/builder" className="text-brand underline">
-            Build one from your profile
-          </Link>
-          .
-        </p>
         <ResumeManager userId={user.id} initialResumes={resumes} />
       </ConsoleWidth>
     </main>

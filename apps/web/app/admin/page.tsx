@@ -64,9 +64,17 @@ export default async function AdminPage() {
         }
       />
       <ConsoleWidth className="max-w-6xl py-3">
-        <p className="text-fg-muted mb-2 text-[13px]">
-          Unverified companies don&apos;t appear in the public directory or job search.
-        </p>
+        <div className="mb-2 flex items-baseline justify-between gap-2">
+          <div>
+            <h2 className="text-fg text-[14px] font-semibold">Pending company verifications</h2>
+            <p className="text-fg-muted text-[12px]">
+              Unverified companies don&apos;t appear in the public directory or job search.
+            </p>
+          </div>
+          <span className="text-fg-muted text-[12px] font-semibold tabular-nums">
+            {pending.length} pending
+          </span>
+        </div>
         <VerificationQueue
           initial={pending.map((p) => ({
             id: p.id,
@@ -78,7 +86,12 @@ export default async function AdminPage() {
           }))}
         />
 
-        <h2 className="text-fg mt-6 mb-2 text-sm font-semibold">Reported job postings</h2>
+        <div className="mt-6 mb-2 flex items-baseline justify-between gap-2">
+          <h2 className="text-fg text-[14px] font-semibold">Reported job postings</h2>
+          <span className="text-fg-muted text-[12px] font-semibold tabular-nums">
+            {reports.length} open
+          </span>
+        </div>
         <JobReportsQueue
           initial={reports.map((r) => ({
             id: r.id,

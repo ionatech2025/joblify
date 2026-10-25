@@ -1,7 +1,10 @@
 import { PageHeader } from '@/app/components/ui/ambient';
 import { CONTACTS, CONTROLLER } from '@/lib/site-config';
 
-export const metadata = { title: 'Privacy policy' };
+export const metadata = {
+  title: 'Privacy policy',
+  description: 'How Joblify collects, processes, protects, and retains personal data under GDPR.',
+};
 
 // Keep in step with the code. Several statements below are enforced by a named
 // job or setting — the file noted beside each is where to look before changing

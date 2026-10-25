@@ -99,7 +99,7 @@ export function FacetChips({
             href={f.removeHref}
             scroll={false}
             aria-label={`Remove ${f.group} filter: ${f.label}`}
-            className="hover:bg-brand/15 grid size-5 place-items-center no-underline transition-colors"
+            className="hover:bg-brand/15 grid size-6 place-items-center no-underline transition-colors"
           >
             <X aria-hidden className="size-3" />
           </Link>

@@ -1,18 +1,26 @@
 import { ChatThreadSkeleton } from '@/app/components/chat/chat-thread-skeleton';
-import { ConsoleWidth } from '@/app/components/console/shell';
 import { ControlPanelSkeleton } from '@/app/components/console/skeleton';
 import { Skeleton } from '@/app/components/ui/skeleton';
 
-// Console route fallback: the control-panel bar over the ChatThread +
-// ChatComposer skeleton at max-w-4xl, matching app/(authenticated)/jobseeker/chats/[id]/page.tsx.
+// Console route fallback: the control-panel bar over the 2-column ChatThread +
+// room-details sidebar layout of app/(authenticated)/jobseeker/chats/[id]/page.tsx.
 export default function Loading() {
   return (
     <main>
       <ControlPanelSkeleton />
-      <ConsoleWidth className="max-w-4xl py-3">
-        <Skeleton className="mb-2 h-4 w-48" />
-        <ChatThreadSkeleton />
-      </ConsoleWidth>
+      <div className="mx-auto grid w-full max-w-6xl grid-cols-1 items-start gap-4 px-3 py-3 sm:px-4 lg:grid-cols-[minmax(0,1fr)_260px]">
+        <section className="lg:col-span-2">
+          <Skeleton className="h-4 w-48" />
+        </section>
+        <section>
+          <ChatThreadSkeleton />
+        </section>
+        <aside className="o-sheet flex flex-col gap-3 p-3.5">
+          <Skeleton className="h-4 w-24" />
+          <Skeleton className="rounded-control h-10 w-full" />
+          <Skeleton className="rounded-control h-16 w-full" />
+        </aside>
+      </div>
     </main>
   );
 }
