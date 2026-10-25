@@ -12,6 +12,7 @@ import { IslandBoundary } from '@/app/components/island-boundary';
 import { Button, buttonClasses } from '@/app/components/ui/button';
 import { Input, Select } from '@/app/components/ui/form';
 import { INDUSTRY_OPTIONS, SIZE_LABELS, SIZE_VALUES } from '@/app/company/company-profile-schema';
+import { companySizeLabel, industryLabel } from '@/lib/ui/status';
 import type { IndustryType, CompanySize, Prisma } from '@prisma/client';
 
 export const metadata = {
@@ -63,14 +64,26 @@ function sanitizeQuery(raw?: string): string {
   return raw.replace(/<[^>]*>?/gm, '').trim();
 }
 
-function titleCase(s: string): string {
-  return s.charAt(0) + s.slice(1).toLowerCase().replace(/_/g, ' ');
-}
-
 async function CompaniesList({ searchParams }: { searchParams: SearchParams }) {
   await connection();
   const params = await searchParams;
-  const companies = await getCompaniesList(params);
+  let companies: Awaited<ReturnType<typeof getCompaniesList>>;
+  try {
+    companies = await getCompaniesList(params);
+  } catch {
+    return (
+      <EmptyState
+        icon={<Building2 />}
+        title="Couldn’t load companies"
+        description="Try again in a moment, or search open roles directly."
+        action={
+          <Link href="/jobs" className={`${buttonClasses()} no-underline`}>
+            Browse jobs
+          </Link>
+        }
+      />
+    );
+  }
   const hasFilters = Boolean(params.q || params.industry || params.size || params.location);
 
   return (
@@ -93,7 +106,7 @@ async function CompaniesList({ searchParams }: { searchParams: SearchParams }) {
           <option value="">All industries</option>
           {INDUSTRY_OPTIONS.map((ind) => (
             <option key={ind} value={ind}>
-              {titleCase(ind)}
+              {industryLabel(ind)}
             </option>
           ))}
         </Select>
@@ -156,10 +169,19 @@ async function CompaniesList({ searchParams }: { searchParams: SearchParams }) {
                       aria-hidden="true"
                     />
                   )}
-                  <div className="min-w-0">
-                    <h3 className="m-0 text-base font-semibold text-fg">{c.companyName}</h3>
-                    <div className="mt-2">
-                      <Badge tone="neutral">{c.industry.replace('_', ' ')}</Badge>
+                  <div className="min-w-0 flex-1 [overflow-wrap:anywhere]">
+                    <h3 className="text-fg m-0 text-base font-semibold">{c.companyName}</h3>
+                    {c.address && (
+                      <p className="text-fg-muted mt-0.5 mb-0 truncate text-xs">{c.address}</p>
+                    )}
+                    {c.description && (
+                      <p className="text-fg-subtle mt-1.5 mb-0 line-clamp-2 text-sm leading-snug">
+                        {c.description}
+                      </p>
+                    )}
+                    <div className="mt-2.5 flex flex-wrap gap-1.5">
+                      <Badge tone="neutral">{industryLabel(c.industry)}</Badge>
+                      <Badge tone="neutral">{companySizeLabel(c.companySize, true)}</Badge>
                     </div>
                   </div>
                 </Card>

@@ -10,6 +10,8 @@ import { AmbientBand } from '@/app/components/ui/ambient';
 import { EmptyState } from '@/app/components/ui/empty-state';
 import { Badge } from '@/app/components/ui/badge';
 import { Card } from '@/app/components/ui/card';
+import { formatSalary } from '@/lib/ui/salary';
+import { companySizeLabel, industryLabel } from '@/lib/ui/status';
 import { CompanyDetailSkeleton } from './company-detail-skeleton';
 import { SubscribeButton } from './subscribe-button';
 
@@ -91,11 +93,16 @@ async function CompanyDetailBody({ slug }: { slug: string }) {
             <h1 className="display m-0 text-3xl text-fg sm:text-4xl">{company.companyName}</h1>
             <div className="mt-3 flex flex-wrap gap-2">
               <Badge tone="neutral" className="bg-surface/70 backdrop-blur-sm">
-                {company.industry.replace('_', ' ')}
+                {industryLabel(company.industry)}
               </Badge>
               <Badge tone="neutral" className="bg-surface/70 backdrop-blur-sm">
-                {company.companySize.replace('_', ' ').toLowerCase()}
+                {companySizeLabel(company.companySize, true)}
               </Badge>
+              {company.address && (
+                <Badge tone="neutral" className="bg-surface/70 backdrop-blur-sm">
+                  {company.address}
+                </Badge>
+              )}
             </div>
           </div>
           <div className="ml-auto">
@@ -133,18 +140,38 @@ async function CompanyDetailBody({ slug }: { slug: string }) {
             />
           ) : (
             <ul className="grid list-none grid-cols-1 gap-3 p-0 sm:grid-cols-2">
-              {openJobs.map((job) => (
-                <li key={job.id}>
-                  <Link href={`/jobs/${job.slug}`} className="block h-full no-underline">
-                    <Card className="h-full transition-shadow hover:shadow-md">
-                      <h3 className="m-0 text-base font-semibold text-fg">{job.title}</h3>
-                      {job.location && (
-                        <p className="mt-1 mb-0 text-sm text-fg-muted">{job.location}</p>
-                      )}
-                    </Card>
-                  </Link>
-                </li>
-              ))}
+              {openJobs.map((job) => {
+                const pay = formatSalary({
+                  min: job.salaryMin,
+                  max: job.salaryMax,
+                  currency: job.salaryCurrency,
+                  period: job.salaryPeriod,
+                });
+                return (
+                  <li key={job.id}>
+                    <Link href={`/jobs/${job.slug}`} className="block h-full no-underline">
+                      <Card className="flex h-full flex-col gap-2 transition-shadow hover:shadow-md">
+                        <div>
+                          <h3 className="text-fg m-0 text-base font-semibold">{job.title}</h3>
+                          <p className="text-fg-muted mt-1 mb-0 text-sm">
+                            {job.location ?? 'Flexible location'}
+                            {job.workMode === 'REMOTE'
+                              ? ' · Remote'
+                              : job.workMode === 'HYBRID'
+                                ? ' · Hybrid'
+                                : ''}
+                          </p>
+                        </div>
+                        {pay && (
+                          <Badge tone="dark" className="mt-auto self-start">
+                            {pay}
+                          </Badge>
+                        )}
+                      </Card>
+                    </Link>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </section>

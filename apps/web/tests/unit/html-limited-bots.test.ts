@@ -34,6 +34,8 @@ const UA = {
   telegram: 'TelegramBot (like TwitterBot)',
   lighthouseLegacy:
     'Mozilla/5.0 (Linux; Android 11) Chrome/100 Mobile Safari/537.36 Chrome-Lighthouse',
+  lighthouseModern:
+    'Mozilla/5.0 (Linux; Android 11; moto g power (2022)) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Mobile Safari/537.36 Lighthouse',
   // Training crawlers: disallowed in robots.ts, so they never reach a page.
   gptbot:
     'Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko); compatible; GPTBot/1.2; +https://openai.com/gptbot',
@@ -58,6 +60,7 @@ describe('HTML_LIMITED_BOTS (blocking <head> metadata)', () => {
     'linkedin',
     'telegram',
     'lighthouseLegacy',
+    'lighthouseModern',
   ] as const)('gives %s its metadata in <head>', (agent) => {
     expect(HTML_LIMITED_BOTS.test(UA[agent])).toBe(true);
   });

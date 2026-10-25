@@ -9,6 +9,7 @@ import { ListView, type ListColumn } from '@/app/components/console/list-view';
 import { toast } from '@/lib/stores/ui';
 import { unwrap } from '@/lib/action-result';
 import { TimeStamp } from '@/app/components/ui/timestamp';
+import { companySizeLabel, industryLabel } from '@/lib/ui/status';
 
 type PendingCompany = {
   id: string;
@@ -73,13 +74,13 @@ export function VerificationQueue({ initial }: { initial: PendingCompany[] }) {
       key: 'industry',
       header: 'Industry',
       hideBelow: 'sm',
-      cell: (c) => <span className="text-fg-muted">{titleCase(c.industry)}</span>,
+      cell: (c) => <span className="text-fg-muted">{industryLabel(c.industry)}</span>,
     },
     {
       key: 'size',
       header: 'Size',
       hideBelow: 'sm',
-      cell: (c) => <span className="text-fg-muted">{sizeLabel(c.companySize)}</span>,
+      cell: (c) => <span className="text-fg-muted">{companySizeLabel(c.companySize)}</span>,
     },
     {
       key: 'website',
@@ -149,12 +150,4 @@ export function VerificationQueue({ initial }: { initial: PendingCompany[] }) {
       />
     </>
   );
-}
-
-function titleCase(s: string): string {
-  return s.charAt(0) + s.slice(1).toLowerCase();
-}
-
-function sizeLabel(size: string): string {
-  return size.replace('SIZE_', '').replace(/_/g, '–').replace('PLUS', '+');
 }

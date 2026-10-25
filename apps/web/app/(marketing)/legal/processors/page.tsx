@@ -1,7 +1,11 @@
 import { PageHeader } from '@/app/components/ui/ambient';
 import { groqTasks, listTasks } from '@/lib/ai/groq-config';
 
-export const metadata = { title: 'Data processors' };
+export const metadata = {
+  title: 'Data processors',
+  description:
+    'Sub-processors and infrastructure providers that process data on behalf of Joblify.',
+};
 
 // The "Where" column used to assert regions ("EU", "EU + US", "ZDR contracts")
 // that nothing in the code or configuration enforced — and the database host

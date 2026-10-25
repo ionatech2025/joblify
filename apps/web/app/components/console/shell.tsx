@@ -33,3 +33,11 @@ export function ConsoleWidth({ children, className }: { children: ReactNode; cla
     <div className={cn('mx-auto w-full max-w-[92rem] px-3 sm:px-4', className)}>{children}</div>
   );
 }
+
+/**
+ * Standard main-content region inside a console view: aligns to `ConsoleWidth`
+ * with calm vertical breathing room below the sticky control panel.
+ */
+export function ConsoleBody({ children, className }: { children: ReactNode; className?: string }) {
+  return <ConsoleWidth className={cn('py-3.5 sm:py-4', className)}>{children}</ConsoleWidth>;
+}

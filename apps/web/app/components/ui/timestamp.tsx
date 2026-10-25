@@ -1,6 +1,7 @@
 'use client';
 
 import { useHydrated } from '@/lib/use-hydrated';
+import { cn } from '@/lib/cn';
 
 /**
  * A rendered date or date+time.
@@ -53,7 +54,7 @@ export function TimeStamp({
     : new Intl.DateTimeFormat('en-GB', { ...options, timeZone: 'UTC' }).format(date);
 
   return (
-    <time dateTime={iso} className={className} suppressHydrationWarning>
+    <time dateTime={iso} className={cn('tabular-nums', className)} suppressHydrationWarning>
       {text}
     </time>
   );

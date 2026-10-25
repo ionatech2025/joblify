@@ -192,7 +192,12 @@ async function HeroStatCards() {
   // Dynamic boundary: defers to runtime (streamed via the Suspense above) so
   // the build needs no database; getMarketplaceStats() caches at runtime.
   await connection();
-  const stats = await getMarketplaceStats();
+  let stats: Awaited<ReturnType<typeof getMarketplaceStats>>;
+  try {
+    stats = await getMarketplaceStats();
+  } catch {
+    return null;
+  }
 
   return (
     <div aria-hidden="true" className="pointer-events-none absolute inset-0 hidden lg:block">
@@ -217,7 +222,17 @@ async function HeroStatCards() {
 // Social-proof stat row beneath the hero panel — real cached counts.
 async function HeroStatRow() {
   await connection();
-  const stats = await getMarketplaceStats();
+  let stats: Awaited<ReturnType<typeof getMarketplaceStats>>;
+  try {
+    stats = await getMarketplaceStats();
+  } catch {
+    stats = {
+      openRoles: 0,
+      companiesHiring: 0,
+      skillsTracked: 0,
+      openRolesTrend: [0, 0, 0, 0, 0, 0],
+    };
+  }
 
   return (
     <StatRow divided className="px-2 py-10 sm:py-12">
@@ -257,7 +272,23 @@ async function FeaturedJobs() {
   // Dynamic boundary: defers to runtime (streamed via the Suspense above) so the
   // build needs no database. getFeaturedJobs() still caches the query at runtime.
   await connection();
-  const jobs = await getFeaturedJobs();
+  let jobs: Awaited<ReturnType<typeof getFeaturedJobs>>;
+  try {
+    jobs = await getFeaturedJobs();
+  } catch {
+    return (
+      <EmptyState
+        icon={<Briefcase />}
+        title="Couldn’t load featured jobs"
+        description="Search is still available — browse everything that’s open right now."
+        action={
+          <Link href="/jobs" className={`${buttonClasses()} no-underline`}>
+            Browse all jobs
+          </Link>
+        }
+      />
+    );
+  }
 
   if (jobs.length === 0) {
     return (

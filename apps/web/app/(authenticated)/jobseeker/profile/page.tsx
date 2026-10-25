@@ -1,9 +1,11 @@
+import Link from 'next/link';
 import { requireRole } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { ProfileForm } from './profile-form';
 import { BioCoach } from './bio-coach';
 import { ConsoleWidth } from '@/app/components/console/shell';
 import { Breadcrumb, ControlPanel } from '@/app/components/console/control-panel';
+import { buttonClasses } from '@/app/components/ui/button';
 
 export const metadata = { title: 'My profile' };
 
@@ -59,6 +61,33 @@ export default async function JobseekerProfilePage() {
         <div className="mt-4">
           <BioCoach currentBio={profile?.bio ?? ''} />
         </div>
+
+        <section
+          aria-label="Account and data privacy"
+          className="o-sheet mt-4 flex flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6"
+        >
+          <div className="min-w-0">
+            <h2 className="text-fg text-[13px] font-semibold">Data &amp; account privacy</h2>
+            <p className="text-fg-muted text-[12px]">
+              Download a full copy of your personal data (GDPR Article 15) or permanently close your
+              account.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Link
+              href="/account/export"
+              className={`${buttonClasses('secondary', 'sm')} no-underline`}
+            >
+              Export my data
+            </Link>
+            <Link
+              href="/account/delete"
+              className={`${buttonClasses('danger', 'sm')} no-underline`}
+            >
+              Delete account
+            </Link>
+          </div>
+        </section>
       </ConsoleWidth>
     </main>
   );

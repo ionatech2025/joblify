@@ -6,6 +6,7 @@ import { Bookmark } from 'lucide-react';
 import { toggleSavedJob } from '@/app/actions/saved-jobs';
 import { Button, buttonClasses } from '@/app/components/ui/button';
 import { EmptyState } from '@/app/components/ui/empty-state';
+import { ListView, type ListColumn } from '@/app/components/console/list-view';
 import { toast } from '@/lib/stores/ui';
 import { unwrap } from '@/lib/action-result';
 
@@ -40,7 +41,6 @@ export function SavedList({ initial }: { initial: SavedRow[] }) {
   if (jobs.length === 0) {
     return (
       <EmptyState
-        className="mt-6"
         icon={<Bookmark />}
         title="No saved jobs yet"
         description="Tap “Save job” on any listing and it will wait for you here."
@@ -53,34 +53,55 @@ export function SavedList({ initial }: { initial: SavedRow[] }) {
     );
   }
 
-  return (
-    <>
-      <ul className="mt-6 flex list-none flex-col gap-3 p-0">
-        {jobs.map((j) => (
-          <li
-            key={j.id}
-            className="flex items-center justify-between gap-4 rounded-card border border-border bg-surface p-4 shadow-soft"
+  const columns: ListColumn<SavedRow>[] = [
+    {
+      key: 'role',
+      header: 'Role',
+      cell: (j) => (
+        <div className="min-w-0">
+          <Link
+            href={`/jobs/${j.slug}`}
+            className="text-fg font-medium no-underline hover:underline"
           >
-            <Link href={`/jobs/${j.slug}`} className="min-w-0 text-fg no-underline">
-              <strong>{j.title}</strong>
-              <span className="text-fg-muted">
-                {' — '}
-                {j.company}
-                {j.location ? ` · ${j.location}` : ''}
-              </span>
-            </Link>
-            <Button
-              variant="danger"
-              size="sm"
-              type="button"
-              onClick={() => remove(j.id, j.title)}
-              aria-label={`Remove ${j.title} from saved`}
-            >
-              Remove
-            </Button>
-          </li>
-        ))}
-      </ul>
-    </>
-  );
+            {j.title}
+          </Link>
+          <span className="text-fg-muted block text-[12px] sm:hidden">
+            {j.company}
+            {j.location ? ` · ${j.location}` : ''}
+          </span>
+        </div>
+      ),
+      aggregate: () => `${jobs.length} saved`,
+    },
+    {
+      key: 'company',
+      header: 'Company',
+      hideBelow: 'sm',
+      cell: (j) => <span className="text-fg-muted">{j.company}</span>,
+    },
+    {
+      key: 'location',
+      header: 'Location',
+      hideBelow: 'md',
+      cell: (j) => <span className="text-fg-muted">{j.location ?? '—'}</span>,
+    },
+    {
+      key: 'actions',
+      header: 'Actions',
+      align: 'end',
+      cell: (j) => (
+        <Button
+          variant="danger"
+          size="sm"
+          type="button"
+          onClick={() => remove(j.id, j.title)}
+          aria-label={`Remove ${j.title} from saved`}
+        >
+          Remove
+        </Button>
+      ),
+    },
+  ];
+
+  return <ListView caption="Saved jobs" rows={jobs} rowKey={(j) => j.id} columns={columns} />;
 }

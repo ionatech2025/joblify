@@ -56,6 +56,7 @@ export const NEXT_DEFAULT_LIMITED_BOTS = [
 export const ADDED_LIMITED_BOTS = [
   'Googlebot',
   'GoogleOther',
+  '\\bLighthouse\\b',
   'OAI-SearchBot',
   'ChatGPT-User',
   'Claude-SearchBot',

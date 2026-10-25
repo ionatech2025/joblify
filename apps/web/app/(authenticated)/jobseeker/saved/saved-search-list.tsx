@@ -6,6 +6,7 @@ import { SearchX } from 'lucide-react';
 import { deleteSavedSearch } from '@/app/actions/saved-searches';
 import { Button, buttonClasses } from '@/app/components/ui/button';
 import { EmptyState } from '@/app/components/ui/empty-state';
+import { ListView, type ListColumn } from '@/app/components/console/list-view';
 import { toast } from '@/lib/stores/ui';
 
 type Row = { id: string; label: string; query: string };
@@ -35,7 +36,6 @@ export function SavedSearchList({ initial }: { initial: Row[] }) {
     return (
       <EmptyState
         size="sm"
-        className="mt-3"
         icon={<SearchX />}
         title="No saved searches"
         description="Run a search on the jobs page and choose “Save this search” to re-run it here in one click."
@@ -48,31 +48,37 @@ export function SavedSearchList({ initial }: { initial: Row[] }) {
     );
   }
 
-  return (
-    <ul className="mt-3 flex list-none flex-col gap-2 p-0">
-      {rows.map((s) => (
-        <li
-          key={s.id}
-          className="flex items-center justify-between gap-4 rounded-card border border-border bg-surface p-3 shadow-soft"
+  const columns: ListColumn<Row>[] = [
+    {
+      key: 'label',
+      header: 'Saved search',
+      cell: (s) => (
+        <Link
+          href={`/jobs?${s.query}`}
+          className="text-fg font-medium no-underline hover:underline"
         >
-          <Link
-            href={`/jobs?${s.query}`}
-            className="min-w-0 truncate font-medium text-fg no-underline hover:underline"
-          >
-            {s.label}
-          </Link>
-          <Button
-            type="button"
-            variant="danger"
-            size="sm"
-            className="shrink-0"
-            onClick={() => remove(s.id, s.label)}
-            aria-label={`Delete saved search ${s.label}`}
-          >
-            Delete
-          </Button>
-        </li>
-      ))}
-    </ul>
-  );
+          {s.label}
+        </Link>
+      ),
+      aggregate: () => `${rows.length} saved`,
+    },
+    {
+      key: 'actions',
+      header: 'Actions',
+      align: 'end',
+      cell: (s) => (
+        <Button
+          type="button"
+          variant="danger"
+          size="sm"
+          onClick={() => remove(s.id, s.label)}
+          aria-label={`Delete saved search ${s.label}`}
+        >
+          Delete
+        </Button>
+      ),
+    },
+  ];
+
+  return <ListView caption="Saved searches" rows={rows} rowKey={(s) => s.id} columns={columns} />;
 }

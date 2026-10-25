@@ -62,7 +62,7 @@ export default async function CompanyChatAreaPage({ params }: { params: Params }
           <Breadcrumb items={[{ label: 'Chats', href: '/company/chats' }, { label: area.title }]} />
         }
       />
-      <div className="mx-auto grid w-full max-w-6xl grid-cols-1 gap-4 px-3 py-3 sm:px-4 lg:grid-cols-[1fr_260px]">
+      <div className="mx-auto grid w-full max-w-6xl grid-cols-1 items-start gap-4 px-3 py-3 sm:px-4 lg:grid-cols-[minmax(0,1fr)_280px]">
         <section className="lg:col-span-2">
           <p className="text-fg-muted text-[13px]">
             {area.kind === 'VIRTUAL_INTERN'
@@ -75,52 +75,65 @@ export default async function CompanyChatAreaPage({ params }: { params: Params }
           <ChatComposer chatAreaId={area.id} />
         </section>
 
-        <aside>
-          <h2 className="mt-0 text-sm font-semibold tracking-wide text-fg-subtle uppercase">
-            Participants
-          </h2>
-          <ul className="grid list-none grid-cols-1 gap-2 p-0">
-            {area.participants.map((p) => (
-              <li
-                key={p.userId}
-                className="rounded-card border border-border bg-surface px-3 py-2 text-sm shadow-soft"
-              >
-                <span className="font-medium text-fg">
-                  {p.userId === user.id
-                    ? 'You'
-                    : [p.user.firstName, p.user.lastName].filter(Boolean).join(' ') || 'Job seeker'}
-                </span>
-                {p.user.jobSeekerProfile && (
-                  <span className="block text-xs text-fg-subtle">
-                    {p.user.jobSeekerProfile.profileType === 'VIRTUAL_INTERN'
-                      ? 'Virtual intern'
-                      : 'Employable'}
-                    {p.user.jobSeekerProfile.headline
-                      ? ` · ${p.user.jobSeekerProfile.headline}`
-                      : ''}
+        <aside className="o-sheet flex flex-col gap-4 p-3.5">
+          <div>
+            <div className="border-border mb-2 flex items-center justify-between border-b pb-1.5">
+              <h2 className="text-fg-muted m-0 text-[12px] font-semibold tracking-wider uppercase">
+                Participants
+              </h2>
+              <span className="text-fg-subtle text-[12px] font-semibold tabular-nums">
+                {area.participants.length}
+              </span>
+            </div>
+            <ul className="m-0 grid list-none grid-cols-1 gap-1.5 p-0">
+              {area.participants.map((p) => (
+                <li
+                  key={p.userId}
+                  className="rounded-control border-border bg-surface-sunken/60 border px-2.5 py-2 text-[13px]"
+                >
+                  <span className="text-fg font-medium">
+                    {p.userId === user.id
+                      ? 'You'
+                      : [p.user.firstName, p.user.lastName].filter(Boolean).join(' ') ||
+                        'Job seeker'}
                   </span>
-                )}
-              </li>
-            ))}
-          </ul>
+                  {p.user.jobSeekerProfile && (
+                    <span className="text-fg-subtle block text-[12px]">
+                      {p.user.jobSeekerProfile.profileType === 'VIRTUAL_INTERN'
+                        ? 'Virtual intern'
+                        : 'Employable'}
+                      {p.user.jobSeekerProfile.headline
+                        ? ` · ${p.user.jobSeekerProfile.headline}`
+                        : ''}
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
 
           {candidates.length > 0 && (
-            <>
-              <h2 className="mt-6 text-sm font-semibold tracking-wide text-fg-subtle uppercase">
-                {area.kind === 'VIRTUAL_INTERN' ? 'Add virtual interns' : 'Add applicants'}
-              </h2>
-              <ul className="grid list-none grid-cols-1 gap-2 p-0">
+            <div>
+              <div className="border-border mb-2 flex items-center justify-between border-b pb-1.5">
+                <h2 className="text-fg-muted m-0 text-[12px] font-semibold tracking-wider uppercase">
+                  {area.kind === 'VIRTUAL_INTERN' ? 'Add virtual interns' : 'Add applicants'}
+                </h2>
+                <span className="text-fg-subtle text-[12px] font-semibold tabular-nums">
+                  {candidates.length}
+                </span>
+              </div>
+              <ul className="m-0 grid list-none grid-cols-1 gap-1.5 p-0">
                 {candidates.map((c) => (
                   <li
                     key={c.userId}
-                    className="flex items-center justify-between gap-2 rounded-card border border-border bg-surface px-3 py-2 text-sm shadow-soft"
+                    className="rounded-control border-border bg-surface flex items-center justify-between gap-2 border px-2.5 py-1.5 text-[13px]"
                   >
-                    <span className="text-fg">{c.name}</span>
+                    <span className="text-fg truncate">{c.name}</span>
                     <AddParticipantButton chatAreaId={area.id} jobSeekerUserId={c.userId} />
                   </li>
                 ))}
               </ul>
-            </>
+            </div>
           )}
         </aside>
       </div>

@@ -4,10 +4,20 @@ import { db } from '@/lib/db';
 import { ArrowRight, MessagesSquare } from 'lucide-react';
 import { ConsoleWidth } from '@/app/components/console/shell';
 import { Breadcrumb, ControlPanel } from '@/app/components/console/control-panel';
+import { ListView, type ListColumn } from '@/app/components/console/list-view';
+import { Badge } from '@/app/components/ui/badge';
 import { EmptyState } from '@/app/components/ui/empty-state';
 import { buttonClasses } from '@/app/components/ui/button';
 
 export const metadata = { title: 'My chats' };
+
+type ChatRow = {
+  id: string;
+  title: string;
+  companyName: string;
+  roleTitle: string | null;
+  messages: number;
+};
 
 // Chat areas the seeker belongs to — companies add you when you're
 // shortlisted for a job or invited as a virtual intern.
@@ -29,14 +39,82 @@ export default async function JobseekerChatsPage() {
     orderBy: { chatArea: { updatedAt: 'desc' } },
   });
 
+  const rows: ChatRow[] = memberships.map(({ chatArea: a }) => ({
+    id: a.id,
+    title: a.title,
+    companyName: a.company.companyProfile?.companyName ?? 'Company',
+    roleTitle: a.jobPost?.title ?? null,
+    messages: a._count.messages,
+  }));
+
+  const columns: ListColumn<ChatRow>[] = [
+    {
+      key: 'title',
+      header: 'Conversation',
+      cell: (a) => (
+        <div className="min-w-0">
+          <Link
+            href={`/jobseeker/chats/${a.id}`}
+            className="text-fg font-semibold no-underline hover:underline"
+          >
+            {a.title}
+          </Link>
+          <span className="text-fg-muted block text-[12px] sm:hidden">
+            {a.companyName} · {a.roleTitle ?? 'Virtual interns'}
+          </span>
+        </div>
+      ),
+      aggregate: () => `${rows.length} conversation${rows.length === 1 ? '' : 's'}`,
+    },
+    {
+      key: 'company',
+      header: 'Company',
+      hideBelow: 'sm',
+      cell: (a) => <span className="text-fg-muted">{a.companyName}</span>,
+    },
+    {
+      key: 'context',
+      header: 'Context',
+      hideBelow: 'md',
+      cell: (a) =>
+        a.roleTitle ? (
+          <span className="text-fg-muted">{a.roleTitle}</span>
+        ) : (
+          <Badge tone="neutral">Virtual interns</Badge>
+        ),
+    },
+    {
+      key: 'messages',
+      header: 'Messages',
+      align: 'end',
+      cell: (a) => <span className="text-fg-muted tabular-nums">{a.messages}</span>,
+      aggregate: (r) => r.reduce((n, x) => n + x.messages, 0),
+    },
+    {
+      key: 'actions',
+      header: 'Actions',
+      align: 'end',
+      cell: (a) => (
+        <Link
+          href={`/jobseeker/chats/${a.id}`}
+          className="text-brand inline-flex min-h-6 items-center gap-1 no-underline hover:underline"
+        >
+          Open
+          <ArrowRight aria-hidden className="size-3.5" />
+        </Link>
+      ),
+    },
+  ];
+
   return (
     <main>
       <ControlPanel breadcrumb={<Breadcrumb items={[{ label: 'Chats' }]} />} />
       <ConsoleWidth className="max-w-5xl py-3">
         <p className="text-fg-muted mb-2 text-[13px]">
-          Companies add you here when you're shortlisted for a job or invited as a virtual intern.
+          Companies add you here when you&apos;re shortlisted for a job or invited as a virtual
+          intern.
         </p>
-        {memberships.length === 0 ? (
+        {rows.length === 0 ? (
           <EmptyState
             icon={<MessagesSquare />}
             title="No conversations yet"
@@ -48,38 +126,7 @@ export default async function JobseekerChatsPage() {
             }
           />
         ) : (
-          <ul className="grid list-none grid-cols-1 gap-3 p-0">
-            {memberships.map(({ chatArea: a }) => (
-              <li
-                key={a.id}
-                className="rounded-card border border-border bg-surface p-4 shadow-soft"
-              >
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <Link
-                      href={`/jobseeker/chats/${a.id}`}
-                      className="font-semibold text-fg hover:underline"
-                    >
-                      {a.title}
-                    </Link>
-                    <p className="mt-1 mb-0 text-xs text-fg-subtle">
-                      {a.company.companyProfile?.companyName ?? 'Company'}
-                      {a.jobPost ? ` · ${a.jobPost.title}` : ' · Virtual interns'} ·{' '}
-                      {a._count.messages} message
-                      {a._count.messages === 1 ? '' : 's'}
-                    </p>
-                  </div>
-                  <Link
-                    href={`/jobseeker/chats/${a.id}`}
-                    className="inline-flex items-center gap-1 text-sm text-brand underline"
-                  >
-                    Open
-                    <ArrowRight aria-hidden className="size-3.5" />
-                  </Link>
-                </div>
-              </li>
-            ))}
-          </ul>
+          <ListView caption="My conversations" rows={rows} rowKey={(a) => a.id} columns={columns} />
         )}
       </ConsoleWidth>
     </main>

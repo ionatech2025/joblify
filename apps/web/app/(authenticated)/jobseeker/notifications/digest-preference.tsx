@@ -43,7 +43,7 @@ export function DigestPreference({
   return (
     <section
       aria-labelledby={`${id}-title`}
-      className="rounded-card border-border bg-surface mb-3 flex items-start gap-3 border p-3"
+      className="o-sheet mb-3 flex items-start gap-3 px-4 py-3"
     >
       <input
         id={id}
@@ -51,19 +51,19 @@ export function DigestPreference({
         checked={optIn}
         disabled={pending || (addressSuppressed && !optIn)}
         onChange={(e) => onChange(e.target.checked)}
-        className="mt-1 size-4"
+        className="mt-1 size-4 shrink-0"
       />
       <div className="min-w-0">
-        <label id={`${id}-title`} htmlFor={id} className="text-fg text-sm font-semibold">
+        <label id={`${id}-title`} htmlFor={id} className="text-fg text-[13px] font-semibold">
           Email me a daily digest of new jobs
         </label>
-        <p className="text-fg-muted mt-0.5 mb-0 text-[13px]">
+        <p className="text-fg-muted mt-0.5 mb-0 text-[12px]">
           One email a day, at most, when there are new roles that match your saved searches. Off
           unless you turn it on, and every email has a one-click unsubscribe. Account and
           application emails are separate and are not affected.
         </p>
         {addressSuppressed && (
-          <p className="text-danger mt-1 mb-0 text-[13px]">
+          <p className="text-danger mt-1 mb-0 text-[12px]">
             Messages to your address were rejected or reported as spam, so we cannot email you until
             you update it.
           </p>

@@ -1,6 +1,7 @@
 import { Suspense } from 'react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
+import { Building2, UserRound } from 'lucide-react';
 import { requireUser } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { completeJobSeekerOnboarding } from '@/app/actions/onboarding';
@@ -31,16 +32,19 @@ export default function OnboardingPage({ searchParams }: { searchParams: SearchP
         <Suspense fallback={null}>
           <OnboardingGuard />
         </Suspense>
-        <p className="text-fg-muted mb-2 text-[13px]">
+        <p className="text-fg-muted mb-3 text-[13px]">
           Tell us what brings you here so we can set up the right workspace.
         </p>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <section className="flex flex-col gap-4 rounded-card border border-border bg-surface p-6 shadow-soft">
+          <section className="o-sheet flex flex-col gap-4 p-5 sm:p-6">
             <div>
-              <h2 className="m-0 text-lg font-semibold text-fg">
+              <div className="bg-brand-subtle text-brand mb-3 inline-flex size-9 items-center justify-center rounded-control">
+                <UserRound aria-hidden className="size-4" />
+              </div>
+              <h2 className="text-fg m-0 text-base font-semibold">
                 I&apos;m looking for opportunities
               </h2>
-              <p className="mt-1 mb-0 text-sm text-fg-muted">
+              <p className="text-fg-muted mt-1 mb-0 text-[13px] leading-relaxed">
                 Build a profile, follow companies, apply to jobs, and track your applications. Pick
                 how you want companies to see you — you can change this later in your profile.
               </p>
@@ -58,10 +62,13 @@ export default function OnboardingPage({ searchParams }: { searchParams: SearchP
             </form>
           </section>
 
-          <section className="flex flex-col gap-4 rounded-card border border-border bg-surface p-6 shadow-soft">
+          <section className="o-sheet flex flex-col gap-4 p-5 sm:p-6">
             <div>
-              <h2 className="m-0 text-lg font-semibold text-fg">I&apos;m hiring</h2>
-              <p className="mt-1 mb-0 text-sm text-fg-muted">
+              <div className="bg-surface-sunken text-fg-muted mb-3 inline-flex size-9 items-center justify-center rounded-control">
+                <Building2 aria-hidden className="size-4" />
+              </div>
+              <h2 className="text-fg m-0 text-base font-semibold">I&apos;m hiring</h2>
+              <p className="text-fg-muted mt-1 mb-0 text-[13px] leading-relaxed">
                 Create a company profile to post jobs, review applicants, and chat with shortlisted
                 candidates and virtual interns.
               </p>

@@ -2,7 +2,11 @@ import { PageHeader } from '@/app/components/ui/ambient';
 import { CONTACTS } from '@/lib/site-config';
 import { groqTasks, listTasks } from '@/lib/ai/groq-config';
 
-export const metadata = { title: 'How we use AI' };
+export const metadata = {
+  title: 'How we use AI',
+  description:
+    'Transparency on how Joblify uses AI for resume parsing, skill extraction, match scoring, and bio coaching.',
+};
 
 // Describes what lib/ai/*, workflows/resume-parse and workflows/match-score
 // actually do. If those change, change this page in the same PR.

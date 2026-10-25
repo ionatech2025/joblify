@@ -338,7 +338,7 @@ function COLUMNS(total: number): ListColumn<Row>[] {
       cell: (j) => (
         <Link
           href={`/company/applicants/${j.id}`}
-          className="text-brand no-underline hover:underline"
+          className="text-brand -mx-1 inline-flex min-h-6 min-w-6 items-center justify-end px-1 no-underline hover:underline"
         >
           {j.applicants}
         </Link>
@@ -362,7 +362,7 @@ function COLUMNS(total: number): ListColumn<Row>[] {
       cell: (j) => (
         <Link
           href={`/company/jobs/${j.id}/edit`}
-          className="text-brand no-underline hover:underline"
+          className="text-brand -mx-1 inline-flex min-h-6 items-center px-1 no-underline hover:underline"
         >
           Edit
         </Link>

@@ -87,7 +87,12 @@ vi.mock('@/lib/observability/logger', () => ({ logger: { info: vi.fn(), warn: vi
 describe('Phase 5: Subscription & Matching (Tests 104–120)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    m.requireRole.mockResolvedValue({ id: 'seeker1', firstName: 'Ada', lastName: 'Lovelace', plan: 'PRO' });
+    m.requireRole.mockResolvedValue({
+      id: 'seeker1',
+      firstName: 'Ada',
+      lastName: 'Lovelace',
+      plan: 'PRO',
+    });
     m.profileFindUnique.mockResolvedValue({ id: 'prof-1', profileType: 'EMPLOYABLE' });
     m.companyFindUnique.mockResolvedValue({
       userId: 'comp1',
@@ -124,7 +129,9 @@ describe('Phase 5: Subscription & Matching (Tests 104–120)', () => {
   // 105 Phase 5: Subscription & Matching JOB_UC_07.0 Subscribe or Apply to a Company
   it('105. Subscribing to a company as VIRTUAL_INTERN without an existing VI profile routes the user to create one before finalizing the subscription', async () => {
     m.profileFindUnique.mockResolvedValue({ profileType: 'EMPLOYABLE' }); // has employable, not VI
-    await expect(subscribeToCompany('comp1', 'VIRTUAL_INTERN')).rejects.toThrow('/jobseeker/profile');
+    await expect(subscribeToCompany('comp1', 'VIRTUAL_INTERN')).rejects.toThrow(
+      '/jobseeker/profile',
+    );
   });
 
   // 106 Phase 5: Subscription & Matching JOB_UC_07.0 Subscribe or Apply to a Company

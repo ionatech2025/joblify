@@ -584,17 +584,19 @@
 
   /* 13px base, so raw <td>/<p>/<li> text in the console is dense without
      touching Tailwind's absolute text-* utilities (which still win where a
-     component sets one explicitly). */
+     component sets one explicitly). OpenType character variants (cv02/03/04/11)
+     disambiguate Inter's 1/l/I and 6/9 in dense data tables. */
   .o-console {
     font-size: 0.8125rem;
     line-height: 1.5;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
     background: var(--canvas);
   }
 
   /* The editorial base layer gives headings 1.875rem and 1.5rem top margins —
      an enterprise sheet has no room for that. */
   .o-console :is(h1, h2, h3) {
-    letter-spacing: -0.005em;
+    letter-spacing: -0.01em;
     margin: 0;
   }
   .o-console h1 {

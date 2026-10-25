@@ -98,7 +98,11 @@ export async function POST(req: Request) {
     }
   } catch (err) {
     logger.error({ err }, 'unsubscribe failed');
-    return page('Something went wrong', '<h1>We could not process that</h1><p>Please try again.</p>', 500);
+    return page(
+      'Something went wrong',
+      '<h1>We could not process that</h1><p>Please try again.</p>',
+      500,
+    );
   }
 
   // Idempotent: an already-unsubscribed user gets the same confirmation.

@@ -37,7 +37,10 @@ export function checkRecruiterTransition(
     return { ok: false, reason: 'Only the candidate can withdraw an application.' };
   }
   if (from === 'WITHDRAWN') {
-    return { ok: false, reason: 'The candidate withdrew this application, so it cannot be changed.' };
+    return {
+      ok: false,
+      reason: 'The candidate withdrew this application, so it cannot be changed.',
+    };
   }
   return { ok: true };
 }

@@ -39,7 +39,14 @@ export async function GET(
 
   const resume = await db.resume.findUnique({
     where: { id },
-    select: { id: true, userId: true, title: true, fileBlobUrl: true, fileMime: true, deletedAt: true },
+    select: {
+      id: true,
+      userId: true,
+      title: true,
+      fileBlobUrl: true,
+      fileMime: true,
+      deletedAt: true,
+    },
   });
   if (!resume) return notFound();
 

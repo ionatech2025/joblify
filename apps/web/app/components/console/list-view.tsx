@@ -87,7 +87,7 @@ export function ListView<T>({
                       : undefined
                 }
                 className={cn(
-                  'text-fg-muted px-2.5 py-1.5 font-semibold whitespace-nowrap',
+                  'text-fg-muted px-3 py-2 text-[12px] font-semibold tracking-wide whitespace-nowrap',
                   c.align === 'end' ? 'text-right' : 'text-left',
                   c.hideBelow && HIDE[c.hideBelow],
                   c.width,
@@ -117,13 +117,13 @@ export function ListView<T>({
           {rows.map((row) => (
             <tr
               key={rowKey(row)}
-              className="border-border hover:bg-surface-sunken border-b transition-colors last:border-0"
+              className="border-border hover:bg-surface-sunken/80 focus-within:bg-surface-sunken/60 border-b transition-colors last:border-0"
             >
               {columns.map((c) => (
                 <td
                   key={c.key}
                   className={cn(
-                    'px-2.5 py-1.5 align-middle',
+                    'px-3 py-2 align-middle',
                     c.align === 'end' ? 'text-right tabular-nums' : 'text-left',
                     c.hideBelow && HIDE[c.hideBelow],
                   )}
@@ -141,8 +141,8 @@ export function ListView<T>({
                 <td
                   key={c.key}
                   className={cn(
-                    'text-fg px-2.5 py-1.5 font-semibold',
-                    c.align === 'end' ? 'text-right tabular-nums' : 'text-left',
+                    'text-fg-muted px-3 py-2 text-[12px] font-semibold tabular-nums',
+                    c.align === 'end' ? 'text-right' : 'text-left',
                     c.hideBelow && HIDE[c.hideBelow],
                   )}
                 >

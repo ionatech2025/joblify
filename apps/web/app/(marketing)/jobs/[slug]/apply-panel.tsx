@@ -1,7 +1,9 @@
 import Link from 'next/link';
 import { currentUser } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { Badge } from '@/app/components/ui/badge';
 import { buttonClasses } from '@/app/components/ui/button';
+import { applicationStatusLabel, applicationStatusTone } from '@/lib/ui/status';
 import { SaveButton } from './save-button';
 import { TimeStamp } from '@/app/components/ui/timestamp';
 
@@ -44,9 +46,17 @@ export async function ApplyPanel({ jobId, slug }: { jobId: string; slug: string 
       {existing ? (
         <>
           <h3 className={heading}>You applied already</h3>
-          <p className="m-0 text-fg-muted">
-            Status: <strong>{existing.status}</strong> · applied{' '}
-            <TimeStamp value={existing.appliedAt} />
+          <p className="text-fg-muted m-0 flex flex-wrap items-center gap-2">
+            <span>Status:</span>
+            <Badge tone={applicationStatusTone(existing.status)}>
+              {applicationStatusLabel(existing.status)}
+            </Badge>
+            <span>
+              · applied <TimeStamp value={existing.appliedAt} />
+            </span>
+            <Link href="/jobseeker/applications" className="text-brand text-sm underline">
+              Track application
+            </Link>
           </p>
         </>
       ) : (

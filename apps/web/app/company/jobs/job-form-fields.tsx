@@ -6,6 +6,7 @@ import { Checkbox, Input, Select, Textarea } from '@/app/components/ui/form';
 import { SheetField, SheetGroup, SheetGroups, SheetTitle } from '@/app/components/console/sheet';
 import { Notebook } from '@/app/components/console/notebook';
 import { Statusbar, type Stage } from '@/app/components/console/statusbar';
+import { industryLabel } from '@/lib/ui/status';
 import { JOB_STATUS_LABEL } from './job-status';
 import {
   INDUSTRIES,
@@ -78,7 +79,7 @@ export function JobFormFields({
             <Select defaultValue={defaults?.industry ?? 'TECHNOLOGY'} {...register('industry')}>
               {INDUSTRIES.map((v) => (
                 <option key={v} value={v}>
-                  {v.charAt(0) + v.slice(1).toLowerCase()}
+                  {industryLabel(v)}
                 </option>
               ))}
             </Select>

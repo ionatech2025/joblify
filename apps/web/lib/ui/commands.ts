@@ -86,6 +86,14 @@ export const COMMANDS: Command[] = [
     keywords: 'cv upload builder',
   },
   {
+    id: 'resume-builder',
+    label: 'Build a resume',
+    section: 'Jobseeker',
+    icon: 'FileText',
+    href: '/jobseeker/resumes/builder',
+    keywords: 'cv generator pdf work experience',
+  },
+  {
     id: 'seeker-chats',
     label: 'Messages',
     section: 'Jobseeker',
@@ -151,6 +159,14 @@ export const COMMANDS: Command[] = [
     keywords: 'chat conversations',
   },
   {
+    id: 'company-notifications',
+    label: 'Company notifications',
+    section: 'Company',
+    icon: 'Bell',
+    href: '/company/notifications',
+    keywords: 'alerts applicants updates',
+  },
+  {
     id: 'company-settings',
     label: 'Company settings',
     section: 'Company',
@@ -186,12 +202,36 @@ export const COMMANDS: Command[] = [
 
   { id: 'about', label: 'About Joblify', section: 'Help', icon: 'Info', href: '/about' },
   {
+    id: 'resources',
+    label: 'Guides & resources',
+    section: 'Help',
+    icon: 'Info',
+    href: '/resources',
+    keywords: 'help tips how to',
+  },
+  {
     id: 'accessibility',
     label: 'Accessibility statement',
     section: 'Help',
     icon: 'ShieldCheck',
     href: '/accessibility',
     keywords: 'a11y wcag',
+  },
+  {
+    id: 'export-data',
+    label: 'Export my data',
+    section: 'Help',
+    icon: 'FileText',
+    href: '/account/export',
+    keywords: 'gdpr download privacy archive json',
+  },
+  {
+    id: 'delete-account',
+    label: 'Delete my account',
+    section: 'Help',
+    icon: 'ShieldCheck',
+    href: '/account/delete',
+    keywords: 'close erase gdpr remove',
   },
 ];
 

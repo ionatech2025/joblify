@@ -23,7 +23,7 @@ import { cn } from '@/lib/cn';
 // `sm`), so touch pointers get 16px at every width and narrow viewports get it
 // regardless of pointer type.
 const controlBase =
-  'w-full rounded-control border border-border-strong bg-surface px-3.5 py-2.5 text-sm text-fg placeholder:text-fg-subtle max-sm:text-base pointer-coarse:text-base focus:border-brand focus:ring-2 focus:ring-brand/25 focus:outline-none disabled:bg-surface-sunken disabled:text-fg-subtle';
+  'w-full min-w-0 rounded-control border border-border-strong bg-surface px-3.5 py-2.5 text-sm text-fg placeholder:text-fg-subtle max-sm:text-base pointer-coarse:text-base focus:border-brand focus:ring-2 focus:ring-brand/25 focus:outline-none disabled:bg-surface-sunken disabled:text-fg-subtle';
 
 export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(
   function Input({ className, onWheel, ...props }, ref) {

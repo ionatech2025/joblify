@@ -1,7 +1,11 @@
 import { PageHeader } from '@/app/components/ui/ambient';
 import { CONTACTS } from '@/lib/site-config';
 
-export const metadata = { title: 'Accessibility statement' };
+export const metadata = {
+  title: 'Accessibility statement',
+  description:
+    'Our commitment to WCAG 2.2 Level AA compliance, automated testing, and inclusive design.',
+};
 
 export default function AccessibilityPage() {
   return (

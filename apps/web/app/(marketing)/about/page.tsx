@@ -1,6 +1,10 @@
 import { PageHeader } from '@/app/components/ui/ambient';
 
-export const metadata = { title: 'About' };
+export const metadata = {
+  title: 'About',
+  description:
+    'Learn how Joblify connects jobseekers with verified companies through transparent hiring pipelines.',
+};
 
 export default function AboutPage() {
   return (

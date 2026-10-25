@@ -28,10 +28,7 @@ import { useCompanySettingsDraftStore } from '@/lib/stores/company-settings-draf
 import { useFormDraft } from '@/lib/use-form-draft';
 import { useHydrated } from '@/lib/use-hydrated';
 import { toast } from '@/lib/stores/ui';
-
-function titleCase(s: string): string {
-  return s.charAt(0) + s.slice(1).toLowerCase();
-}
+import { industryLabel } from '@/lib/ui/status';
 
 export function CompanySettingsForm({
   initial,
@@ -182,7 +179,7 @@ export function CompanySettingsForm({
                 <Select defaultValue={initial.industry} {...register('industry')}>
                   {INDUSTRY_OPTIONS.map((i) => (
                     <option key={i} value={i}>
-                      {titleCase(i)}
+                      {industryLabel(i)}
                     </option>
                   ))}
                 </Select>

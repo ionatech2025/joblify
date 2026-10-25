@@ -3,20 +3,8 @@ import { redirect } from 'next/navigation';
 import { requireUser } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { ConsoleShell } from '@/app/components/console/shell';
-import { ConsoleNav, type ConsoleNavLink } from '@/app/components/console/nav';
 import { ConsoleNavSkeleton } from '@/app/components/console/skeleton';
-
-// Module menu for the employer console. "Post a job" is deliberately NOT here
-// any more: a create action belongs on the control panel of the list it creates
-// into, not in the section menu. Having it here also forced pill-nav's
-// longest-prefix hack, since /company/jobs/new would otherwise light "Jobs".
-const LINKS: ConsoleNavLink[] = [
-  { href: '/company/jobs', label: 'Jobs', icon: 'Briefcase' },
-  { href: '/company/jobseekers', label: 'Talent', icon: 'Users' },
-  { href: '/company/chats', label: 'Chats', icon: 'MessagesSquare' },
-  { href: '/company/notifications', label: 'Notifications', icon: 'Bell' },
-  { href: '/company/settings', label: 'Settings', icon: 'Settings' },
-];
+import { CompanyConsoleNav } from './company-console-nav';
 
 // The role check is a SIBLING of children, and this component is not async.
 // An async layout has no Suspense boundary of its own — loading.tsx wraps a
@@ -29,7 +17,7 @@ export default function CompanyLayout({ children }: { children: React.ReactNode 
         <RoleGate />
       </Suspense>
       <Suspense fallback={<ConsoleNavSkeleton />}>
-        <ConsoleNav module="Recruitment" moduleHref="/company/jobs" links={LINKS} />
+        <CompanyConsoleNav />
       </Suspense>
       {children}
     </ConsoleShell>

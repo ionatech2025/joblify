@@ -6,6 +6,8 @@ import { COMMANDS, filterCommands, withSectionHeaders, type Command } from '@/li
 import {
   applicationStatusLabel,
   applicationStatusTone,
+  companySizeLabel,
+  industryLabel,
   matchTone,
   APPLICATION_STAGES,
   CLOSED_APPLICATION_STATUSES,
@@ -158,5 +160,13 @@ describe('status taxonomy', () => {
     expect(matchTone(0.5)).toBe('warn');
     expect(matchTone(0.49)).toBe('neutral');
     expect(matchTone(0)).toBe('neutral');
+  });
+
+  it('formats industry and company-size enums cleanly without leaking underscores', () => {
+    expect(industryLabel('TECHNOLOGY')).toBe('Technology');
+    expect(industryLabel('NONPROFIT')).toBe('Non-profit');
+    expect(companySizeLabel('SIZE_11_50')).toBe('11–50');
+    expect(companySizeLabel('SIZE_11_50', true)).toBe('11–50 employees');
+    expect(companySizeLabel('SIZE_1001_PLUS', true)).toBe('1,001+ employees');
   });
 });

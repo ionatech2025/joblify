@@ -62,19 +62,23 @@ export function Button({
   const glyph = loading ? <Loader2 aria-hidden className="size-4 animate-spin" /> : icon;
   // An explicit `disabled` still means disabled; `loading` alone does not.
   const blocked = loading && !disabled;
+  const handleClick =
+    blocked || onClick
+      ? (e: React.MouseEvent<HTMLButtonElement>) => {
+          if (blocked) {
+            e.preventDefault();
+            return;
+          }
+          onClick?.(e);
+        }
+      : undefined;
   return (
     <button
       className={cn(base, sizes[size], variants[variant], className)}
       disabled={disabled}
       aria-disabled={blocked || undefined}
       aria-busy={loading || undefined}
-      onClick={(e) => {
-        if (blocked) {
-          e.preventDefault();
-          return;
-        }
-        onClick?.(e);
-      }}
+      onClick={handleClick}
       {...props}
     >
       {glyph && iconPosition === 'start' ? glyph : null}
