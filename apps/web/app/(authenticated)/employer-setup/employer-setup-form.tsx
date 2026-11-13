@@ -12,7 +12,7 @@ import {
   SIZE_LABELS,
 } from '@/app/company/company-profile-schema';
 import { createCompanyProfile } from '@/app/actions/company';
-import { unwrap } from '@/lib/action-result';
+import { errorMessage, unwrap } from '@/lib/action-result';
 import { Input, Select, Textarea } from '@/app/components/ui/form';
 import {
   FormSheet,
@@ -92,8 +92,7 @@ export function EmployerSetupForm({ hasJobSeekerIdentity }: { hasJobSeekerIdenti
         router.push('/company/jobs');
         router.refresh();
       } catch (err) {
-        const message =
-          err instanceof Error ? err.message : 'Could not create your company. Try again.';
+        const message = errorMessage(err, 'Something went wrong saving your company. Try again.');
         setError(message);
         toast.error("Couldn't create your company", message);
       }

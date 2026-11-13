@@ -344,6 +344,20 @@ describe('EmployerSetupForm', () => {
     expect(createCompany).not.toHaveBeenCalled();
   }, 30_000);
 
+  it('shows a calm message, not the redacted server text, when creating throws', async () => {
+    const user = userEvent.setup();
+    createCompany.mockRejectedValue(new Error(REDACTED_SERVER_ERROR));
+    render(<EmployerSetupForm hasJobSeekerIdentity={false} />);
+    await user.type(screen.getByRole('textbox', { name: 'Company name' }), 'Acme');
+    await user.type(
+      screen.getByRole('textbox', { name: 'About the company' }),
+      'We build warehouse robots for East Africa.',
+    );
+    await user.click(screen.getByRole('button', { name: /create company/i }));
+    const alert = await screen.findByRole('alert', {}, { timeout: 10_000 });
+    expect(alert.textContent).toBe('Something went wrong saving your company. Try again.');
+  }, 30_000);
+
   it("shows the server's own reason when creating fails", async () => {
     const user = userEvent.setup();
     createCompany.mockResolvedValue({
@@ -361,6 +375,9 @@ describe('EmployerSetupForm', () => {
     expect(alert.textContent).toBe('A company with this name is already registered.');
   }, 30_000);
 });
+
+const REDACTED_SERVER_ERROR =
+  'An error occurred in the Server Components render. The specific message is omitted in production builds to avoid leaking sensitive details. A digest property is included on this error instance which may provide additional details about the nature of the error.';
 
 describe('CompanySettingsForm verification states', () => {
   const initial = {
@@ -414,6 +431,16 @@ describe('CompanySettingsForm verification states', () => {
     await user.click(screen.getByRole('button', { name: 'Resubmit for review' }));
     await vi.waitFor(() => expect(updateCompany).toHaveBeenCalled(), { timeout: 5000 });
     expect(updateCompany.mock.calls[0]![0]).toMatchObject({ companyName: 'Acme Robotics Ltd' });
+  }, 30_000);
+
+  it('shows a calm message, not the redacted server text, when saving throws', async () => {
+    const user = userEvent.setup();
+    updateCompany.mockRejectedValue(new Error(REDACTED_SERVER_ERROR));
+    render(<CompanySettingsForm logoUrl={null} verificationStatus="PENDING" initial={initial} />);
+    await user.type(screen.getByRole('textbox', { name: 'Contact person' }), 'Grace');
+    await user.click(screen.getByRole('button', { name: 'Save changes' }));
+    const alert = await screen.findByRole('alert', {}, { timeout: 10_000 });
+    expect(alert.textContent).toBe('Something went wrong saving your company. Try again.');
   }, 30_000);
 });
 

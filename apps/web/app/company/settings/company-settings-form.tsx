@@ -16,7 +16,7 @@ import {
 } from '@/app/company/company-profile-schema';
 import { updateCompanyProfile } from '@/app/actions/company';
 import { uploadLogoDirect } from '@/app/actions/uploads';
-import { unwrap } from '@/lib/action-result';
+import { errorMessage, unwrap } from '@/lib/action-result';
 import { Input, Select, Textarea } from '@/app/components/ui/form';
 import { Button } from '@/app/components/ui/button';
 import {
@@ -101,7 +101,7 @@ export function CompanySettingsForm({
         if (resubmit) toast.success('Resubmitted for review', 'An administrator will review it.');
         else toast.success('Company profile saved');
       } catch (err) {
-        const message = err instanceof Error ? err.message : 'Could not save. Try again.';
+        const message = errorMessage(err, 'Something went wrong saving your company. Try again.');
         setError(message);
         toast.error("Couldn't save", message);
       }

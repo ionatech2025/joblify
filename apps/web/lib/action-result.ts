@@ -52,3 +52,14 @@ export function unwrap<T>(result: ActionResult<T>): T {
   if (!result.ok) throw new Error(result.error);
   return result.data;
 }
+
+/**
+ * The text to show for an error caught around an action call: its own message,
+ * or `fallback` when it is missing or is the production-redacted paragraph above.
+ */
+export function errorMessage(err: unknown, fallback: string): string {
+  if (!(err instanceof Error) || /digest|Server Components render/.test(err.message)) {
+    return fallback;
+  }
+  return err.message;
+}
