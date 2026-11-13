@@ -58,7 +58,11 @@ vi.mock('@/lib/audit', () => ({
       jobSeekerProfile: { upsert: m.profileUpsert },
       skill: { findMany: m.skillFindMany },
       jobSeekerSkill: { deleteMany: m.jpsDeleteMany, createMany: m.jpsCreateMany },
-      companyProfile: { create: m.companyCreate, update: m.companyUpdate },
+      companyProfile: {
+        create: m.companyCreate,
+        update: m.companyUpdate,
+        updateMany: async () => ({ count: 1 }),
+      },
       user: { update: m.userUpdate },
     }),
 }));

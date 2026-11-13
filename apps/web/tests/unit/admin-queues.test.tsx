@@ -106,7 +106,11 @@ describe('VerificationQueue', () => {
 
     await user.type(reason, 'Website does not resolve');
     await user.click(form.getByRole('button', { name: 'Reject' }));
-    expect(m.verifyCompany).toHaveBeenCalledWith('a', 'REJECTED', 'Website does not resolve');
+    expect(m.verifyCompany).toHaveBeenCalledWith(
+      'a',
+      { status: 'REJECTED', reason: 'Website does not resolve' },
+      { companyName: 'Acme', website: 'https://a.example' },
+    );
     expect(screen.queryByText('Acme')).toBeNull();
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Verify' }));
     expect(within(document.activeElement!.closest('tr')!).getByText('Beta')).toBeDefined();
@@ -126,7 +130,11 @@ describe('VerificationQueue', () => {
       withHeading(<VerificationQueue headingId="queue-heading" initial={[company('a', 'Acme')]} />),
     );
     await user.click(screen.getByRole('button', { name: 'Verify' }));
-    expect(m.verifyCompany).toHaveBeenCalledWith('a', 'VERIFIED', undefined);
+    expect(m.verifyCompany).toHaveBeenCalledWith(
+      'a',
+      { status: 'VERIFIED' },
+      { companyName: 'Acme', website: 'https://a.example' },
+    );
     expect(screen.getByText('Verification queue is clear')).toBeDefined();
     expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Queue' }));
   });
@@ -159,11 +167,10 @@ describe('JobReportsQueue', () => {
     const reason = screen.getByRole('textbox', { name: 'Reason for removing Fake Data Entry' });
     await user.type(reason, 'Asks for a registration fee');
     await user.click(within(reason.closest('form')!).getByRole('button', { name: 'Remove job' }));
-    expect(m.resolveJobReport).toHaveBeenCalledWith(
-      'r1',
-      'ACTIONED',
-      'Asks for a registration fee',
-    );
+    expect(m.resolveJobReport).toHaveBeenCalledWith('r1', {
+      outcome: 'ACTIONED',
+      reason: 'Asks for a registration fee',
+    });
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Dismiss' }));
     expect(within(document.activeElement!.closest('tr')!).getByText('Easy Money')).toBeDefined();
   });
@@ -177,7 +184,7 @@ describe('JobReportsQueue', () => {
       />,
     );
     await user.click(screen.getAllByRole('button', { name: 'Dismiss' })[1]!);
-    expect(m.resolveJobReport).toHaveBeenCalledWith('r2', 'DISMISSED', undefined);
+    expect(m.resolveJobReport).toHaveBeenCalledWith('r2', { outcome: 'DISMISSED' });
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Dismiss' }));
     expect(
       within(document.activeElement!.closest('tr')!).getByText('Fake Data Entry'),

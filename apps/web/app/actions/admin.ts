@@ -23,28 +23,38 @@ function requiredReason(reason: string | undefined, missing: string): ActionResu
   return succeed(text);
 }
 
-class AlreadyReviewed extends Error {}
+class StaleDecision extends Error {}
 
+// `reviewed` is the name and website the admin saw: the decision applies only
+// while the profile is still PENDING with exactly that identity.
 export async function verifyCompany(
   companyProfileId: string,
-  status: 'VERIFIED' | 'REJECTED',
-  reason?: string,
+  input: CompanyDecision,
+  reviewed: { companyName: string; website: string | null },
 ): Promise<ActionResult> {
   const admin = await requireRole('ADMIN');
+  // Prisma drops an undefined filter, which would silently unbind the decision.
+  if (
+    typeof reviewed?.companyName !== 'string' ||
+    (reviewed.website !== null && typeof reviewed.website !== 'string')
+  ) {
+    return fail('Reload the page and review this company again.');
+  }
 
   let decision: CompanyDecision;
-  if (status === 'VERIFIED') {
-    decision = { status };
-  } else if (status === 'REJECTED') {
+  if (input?.status === 'VERIFIED') {
+    decision = { status: 'VERIFIED' };
+  } else if (input?.status === 'REJECTED') {
     const parsed = requiredReason(
-      reason,
+      input.reason,
       'Give a reason. The company reads it to fix their details.',
     );
     if (!parsed.ok) return parsed;
-    decision = { status, reason: parsed.data };
+    decision = { status: 'REJECTED', reason: parsed.data };
   } else {
     return fail('Invalid decision.');
   }
+  const { status } = decision;
   const rejectionReason = decision.status === 'REJECTED' ? decision.reason : null;
 
   const profile = await db.companyProfile.findUnique({
@@ -75,10 +85,15 @@ export async function verifyCompany(
       },
       async (tx) => {
         const { count } = await tx.companyProfile.updateMany({
-          where: { id: profile.id, verificationStatus: 'PENDING' },
+          where: {
+            id: profile.id,
+            verificationStatus: 'PENDING',
+            companyName: reviewed.companyName,
+            website: reviewed.website,
+          },
           data: { verificationStatus: status, rejectionReason, reviewedAt: new Date() },
         });
-        if (count === 0) throw new AlreadyReviewed();
+        if (count === 0) throw new StaleDecision();
         await tx.notification.create({
           data: {
             userId: profile.userId,
@@ -95,8 +110,12 @@ export async function verifyCompany(
       },
     );
   } catch (err) {
-    if (err instanceof AlreadyReviewed) {
-      return fail(`${profile.companyName} was already reviewed. Reload the page to see the queue.`);
+    if (err instanceof StaleDecision) {
+      return fail(
+        profile.verificationStatus === 'PENDING'
+          ? `${reviewed.companyName} changed its name or website since you loaded the queue. Reload the page and review it again.`
+          : `${profile.companyName} was already reviewed. Reload the page to see the queue.`,
+      );
     }
     throw err;
   }
@@ -133,15 +152,15 @@ export async function verifyCompany(
 
 export async function resolveJobReport(
   reportId: string,
-  outcome: 'ACTIONED' | 'DISMISSED',
-  reason?: string,
+  resolution: { outcome: 'ACTIONED'; reason: string } | { outcome: 'DISMISSED' },
 ): Promise<ActionResult> {
   const admin = await requireRole('ADMIN');
+  const outcome = resolution?.outcome;
   if (outcome !== 'ACTIONED' && outcome !== 'DISMISSED') return fail('Invalid decision.');
 
   let removalReason: string | null = null;
-  if (outcome === 'ACTIONED') {
-    const parsed = requiredReason(reason, 'Give a reason for removing this job.');
+  if (resolution.outcome === 'ACTIONED') {
+    const parsed = requiredReason(resolution.reason, 'Give a reason for removing this job.');
     if (!parsed.ok) return parsed;
     removalReason = parsed.data;
   }

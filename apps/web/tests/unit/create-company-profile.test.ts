@@ -7,7 +7,7 @@ const m = vi.hoisted(() => ({
   companyFindUnique: vi.fn(),
   companyFindFirst: vi.fn(),
   companyCreate: vi.fn(),
-  companyUpdate: vi.fn(),
+  companyUpdateMany: vi.fn(),
   userUpdate: vi.fn(),
 }));
 
@@ -37,7 +37,7 @@ vi.mock('@/lib/audit', () => ({
   withAudit: (_ctx: unknown, _meta: unknown, fn: (tx: unknown) => unknown) =>
     fn({
       user: { update: m.userUpdate },
-      companyProfile: { create: m.companyCreate, update: m.companyUpdate },
+      companyProfile: { create: m.companyCreate, updateMany: m.companyUpdateMany },
     }),
 }));
 
@@ -60,7 +60,7 @@ beforeEach(() => {
   m.companyFindUnique.mockResolvedValue(null);
   m.companyFindFirst.mockResolvedValue(null);
   m.companyCreate.mockResolvedValue({ id: 'comp-1' });
-  m.companyUpdate.mockResolvedValue({ id: 'comp-1' });
+  m.companyUpdateMany.mockResolvedValue({ count: 1 });
   m.userUpdate.mockResolvedValue({});
 });
 
@@ -104,7 +104,7 @@ describe('updateCompanyProfile', () => {
     m.companyFindUnique.mockResolvedValue(stored('VERIFIED'));
     const res = await updateCompanyProfile({ ...PROFILE, ...change });
     expect(res).toMatchObject({ ok: false, error: expect.stringMatching(/once verified/i) });
-    expect(m.companyUpdate).not.toHaveBeenCalled();
+    expect(m.companyUpdateMany).not.toHaveBeenCalled();
   });
 
   it('lets a verified company edit everything else and stay verified', async () => {
@@ -114,7 +114,7 @@ describe('updateCompanyProfile', () => {
       description: 'A new, longer company story.',
     });
     expect(res).toEqual({ ok: true, data: undefined });
-    const { data } = m.companyUpdate.mock.calls[0]![0];
+    const { data } = m.companyUpdateMany.mock.calls[0]![0];
     expect(data.description).toBe('A new, longer company story.');
     expect(data).not.toHaveProperty('verificationStatus');
   });
@@ -123,11 +123,31 @@ describe('updateCompanyProfile', () => {
     m.companyFindUnique.mockResolvedValue(stored('REJECTED'));
     const res = await updateCompanyProfile({ ...PROFILE, companyName: 'Acme Technologies Ltd' });
     expect(res).toEqual({ ok: true, data: undefined });
-    expect(m.companyUpdate.mock.calls[0]![0].data).toMatchObject({
+    expect(m.companyUpdateMany.mock.calls[0]![0].data).toMatchObject({
       companyName: 'Acme Technologies Ltd',
       verificationStatus: 'PENDING',
       rejectionReason: null,
     });
+  });
+
+  it('writes only while the profile still has the status the rules were checked against', async () => {
+    m.companyFindUnique.mockResolvedValue(stored('PENDING'));
+    await updateCompanyProfile(PROFILE);
+    expect(m.companyUpdateMany.mock.calls[0]![0].where).toEqual({
+      id: 'comp-1',
+      verificationStatus: 'PENDING',
+    });
+  });
+
+  it('refuses a rename that races an admin approval (read PENDING, verified before the write)', async () => {
+    m.companyFindUnique.mockResolvedValue(stored('PENDING'));
+    m.companyUpdateMany.mockResolvedValue({ count: 0 });
+    const res = await updateCompanyProfile({ ...PROFILE, companyName: 'Acme Bank' });
+    expect(res).toMatchObject({
+      ok: false,
+      error: expect.stringMatching(/verification status changed/i),
+    });
+    expect(m.userUpdate).not.toHaveBeenCalled();
   });
 
   it('returns the schema message for invalid input', async () => {
@@ -136,6 +156,6 @@ describe('updateCompanyProfile', () => {
       ok: false,
       error: 'Invalid website URL',
     });
-    expect(m.companyUpdate).not.toHaveBeenCalled();
+    expect(m.companyUpdateMany).not.toHaveBeenCalled();
   });
 });

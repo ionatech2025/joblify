@@ -45,15 +45,18 @@ export function JobReportsQueue({
   const [, startTransition] = useTransition();
   const focus = useFocusAfterRender();
 
-  function decide(report: OpenReport, outcome: 'ACTIONED' | 'DISMISSED', reason?: string) {
+  function decide(
+    report: OpenReport,
+    resolution: { outcome: 'ACTIONED'; reason: string } | { outcome: 'DISMISSED' },
+  ) {
     setRemoving(null);
     const prev = rows;
     focus(focusAfterRemoving(prev, report.id, dismissId, headingId));
     setRows((r) => r.filter((x) => x.id !== report.id)); // optimistic
     startTransition(async () => {
       try {
-        unwrap(await resolveJobReport(report.id, outcome, reason));
-        toast.success(outcome === 'ACTIONED' ? 'Job removed' : 'Report dismissed');
+        unwrap(await resolveJobReport(report.id, resolution));
+        toast.success(resolution.outcome === 'ACTIONED' ? 'Job removed' : 'Report dismissed');
       } catch (err) {
         setRows(prev);
         toast.error(
@@ -124,7 +127,7 @@ export function JobReportsQueue({
             label={`Reason for removing ${r.jobTitle}`}
             hint="Kept in the audit log. The company and every applicant are told it was removed."
             submitLabel="Remove job"
-            onSubmit={(reason) => decide(r, 'ACTIONED', reason)}
+            onSubmit={(reason) => decide(r, { outcome: 'ACTIONED', reason })}
             onCancel={() => {
               focus(`remove-${r.id}`);
               setRemoving(null);
@@ -136,7 +139,7 @@ export function JobReportsQueue({
               id={dismissId(r)}
               size="sm"
               variant="secondary"
-              onClick={() => decide(r, 'DISMISSED')}
+              onClick={() => decide(r, { outcome: 'DISMISSED' })}
             >
               Dismiss
             </Button>

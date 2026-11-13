@@ -92,6 +92,11 @@ beforeEach(() => {
   m.sendEmail.mockResolvedValue({});
 });
 
+const REVIEWED = { companyName: 'Acme Inc', website: 'https://acme.test' };
+const verify = () => verifyCompany(PROFILE_ID, { status: 'VERIFIED' }, REVIEWED);
+const reject = (reason: string | undefined) =>
+  verifyCompany(PROFILE_ID, { status: 'REJECTED', reason: reason as string }, REVIEWED);
+
 async function runAfter() {
   for (const fn of m.afterCallbacks) await fn();
 }
@@ -99,13 +104,13 @@ async function runAfter() {
 describe('verifyCompany', () => {
   it('propagates the auth error for non-admins', async () => {
     m.requireRole.mockRejectedValue(new m.AuthError('FORBIDDEN'));
-    await expect(verifyCompany(PROFILE_ID, 'VERIFIED')).rejects.toThrow();
+    await expect(verify()).rejects.toThrow();
     expect(m.profileUpdateMany).not.toHaveBeenCalled();
   });
 
   it('rejects an unknown company profile', async () => {
     m.profileFindUnique.mockResolvedValue(null);
-    expect(await verifyCompany(PROFILE_ID, 'VERIFIED')).toMatchObject({
+    expect(await verify()).toMatchObject({
       ok: false,
       error: expect.stringMatching('not found'),
     });
@@ -113,9 +118,14 @@ describe('verifyCompany', () => {
   });
 
   it('verifies a pending company, clears any old reason, and notifies it', async () => {
-    expect(await verifyCompany(PROFILE_ID, 'VERIFIED')).toEqual({ ok: true, data: undefined });
+    expect(await verify()).toEqual({ ok: true, data: undefined });
     expect(m.profileUpdateMany).toHaveBeenCalledWith({
-      where: { id: PROFILE_ID, verificationStatus: 'PENDING' },
+      where: {
+        id: PROFILE_ID,
+        verificationStatus: 'PENDING',
+        companyName: 'Acme Inc',
+        website: 'https://acme.test',
+      },
       data: { verificationStatus: 'VERIFIED', rejectionReason: null, reviewedAt: expect.any(Date) },
     });
     const notif = m.notifCreate.mock.calls[0]![0].data;
@@ -128,7 +138,7 @@ describe('verifyCompany', () => {
   });
 
   it('rejects a company, stores the reason it will read, and includes it in the notification', async () => {
-    await verifyCompany(PROFILE_ID, 'REJECTED', '  Missing business registration  ');
+    await reject('  Missing business registration  ');
     expect(m.profileUpdateMany.mock.calls[0]![0].data).toMatchObject({
       verificationStatus: 'REJECTED',
       rejectionReason: 'Missing business registration',
@@ -142,23 +152,51 @@ describe('verifyCompany', () => {
   });
 
   it.each([undefined, '', '   '])('refuses a rejection without a reason (%j)', async (reason) => {
-    const res = await verifyCompany(PROFILE_ID, 'REJECTED', reason);
+    const res = await reject(reason);
     expect(res).toMatchObject({ ok: false, error: expect.stringMatching(/reason/i) });
     expect(m.profileUpdateMany).not.toHaveBeenCalled();
     expect(m.notifCreate).not.toHaveBeenCalled();
   });
 
+  it('refuses a decision that is not bound to a reviewed identity', async () => {
+    const res = await verifyCompany(
+      PROFILE_ID,
+      { status: 'VERIFIED' },
+      {} as { companyName: string; website: string | null },
+    );
+    expect(res).toMatchObject({ ok: false, error: expect.stringMatching(/reload/i) });
+    expect(m.profileUpdateMany).not.toHaveBeenCalled();
+  });
+
   it('refuses a decision on a company that is no longer pending (stale tab, second admin)', async () => {
+    m.profileFindUnique.mockResolvedValue({
+      id: PROFILE_ID,
+      userId: 'company1',
+      companyName: 'Acme Inc',
+      verificationStatus: 'VERIFIED',
+      user: { email: 'owner@acme.test', firstName: 'Ada' },
+    });
     m.profileUpdateMany.mockResolvedValue({ count: 0 });
-    const res = await verifyCompany(PROFILE_ID, 'REJECTED', 'Website does not resolve');
+    const res = await reject('Website does not resolve');
     expect(res).toMatchObject({ ok: false, error: expect.stringMatching(/already reviewed/i) });
     expect(m.notifCreate).not.toHaveBeenCalled();
     expect(m.updateTag).not.toHaveBeenCalled();
     expect(m.afterCallbacks).toHaveLength(0);
   });
 
+  it('refuses to approve a company that changed its name or website after the admin loaded it', async () => {
+    m.profileUpdateMany.mockResolvedValue({ count: 0 });
+    const res = await verify();
+    expect(res).toMatchObject({
+      ok: false,
+      error: expect.stringMatching(/changed its name or website since you loaded/i),
+    });
+    expect(m.notifCreate).not.toHaveBeenCalled();
+    expect(m.afterCallbacks).toHaveLength(0);
+  });
+
   it('emails the company owner when it is verified', async () => {
-    await verifyCompany(PROFILE_ID, 'VERIFIED');
+    await verify();
     expect(m.sendEmail).not.toHaveBeenCalled();
     await runAfter();
     const mail = m.sendEmail.mock.calls[0]![0];
@@ -168,7 +206,7 @@ describe('verifyCompany', () => {
   });
 
   it('emails the reason and the resubmit link when it is rejected', async () => {
-    await verifyCompany(PROFILE_ID, 'REJECTED', 'Website does not resolve');
+    await reject('Website does not resolve');
     await runAfter();
     const mail = m.sendEmail.mock.calls[0]![0];
     expect(mail.to).toBe('owner@acme.test');
@@ -178,14 +216,14 @@ describe('verifyCompany', () => {
 
   it('does not email a suppressed address', async () => {
     m.isEmailSuppressed.mockResolvedValue(true);
-    await verifyCompany(PROFILE_ID, 'VERIFIED');
+    await verify();
     await runAfter();
     expect(m.sendEmail).not.toHaveBeenCalled();
   });
 
   it('still succeeds when email cannot be sent (no RESEND_API_KEY)', async () => {
     m.sendEmail.mockRejectedValue(new Error('RESEND_API_KEY not set'));
-    expect(await verifyCompany(PROFILE_ID, 'VERIFIED')).toEqual({ ok: true, data: undefined });
+    expect(await verify()).toEqual({ ok: true, data: undefined });
     await expect(runAfter()).resolves.toBeUndefined();
   });
 });
@@ -214,19 +252,24 @@ describe('resolveJobReport', () => {
 
   it('is admin-only', async () => {
     m.requireRole.mockRejectedValue(new m.AuthError('FORBIDDEN'));
-    await expect(resolveJobReport('rep1', 'ACTIONED', 'Scam')).rejects.toThrow();
+    await expect(
+      resolveJobReport('rep1', { outcome: 'ACTIONED', reason: 'Scam' }),
+    ).rejects.toThrow();
     expect(m.jobUpdate).not.toHaveBeenCalled();
   });
 
   it.each([undefined, '  '])('refuses to remove a job without a reason (%j)', async (reason) => {
-    const res = await resolveJobReport('rep1', 'ACTIONED', reason);
+    const res = await resolveJobReport('rep1', { outcome: 'ACTIONED', reason: reason as string });
     expect(res).toMatchObject({ ok: false, error: expect.stringMatching(/reason/i) });
     expect(m.jobUpdate).not.toHaveBeenCalled();
     expect(m.reportUpdateMany).not.toHaveBeenCalled();
   });
 
   it('records the removal reason in the audit event', async () => {
-    await resolveJobReport('rep1', 'ACTIONED', 'Asks applicants for a registration fee');
+    await resolveJobReport('rep1', {
+      outcome: 'ACTIONED',
+      reason: 'Asks applicants for a registration fee',
+    });
     expect(m.auditMeta[0]!.after!(undefined)).toEqual({
       reportId: 'rep1',
       outcome: 'ACTIONED',
@@ -239,7 +282,7 @@ describe('resolveJobReport', () => {
       ...REPORT,
       jobPost: { ...REPORT.jobPost, deletedAt: new Date() },
     });
-    await resolveJobReport('rep1', 'ACTIONED', 'Scam');
+    await resolveJobReport('rep1', { outcome: 'ACTIONED', reason: 'Scam' });
     const { data } = m.notifCreateMany.mock.calls[0]![0];
     expect(data.map((n: { userId: string }) => n.userId)).toEqual(['seeker1', 'seeker2']);
     expect(data[0]).toMatchObject({ kind: 'SYSTEM', payload: { jobId: 'job1' } });
@@ -249,7 +292,7 @@ describe('resolveJobReport', () => {
   });
 
   it('ACTIONED removes the job at once, resolves every open report on it, and tells the company', async () => {
-    const res = await resolveJobReport('rep1', 'ACTIONED', 'Scam');
+    const res = await resolveJobReport('rep1', { outcome: 'ACTIONED', reason: 'Scam' });
     expect(res).toEqual({ ok: true, data: undefined });
     expect(m.jobUpdate).toHaveBeenCalledWith({
       where: { id: 'job1' },
@@ -270,7 +313,7 @@ describe('resolveJobReport', () => {
   });
 
   it('DISMISSED closes only that report and leaves the job alone', async () => {
-    await resolveJobReport('rep1', 'DISMISSED');
+    await resolveJobReport('rep1', { outcome: 'DISMISSED' });
     expect(m.reportUpdate).toHaveBeenCalledWith({
       where: { id: 'rep1' },
       data: { status: 'DISMISSED', resolvedAt: expect.any(Date), resolvedBy: 'admin1' },
@@ -283,7 +326,7 @@ describe('resolveJobReport', () => {
 
   it('is idempotent for an already-resolved report', async () => {
     m.reportFindUnique.mockResolvedValue({ ...REPORT, status: 'ACTIONED' });
-    expect(await resolveJobReport('rep1', 'ACTIONED', 'Scam')).toEqual({
+    expect(await resolveJobReport('rep1', { outcome: 'ACTIONED', reason: 'Scam' })).toEqual({
       ok: true,
       data: undefined,
     });
@@ -292,6 +335,6 @@ describe('resolveJobReport', () => {
 
   it('reports an unknown id as an expected failure', async () => {
     m.reportFindUnique.mockResolvedValue(null);
-    expect(await resolveJobReport('nope', 'DISMISSED')).toMatchObject({ ok: false });
+    expect(await resolveJobReport('nope', { outcome: 'DISMISSED' })).toMatchObject({ ok: false });
   });
 });

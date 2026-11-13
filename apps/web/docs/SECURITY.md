@@ -182,10 +182,14 @@ immediately, notifies the company, warns every applicant in-app, de-indexes it a
 report on it; _dismiss_ closes just that report. Company verification gates who can post; reports are
 the control for a verified account that goes bad.
 
-Company verification (`verifyCompany`) decides only a `PENDING` profile, so a stale admin tab cannot
-flip a decided company. Rejecting needs a reason, which the company reads on `/employer-setup` and by
-email; editing a rejected profile there resubmits it as `PENDING`. A verified company cannot change
-its name or website (`updateCompanyProfile` refuses), because the badge vouches for exactly those.
+Company verification (`verifyCompany`) decides only a `PENDING` profile whose name and website still
+match what the admin's queue showed, so a stale admin tab cannot flip a decided company and a
+rename after the admin loaded the queue cannot be approved. Rejecting needs a reason, which the
+company reads on `/employer-setup` and by email; editing a rejected profile there resubmits it as
+`PENDING`. A verified company cannot change its name or website (`updateCompanyProfile` refuses),
+because the badge vouches for exactly those. `updateCompanyProfile` writes only while the profile
+still has the status it checked, so an edit that races an approval fails instead of landing on the
+verified profile.
 
 ## File uploads
 

@@ -93,6 +93,8 @@ export async function createCompanyProfile(input: CompanyProfileInput): Promise<
   return succeed();
 }
 
+class StatusChanged extends Error {}
+
 export async function updateCompanyProfile(input: CompanyProfileInput): Promise<ActionResult> {
   const user = await requireRole('COMPANY');
   const result = CompanyProfileSchema.safeParse(input);
@@ -142,40 +144,52 @@ export async function updateCompanyProfile(input: CompanyProfileInput): Promise<
 
   const ctx = { ...(await auditCtx()), actorId: user.id };
 
-  await withAudit(
-    ctx,
-    {
-      action: 'COMPANY_PROFILE_UPDATED',
-      entity: 'company_profile',
-      entityId: profile.id,
-      before: { verificationStatus: profile.verificationStatus },
-      after: () => ({ ...parsed, ...resubmission }),
-    },
-    async (tx) => {
-      await tx.companyProfile.update({
-        where: { id: profile.id },
-        data: {
-          companyName: parsed.companyName,
-          industry: parsed.industry,
-          companySize: parsed.companySize,
-          description: parsed.description,
-          website: parsed.website || null,
-          linkedin: parsed.linkedin || null,
-          address: parsed.address || null,
-          contactPersonName: parsed.contactPersonName || null,
-          contactPersonPosition: parsed.contactPersonPosition || null,
-          ...logoPatch,
-          ...resubmission,
-        },
-      });
-      if (parsed.phone) {
-        await tx.user.update({
-          where: { id: user.id },
-          data: { phone: parsed.phone },
+  try {
+    await withAudit(
+      ctx,
+      {
+        action: 'COMPANY_PROFILE_UPDATED',
+        entity: 'company_profile',
+        entityId: profile.id,
+        before: { verificationStatus: profile.verificationStatus },
+        after: () => ({ ...parsed, ...resubmission }),
+      },
+      async (tx) => {
+        // The lock and resubmit rules above were decided for the status we
+        // read; an admin decision since then must not let this write through.
+        const { count } = await tx.companyProfile.updateMany({
+          where: { id: profile.id, verificationStatus: profile.verificationStatus },
+          data: {
+            companyName: parsed.companyName,
+            industry: parsed.industry,
+            companySize: parsed.companySize,
+            description: parsed.description,
+            website: parsed.website || null,
+            linkedin: parsed.linkedin || null,
+            address: parsed.address || null,
+            contactPersonName: parsed.contactPersonName || null,
+            contactPersonPosition: parsed.contactPersonPosition || null,
+            ...logoPatch,
+            ...resubmission,
+          },
         });
-      }
-    },
-  );
+        if (count === 0) throw new StatusChanged();
+        if (parsed.phone) {
+          await tx.user.update({
+            where: { id: user.id },
+            data: { phone: parsed.phone },
+          });
+        }
+      },
+    );
+  } catch (err) {
+    if (err instanceof StatusChanged) {
+      return fail(
+        'Your verification status changed while you were editing. Reload the page and try again.',
+      );
+    }
+    throw err;
+  }
 
   updateTag(tags.company(user.id));
   updateTag(tags.companies());

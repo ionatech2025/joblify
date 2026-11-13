@@ -10,6 +10,7 @@ import { toast } from '@/lib/stores/ui';
 import { unwrap } from '@/lib/action-result';
 import { TimeStamp } from '@/app/components/ui/timestamp';
 import { companySizeLabel, industryLabel } from '@/lib/ui/status';
+import type { CompanyDecision } from '@/lib/email/company-emails';
 import { focusAfterRemoving, ReasonForm, useFocusAfterRender } from './decision';
 
 export type PendingCompany = {
@@ -41,17 +42,17 @@ export function VerificationQueue({
   const [error, setError] = useState<string | null>(null);
   const focus = useFocusAfterRender();
 
-  function decide(id: string, status: 'VERIFIED' | 'REJECTED', reason?: string) {
+  function decide(company: PendingCompany, decision: CompanyDecision) {
     setError(null);
     setRejecting(null);
     const prev = rows;
-    focus(focusAfterRemoving(prev, id, verifyId, headingId));
-    setRows((r) => r.filter((row) => row.id !== id)); // optimistic
-    const name = prev.find((row) => row.id === id)?.companyName ?? 'Company';
+    focus(focusAfterRemoving(prev, company.id, verifyId, headingId));
+    setRows((r) => r.filter((row) => row.id !== company.id)); // optimistic
+    const { companyName: name, website } = company;
     startTransition(async () => {
       try {
-        unwrap(await verifyCompany(id, status, reason));
-        if (status === 'VERIFIED') {
+        unwrap(await verifyCompany(company.id, decision, { companyName: name, website }));
+        if (decision.status === 'VERIFIED') {
           toast.success(`${name} verified`, 'They now appear in search and the directory.');
         } else {
           toast.success(`${name} rejected`, 'They have been emailed the reason.');
@@ -111,7 +112,7 @@ export function VerificationQueue({
             label={`Reason for rejecting ${c.companyName}`}
             hint="The company sees this and uses it to fix their details."
             submitLabel="Reject"
-            onSubmit={(reason) => decide(c.id, 'REJECTED', reason)}
+            onSubmit={(reason) => decide(c, { status: 'REJECTED', reason })}
             onCancel={() => {
               focus(`reject-${c.id}`);
               setRejecting(null);
@@ -123,7 +124,7 @@ export function VerificationQueue({
               id={verifyId(c)}
               type="button"
               size="sm"
-              onClick={() => decide(c.id, 'VERIFIED')}
+              onClick={() => decide(c, { status: 'VERIFIED' })}
             >
               Verify
             </Button>
