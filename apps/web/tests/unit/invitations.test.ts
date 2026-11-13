@@ -135,9 +135,16 @@ describe('inviteJobseeker', () => {
     expect(m.invCreate).not.toHaveBeenCalled();
   });
 
-  it('leaves a still-pending invitation untouched', async () => {
-    m.invFindUnique.mockResolvedValue({ id: 'inv1', status: 'PENDING' });
-    await inviteJobseeker('seeker1', 'EMPLOYABLE');
+  it('says so, and leaves it untouched, when an invitation is still pending', async () => {
+    m.invFindUnique.mockResolvedValue({
+      id: 'inv1',
+      status: 'PENDING',
+      expiresAt: new Date(Date.now() + 86_400_000),
+    });
+    expect(await inviteJobseeker('seeker1', 'EMPLOYABLE')).toMatchObject({
+      ok: false,
+      error: expect.stringMatching(/already invited/i),
+    });
     expect(m.invCreate).not.toHaveBeenCalled();
     expect(m.invUpdate).not.toHaveBeenCalled();
     expect(m.updateTag).not.toHaveBeenCalled();
@@ -154,6 +161,26 @@ describe('inviteJobseeker', () => {
     expect(notif.userId).toBe('seeker1');
     expect(notif.kind).toBe('INVITATION_RECEIVED');
     expect(m.updateTag).toHaveBeenCalledWith('user:seeker1:notifications');
+  });
+
+  it('never resets an accepted invitation to pending', async () => {
+    m.invFindUnique.mockResolvedValue({ id: 'inv1', status: 'ACCEPTED', expiresAt: new Date() });
+    expect(await inviteJobseeker('seeker1', 'EMPLOYABLE')).toMatchObject({
+      ok: false,
+      error: expect.stringMatching(/already accepted/i),
+    });
+    expect(m.invUpdate).not.toHaveBeenCalled();
+    expect(m.notifCreate).not.toHaveBeenCalled();
+  });
+
+  it('re-sends a pending invitation whose window has lapsed', async () => {
+    m.invFindUnique.mockResolvedValue({
+      id: 'inv1',
+      status: 'PENDING',
+      expiresAt: new Date(Date.now() - 1000),
+    });
+    expect(await inviteJobseeker('seeker1', 'EMPLOYABLE')).toEqual({ ok: true, data: undefined });
+    expect(m.invUpdate.mock.calls[0]![0].data.expiresAt.getTime()).toBeGreaterThan(Date.now());
   });
 
   it('re-arms a previously declined invitation instead of creating a new one', async () => {
