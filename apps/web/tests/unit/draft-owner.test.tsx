@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { act, cleanup, render, screen } from '@testing-library/react';
+import { act, cleanup, render, renderHook, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { AuthHint } from '@/app/components/auth-hint';
 import { ApplyForm } from '@/app/(marketing)/jobs/[slug]/apply/apply-form';
@@ -9,6 +9,7 @@ import { useApplyDraftStore } from '@/lib/stores/apply-draft';
 import { useProfileDraftStore } from '@/lib/stores/profile-draft';
 import { useAuthHint } from '@/lib/stores/auth-hint';
 import { DRAFT_OWNER_KEY } from '@/lib/stores/clear-drafts';
+import { useFormDraft } from '@/lib/use-form-draft';
 
 vi.mock('@/app/actions/apply', () => ({ submitApplication: vi.fn() }));
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }));
@@ -104,5 +105,64 @@ describe('BioCoachPanel with a previous person’s draft in the browser', () => 
     aliceLeftHerDrafts();
     render(<AuthHint userId="alice" />);
     expect((await askTheCoach()).currentBio).toBe(ALICE_BIO);
+  });
+});
+
+describe('a second open tab', () => {
+  /** What this tab sees when another tab of the same browser writes storage. */
+  function anotherTabSets(key: string, newValue: string | null) {
+    const oldValue = localStorage.getItem(key);
+    if (newValue === null) localStorage.removeItem(key);
+    else localStorage.setItem(key, newValue);
+    act(() => {
+      window.dispatchEvent(
+        new StorageEvent('storage', { key, oldValue, newValue, storageArea: localStorage }),
+      );
+    });
+  }
+
+  function mountProfileForm() {
+    const reset = vi.fn();
+    renderHook(() =>
+      useFormDraft<{ bio: string }>({
+        store: useProfileDraftStore,
+        watch: (() => ({ unsubscribe: () => {} })) as never,
+        reset: reset as never,
+        initial: { bio: 'Bob’s saved bio' },
+      }),
+    );
+    return reset;
+  }
+
+  it('drops the previous person’s drafts from memory when another tab signs someone else in', () => {
+    const { rerender } = render(<AuthHint userId="alice" />);
+    aliceLeftHerDrafts();
+
+    // The other tab: Alice signs out, which wipes storage, then Bob signs in.
+    anotherTabSets('joblify.profile-draft', null);
+    anotherTabSets('joblify.apply-draft', null);
+    anotherTabSets(DRAFT_OWNER_KEY, null);
+    anotherTabSets(DRAFT_OWNER_KEY, 'bob');
+    // This tab refreshes as Bob.
+    rerender(<AuthHint userId="bob" />);
+
+    expect(mountProfileForm()).not.toHaveBeenCalled();
+    render(applyForm);
+    expect(coverLetter().value).toBe('');
+  });
+
+  it('drops a draft from memory when another tab removes it from storage', () => {
+    render(<AuthHint userId="alice" />);
+    aliceLeftHerDrafts();
+    anotherTabSets('joblify.apply-draft', null);
+    expect(useApplyDraftStore.getState().byJob).toEqual({});
+  });
+
+  it('keeps this tab’s drafts when another tab of the same person saves its own', () => {
+    render(<AuthHint userId="alice" />);
+    aliceLeftHerDrafts();
+    anotherTabSets('joblify.apply-draft', JSON.stringify({ state: { byJob: {} }, version: 1 }));
+    expect(useProfileDraftStore.getState().draft.bio).toBe(ALICE_BIO);
+    expect(useApplyDraftStore.getState().get('job-x').coverLetter).toBe(ALICE_LETTER);
   });
 });
