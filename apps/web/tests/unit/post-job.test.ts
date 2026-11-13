@@ -18,6 +18,7 @@ const m = vi.hoisted(() => {
     AuthError,
     requireRole: vi.fn(),
     postJobLimit: vi.fn(),
+    skillRetryLimit: vi.fn(),
     jobCreate: vi.fn(),
     jobUpdate: vi.fn(),
     jobFindFirst: vi.fn(),
@@ -48,7 +49,10 @@ vi.mock('@/lib/auth', async (importOriginal) => {
   const actual = await importOriginal<typeof AuthModule>();
   return { ...actual, requireRole: m.requireRole, AuthError: m.AuthError };
 });
-vi.mock('@/lib/ratelimit', () => ({ postJobLimit: m.postJobLimit }));
+vi.mock('@/lib/ratelimit', () => ({
+  postJobLimit: m.postJobLimit,
+  skillRetryLimit: m.skillRetryLimit,
+}));
 vi.mock('@/lib/db', () => ({
   db: {
     jobPost: { findFirst: m.jobFindFirst },
@@ -117,6 +121,7 @@ beforeEach(() => {
   m.embedJobPost.mockResolvedValue([0.1, 0.2]);
   m.requireRole.mockResolvedValue({ id: 'company1', plan: 'PRO' });
   m.postJobLimit.mockResolvedValue({ success: true });
+  m.skillRetryLimit.mockResolvedValue({ success: true });
   m.companyProfileFindUnique.mockResolvedValue({
     verificationStatus: 'VERIFIED',
     companyName: 'Acme',
@@ -459,6 +464,20 @@ describe('updateJob', () => {
     expect(m.postJobLimit).not.toHaveBeenCalled();
     expect(m.generateObject).toHaveBeenCalledTimes(1);
     expect(m.jpsCreateMany).toHaveBeenCalledTimes(1);
+  });
+
+  it('saves a job with no linked skills but skips the extraction retry once over its limit', async () => {
+    m.jobFindFirst.mockResolvedValueOnce(savedRow()).mockResolvedValueOnce(null);
+    m.jpsCount.mockResolvedValue(0);
+    m.skillRetryLimit.mockResolvedValue({ success: false });
+    expect(await updateJob(JOB_ID, input({ closed: true }))).toEqual({
+      ok: true,
+      data: undefined,
+    });
+    expect(m.jobUpdate.mock.calls[0]![0].data.status).toBe('CLOSED');
+    await runAfterCallbacks();
+    expect(m.skillRetryLimit).toHaveBeenCalledWith('company1');
+    expect(m.generateObject).not.toHaveBeenCalled();
   });
 
   it('refuses a JD text edit once the daily posting budget is spent', async () => {
