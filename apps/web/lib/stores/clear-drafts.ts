@@ -11,8 +11,8 @@ import { useProfileDraftStore } from './profile-draft';
  * salary expectations, cover letters. They are stored under fixed, unkeyed
  * localStorage names, so on a shared computer (an internet café, a library) the
  * next person to sign in saw the previous person's unsaved profile restored
- * over their own, and nothing ever cleared it. The guard that calls this does
- * so whenever the signed-in identity changes or ends.
+ * over their own, and nothing ever cleared it. reconcileDraftOwner() calls this
+ * when a different person signs in.
  *
  * Both layers are cleared: removing the keys alone would leave the live zustand
  * state in memory, which the next write would just persist again.
@@ -40,19 +40,18 @@ export function clearAllDrafts(storage: Storage = localStorage): void {
 /**
  * Reconcile drafts with the signed-in user. Returns true when drafts were
  * cleared. `userId === null` means signed out.
+ *
+ * Signed out keeps the drafts and their owner. A session that expires mid-form
+ * lands on /sign-in, which renders signed out, and clearing there erased the
+ * work the person was about to sign back in to submit. The owner check below
+ * wipes them when anyone else signs in.
  */
 export function reconcileDraftOwner(
   userId: string | null,
   storage: Storage = localStorage,
 ): boolean {
-  const owner = storage.getItem(DRAFT_OWNER_KEY);
-  if (!userId) {
-    if (owner === null) return false;
-    clearAllDrafts(storage);
-    storage.removeItem(DRAFT_OWNER_KEY);
-    return true;
-  }
-  if (owner === userId) return false;
+  if (!userId) return false;
+  if (storage.getItem(DRAFT_OWNER_KEY) === userId) return false;
   clearAllDrafts(storage);
   storage.setItem(DRAFT_OWNER_KEY, userId);
   return true;

@@ -9,9 +9,10 @@ import { reconcileDraftOwner } from '@/lib/stores/clear-drafts';
 //
 //  1. Components that show or hide something by auth state (the mobile menu's
 //     links, the save-search button) read it from useAuthHint().
-//  2. Locally persisted form drafts must not outlive the person who typed
-//     them: when the signed-in identity changes, or the session ends, every
-//     draft is wiped (lib/stores/clear-drafts.ts explains why). This was
+//  2. Locally persisted form drafts must never reach another person: when a
+//     different identity signs in, every draft is wiped. Signing out keeps
+//     them, so an expired session's work survives the trip through sign-in
+//     (lib/stores/clear-drafts.ts explains both). This was
 //     <DraftOwnerGuard>, which had to wait for clerk-js to load and then
 //     guess that "not loaded yet" was not "signed out". The server's answer has
 //     no such ambiguity, and arrives with the HTML instead of after a script.

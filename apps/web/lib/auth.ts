@@ -62,8 +62,14 @@ async function provisionFromClerk(clerkUserId: string): Promise<AuthContext | nu
 
 export async function requireUser(): Promise<AuthContext> {
   const user = await currentUser();
-  if (!user) redirect('/sign-in');
-  return user;
+  if (user) return user;
+  // Signed out: Clerk's redirect carries redirect_url back to the request it
+  // saw (for a Server Action, the page it was posted from). A live Clerk session
+  // with no usable local user must not be sent back, or sign-in would bounce
+  // straight back into this redirect.
+  const { userId, redirectToSignIn } = await clerkAuth();
+  if (!userId) redirectToSignIn();
+  redirect('/sign-in');
 }
 
 export async function requireRole(role: UserType): Promise<AuthContext> {
