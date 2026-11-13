@@ -61,7 +61,7 @@ export function Toaster() {
       role="status"
       aria-live="polite"
       aria-relevant="additions text"
-      className="pointer-events-none fixed inset-x-0 bottom-0 z-[70] flex flex-col items-center gap-2 p-4 sm:inset-x-auto sm:right-4 sm:bottom-4 sm:w-88 sm:items-end"
+      className="pointer-events-none fixed inset-x-0 bottom-[var(--dirty-bar-h,0px)] z-[70] flex flex-col items-center gap-2 p-4 sm:inset-x-auto sm:right-4 sm:bottom-[calc(var(--dirty-bar-h,0px)+1rem)] sm:w-88 sm:items-end"
     >
       {toasts.map((t) => (
         <ToastItem key={t.id} toast={t} />

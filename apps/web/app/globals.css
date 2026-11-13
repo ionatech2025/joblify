@@ -36,6 +36,12 @@
    win normally. The class is set on <html> by the no-flash script in layout.tsx. */
 @custom-variant dark (&:where(.dark, .dark *));
 
+@custom-variant short {
+  @media (max-height: 32rem) {
+    @slot;
+  }
+}
+
 :root {
   color-scheme: light;
 
@@ -105,11 +111,7 @@
      one edit moves all three. */
   --o-header-h: 3.5rem;
   --o-nav-h: 2.3125rem;
-  /* Ceiling, not an exact height: the control panel is one or two rows
-     depending on whether the page supplies actions/search/views. Only the
-     focus-scroll reserve below reads it, where over-reserving costs a little
-     extra scroll and under-reserving hides the focused control. */
-  --o-control-h: 4.75rem;
+  --o-control-max-h: 4.75rem;
 
   /* Radii, raw. `control` = inputs/selects, `card` = every elevated surface,
      `canvas` = big inset hero panels, `pill` = the editorial capsule (buttons,
@@ -446,7 +448,16 @@
      the app header. `.o-console` is applied by ConsoleShell *inside* <body>,
      and the scrolling element is <html> — :has() is the only way up. */
   html:has(.o-console) {
-    scroll-padding-top: calc(var(--o-header-h) + var(--o-nav-h) + var(--o-control-h) + 1rem);
+    scroll-padding-top: calc(var(--o-header-h) + var(--o-nav-h) + var(--o-control-max-h) + 1rem);
+    @variant max-sm {
+      scroll-padding-top: calc(var(--o-header-h) + var(--o-nav-h) + 1rem);
+    }
+  }
+  html,
+  html:has(.o-console) {
+    @variant short {
+      scroll-padding-top: 1rem;
+    }
   }
   body {
     margin: 0;
@@ -503,11 +514,10 @@
     color: var(--brand);
   }
 
-  /* Published by <CookieBanner> while its fixed bar is showing (0 otherwise).
-     Keeps a focused element, and the last row of the page, clear of the bar —
-     WCAG 2.2 SC 2.4.11. */
+  /* Published by <CookieBanner> and <DirtyBar> while their fixed bars show, so
+     a focused field and the last row stay clear of them (WCAG 2.2 SC 2.4.11). */
   html {
-    scroll-padding-bottom: var(--consent-banner-h, 0px);
+    scroll-padding-bottom: calc(var(--consent-banner-h, 0px) + var(--dirty-bar-h, 0px));
   }
   body {
     padding-bottom: var(--consent-banner-h, 0px);

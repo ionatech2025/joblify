@@ -8,10 +8,10 @@ import { buttonClasses } from '@/app/components/ui/button';
 
 export default function Error({
   error,
-  reset,
+  retry,
 }: {
   error: Error & { digest?: string };
-  reset: () => void;
+  retry: () => void;
 }) {
   useEffect(() => {
     reportClientError(error);
@@ -27,7 +27,7 @@ export default function Error({
           An unexpected error occurred. You can try again, or head back home.
         </p>
         <div className="mt-8 flex flex-wrap justify-center gap-3">
-          <button onClick={reset} className={buttonClasses('primary', 'lg')}>
+          <button onClick={retry} className={buttonClasses('primary', 'lg')}>
             Try again
           </button>
           <Link href="/" className={`${buttonClasses('secondary', 'lg')} no-underline`}>

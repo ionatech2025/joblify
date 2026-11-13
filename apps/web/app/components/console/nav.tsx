@@ -84,7 +84,7 @@ export function ConsoleNav({
   return (
     <nav
       aria-label={module}
-      className="o-chrome-bar shadow-o-chrome sticky top-[var(--o-header-h)] z-40 border-b"
+      className="o-chrome-bar shadow-o-chrome short:static sticky top-[var(--o-header-h)] z-40 border-b"
     >
       <ConsoleWidth className="flex h-[calc(var(--o-nav-h)-1px)] items-stretch gap-1 overflow-x-auto">
         <span className="flex shrink-0 items-center pr-3 text-[13px] font-semibold tracking-tight">
@@ -116,11 +116,9 @@ export function ConsoleNav({
               {Icon ? <Icon aria-hidden className="size-3.5" /> : null}
               {l.label}
               {l.count ? (
-                <span
-                  className="bg-danger text-fg-inverse ml-0.5 inline-flex min-w-[1.05rem] items-center justify-center rounded-pill px-1 text-[10px] font-bold"
-                  aria-label={`${l.count} unread`}
-                >
-                  {l.count > 9 ? '9+' : l.count}
+                <span className="bg-danger text-fg-inverse ml-0.5 inline-flex min-w-[1.05rem] items-center justify-center rounded-pill px-1 text-[10px] font-bold">
+                  <span aria-hidden>{l.count > 9 ? '9+' : l.count}</span>
+                  <span className="sr-only">, {l.count} unread</span>
                 </span>
               ) : null}
             </Link>

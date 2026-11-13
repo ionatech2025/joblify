@@ -84,10 +84,10 @@ const CRITICAL_STYLES = `
 
 export default function GlobalError({
   error,
-  reset,
+  retry,
 }: {
   error: Error & { digest?: string };
-  reset: () => void;
+  retry: () => void;
 }) {
   useEffect(() => {
     reportClientError(error);
@@ -103,7 +103,7 @@ export default function GlobalError({
           <p className="ge-eyebrow">Error</p>
           <h1 className="ge-title">Something went wrong</h1>
           <p className="ge-lede">The app hit a critical error. Try reloading.</p>
-          <button type="button" onClick={reset} className="ge-action">
+          <button type="button" onClick={retry} className="ge-action">
             Reload
           </button>
         </main>

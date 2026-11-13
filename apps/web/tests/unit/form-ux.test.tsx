@@ -46,6 +46,14 @@ vi.mock('@/app/actions/account', () => ({ deleteMyAccount: deleteAccount }));
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }),
 }));
+vi.stubGlobal(
+  'ResizeObserver',
+  class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  },
+);
 
 afterEach(() => {
   cleanup();

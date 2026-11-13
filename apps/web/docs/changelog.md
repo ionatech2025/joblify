@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-11-14 — Adaptive console chrome and a resilient error shell (phase 2)
+
+- **Short and narrow screens:** on landscape phones and at 400% zoom the header, module nav and
+  control panel scroll with the page instead of pinning over it, and below `sm` the wrapped
+  control panel does too. Measured on the real components: 320x256 went from 24 focused fields
+  hidden under chrome to none, and 844x390 from 12 to none.
+- **Save bar stays reachable:** `<DirtyBar>` publishes `--dirty-bar-h`; focus scrolling and the
+  toaster clear it, so a persistent error toast no longer covers Save or Discard.
+- **Assistive tech:** unread counts are read out in full, filter menu items expose `aria-checked`,
+  and the active sort column says its direction.
+- **Errors:** "Try again" now calls `retry` (refetch, then re-render) instead of `reset`, and
+  failures under `/company`, `/jobseeker`, `/admin` and the account area keep the console and
+  its navigation around the error.
+
 ## 2026-11-14 — /jobs results start on a phone's first screen
 
 - **Folded secondary filters:** below `md`, work mode, job type, experience and salary sit behind

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { AlertCircle, Loader2, RotateCcw, Save } from 'lucide-react';
 import { cn } from '@/lib/cn';
 
@@ -51,8 +51,25 @@ export function DirtyBar({
     return () => window.removeEventListener('beforeunload', onBeforeUnload);
   }, [dirty, saving]);
 
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const root = document.documentElement;
+    const publish = () =>
+      root.style.setProperty('--dirty-bar-h', `${Math.ceil(el.getBoundingClientRect().height)}px`);
+    publish();
+    const observer = new ResizeObserver(publish);
+    observer.observe(el);
+    return () => {
+      observer.disconnect();
+      root.style.removeProperty('--dirty-bar-h');
+    };
+  }, []);
+
   return (
     <div
+      ref={ref}
       className={cn(
         'o-chrome-bar border-border sticky bottom-0 z-20 -mx-4 mt-5 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t px-4 py-2.5 sm:-mx-6 sm:px-6',
         className,

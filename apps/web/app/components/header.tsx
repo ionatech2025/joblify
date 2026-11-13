@@ -46,7 +46,7 @@ export function Header({ auth, mobileUser }: { auth?: ReactNode; mobileUser?: Re
   // padding: the console's module nav and control panel are sticky bars that
   // stack underneath and need an exact offset to sit flush against it.
   return (
-    <header className="glass border-border sticky top-0 z-50 border-b">
+    <header className="glass border-border short:static sticky top-0 z-50 border-b">
       <Container className="flex h-[var(--o-header-h)] items-center justify-between gap-4">
         <Link
           href="/"
