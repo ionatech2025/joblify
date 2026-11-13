@@ -118,6 +118,12 @@ describe('saveSearch and deleteSavedSearch', () => {
     });
   });
 
+  it('answers an over-long search with a message instead of a thrown (redacted) error', async () => {
+    const res = await saveSearch({ query: 'q=' + 'x'.repeat(2001) });
+    expect(res).toMatchObject({ ok: false, error: expect.stringMatching(/too long/i) });
+    expect(m.savedSearchCreate).not.toHaveBeenCalled();
+  });
+
   it('enforces the 20 saved-search cap per user', async () => {
     m.savedSearchCount.mockResolvedValue(20);
     const res = await saveSearch({ query: 'q=engineer' });
