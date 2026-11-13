@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react';
 import type { FieldValues, UseFormReturn } from 'react-hook-form';
 import { useAuthHint } from '@/lib/stores/auth-hint';
 import { ownsDrafts } from '@/lib/stores/clear-drafts';
+import { useHydrated } from '@/lib/use-hydrated';
 
 /**
  * Restore-on-mount plus debounced persist for the console's long form drafts.
@@ -31,9 +32,21 @@ import { ownsDrafts } from '@/lib/stores/clear-drafts';
  * unmount so navigating away still saves the last thing typed.
  *
  * Restore waits until the draft's owner is the person signed in now
- * (ownsDrafts in lib/stores/clear-drafts.ts), rather than trusting that
- * <AuthHint> wiped another person's drafts before this form mounted.
+ * (useOwnsDrafts below), rather than trusting that <AuthHint> wiped another
+ * person's drafts before this form mounted.
  */
+
+/**
+ * Whether the drafts in this browser belong to the person signed in now
+ * (ownsDrafts in lib/stores/clear-drafts.ts). False on the server and during
+ * hydration, so no draft reaches the server HTML or the first client render.
+ * Re-checked when the header's answer about who is signed in changes.
+ */
+export function useOwnsDrafts(): boolean {
+  const hydrated = useHydrated();
+  const hintUserId = useAuthHint((s) => s.userId);
+  return hydrated && ownsDrafts(hintUserId);
+}
 
 /** The flat `{ draft, update, clear }` shape all four draft stores share. */
 type DraftStoreApi<T> = {
@@ -69,19 +82,17 @@ export function useFormDraft<T extends FieldValues>({
   const initialRef = useRef(initial);
   const onRestoreRef = useRef(onRestore);
   const restoredRef = useRef(false);
-  // Re-checked when the server's answer about who is signed in arrives or
-  // changes, which can be after mount.
-  const hintUserId = useAuthHint((s) => s.userId);
+  const owned = useOwnsDrafts();
 
   useEffect(() => {
-    if (restoredRef.current || !ownsDrafts(hintUserId)) return;
+    if (restoredRef.current || !owned) return;
     restoredRef.current = true;
     const { draft } = store.getState();
     if (Object.keys(draft).length > 0) {
       resetRef.current({ ...initialRef.current, ...draft });
       onRestoreRef.current?.();
     }
-  }, [store, hintUserId]);
+  }, [store, owned]);
 
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | undefined;

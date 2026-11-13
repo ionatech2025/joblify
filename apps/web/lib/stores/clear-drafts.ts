@@ -51,14 +51,11 @@ export function clearAllDrafts(storage: Storage = localStorage): void {
  * so it wins; without it no sign-in can have happened in this tab, so the hint
  * is current. Unreadable storage counts as not owned.
  */
-export function ownsDrafts(
-  hintUserId: string | null | undefined,
-  storage: Storage = localStorage,
-): boolean {
+export function ownsDrafts(hintUserId: string | null | undefined): boolean {
   const clerk = (window as { Clerk?: { loaded?: boolean; user?: { id: string } | null } }).Clerk;
   const userId = clerk?.loaded ? clerk.user?.id : hintUserId;
   try {
-    return !!userId && storage.getItem(DRAFT_OWNER_KEY) === userId;
+    return !!userId && localStorage.getItem(DRAFT_OWNER_KEY) === userId;
   } catch {
     return false;
   }
