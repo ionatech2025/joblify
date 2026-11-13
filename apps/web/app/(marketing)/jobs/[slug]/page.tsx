@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { connection } from 'next/server';
 import { Suspense } from 'react';
+import { ShieldCheck } from 'lucide-react';
 import type { JobType } from '@prisma/client';
 import { db } from '@/lib/db';
 import { tags } from '@/lib/cache';
@@ -99,7 +100,7 @@ async function JobDetailBody({ slug }: { slug: string }) {
       />
 
       <AmbientBand>
-        <header className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
+        <header className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
           <p className="eyebrow m-0 mb-3">
             {job.company.companyProfile?.companyName ?? 'Open role'}
           </p>
@@ -156,13 +157,22 @@ async function JobDetailBody({ slug }: { slug: string }) {
               </Badge>
             )}
           </div>
-          {job.applicationDeadline && (
-            <p className="mt-4 mb-0 text-sm font-semibold text-fg">
-              {applicationsClosed(job.applicationDeadline)
-                ? `Applications closed on ${formatDeadline(job.applicationDeadline)}`
-                : `Apply by ${formatDeadline(job.applicationDeadline)}`}
-            </p>
-          )}
+          <p className="mt-4 mb-0 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-fg-muted">
+            {job.company.companyProfile?.verificationStatus === 'VERIFIED' && (
+              <span className="inline-flex items-center gap-1.5 font-semibold text-success">
+                <ShieldCheck aria-hidden className="size-4" />
+                Verified employer
+              </span>
+            )}
+            {job.publishedAt && <span>Posted {formatDeadline(job.publishedAt)}</span>}
+            {job.applicationDeadline && (
+              <span className="font-semibold text-fg">
+                {applicationsClosed(job.applicationDeadline)
+                  ? `Applications closed on ${formatDeadline(job.applicationDeadline)}`
+                  : `Apply by ${formatDeadline(job.applicationDeadline)}`}
+              </span>
+            )}
+          </p>
           {job.skills.length > 0 && (
             <section className="mt-4 flex flex-wrap gap-2" aria-label="Skills">
               {job.skills.map((js) => (
@@ -175,35 +185,47 @@ async function JobDetailBody({ slug }: { slug: string }) {
         </header>
       </AmbientBand>
 
-      <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
-        <article className="leading-relaxed whitespace-pre-wrap text-fg">{job.description}</article>
+      <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
+        {/* Desktop: the description keeps a readable measure and the apply
+            panel stays beside it, so applying never means scrolling to the
+            end. It stops sticking on short viewports, where it would not fit. */}
+        <div className="grid gap-12 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
+          <div className="measure min-w-0">
+            <article className="leading-relaxed whitespace-pre-wrap text-fg">
+              {job.description}
+            </article>
 
-        {job.requirements && (
-          <section className="mt-8">
-            <h2 className="text-xl font-semibold text-fg">Requirements</h2>
-            <p className="leading-relaxed whitespace-pre-wrap text-fg">{job.requirements}</p>
-          </section>
-        )}
+            {job.requirements && (
+              <section className="mt-8">
+                <h2 className="text-xl font-semibold text-fg">Requirements</h2>
+                <p className="leading-relaxed whitespace-pre-wrap text-fg">{job.requirements}</p>
+              </section>
+            )}
 
-        {job.benefits.length > 0 && (
-          <section className="mt-8">
-            <h2 className="text-xl font-semibold text-fg">Benefits</h2>
-            <ul className="list-disc pl-5 text-fg">
-              {job.benefits.map((b) => (
-                <li key={b}>{b}</li>
-              ))}
-            </ul>
-          </section>
-        )}
+            {job.benefits.length > 0 && (
+              <section className="mt-8">
+                <h2 className="text-xl font-semibold text-fg">Benefits</h2>
+                <ul className="list-disc pl-5 text-fg">
+                  {job.benefits.map((b) => (
+                    <li key={b}>{b}</li>
+                  ))}
+                </ul>
+              </section>
+            )}
+          </div>
 
-        <section className="mt-12">
-          <Card tone="glass" className="p-6 sm:p-8">
-            <Suspense fallback={<p className="m-0 text-fg-muted">Loading apply options…</p>}>
-              <ApplyPanel jobId={job.id} slug={job.slug} deadline={job.applicationDeadline} />
-            </Suspense>
-          </Card>
-          <ReportJob jobPostId={job.id} />
-        </section>
+          <aside
+            aria-label="Apply"
+            className="lg:[@media(min-height:32rem)]:sticky lg:top-[calc(var(--o-header-h)+1.5rem)]"
+          >
+            <Card tone="glass" className="p-6 sm:p-8 lg:p-6">
+              <Suspense fallback={<p className="m-0 text-fg-muted">Loading apply options…</p>}>
+                <ApplyPanel jobId={job.id} slug={job.slug} deadline={job.applicationDeadline} />
+              </Suspense>
+            </Card>
+            <ReportJob jobPostId={job.id} />
+          </aside>
+        </div>
 
         <IslandBoundary fallback={null}>
           <Suspense fallback={null}>

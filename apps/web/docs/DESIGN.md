@@ -122,6 +122,9 @@ shadows are invisible on a near-black canvas. That is why `surface-raised` exist
 - `.eyebrow` — small-caps letterspaced label above a headline, brand-coloured.
 - `.caption` — small-caps caption under a stat value. (Was duplicated inline at three
   call sites with two different tracking values.)
+- `.measure` — caps running text (`p`, lists, `article`) inside it at 65ch, about 75 characters a
+  line. Used on the legal, about and accessibility pages and the job description, which ran at
+  90–110 characters on desktop before.
 - `.glass` — frosted surface. Pair with `border` when a hairline is wanted.
 
 ## Typography
