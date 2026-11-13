@@ -60,6 +60,39 @@ View details: ${t.applicationUrl}
   return { subject, text, html };
 }
 
+export type NotSelectedTemplate = {
+  jobseekerName: string;
+  jobTitle: string;
+  companyName: string;
+  jobsUrl: string;
+};
+
+export function notSelected(t: NotSelectedTemplate): {
+  subject: string;
+  text: string;
+  html: string;
+} {
+  const subject = `Your application for ${t.jobTitle} at ${t.companyName}`;
+  const text = `Hi ${t.jobseekerName},
+
+Thank you for applying for "${t.jobTitle}" at ${t.companyName}, and for the time you put into your application.
+
+${t.companyName} has decided not to move forward with your application for this role. Decisions like this come down to the fit for one opening.
+
+Your profile stays on Joblify, and new roles that match it keep arriving: ${t.jobsUrl}
+
+We wish you the best with your search.
+
+— The Joblify team`;
+  const html = `<p>Hi ${escape(t.jobseekerName)},</p>
+<p>Thank you for applying for <strong>${escape(t.jobTitle)}</strong> at ${escape(t.companyName)}, and for the time you put into your application.</p>
+<p>${escape(t.companyName)} has decided not to move forward with your application for this role. Decisions like this come down to the fit for one opening.</p>
+<p>Your profile stays on Joblify, and new roles that match it keep arriving. <a href="${t.jobsUrl}">See open roles</a></p>
+<p>We wish you the best with your search.</p>
+<p>— The Joblify team</p>`;
+  return { subject, text, html };
+}
+
 function escape(s: string): string {
   return s.replace(/[&<>"']/g, (c) =>
     c === '&' ? '&amp;' : c === '<' ? '&lt;' : c === '>' ? '&gt;' : c === '"' ? '&quot;' : '&#39;',

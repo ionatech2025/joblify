@@ -198,6 +198,8 @@ Two kinds:
 - **Transactional** (apply confirm, status change, password reset): inline `await resend().emails.send(...)`. Best-effort — wrap in `.catch` so the user-facing path never fails because of email.
 - **Bulk** (daily digest): batched in a workflow. One send per user.
 
+A status change always creates the in-app notification, but it emails only for a forward move into shortlisted, interview, offer or hired, and for a rejection (`emailsCandidate` in `lib/applications/transitions.ts`). VIEWED and backward corrections stay in-app. A rejection uses the `notSelected` template, not the generic status line.
+
 Templates live in `lib/email/templates.ts` as functions returning `{ subject, text, html }`. Plain HTML + text for V1; upgrade to React Email components if the digest gets richer.
 
 Hard bounces + complaints are suppressed: the Resend webhook sets `User.emailSuppressedAt`, the daily digest filters those rows out at the query level, and `isEmailSuppressed()` (from `lib/email/resend.ts`) guards transactional sends.

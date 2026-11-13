@@ -44,3 +44,16 @@ export function checkRecruiterTransition(
   }
   return { ok: true };
 }
+
+export const CHAT_JOIN_STATUSES: ApplicationStatus[] = [
+  'SHORTLISTED',
+  'INTERVIEW_SCHEDULED',
+  'OFFER_EXTENDED',
+  'HIRED',
+];
+
+export function emailsCandidate(from: ApplicationStatus, to: ApplicationStatus): boolean {
+  if (to === 'REJECTED') return true;
+  if (!CHAT_JOIN_STATUSES.includes(to)) return false;
+  return from === 'REJECTED' || RECRUITER_STATUSES.indexOf(to) > RECRUITER_STATUSES.indexOf(from);
+}

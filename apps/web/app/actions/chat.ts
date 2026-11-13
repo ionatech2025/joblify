@@ -13,6 +13,7 @@ import { chatMessageLimit } from '@/lib/ratelimit';
 import { logger } from '@/lib/observability/logger';
 import { type ActionResult, fail, succeed } from '@/lib/action-result';
 import { clientIp } from '@/lib/security/client-ip';
+import { CHAT_JOIN_STATUSES } from '@/lib/applications/transitions';
 
 async function auditCtx(actorId: string) {
   const h = await headers();
@@ -134,7 +135,7 @@ export async function addChatParticipant(
 
   const area = await db.chatArea.findFirst({
     where: { id: chatAreaId, companyId: user.id },
-    select: { id: true, kind: true, title: true },
+    select: { id: true, kind: true, title: true, jobPostId: true },
   });
   if (!area) throw new AuthError('FORBIDDEN');
 
@@ -153,6 +154,21 @@ export async function addChatParticipant(
   if (!seeker) return fail('Job seeker not found.');
   if (area.kind === 'VIRTUAL_INTERN' && seeker.jobSeekerProfile?.profileType !== 'VIRTUAL_INTERN') {
     return fail('Only virtual-intern profiles can join a virtual-intern chat area.');
+  }
+  if (area.kind === 'JOB') {
+    const seat =
+      area.jobPostId &&
+      (await db.jobApplication.findFirst({
+        where: {
+          jobPostId: area.jobPostId,
+          jobSeekerId: seeker.id,
+          status: { in: CHAT_JOIN_STATUSES },
+        },
+        select: { id: true },
+      }));
+    if (!seat) {
+      return fail("Only candidates you've shortlisted for this job can join its chat area.");
+    }
   }
 
   const already = await db.chatParticipant.findUnique({
