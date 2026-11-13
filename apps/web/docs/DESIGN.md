@@ -58,6 +58,12 @@ Two consequences worth knowing before editing `globals.css`:
 - **`.o-console` must stay after `.dark` in source order.** Both are single-class
   selectors, so for tokens they both declare, source order decides. `.dark .o-console`
   follows for the same reason.
+- **Sticky chrome gives way on small screens.** Under the `short` variant
+  (`max-height: 32rem`: a landscape phone, or 400% zoom) the header, module nav and control
+  panel scroll with the page, and below `sm` the wrapped control panel does too, otherwise
+  the bars alone fill the viewport (WCAG 1.4.10). `scroll-padding-top` follows each case.
+  At the bottom, `DirtyBar` publishes `--dirty-bar-h`; `scroll-padding-bottom` and the
+  `Toaster` offset read it so neither focus nor a toast lands on Save (WCAG 2.4.11).
 - **Radii are declared as raw `--r-*` vars and only _referenced_ from `@theme inline`.**
   An inline `@theme` entry with a literal value (`--radius-card: 1rem`) bakes that literal
   into the emitted utility, and no scope class can ever override it. That indirection is
@@ -220,8 +226,9 @@ encodes a pattern the editorial primitives had no word for.
 | `notebook.tsx`      | `Notebook` — full WAI-ARIA tabs (roving tabindex, arrows, Home/End)                                                | Long-form sections of one record become one keystroke apart instead of 400px of scroll each                                 |
 | `statusbar.tsx`     | `Statusbar` — the chevron stage pipeline                                                                           | Position in a process _and_ what comes next, which a `<select>` shows neither of                                            |
 | `search-view.tsx`   | `SearchBox` (zero-JS GET form), `FacetChips`                                                                       | The active query, stated once, each part individually removable                                                             |
-| `filter-menu.tsx`   | `FilterMenu` — Radix `DropdownMenu` of `Link`s                                                                     | Filters stay shareable URLs; the menu is only the picker                                                                    |
-| `dirty-bar.tsx`     | `DirtyBar` — sticky save/discard + `beforeunload`                                                                  | A reachable save button, and the first unsaved-changes signal these forms have ever had                                     |
+| `filter-menu.tsx`   | `FilterMenu` — Radix `DropdownMenu` of `Link`s as checkbox items, so `aria-checked` marks the applied one          | Filters stay shareable URLs; the menu is only the picker                                                                    |
+| `dirty-bar.tsx`     | `DirtyBar` — sticky save/discard + `beforeunload`, publishes `--dirty-bar-h`                                       | A reachable save button, and the first unsaved-changes signal these forms have ever had                                     |
+| `error-panel.tsx`   | `ConsoleError` — the body of each console segment's `error.tsx`                                                    | A failed page keeps the console register and module nav; "Try again" calls `retry` (refetch), not `reset`                   |
 | `skeleton.tsx`      | `ConsoleNavSkeleton`, `ControlPanelSkeleton`, `ConsoleListSkeleton`, `ConsoleSheetSkeleton`, `ConsolePageSkeleton` | Chrome fallbacks at the real heights — the sticky bars compute offsets from `--o-nav-h`, so a short fallback jumps the page |
 
 URL state for every list view is parsed and built by
