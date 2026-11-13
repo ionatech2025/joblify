@@ -7,6 +7,9 @@ import { JobReportsQueue } from './job-reports';
 
 export const metadata = { title: 'Admin' };
 
+const VERIFICATION_HEADING = 'verification-queue-heading';
+const REPORTS_HEADING = 'job-reports-heading';
+
 export default async function AdminPage() {
   await requireRole('ADMIN');
 
@@ -22,8 +25,13 @@ export default async function AdminPage() {
         companyName: true,
         industry: true,
         companySize: true,
+        description: true,
         website: true,
+        address: true,
+        contactPersonName: true,
+        contactPersonPosition: true,
         createdAt: true,
+        user: { select: { phone: true } },
       },
     }),
     db.jobReport.findMany({
@@ -66,7 +74,14 @@ export default async function AdminPage() {
       <ConsoleWidth className="max-w-6xl py-3">
         <div className="mb-2 flex items-baseline justify-between gap-2">
           <div>
-            <h2 className="text-fg text-[14px] font-semibold">Pending company verifications</h2>
+            {/* tabIndex -1: focus lands here when the last row is decided. */}
+            <h2
+              id={VERIFICATION_HEADING}
+              tabIndex={-1}
+              className="text-fg text-[14px] font-semibold"
+            >
+              Pending company verifications
+            </h2>
             <p className="text-fg-muted text-[12px]">
               Unverified companies don&apos;t appear in the public directory or job search.
             </p>
@@ -76,23 +91,24 @@ export default async function AdminPage() {
           </span>
         </div>
         <VerificationQueue
-          initial={pending.map((p) => ({
-            id: p.id,
-            companyName: p.companyName,
-            industry: p.industry,
-            companySize: p.companySize,
-            website: p.website,
-            createdAt: p.createdAt.toISOString(),
+          headingId={VERIFICATION_HEADING}
+          initial={pending.map(({ user, createdAt, ...p }) => ({
+            ...p,
+            phone: user.phone,
+            createdAt: createdAt.toISOString(),
           }))}
         />
 
         <div className="mt-6 mb-2 flex items-baseline justify-between gap-2">
-          <h2 className="text-fg text-[14px] font-semibold">Reported job postings</h2>
+          <h2 id={REPORTS_HEADING} tabIndex={-1} className="text-fg text-[14px] font-semibold">
+            Reported job postings
+          </h2>
           <span className="text-fg-muted text-[12px] font-semibold tabular-nums">
             {reports.length} open
           </span>
         </div>
         <JobReportsQueue
+          headingId={REPORTS_HEADING}
           initial={reports.map((r) => ({
             id: r.id,
             reason: r.reason,
@@ -109,11 +125,15 @@ export default async function AdminPage() {
 }
 
 // A <dl> only permits dt/dd/div as children, so the pair is wrapped in a div.
+// dt comes first in the DOM (a term precedes its description); order-first
+// keeps the figure visually ahead of its label.
 function Metric({ label, value }: { label: string; value: number }) {
   return (
     <div className="inline-flex items-baseline gap-1">
-      <dd className="text-fg m-0 font-semibold tabular-nums">{value.toLocaleString('en-US')}</dd>
       <dt>{label}</dt>
+      <dd className="text-fg order-first m-0 font-semibold tabular-nums">
+        {value.toLocaleString('en-US')}
+      </dd>
     </div>
   );
 }
