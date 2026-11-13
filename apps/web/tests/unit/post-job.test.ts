@@ -24,6 +24,7 @@ const m = vi.hoisted(() => {
     skillFindMany: vi.fn(),
     jpsDeleteMany: vi.fn(),
     jpsCreateMany: vi.fn(),
+    jpsCount: vi.fn(),
     companyProfileFindUnique: vi.fn(),
     seekersFindMany: vi.fn(),
     notifCreateMany: vi.fn(),
@@ -52,7 +53,7 @@ vi.mock('@/lib/db', () => ({
   db: {
     jobPost: { findFirst: m.jobFindFirst },
     skill: { findMany: m.skillFindMany },
-    jobPostSkill: { deleteMany: m.jpsDeleteMany, createMany: m.jpsCreateMany },
+    jobPostSkill: { deleteMany: m.jpsDeleteMany, createMany: m.jpsCreateMany, count: m.jpsCount },
     companyProfile: { findUnique: m.companyProfileFindUnique },
     jobSeekerProfile: { findMany: m.seekersFindMany },
     notification: { createMany: m.notifCreateMany },
@@ -134,6 +135,7 @@ beforeEach(() => {
   ]);
   m.jpsDeleteMany.mockResolvedValue({ count: 0 });
   m.jpsCreateMany.mockResolvedValue({ count: 2 });
+  m.jpsCount.mockResolvedValue(2);
   m.reindexJob.mockResolvedValue(undefined);
 });
 
@@ -447,6 +449,16 @@ describe('updateJob', () => {
     expect(m.postJobLimit).toHaveBeenCalledWith('company1');
     await runAfterCallbacks();
     expect(m.generateObject).toHaveBeenCalledTimes(1);
+  });
+
+  it('retries skill extraction on any save while the job has no linked skills', async () => {
+    m.jobFindFirst.mockResolvedValueOnce(savedRow()).mockResolvedValueOnce(null);
+    m.jpsCount.mockResolvedValue(0);
+    await updateJob(JOB_ID, input());
+    await runAfterCallbacks();
+    expect(m.postJobLimit).not.toHaveBeenCalled();
+    expect(m.generateObject).toHaveBeenCalledTimes(1);
+    expect(m.jpsCreateMany).toHaveBeenCalledTimes(1);
   });
 
   it('refuses a JD text edit once the daily posting budget is spent', async () => {
