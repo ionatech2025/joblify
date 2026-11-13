@@ -177,9 +177,15 @@ private objects (log the pathname).
 
 Any signed-in user can report a posting (`app/actions/report-job.ts`: rate-limited, one report per
 reporter per job, not your own job). Admins resolve the queue on `/admin`
-(`resolveJobReport`): _remove_ archives the posting immediately, notifies the company, de-indexes it
-and closes every open report on it; _dismiss_ closes just that report. Company verification gates who
-can post; reports are the control for a verified account that goes bad.
+(`resolveJobReport`): _remove_ needs a reason (kept in the audit event), archives the posting
+immediately, notifies the company, warns every applicant in-app, de-indexes it and closes every open
+report on it; _dismiss_ closes just that report. Company verification gates who can post; reports are
+the control for a verified account that goes bad.
+
+Company verification (`verifyCompany`) decides only a `PENDING` profile, so a stale admin tab cannot
+flip a decided company. Rejecting needs a reason, which the company reads on `/employer-setup` and by
+email; editing a rejected profile there resubmits it as `PENDING`. A verified company cannot change
+its name or website (`updateCompanyProfile` refuses), because the badge vouches for exactly those.
 
 ## File uploads
 
