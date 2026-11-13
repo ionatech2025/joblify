@@ -16,6 +16,7 @@ const m = vi.hoisted(() => {
     requireRole: vi.fn(),
     applyLimit: vi.fn(),
     resumeFindFirst: vi.fn(),
+    liveResume: vi.fn(),
     jobFindFirst: vi.fn(),
     appFindUnique: vi.fn(),
     appCreate: vi.fn(),
@@ -47,6 +48,7 @@ vi.mock('@/lib/db', () => ({
 vi.mock('@/lib/audit', () => ({
   withAudit: (_ctx: unknown, _meta: unknown, fn: (tx: unknown) => unknown) =>
     fn({
+      $queryRaw: m.liveResume,
       jobApplication: { create: m.appCreate, update: m.appUpdate },
       notification: { create: m.notifCreate },
       chatParticipant: { deleteMany: m.chatPartDeleteMany },
@@ -100,6 +102,7 @@ describe('submitApplication', () => {
     m.requireRole.mockResolvedValue({ id: 'user1', email: 'a@x.com', firstName: 'A' });
     m.applyLimit.mockResolvedValue({ success: true });
     m.resumeFindFirst.mockResolvedValue({ id: RESUME_ID });
+    m.liveResume.mockResolvedValue([{ id: RESUME_ID }]);
     m.jobFindFirst.mockResolvedValue({
       id: JOB_ID,
       title: 'Engineer',
@@ -185,6 +188,16 @@ describe('submitApplication', () => {
       error: 'That résumé is no longer available. Choose another.',
     });
     expect(m.appCreate).not.toHaveBeenCalled();
+  });
+
+  it('refuses a résumé deleted after the check but before the insert, creating nothing', async () => {
+    m.liveResume.mockResolvedValue([]);
+    expect(await submitApplication(fd())).toEqual({
+      ok: false,
+      error: 'That résumé is no longer available. Choose another.',
+    });
+    expect(m.appCreate).not.toHaveBeenCalled();
+    expect(m.notifCreate).not.toHaveBeenCalled();
   });
 
   it('does not spend the daily quota on a request it refuses for another reason', async () => {
