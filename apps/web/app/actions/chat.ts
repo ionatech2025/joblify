@@ -121,6 +121,10 @@ async function ensureVirtualInternChatArea(companyUserId: string): Promise<{ id:
   }
 }
 
+const NOT_SHORTLISTED = "Only candidates you've shortlisted for this job can join its chat area.";
+
+class NoChatSeatError extends Error {}
+
 // Add a job seeker to one of the company's chat areas (flowchart: "add seeker
 // of choice to job specific chat area" / "add virtual interns of interest").
 // JOB_UC_14.0: both add-to-job-chat and add-to-VI-chat are premium outreach
@@ -166,9 +170,7 @@ export async function addChatParticipant(
         },
         select: { id: true },
       }));
-    if (!seat) {
-      return fail("Only candidates you've shortlisted for this job can join its chat area.");
-    }
+    if (!seat) return fail(NOT_SHORTLISTED);
   }
 
   const already = await db.chatParticipant.findUnique({
@@ -177,28 +179,45 @@ export async function addChatParticipant(
   });
   if (already) return succeed();
 
-  await withAudit(
-    await auditCtx(user.id),
-    {
-      action: 'CHAT_PARTICIPANT_ADDED',
-      entity: 'chat_area',
-      entityId: area.id,
-      after: () => ({ userId: seeker.id }),
-    },
-    async (tx) => {
-      await tx.chatParticipant.create({ data: { chatAreaId: area.id, userId: seeker.id } });
-      await tx.notification.create({
-        data: {
-          userId: seeker.id,
-          kind: 'CHAT_AREA_ADDED',
-          payload: {
-            chatAreaId: area.id,
-            message: `You were added to the chat area “${area.title}”.`,
+  try {
+    await withAudit(
+      await auditCtx(user.id),
+      {
+        action: 'CHAT_PARTICIPANT_ADDED',
+        entity: 'chat_area',
+        entityId: area.id,
+        after: () => ({ userId: seeker.id }),
+      },
+      async (tx) => {
+        if (area.kind === 'JOB') {
+          // Locking the application row orders this against a concurrent status
+          // change: a rejection either lands first and is seen here, or waits
+          // and then removes the seat this commits.
+          const [application] = await tx.$queryRaw<{ id: string }[]>`
+            SELECT id FROM job_applications
+             WHERE "jobPostId" = ${area.jobPostId}::uuid
+               AND "jobSeekerId" = ${seeker.id}::uuid
+               AND status::text IN (${Prisma.join(CHAT_JOIN_STATUSES)})
+               FOR UPDATE`;
+          if (!application) throw new NoChatSeatError();
+        }
+        await tx.chatParticipant.create({ data: { chatAreaId: area.id, userId: seeker.id } });
+        await tx.notification.create({
+          data: {
+            userId: seeker.id,
+            kind: 'CHAT_AREA_ADDED',
+            payload: {
+              chatAreaId: area.id,
+              message: `You were added to the chat area “${area.title}”.`,
+            },
           },
-        },
-      });
-    },
-  );
+        });
+      },
+    );
+  } catch (err) {
+    if (err instanceof NoChatSeatError) return fail(NOT_SHORTLISTED);
+    throw err;
+  }
 
   updateTag(tags.notifications(seeker.id));
   return succeed();

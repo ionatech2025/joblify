@@ -83,6 +83,7 @@ vi.mock('@/lib/db', () => ({
 vi.mock('@/lib/audit', () => ({
   withAudit: (_ctx: unknown, _meta: unknown, fn: (tx: unknown) => unknown) =>
     fn({
+      $queryRaw: async () => [{ id: 'app1' }],
       chatArea: { create: m.chatAreaCreate },
       chatParticipant: { create: m.chatPartCreate },
       notification: { create: m.notifCreate },
