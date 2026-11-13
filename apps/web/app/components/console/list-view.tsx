@@ -180,6 +180,9 @@ function SortHeader({
       )}
     >
       {label}
+      {active ? (
+        <span className="sr-only">, sorted {active === 'asc' ? 'ascending' : 'descending'}</span>
+      ) : null}
       <Icon
         aria-hidden
         className={cn('size-3', active ? 'opacity-100' : 'opacity-30 group-hover:opacity-70')}

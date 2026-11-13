@@ -95,7 +95,7 @@ export function FilterMenu({
                 </DropdownMenu.Label>
               ) : null}
               {g.items.map((item) => (
-                <DropdownMenu.Item key={item.href} asChild>
+                <DropdownMenu.CheckboxItem key={item.href} checked={item.active ?? false} asChild>
                   <Link
                     href={item.href}
                     scroll={false}
@@ -110,7 +110,7 @@ export function FilterMenu({
                     />
                     {item.label}
                   </Link>
-                </DropdownMenu.Item>
+                </DropdownMenu.CheckboxItem>
               ))}
             </div>
           ))}
