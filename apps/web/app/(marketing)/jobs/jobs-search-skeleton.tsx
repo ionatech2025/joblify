@@ -35,14 +35,17 @@ export function JobsSearchSkeleton() {
         <Skeleton className="h-3 w-28" />
         <Skeleton className="rounded-control h-10 w-full" />
         <Skeleton className="rounded-control h-10 w-full" />
-        <Skeleton className="mt-1 h-3 w-28" />
-        <Skeleton className="rounded-control h-10 w-full" />
-        <Skeleton className="rounded-control h-10 w-full" />
-        <Skeleton className="rounded-control h-10 w-full" />
-        <Skeleton className="mt-1 h-3 w-24" />
-        <div className="flex gap-2">
+        <Skeleton className="h-8 w-32 rounded-full md:hidden" />
+        <div className="hidden flex-col gap-3 md:flex">
+          <Skeleton className="mt-1 h-3 w-28" />
           <Skeleton className="rounded-control h-10 w-full" />
           <Skeleton className="rounded-control h-10 w-full" />
+          <Skeleton className="rounded-control h-10 w-full" />
+          <Skeleton className="mt-1 h-3 w-24" />
+          <div className="flex gap-2">
+            <Skeleton className="rounded-control h-10 w-full" />
+            <Skeleton className="rounded-control h-10 w-full" />
+          </div>
         </div>
       </div>
       <div>
