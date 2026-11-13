@@ -357,18 +357,19 @@ export async function updateJob(
   );
 
   after(async () => {
-    if (jdTextChanged) {
-      try {
+    try {
+      // A failed extraction leaves the job with no skills, so the next save retries it.
+      if (jdTextChanged || (await db.jobPostSkill.count({ where: { jobPostId: jobId } })) === 0) {
         await extractAndLinkSkills(
           jobId,
           parsed.title,
           parsed.description,
           parsed.requirements ?? '',
         );
-      } catch (err) {
-        logger.warn({ err, jobId }, 'JD skill re-extraction failed (non-blocking)');
-        Sentry.captureException(err, { tags: { jobId } });
       }
+    } catch (err) {
+      logger.warn({ err, jobId }, 'JD skill re-extraction failed (non-blocking)');
+      Sentry.captureException(err, { tags: { jobId } });
     }
     try {
       await reindexJob(jobId);
