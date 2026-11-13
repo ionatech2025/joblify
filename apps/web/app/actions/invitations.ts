@@ -65,11 +65,14 @@ export async function inviteJobseeker(
         profileType,
       },
     },
-    select: { id: true, status: true },
+    select: { id: true, status: true, expiresAt: true },
   });
-  // A live or already-answered invitation stands; re-inviting only makes sense
-  // after a decline or expiry, where we refresh the existing row below.
-  if (existing && existing.status === 'PENDING') return succeed();
+  if (existing?.status === 'PENDING' && existing.expiresAt > new Date()) {
+    return fail('You already invited this job seeker. The invitation is waiting for their answer.');
+  }
+  if (existing?.status === 'ACCEPTED') {
+    return fail('This job seeker already accepted an invitation from you.');
+  }
 
   const expiresAt = new Date(Date.now() + INVITATION_TTL_DAYS * 24 * 60 * 60 * 1000);
 
