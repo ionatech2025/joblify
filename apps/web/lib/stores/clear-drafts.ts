@@ -83,7 +83,7 @@ export function clearDraftsOnSignOut(clerk: { signOut: SignOut }): () => void {
   const signOut = clerk.signOut;
   clerk.signOut = (...args) => {
     wipeDrafts();
-    return signOut(...args);
+    return signOut.apply(clerk, args);
   };
   return () => {
     clerk.signOut = signOut;
