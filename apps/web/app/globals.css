@@ -514,6 +514,8 @@
     color: var(--brand);
   }
 
+  /* Published by <CookieBanner> and <DirtyBar> while their fixed bars show, so
+     a focused field and the last row stay clear of them (WCAG 2.2 SC 2.4.11). */
   html {
     scroll-padding-bottom: calc(var(--consent-banner-h, 0px) + var(--dirty-bar-h, 0px));
   }
@@ -688,11 +690,5 @@
   body:has(.o-console) > * > footer,
   body:has(.o-console) > footer {
     display: none;
-  }
-}
-
-body > header {
-  @variant short {
-    position: static;
   }
 }
