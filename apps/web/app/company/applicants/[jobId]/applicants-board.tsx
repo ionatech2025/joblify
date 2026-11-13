@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useEffect, useOptimistic, useRef, useState, useTransition } from 'react';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { ChevronDown, ChevronLeft, ChevronRight, ExternalLink, Users } from 'lucide-react';
 import type { ApplicationStatus } from '@prisma/client';
@@ -37,6 +37,8 @@ type Row = {
   };
 };
 
+type RowPatch = Pick<Row, 'id'> & Partial<Row>;
+
 /**
  * Applicant pipeline.
  *
@@ -57,26 +59,41 @@ export function ApplicantsBoard({
   applications: Row[];
   showClosed: boolean;
 }) {
-  const [rows, setRows] = useState(applications);
+  const [rows, patchRow] = useOptimistic(applications, (current, patch: RowPatch) =>
+    current.map((r) => (r.id === patch.id ? { ...r, ...patch } : r)),
+  );
   const [, startTransition] = useTransition();
+  const stages = showClosed ? STAGES : STAGES.filter((s) => !CLOSED.includes(s.status));
+
+  const focusAfterMove = useRef<string | null>(null);
+  useEffect(() => {
+    const id = focusAfterMove.current;
+    if (!id) return;
+    focusAfterMove.current = null;
+    document.querySelector<HTMLElement>(`[data-stage-control="${id}"]`)?.focus();
+  });
 
   function changeStatus(id: string, status: ApplicationStatus) {
-    const prev = rows;
-    setRows((r) => r.map((x) => (x.id === id ? { ...x, status } : x)));
+    const order = stages.flatMap((s) =>
+      s.status === 'WITHDRAWN' ? [] : rows.filter((r) => r.status === s.status),
+    );
+    const at = order.findIndex((r) => r.id === id);
+    focusAfterMove.current = stages.some((s) => s.status === status)
+      ? id
+      : ((order[at + 1] ?? order[at - 1])?.id ?? null);
+
     startTransition(async () => {
+      patchRow({ id, status });
       try {
         // Returns { ok:false } for an expected refusal (e.g. the candidate
         // withdrew); unwrap() routes it to the same handler as a thrown fault.
         unwrap(await updateApplicantStatus(id, status));
-        // A status change emails the applicant and sends an in-app
-        // notification, so confirming it actually committed matters here more
-        // than anywhere else on the board.
         toast.success(
           `Moved to ${applicationStatusLabel(status)}`,
           'The applicant has been notified.',
         );
       } catch (err) {
-        setRows(prev);
+        focusAfterMove.current = id;
         const message = err instanceof Error ? err.message : 'Status change failed.';
         toast.error("Couldn't change the status", message);
       }
@@ -91,8 +108,6 @@ export function ApplicantsBoard({
         description="Applicants show up here the moment they apply, ranked by how well their resume matches this role."
       />
     );
-
-  const stages = showClosed ? STAGES : STAGES.filter((s) => !CLOSED.includes(s.status));
 
   return (
     <KanbanBoard>
@@ -133,7 +148,7 @@ export function ApplicantsBoard({
             ]}
           >
             {items.map((r) => (
-              <ApplicantCard key={r.id} row={r} onStatus={changeStatus} />
+              <ApplicantCard key={r.id} row={r} onStatus={changeStatus} onPatch={patchRow} />
             ))}
           </KanbanColumn>
         );
@@ -145,27 +160,31 @@ export function ApplicantsBoard({
 function ApplicantCard({
   row,
   onStatus,
+  onPatch,
 }: {
   row: Row;
   onStatus: (id: string, s: ApplicationStatus) => void;
+  onPatch: (patch: RowPatch) => void;
 }) {
   const [openCover, setOpenCover] = useState(false);
   const [notes, setNotes] = useState(row.recruiterNotes ?? '');
-  const [baseline, setBaseline] = useState(row.recruiterNotes ?? '');
   const [noteState, setNoteState] = useState<'idle' | 'saving' | 'saved'>('idle');
+  const [, startTransition] = useTransition();
 
-  async function saveNote() {
-    if (notes === baseline) return;
+  function saveNote() {
+    if (notes === (row.recruiterNotes ?? '')) return;
     setNoteState('saving');
-    try {
-      await saveApplicantNote(row.id, notes);
-      setBaseline(notes);
-      setNoteState('saved');
-    } catch (err) {
-      setNoteState('idle');
-      const message = err instanceof Error ? err.message : 'Note failed to save.';
-      toast.error("Couldn't save note", message);
-    }
+    startTransition(async () => {
+      onPatch({ id: row.id, recruiterNotes: notes || null });
+      try {
+        await saveApplicantNote(row.id, notes);
+        setNoteState('saved');
+      } catch (err) {
+        setNoteState('idle');
+        const message = err instanceof Error ? err.message : 'Note failed to save.';
+        toast.error("Couldn't save note", message);
+      }
+    });
   }
 
   const name =
@@ -216,6 +235,7 @@ function ApplicantCard({
       )}
 
       <StageStepper
+        id={row.id}
         current={row.status}
         name={name}
         onSelect={(status) => onStatus(row.id, status)}
@@ -230,6 +250,7 @@ function ApplicantCard({
         onBlur={saveNote}
         placeholder="Private notes…"
         rows={2}
+        maxLength={5000}
         aria-label={`Notes for ${name}`}
         className="mt-1.5 resize-y px-2 py-1 text-[12px]"
       />
@@ -245,16 +266,14 @@ function ApplicantCard({
  * Stage control for one card: back / forward by one, plus a dropdown to jump
  * anywhere in the pipeline. The arrows cover the overwhelmingly common action
  * in a single click; the dropdown covers rejecting, or skipping a stage.
- *
- * Rejection is the only transition that gates on a confirm — it emails the
- * applicant and there is no undo. Every other move is freely reversible, which
- * is exactly why the back arrow exists.
  */
 function StageStepper({
+  id,
   current,
   name,
   onSelect,
 }: {
+  id: string;
   current: ApplicationStatus;
   name: string;
   onSelect: (status: ApplicationStatus) => void;
@@ -272,7 +291,9 @@ function StageStepper({
     if (status === current) return;
     if (
       status === 'REJECTED' &&
-      !window.confirm(`Reject ${name}? They'll be emailed, and this can't be undone.`)
+      !window.confirm(
+        `Reject ${name}? They'll be emailed that they weren't selected. You can move them back later, but the email can't be unsent.`,
+      )
     ) {
       return;
     }
@@ -304,7 +325,10 @@ function StageStepper({
       </button>
 
       <DropdownMenu.Root>
-        <DropdownMenu.Trigger className="border-border text-fg hover:bg-surface-sunken focus-visible:ring-brand rounded-control inline-flex min-w-0 flex-1 items-center justify-between gap-1 border px-2 py-0.5 text-[12px] font-medium transition-colors focus-visible:ring-2 focus-visible:outline-none">
+        <DropdownMenu.Trigger
+          data-stage-control={id}
+          className="border-border text-fg hover:bg-surface-sunken focus-visible:ring-brand rounded-control inline-flex min-w-0 flex-1 items-center justify-between gap-1 border px-2 py-0.5 text-[12px] font-medium transition-colors focus-visible:ring-2 focus-visible:outline-none"
+        >
           <span className="truncate">{label}</span>
           <ChevronDown aria-hidden className="size-3 shrink-0 opacity-60" />
           <span className="sr-only">Change stage for {name}</span>
