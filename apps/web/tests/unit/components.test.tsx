@@ -31,15 +31,6 @@ vi.mock('@/app/actions/profile', () => ({
   saveProfile: vi.fn().mockResolvedValue(undefined),
 }));
 
-vi.stubGlobal(
-  'ResizeObserver',
-  class {
-    observe() {}
-    unobserve() {}
-    disconnect() {}
-  },
-);
-
 afterEach(cleanup);
 
 describe('Field', () => {
