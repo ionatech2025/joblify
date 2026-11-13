@@ -2,13 +2,9 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { createElement } from 'react';
 import { cleanup, render } from '@testing-library/react';
-import {
-  clearAllDrafts,
-  clearDraftsOnSignOut,
-  reconcileDraftOwner,
-  DRAFT_OWNER_KEY,
-} from '@/lib/stores/clear-drafts';
+import { clearAllDrafts, reconcileDraftOwner, DRAFT_OWNER_KEY } from '@/lib/stores/clear-drafts';
 import { AuthHint } from '@/app/components/auth-hint';
+import ClerkRuntime from '@/app/components/clerk-runtime';
 import { useProfileDraftStore } from '@/lib/stores/profile-draft';
 import { useApplyDraftStore } from '@/lib/stores/apply-draft';
 
@@ -22,7 +18,20 @@ beforeEach(() => {
   useApplyDraftStore.setState({ byJob: {} });
 });
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  delete (window as { Clerk?: unknown }).Clerk;
+});
+
+vi.mock('@clerk/nextjs', () => ({
+  SignIn: () => null,
+  SignUp: () => null,
+  UserButton: () => null,
+}));
+vi.mock('@clerk/clerk-react', () => ({ useAuth: () => ({ isLoaded: true }) }));
+vi.mock('@/app/components/clerk-provider', () => ({
+  ClerkClientProvider: ({ children }: { children: unknown }) => children,
+}));
 
 describe('reconcileDraftOwner', () => {
   it('wipes the previous user’s drafts when a different user signs in', () => {
@@ -77,16 +86,22 @@ describe('<AuthHint> across an expired session', () => {
   });
 });
 
-describe('clearDraftsOnSignOut', () => {
-  it('wipes every draft and the owner before an explicit sign-out goes ahead', async () => {
+describe('signing out from the avatar menu', () => {
+  it('wipes every draft and the owner before clerk-js signs out', async () => {
     reconcileDraftOwner('alice');
     useProfileDraftStore.getState().update({ headline: 'secret', phone: '0700' });
-    const signOut = vi.fn(async () => {
-      expect(useProfileDraftStore.getState().draft).toEqual({});
-    });
-    const clerk = { signOut };
-    clearDraftsOnSignOut(clerk);
+    const clerk: { signOut: (...args: never[]) => Promise<void> } = {
+      signOut: async function (this: unknown) {
+        // clerk-js methods may read their own instance.
+        expect(this).toBe(clerk);
+        expect(useProfileDraftStore.getState().draft).toEqual({});
+      },
+    };
+    const signOut = vi.spyOn(clerk, 'signOut');
+    (window as { Clerk?: unknown }).Clerk = clerk;
+    render(createElement(ClerkRuntime));
 
+    // What <UserButton>'s "Sign out" calls.
     await clerk.signOut();
 
     expect(signOut).toHaveBeenCalledTimes(1);

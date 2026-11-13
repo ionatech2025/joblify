@@ -11,8 +11,11 @@ vi.mock('@/lib/db', () => ({ db: { user: { findUnique: m.userFindUnique } } }));
 
 import { AuthError, requireUser } from '@/lib/auth';
 
-// Clerk's redirectToSignIn() throws Next's redirect and never returns.
+// Clerk's redirectToSignIn() throws Next's redirect and never returns. Like the
+// real one, it sends the caller back to the request's own URL unless the
+// caller passes another, or null for none.
 class Redirected extends Error {}
+const PAGE = 'https://joblify.test/jobs/eng/apply';
 
 describe('AuthError', () => {
   it('carries a code', () => {
@@ -25,8 +28,9 @@ describe('AuthError', () => {
 describe('requireUser', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    m.redirectToSignIn.mockImplementation(() => {
-      throw new Redirected('sign-in with return url');
+    m.redirectToSignIn.mockImplementation((opts: { returnBackUrl?: string | null } = {}) => {
+      const back = opts.returnBackUrl === null ? '' : (opts.returnBackUrl ?? PAGE);
+      throw new Redirected(`/sign-in?redirect_url=${encodeURIComponent(back)}`);
     });
   });
 
@@ -38,6 +42,6 @@ describe('requireUser', () => {
 
   it('sends a signed-out caller to sign-in with a way back to the page it was on', async () => {
     m.auth.mockResolvedValue({ userId: null, redirectToSignIn: m.redirectToSignIn });
-    await expect(requireUser()).rejects.toThrow('sign-in with return url');
+    await expect(requireUser()).rejects.toThrow(`redirect_url=${encodeURIComponent(PAGE)}`);
   });
 });
