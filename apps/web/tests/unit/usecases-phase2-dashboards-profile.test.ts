@@ -322,7 +322,7 @@ describe('Phase 2: Dashboards & Profile Setup (Tests 30–56)', () => {
       address: 'Plot 45 Kampala Road',
     };
     expect(CompanyProfileSchema.safeParse(profile).success).toBe(true);
-    await expect(updateCompanyProfile(profile)).resolves.toBeUndefined();
+    await expect(updateCompanyProfile(profile)).resolves.toEqual({ ok: true, data: undefined });
   });
 
   // 50 Phase 2: Dashboards & Profile Setup JOB_UC_05.1 Create/Update Company Profile
@@ -409,6 +409,6 @@ describe('Phase 2: Dashboards & Profile Setup (Tests 30–56)', () => {
         companySize: 'SIZE_51_200',
         description: 'Enterprise cloud and technology software company.',
       }),
-    ).rejects.toThrow(/already exists/i);
+    ).resolves.toMatchObject({ ok: false, error: expect.stringMatching(/already exists/i) });
   });
 });

@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { requireRole } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { CompanySettingsForm } from './company-settings-form';
+import { profileFormValues } from './profile-form-values';
 import { ConsoleWidth } from '@/app/components/console/shell';
 import { Breadcrumb, ControlPanel } from '@/app/components/console/control-panel';
 import { buttonClasses } from '@/app/components/ui/button';
@@ -30,18 +31,8 @@ export default async function CompanySettingsPage() {
       <ConsoleWidth className="max-w-5xl py-3">
         <CompanySettingsForm
           logoUrl={profile.logoUrl ?? null}
-          initial={{
-            companyName: profile.companyName,
-            industry: profile.industry,
-            companySize: profile.companySize,
-            description: profile.description,
-            address: profile.address ?? '',
-            phone: user.phone ?? '',
-            contactPersonName: profile.contactPersonName ?? '',
-            contactPersonPosition: profile.contactPersonPosition ?? '',
-            website: profile.website ?? '',
-            linkedin: profile.linkedin ?? '',
-          }}
+          verificationStatus={profile.verificationStatus}
+          initial={profileFormValues(profile, user.phone)}
         />
 
         <section

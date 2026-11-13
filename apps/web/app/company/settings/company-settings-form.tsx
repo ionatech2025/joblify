@@ -2,6 +2,7 @@
 
 import { useRef, useState, useTransition } from 'react';
 import { useForm } from 'react-hook-form';
+import type { VerificationStatus } from '@prisma/client';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
 import {
@@ -30,13 +31,21 @@ import { useHydrated } from '@/lib/use-hydrated';
 import { toast } from '@/lib/stores/ui';
 import { industryLabel } from '@/lib/ui/status';
 
+const LOCKED_HINT = 'Locked after verification. The verified badge vouches for it.';
+const LOCKED_CLASS = 'bg-surface-sunken text-fg-muted';
+
 export function CompanySettingsForm({
   initial,
   logoUrl,
+  verificationStatus,
 }: {
   initial: CompanyProfileInput;
   logoUrl: string | null;
+  verificationStatus: VerificationStatus;
 }) {
+  const verified = verificationStatus === 'VERIFIED';
+  // A rejected company edits here (on /employer-setup) and saving resubmits.
+  const resubmit = verificationStatus === 'REJECTED';
   const router = useRouter();
   const hydrated = useHydrated();
   const [pending, start] = useTransition();
@@ -72,20 +81,17 @@ export function CompanySettingsForm({
     setError(null);
     start(async () => {
       try {
-        await updateCompanyProfile(values);
+        unwrap(await updateCompanyProfile(values));
         clearDraft();
         setRestoredDraft(false);
         // Rebase the dirty baseline onto what was just saved, so the bar reads
         // "All changes saved" rather than staying dirty until a reload.
         reset(values);
         router.refresh();
-        toast.success('Company profile saved');
+        if (resubmit) toast.success('Resubmitted for review', 'An administrator will review it.');
+        else toast.success('Company profile saved');
       } catch (err) {
-        let message = err instanceof Error ? err.message : 'Could not save. Try again.';
-        if (message.includes('Server Components render') || message.includes('digest')) {
-          message =
-            'A company with this name may already be registered, or your changes could not be saved.';
-        }
+        const message = err instanceof Error ? err.message : 'Could not save. Try again.';
         setError(message);
         toast.error("Couldn't save", message);
       }
@@ -126,8 +132,12 @@ export function CompanySettingsForm({
       <fieldset disabled={!hydrated} className="m-0 contents border-0 p-0">
         <FormSheet>
           <SheetTitle
-            title="Company profile"
-            subtitle="This is what jobseekers see on your company page and job posts."
+            title={resubmit ? 'Fix and resubmit' : 'Company profile'}
+            subtitle={
+              resubmit
+                ? 'Update your details, then resubmit. An administrator reviews them again.'
+                : 'This is what jobseekers see on your company page and job posts.'
+            }
             aside={
               <div className="flex items-center gap-3">
                 {logo ? (
@@ -168,10 +178,17 @@ export function CompanySettingsForm({
 
           <SheetGroups>
             <SheetGroup title="Identity">
-              <SheetField label="Company name" error={errors.companyName?.message} required>
+              <SheetField
+                label="Company name"
+                error={errors.companyName?.message}
+                hint={verified ? LOCKED_HINT : undefined}
+                required
+              >
                 <Input
                   defaultValue={initial.companyName}
                   {...register('companyName')}
+                  readOnly={verified}
+                  className={verified ? LOCKED_CLASS : undefined}
                   autoComplete="organization"
                 />
               </SheetField>
@@ -229,11 +246,17 @@ export function CompanySettingsForm({
                   placeholder="+256 743 535 678"
                 />
               </SheetField>
-              <SheetField label="Website" error={errors.website?.message}>
+              <SheetField
+                label="Website"
+                error={errors.website?.message}
+                hint={verified ? LOCKED_HINT : undefined}
+              >
                 <Input
                   type="url"
                   defaultValue={initial.website ?? ''}
                   {...register('website')}
+                  readOnly={verified}
+                  className={verified ? LOCKED_CLASS : undefined}
                   autoComplete="url"
                   placeholder="https://acme.com"
                 />
@@ -281,7 +304,7 @@ export function CompanySettingsForm({
               reset(initial);
               setRestoredDraft(false);
             }}
-            saveLabel="Save changes"
+            saveLabel={resubmit ? 'Resubmit for review' : 'Save changes'}
           />
         </FormSheet>
       </fieldset>

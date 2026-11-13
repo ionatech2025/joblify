@@ -343,6 +343,62 @@ describe('EmployerSetupForm', () => {
     expect(alert.textContent).toMatch(/at least 20 characters/i);
     expect(createCompany).not.toHaveBeenCalled();
   }, 30_000);
+
+  it("shows the server's own reason when creating fails", async () => {
+    const user = userEvent.setup();
+    createCompany.mockResolvedValue({
+      ok: false,
+      error: 'A company with this name is already registered.',
+    });
+    render(<EmployerSetupForm hasJobSeekerIdentity={false} />);
+    await user.type(screen.getByRole('textbox', { name: 'Company name' }), 'Acme');
+    await user.type(
+      screen.getByRole('textbox', { name: 'About the company' }),
+      'We build warehouse robots for East Africa.',
+    );
+    await user.click(screen.getByRole('button', { name: /create company/i }));
+    const alert = await screen.findByRole('alert', {}, { timeout: 10_000 });
+    expect(alert.textContent).toBe('A company with this name is already registered.');
+  }, 30_000);
+});
+
+describe('CompanySettingsForm verification states', () => {
+  const initial = {
+    companyName: 'Acme Robotics',
+    industry: 'TECHNOLOGY' as const,
+    companySize: 'SIZE_11_50' as const,
+    description: 'Building autonomous warehouse systems since 2021.',
+    website: 'https://acme-robotics.example',
+  };
+
+  it('locks the verified name and website and says why', () => {
+    render(<CompanySettingsForm logoUrl={null} verificationStatus="VERIFIED" initial={initial} />);
+    const name = screen.getByRole('textbox', { name: 'Company name' }) as HTMLInputElement;
+    const website = screen.getByRole('textbox', { name: 'Website' }) as HTMLInputElement;
+    expect(name.readOnly).toBe(true);
+    expect(website.readOnly).toBe(true);
+    expect(name.getAttribute('aria-describedby')).toBeTruthy();
+    expect(document.getElementById(name.getAttribute('aria-describedby')!)?.textContent).toMatch(
+      /locked after verification/i,
+    );
+    expect(
+      (screen.getByRole('textbox', { name: 'Contact person' }) as HTMLInputElement).readOnly,
+    ).toBe(false);
+    expect(screen.getByRole('button', { name: 'Save changes' })).toBeDefined();
+  });
+
+  it('lets a rejected company edit everything and resubmit', async () => {
+    const user = userEvent.setup();
+    updateCompany.mockResolvedValue({ ok: true, data: undefined });
+    render(<CompanySettingsForm logoUrl={null} verificationStatus="REJECTED" initial={initial} />);
+    const name = screen.getByRole('textbox', { name: 'Company name' }) as HTMLInputElement;
+    expect(name.readOnly).toBe(false);
+    await user.clear(name);
+    await user.type(name, 'Acme Robotics Ltd');
+    await user.click(screen.getByRole('button', { name: 'Resubmit for review' }));
+    await vi.waitFor(() => expect(updateCompany).toHaveBeenCalled(), { timeout: 5000 });
+    expect(updateCompany.mock.calls[0]![0]).toMatchObject({ companyName: 'Acme Robotics Ltd' });
+  }, 30_000);
 });
 
 describe('DeleteForm', () => {
@@ -371,6 +427,7 @@ describe('Server HTML pre-hydration form values', () => {
     const settingsHtml = renderToString(
       <CompanySettingsForm
         logoUrl={null}
+        verificationStatus="VERIFIED"
         initial={{
           companyName: 'Acme Robotics',
           industry: 'TECHNOLOGY',

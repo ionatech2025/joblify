@@ -12,6 +12,7 @@ import {
   SIZE_LABELS,
 } from '@/app/company/company-profile-schema';
 import { createCompanyProfile } from '@/app/actions/company';
+import { unwrap } from '@/lib/action-result';
 import { Input, Select, Textarea } from '@/app/components/ui/form';
 import {
   FormSheet,
@@ -84,19 +85,15 @@ export function EmployerSetupForm({ hasJobSeekerIdentity }: { hasJobSeekerIdenti
     setError(null);
     start(async () => {
       try {
-        await createCompanyProfile(values);
+        unwrap(await createCompanyProfile(values));
         clearDraft();
         setRestoredDraft(false);
         toast.success('Company created', "Let's post your first job.");
         router.push('/company/jobs');
         router.refresh();
       } catch (err) {
-        let message =
+        const message =
           err instanceof Error ? err.message : 'Could not create your company. Try again.';
-        if (message.includes('Server Components render') || message.includes('digest')) {
-          message =
-            'A company with this name may already be registered, or your details could not be saved.';
-        }
         setError(message);
         toast.error("Couldn't create your company", message);
       }
