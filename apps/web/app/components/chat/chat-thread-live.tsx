@@ -2,7 +2,8 @@
 
 import { ChatThread } from './chat-thread';
 import { LATEST_MESSAGES_TAKE } from './latest-messages';
-import { useChatMessages } from '@/lib/query/chat';
+import { chatAccessLost, useChatMessages } from '@/lib/query/chat';
+import { cn } from '@/lib/cn';
 import type { ChatMessagesResponse } from '@/app/api/v1/chats/[id]/messages/route';
 
 /**
@@ -26,7 +27,12 @@ export function ChatThreadLive({
   currentUserId: string;
   initial: ChatMessagesResponse;
 }) {
-  const { data } = useChatMessages(chatAreaId, initial);
+  const { data, error, isError } = useChatMessages(chatAreaId, initial);
+  const notice = !isError
+    ? ''
+    : chatAccessLost(error)
+      ? 'You no longer have access to this chat.'
+      : 'Couldn’t refresh messages. Retrying…';
 
   return (
     <>
@@ -35,6 +41,10 @@ export function ChatThreadLive({
           Showing the latest {LATEST_MESSAGES_TAKE} messages.
         </p>
       )}
+      {/* Always mounted so the change is announced; empty, it takes no space. */}
+      <p role="status" className={cn('text-fg-muted m-0 text-xs', notice && 'mb-3')}>
+        {notice}
+      </p>
       <ChatThread currentUserId={currentUserId} messages={data.messages} />
     </>
   );
