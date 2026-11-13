@@ -1,4 +1,5 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest';
+import { Prisma } from '@prisma/client';
 
 const m = vi.hoisted(() => {
   class AuthError extends Error {
@@ -177,10 +178,32 @@ describe('submitApplication', () => {
     });
   });
 
-  it('rejects a resume the user does not own', async () => {
+  it('refuses a résumé that is not the caller’s, or was deleted in another tab, with a message', async () => {
     m.resumeFindFirst.mockResolvedValue(null);
-    await expect(submitApplication(fd())).rejects.toThrow();
+    expect(await submitApplication(fd())).toEqual({
+      ok: false,
+      error: 'That résumé is no longer available. Choose another.',
+    });
     expect(m.appCreate).not.toHaveBeenCalled();
+  });
+
+  it('does not spend the daily quota on a request it refuses for another reason', async () => {
+    m.appFindUnique.mockResolvedValue({ id: 'existing-app' });
+    await submitApplication(fd());
+    m.jobFindFirst.mockResolvedValue(null);
+    await submitApplication(fd());
+    await submitApplication(fd({ resumeId: 'nope' }));
+    expect(m.applyLimit).not.toHaveBeenCalled();
+  });
+
+  it('treats a double submit that loses the race on the unique index as applied', async () => {
+    m.appCreate.mockRejectedValue(
+      new Prisma.PrismaClientKnownRequestError('Unique constraint failed', {
+        code: 'P2002',
+        clientVersion: 'test',
+      }),
+    );
+    expect(await submitApplication(fd())).toEqual({ ok: true, data: undefined });
   });
 
   it('rejects a job that is not live', async () => {

@@ -3,6 +3,7 @@
 import { updateTag } from 'next/cache';
 import { z } from 'zod';
 import { headers } from 'next/headers';
+import { Prisma } from '@prisma/client';
 import { requireRole, AuthError } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { applyLimit } from '@/lib/ratelimit';
@@ -36,11 +37,7 @@ export async function submitApplication(formData: FormData): Promise<ActionResul
   // 2. Auth.
   const user = await requireRole('JOB_SEEKER');
 
-  // 3. Rate limit per user (20/day).
-  const rl = await applyLimit(user.id);
-  if (!rl.success) return fail('Daily application limit reached. Try again tomorrow.');
-
-  // 4. Validate.
+  // 3. Validate.
   const parsed = ApplySchema.safeParse({
     jobId: formData.get('jobId'),
     jobSlug: formData.get('jobSlug'),
@@ -50,14 +47,15 @@ export async function submitApplication(formData: FormData): Promise<ActionResul
   });
   if (!parsed.success) return fail('Invalid application data.');
 
-  // 5. Ownership: resume must belong to this user.
+  // 4. Ownership: resume must belong to this user. Not found is also a résumé
+  // deleted in another tab after this form loaded, so it is an expected failure.
   const resume = await db.resume.findFirst({
     where: { id: parsed.data.resumeId, userId: user.id, deletedAt: null },
     select: { id: true },
   });
-  if (!resume) throw new AuthError('FORBIDDEN');
+  if (!resume) return fail('That résumé is no longer available. Choose another.');
 
-  // 6. Job must be live and, if it has a deadline, still open.
+  // 5. Job must be live and, if it has a deadline, still open.
   const job = await db.jobPost.findFirst({
     where: { id: parsed.data.jobId, status: 'PUBLISHED', deletedAt: null },
     include: { company: { include: { companyProfile: true } } },
@@ -86,6 +84,11 @@ export async function submitApplication(formData: FormData): Promise<ActionResul
     select: { id: true },
   });
   if (existing) return fail('You already applied to this job.');
+
+  // 6. Rate limit per user (20/day). Last of the checks, so a request refused
+  // for any other reason does not use up the day's quota.
+  const rl = await applyLimit(user.id);
+  if (!rl.success) return fail('Daily application limit reached. Try again tomorrow.');
 
   // 7. Capture audit context.
   const h = await headers();
@@ -127,7 +130,14 @@ export async function submitApplication(formData: FormData): Promise<ActionResul
 
       return app;
     },
-  );
+  ).catch((err: unknown) => {
+    // A double submit's second request passes the already-applied check above
+    // and loses the race on the unique index: the application it asked for
+    // exists, so it succeeded.
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') return null;
+    throw err;
+  });
+  if (!application) return succeed();
 
   // 9. Invalidate downstream caches.
   updateTag(tags.userApplications(user.id));
