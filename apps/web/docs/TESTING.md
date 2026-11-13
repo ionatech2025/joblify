@@ -271,7 +271,7 @@ flaky across the Chromium/Firefox/WebKit matrix.
 What it locks: pill radii on the hero and header CTAs, `.eyebrow`/`.display` presence, the
 dark footer band (parsing both `lab()` and `rgb()` computed serializations), skip-link-first
 focus order, the split-auth viewport flip, 404 treatment, every semantic token resolving on
-`:root`, the fonts resolving to Archivo/Inter, the light↔dark flip repainting surfaces _and_
+`:root`, the fonts resolving to Newsreader/Public Sans, the light↔dark flip repainting surfaces _and_
 persisting across reload, the footer band **not** inverting in dark mode, the command
 palette (shortcut, filtering, empty state, Escape, theme switching), and
 `prefers-reduced-motion` neutralising transitions.

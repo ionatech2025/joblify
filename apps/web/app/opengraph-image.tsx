@@ -8,7 +8,7 @@ export const contentType = 'image/png';
 // defines its own opengraph-image (currently: job posts, company profiles).
 // next/og's Satori renderer only supports a small CSS subset and can't load
 // next/font's variable-font CSS, so this deliberately uses a system sans
-// stack rather than trying to match .display/Archivo pixel-for-pixel — the
+// stack rather than trying to match .display/Newsreader pixel-for-pixel — the
 // weight/tracking/uppercase treatment carries the editorial look well enough
 // without needing a fetched font file on every request.
 export default function Image() {

@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next';
-import { Archivo, Inter } from 'next/font/google';
+import { Newsreader, Public_Sans } from 'next/font/google';
 import { ClerkHost } from './components/clerk-host';
 import { ThemeScript } from './components/theme-script';
 import { Providers } from './providers';
@@ -19,18 +19,21 @@ import './globals.css';
 // at runtime, so the `font-src 'self' data:` CSP in next.config.ts stands.
 // Both are variable fonts (one file per family, full weight axis), and
 // next/font emits a metric-matched local fallback so swapping costs no CLS.
-const inter = Inter({
+// Public Sans carries body and UI text in both registers. It is a neutral,
+// highly legible grotesque (the USWDS typeface), chosen over Inter so the
+// product does not read as a default template.
+const publicSans = Public_Sans({
   subsets: ['latin'],
-  variable: '--font-inter',
+  variable: '--font-body-face',
   display: 'swap',
 });
 
-// Archivo carries the editorial display weight. The previous system-stack +
-// font-weight:900 approach rendered as Arial Black on Windows and Roboto on
-// Android, which is what made the headlines read generic off-macOS.
-const archivo = Archivo({
+// Newsreader carries editorial headlines only (`.display`, page h1/h2 outside
+// the console). A text serif at weight 600 reads as calm and accountable. The
+// opsz axis is left out: it nearly doubles the preloaded file.
+const newsreader = Newsreader({
   subsets: ['latin'],
-  variable: '--font-archivo',
+  variable: '--font-display-face',
   display: 'swap',
 });
 
@@ -89,7 +92,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     // suppressHydrationWarning: ThemeScript sets the `dark` class on <html>
     // before React hydrates, so the server and client class lists differ by
     // design on a dark-theme load.
-    <html lang="en" className={`${inter.variable} ${archivo.variable}`} suppressHydrationWarning>
+    <html
+      lang="en"
+      className={`${publicSans.variable} ${newsreader.variable}`}
+      suppressHydrationWarning
+    >
       <body>
         {/* Must stay the first child of <body> — it runs before anything below
             is painted, which is what prevents a flash of the wrong theme. */}

@@ -39,7 +39,7 @@ export default function MarketingHomePage() {
                   AI-powered job search
                 </p>
 
-                <h1 className="display m-0 mt-4 max-w-2xl text-4xl text-fg uppercase sm:text-6xl lg:text-7xl">
+                <h1 className="display m-0 mt-4 max-w-2xl text-4xl text-fg sm:text-6xl lg:text-7xl">
                   Find your next role
                 </h1>
                 <p className="mt-5 mb-0 max-w-xl text-lg text-fg-muted">
