@@ -16,7 +16,7 @@ import { fenceUntrusted, sanitizeUntrustedText, untrustedInputNotice } from '@/l
 import { clientIp } from '@/lib/security/client-ip';
 import { reindexJob } from '@/lib/search/index-job';
 import { logger } from '@/lib/observability/logger';
-import { postJobLimit } from '@/lib/ratelimit';
+import { postJobLimit, skillRetryLimit } from '@/lib/ratelimit';
 import { embedJobPost } from '@/workflows/match-score.workflow';
 import { PostJobFormSchema } from '../company/jobs/job-form-schema';
 import { type ActionResult, fail, succeed } from '@/lib/action-result';
@@ -358,8 +358,12 @@ export async function updateJob(
 
   after(async () => {
     try {
-      // A failed extraction leaves the job with no skills, so the next save retries it.
-      if (jdTextChanged || (await db.jobPostSkill.count({ where: { jobPostId: jobId } })) === 0) {
+      // A failed extraction leaves the job with no skills, so a later save retries it.
+      const retry =
+        !jdTextChanged &&
+        (await db.jobPostSkill.count({ where: { jobPostId: jobId } })) === 0 &&
+        (await skillRetryLimit(user.id)).success;
+      if (jdTextChanged || retry) {
         await extractAndLinkSkills(
           jobId,
           parsed.title,
