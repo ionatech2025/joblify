@@ -1,10 +1,10 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useId, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { upload } from '@vercel/blob/client';
 import Link from 'next/link';
-import { CheckCircle2, FileText, TriangleAlert, Upload } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, FileText, TriangleAlert, Upload } from 'lucide-react';
 import { registerResume, deleteResume, uploadResumeDirect } from '@/app/actions/uploads';
 import { unwrap } from '@/lib/action-result';
 import { Badge } from '@/app/components/ui/badge';
@@ -13,6 +13,7 @@ import { EmptyState } from '@/app/components/ui/empty-state';
 import { ListView, type ListColumn } from '@/app/components/console/list-view';
 import { toast } from '@/lib/stores/ui';
 import { TimeStamp } from '@/app/components/ui/timestamp';
+import { moveFocusFromRowAction } from '../move-focus';
 
 type ResumeRow = {
   id: string;
@@ -30,12 +31,16 @@ const ACCEPT =
 export function ResumeManager({
   userId,
   initialResumes,
+  returnTo,
 }: {
   userId: string;
   initialResumes: ResumeRow[];
+  /** The apply page that sent the person here for a résumé, already validated. */
+  returnTo: string | null;
 }) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
+  const uploadId = useId();
   const [resumes, setResumes] = useState<ResumeRow[]>(initialResumes);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -92,7 +97,7 @@ export function ResumeManager({
     }
   }
 
-  async function onDelete(id: string, title: string) {
+  async function onDelete(id: string, title: string, button: HTMLElement) {
     // Unlike un-saving a job or a search, this is not reversible — the blob and
     // its parsed data go away — so it gets a confirm like the other
     // irreversible actions (job delete, company rejection).
@@ -104,6 +109,7 @@ export function ResumeManager({
       return;
     }
     setError(null);
+    moveFocusFromRowAction(button, document.getElementById(uploadId));
     const prev = resumes;
     setResumes((r) => r.filter((x) => x.id !== id));
     try {
@@ -176,7 +182,8 @@ export function ResumeManager({
           variant="danger"
           size="sm"
           type="button"
-          onClick={() => onDelete(r.id, r.title)}
+          data-row-action="delete-resume"
+          onClick={(e) => onDelete(r.id, r.title, e.currentTarget)}
           aria-label={`Delete ${r.title}`}
         >
           Delete
@@ -211,6 +218,7 @@ export function ResumeManager({
             aria-hidden="true"
           />
           <Button
+            id={uploadId}
             type="button"
             size="sm"
             icon={<Upload aria-hidden className="size-3.5" />}
@@ -225,6 +233,18 @@ export function ResumeManager({
       {error && (
         <p role="alert" className="text-danger mb-3 text-[13px]">
           {error}
+        </p>
+      )}
+
+      {returnTo && resumes.length > 0 && (
+        <p className="mt-0 mb-3 text-[13px]">
+          <Link
+            href={returnTo}
+            className="text-brand inline-flex min-h-6 items-center gap-1 font-semibold underline"
+          >
+            <ArrowLeft aria-hidden className="size-3.5" />
+            Back to your application
+          </Link>
         </p>
       )}
 

@@ -22,6 +22,7 @@ export function DigestPreference({
   const id = useId();
   const [optIn, setOptIn] = useState(initialOptIn);
   const [pending, startTransition] = useTransition();
+  const locked = pending || (addressSuppressed && !optIn);
 
   function onChange(next: boolean) {
     const previous = optIn;
@@ -49,9 +50,13 @@ export function DigestPreference({
         id={id}
         type="checkbox"
         checked={optIn}
-        disabled={pending || (addressSuppressed && !optIn)}
-        onChange={(e) => onChange(e.target.checked)}
-        className="mt-1 size-4 shrink-0"
+        // aria-disabled, not disabled: a control that disables itself while
+        // focused drops a keyboard user to <body>.
+        aria-disabled={locked || undefined}
+        onChange={(e) => {
+          if (!locked) onChange(e.target.checked);
+        }}
+        className="mt-1 size-4 shrink-0 aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
       />
       <div className="min-w-0">
         <label id={`${id}-title`} htmlFor={id} className="text-fg text-[13px] font-semibold">

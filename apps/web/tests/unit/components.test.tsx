@@ -336,8 +336,10 @@ describe('Console list surfaces (SavedList, SavedSearchList, JobReportsQueue, Re
             title: 'Staff Engineer',
             company: 'Acme Corp',
             location: 'Remote',
+            availability: 'open',
           },
         ]}
+        headingId="saved-jobs-heading"
       />,
     );
     expect(screen.getByRole('table', { name: 'Saved jobs' })).toBeDefined();
@@ -345,7 +347,7 @@ describe('Console list surfaces (SavedList, SavedSearchList, JobReportsQueue, Re
     expect(screen.getByRole('button', { name: 'Remove Staff Engineer from saved' })).toBeDefined();
 
     cleanup();
-    render(<SavedList initial={[]} />);
+    render(<SavedList initial={[]} headingId="saved-jobs-heading" />);
     expect(screen.getByText('No saved jobs yet')).toBeDefined();
   });
 
@@ -353,13 +355,14 @@ describe('Console list surfaces (SavedList, SavedSearchList, JobReportsQueue, Re
     render(
       <SavedSearchList
         initial={[{ id: 's1', label: 'Remote Rust', query: 'q=rust&workMode=REMOTE' }]}
+        headingId="saved-searches-heading"
       />,
     );
     expect(screen.getByRole('table', { name: 'Saved searches' })).toBeDefined();
     expect(screen.getByText('Remote Rust')).toBeDefined();
 
     cleanup();
-    render(<SavedSearchList initial={[]} />);
+    render(<SavedSearchList initial={[]} headingId="saved-searches-heading" />);
     expect(screen.getByText('No saved searches')).toBeDefined();
   });
 

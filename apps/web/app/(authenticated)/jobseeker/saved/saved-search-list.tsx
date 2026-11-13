@@ -8,14 +8,16 @@ import { Button, buttonClasses } from '@/app/components/ui/button';
 import { EmptyState } from '@/app/components/ui/empty-state';
 import { ListView, type ListColumn } from '@/app/components/console/list-view';
 import { toast } from '@/lib/stores/ui';
+import { moveFocusFromRowAction } from '../move-focus';
 
 type Row = { id: string; label: string; query: string };
 
-export function SavedSearchList({ initial }: { initial: Row[] }) {
+export function SavedSearchList({ initial, headingId }: { initial: Row[]; headingId: string }) {
   const [rows, setRows] = useState(initial);
   const [, startTransition] = useTransition();
 
-  function remove(id: string, label: string) {
+  function remove(id: string, label: string, button: HTMLElement) {
+    moveFocusFromRowAction(button, document.getElementById(headingId));
     const prev = rows;
     setRows((r) => r.filter((x) => x.id !== id)); // optimistic
     startTransition(async () => {
@@ -71,7 +73,8 @@ export function SavedSearchList({ initial }: { initial: Row[] }) {
           type="button"
           variant="danger"
           size="sm"
-          onClick={() => remove(s.id, s.label)}
+          data-row-action="delete-saved-search"
+          onClick={(e) => remove(s.id, s.label, e.currentTarget)}
           aria-label={`Delete saved search ${s.label}`}
         >
           Delete

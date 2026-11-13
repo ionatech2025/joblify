@@ -125,8 +125,19 @@ export default async function JobseekerApplicationsPage({
       />
       <ConsoleWidth className="max-w-6xl py-3">
         {sp.just_applied && (
-          <p className="rounded-card bg-success-subtle text-success-subtle-fg border-success/25 mb-2 border px-2.5 py-1.5 text-[13px]">
+          <p
+            role="status"
+            className="rounded-card bg-success-subtle text-success-subtle-fg border-success/25 mb-2 border px-2.5 py-1.5 text-[13px]"
+          >
             Application submitted — you&apos;ll get an email when the team updates the status.
+          </p>
+        )}
+        {sp.already_applied && (
+          <p
+            role="status"
+            className="rounded-card bg-surface-sunken text-fg border-border mb-2 border px-2.5 py-1.5 text-[13px]"
+          >
+            You already applied to that job. Its status is in the list below.
           </p>
         )}
         {/* ApplicationsList reads useSearchParams() for the status filter the

@@ -20,6 +20,7 @@ import {
 } from '@/lib/ui/status';
 import { toast } from '@/lib/stores/ui';
 import { TimeStamp } from '@/app/components/ui/timestamp';
+import { moveFocusFromRowAction } from '../move-focus';
 
 /**
  * The jobseeker's application pipeline, as a dense list rather than a stack of
@@ -50,14 +51,18 @@ export function ApplicationsList({
   const statusFilter = searchParams.get('status') ?? '';
   const items = statusFilter ? loaded.filter((a) => a.status === statusFilter) : loaded;
 
-  function onWithdraw(a: ApplicationListItem) {
+  function onWithdraw(a: ApplicationListItem, button: HTMLButtonElement) {
+    if (withdraw.isPending) return;
     if (
       !window.confirm(
-        `Withdraw your application for ${a.jobTitle}? This can't be undone — you'd need to re-apply to be considered again.`,
+        `Withdraw your application for ${a.jobTitle}? This can't be undone, and you can't apply to this job again.`,
       )
     ) {
       return;
     }
+    // The row stays but its Withdraw goes, so land on the next one or on this
+    // row's job link.
+    moveFocusFromRowAction(button, button.closest('tr')?.querySelector('a'));
     withdraw.mutate(a.id, {
       onSuccess: () => toast.success('Application withdrawn'),
       onError: (err) =>
@@ -134,11 +139,12 @@ export function ApplicationsList({
         CLOSED_APPLICATION_STATUSES.includes(a.status) ? null : (
           <button
             type="button"
-            onClick={() => onWithdraw(a)}
-            disabled={withdraw.isPending}
+            data-row-action="withdraw"
+            onClick={(e) => onWithdraw(a, e.currentTarget)}
+            aria-disabled={withdraw.isPending || undefined}
             // min-h-8 inline-flex: the text link was 59x20 px, under the 24 px floor
             // of WCAG 2.5.8 (target size) on desktop and phones alike.
-            className="text-danger -mx-1 inline-flex min-h-8 items-center px-1 hover:underline disabled:opacity-50"
+            className="text-danger -mx-1 inline-flex min-h-8 items-center px-1 hover:underline aria-disabled:opacity-50"
           >
             Withdraw
           </button>
@@ -168,9 +174,8 @@ export function ApplicationsList({
       ) : (
         <ListView caption="My applications" rows={items} rowKey={(a) => a.id} columns={columns} />
       )}
-      <p aria-live="polite" className="text-fg-subtle mt-1 h-4 text-[12px]">
-        {isFetching ? 'Refreshing…' : ''}
-      </p>
+      {/* Visual only: announcing every background poll was noise. */}
+      <p className="text-fg-subtle mt-1 h-4 text-[12px]">{isFetching ? 'Refreshing…' : ''}</p>
     </>
   );
 }

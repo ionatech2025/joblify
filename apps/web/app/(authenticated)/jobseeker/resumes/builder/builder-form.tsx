@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useId, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -14,6 +14,7 @@ import { DirtyBar } from '@/app/components/console/dirty-bar';
 import { useHydrated } from '@/lib/use-hydrated';
 import { toast } from '@/lib/stores/ui';
 import { endsBeforeStart } from '@/lib/resume/date-order';
+import { moveFocusFromRowAction } from '../../move-focus';
 
 const EntrySchema = z
   .object({
@@ -37,6 +38,7 @@ const EMPTY_ENTRY = { company: '', title: '', startDate: '', endDate: '', descri
 
 export function ResumeBuilderForm({ initialEntries }: { initialEntries: FormValues['entries'] }) {
   const hydrated = useHydrated();
+  const addId = useId();
   const [isSaving, startSaving] = useTransition();
   const [isGenerating, startGenerating] = useTransition();
   const [saved, setSaved] = useState(false);
@@ -118,7 +120,16 @@ export function ResumeBuilderForm({ initialEntries }: { initialEntries: FormValu
                 <span className="text-fg-muted text-[12px] font-semibold tracking-wider uppercase">
                   Experience #{index + 1}
                 </span>
-                <Button type="button" variant="danger" size="sm" onClick={() => remove(index)}>
+                <Button
+                  type="button"
+                  variant="danger"
+                  size="sm"
+                  data-row-action="remove-experience"
+                  onClick={(e) => {
+                    moveFocusFromRowAction(e.currentTarget, document.getElementById(addId));
+                    remove(index);
+                  }}
+                >
                   Remove
                 </Button>
               </div>
@@ -178,6 +189,7 @@ export function ResumeBuilderForm({ initialEntries }: { initialEntries: FormValu
           ))}
 
           <Button
+            id={addId}
             type="button"
             variant="secondary"
             size="sm"

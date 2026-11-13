@@ -177,7 +177,7 @@ describe('SimilarJobs', () => {
   it('only asks for jobs that are still taking applications', async () => {
     const before = Date.now();
     await SimilarJobs({ jobId: 'job_1', industry: 'TECHNOLOGY', skillIds: ['s1'] });
-    const where = m.jobFindMany.mock.calls[0][0].where;
+    const where = m.jobFindMany.mock.lastCall?.[0].where;
     const open = where.AND[0].OR;
     expect(open[0]).toEqual({ applicationDeadline: null });
     expect(open[1].applicationDeadline.gt.getTime()).toBeGreaterThanOrEqual(before);
