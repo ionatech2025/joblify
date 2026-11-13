@@ -209,6 +209,21 @@ describe('updateApplicantStatus', () => {
     expect(m.afterCallbacks).toHaveLength(0);
   });
 
+  it.each([
+    ['OFFER_EXTENDED', 'SHORTLISTED', 'Shortlisted'],
+    ['HIRED', 'OFFER_EXTENDED', 'Offer extended'],
+    ['REJECTED', 'VIEWED', 'Viewed'],
+  ] as const)(
+    'emails the new status when a move from %s to %s takes back the last email',
+    async (from, to, label) => {
+      m.appFindFirst.mockResolvedValue({ ...APPLICATION, status: from });
+      await updateApplicantStatus(APP_ID, to);
+      await runAfter();
+      expect(m.send).toHaveBeenCalledTimes(1);
+      expect(m.statusChangeTemplate.mock.calls[0]![0].status).toBe(label);
+    },
+  );
+
   it('emails a rejected candidate who is brought back into the pipeline', async () => {
     m.appFindFirst.mockResolvedValue({ ...APPLICATION, status: 'REJECTED' });
     await updateApplicantStatus(APP_ID, 'SHORTLISTED');
