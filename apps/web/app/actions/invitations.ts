@@ -14,6 +14,8 @@ import { type ActionResult, fail, succeed } from '@/lib/action-result';
 import { clientIp } from '@/lib/security/client-ip';
 
 const INVITATION_TTL_DAYS = 30;
+const ALREADY_INVITED =
+  'You already invited this job seeker. The invitation is waiting for their answer.';
 
 async function auditCtx(actorId: string) {
   const h = await headers();
@@ -68,10 +70,21 @@ export async function inviteJobseeker(
     select: { id: true, status: true, expiresAt: true },
   });
   if (existing?.status === 'PENDING' && existing.expiresAt > new Date()) {
-    return fail('You already invited this job seeker. The invitation is waiting for their answer.');
+    return fail(ALREADY_INVITED);
   }
+  // An accepted invitation stops counting once the seeker unsubscribes.
   if (existing?.status === 'ACCEPTED') {
-    return fail('This job seeker already accepted an invitation from you.');
+    const subscribed = await db.companySubscription.findUnique({
+      where: {
+        companyId_jobSeekerId_profileType: {
+          companyId: user.id,
+          jobSeekerId: seeker.id,
+          profileType,
+        },
+      },
+      select: { id: true },
+    });
+    if (subscribed) return fail('This job seeker already accepted an invitation from you.');
   }
 
   const expiresAt = new Date(Date.now() + INVITATION_TTL_DAYS * 24 * 60 * 60 * 1000);
@@ -112,7 +125,7 @@ export async function inviteJobseeker(
   } catch (err) {
     // Concurrent duplicate — the other invitation stands.
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002')
-      return succeed();
+      return fail(ALREADY_INVITED);
     throw err;
   }
 
