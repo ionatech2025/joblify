@@ -279,4 +279,4 @@ Migration `20261114120000_company_verification_review`. Expand-only: both column
 | `company_profiles.rejectionReason` | The reason an admin must give to reject a company (`verifyCompany`). Shown to the company on `/employer-setup` and sent by email. Cleared when the company verifies or resubmits (`updateCompanyProfile` on a `REJECTED` profile sets `PENDING`). |
 | `company_profiles.reviewedAt`      | When an admin last decided. Kept through a resubmission.                                                                                                                                                                                          |
 
-`verifyCompany` writes only `WHERE verificationStatus = 'PENDING'` and the name and website the admin reviewed, so a stale admin tab cannot flip a decided company or approve a renamed one.
+`verifyCompany` writes only `WHERE verificationStatus = 'PENDING'` and the `updatedAt` the admin's queue showed. Prisma bumps `@updatedAt` on every write, so a stale admin tab cannot flip a decided company or approve details edited, or rejected and resubmitted, after it loaded.

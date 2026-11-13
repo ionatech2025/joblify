@@ -29,6 +29,8 @@ vi.mock('@/lib/db', () => ({
   },
 }));
 
+const UPDATED_AT = '2026-11-02T10:00:00.000Z';
+
 const company = (id: string, name: string): PendingCompany => ({
   id,
   companyName: name,
@@ -41,6 +43,7 @@ const company = (id: string, name: string): PendingCompany => ({
   contactPersonName: 'Grace Achieng',
   contactPersonPosition: 'Founder',
   createdAt: '2026-11-01T09:00:00.000Z',
+  updatedAt: UPDATED_AT,
 });
 
 const report = (id: string, title: string): OpenReport => ({
@@ -109,7 +112,7 @@ describe('VerificationQueue', () => {
     expect(m.verifyCompany).toHaveBeenCalledWith(
       'a',
       { status: 'REJECTED', reason: 'Website does not resolve' },
-      { companyName: 'Acme', website: 'https://a.example' },
+      UPDATED_AT,
     );
     expect(screen.queryByText('Acme')).toBeNull();
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Verify' }));
@@ -130,11 +133,7 @@ describe('VerificationQueue', () => {
       withHeading(<VerificationQueue headingId="queue-heading" initial={[company('a', 'Acme')]} />),
     );
     await user.click(screen.getByRole('button', { name: 'Verify' }));
-    expect(m.verifyCompany).toHaveBeenCalledWith(
-      'a',
-      { status: 'VERIFIED' },
-      { companyName: 'Acme', website: 'https://a.example' },
-    );
+    expect(m.verifyCompany).toHaveBeenCalledWith('a', { status: 'VERIFIED' }, UPDATED_AT);
     expect(screen.getByText('Verification queue is clear')).toBeDefined();
     expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Queue' }));
   });
@@ -143,11 +142,12 @@ describe('VerificationQueue', () => {
     const user = userEvent.setup();
     m.verifyCompany.mockResolvedValue({
       ok: false,
-      error: 'Acme was already reviewed. Reload the page to see the queue.',
+      error:
+        'This company changed or was reviewed since you loaded the queue. Reload to see the latest.',
     });
     render(<VerificationQueue headingId="queue-heading" initial={[company('a', 'Acme')]} />);
     await user.click(screen.getByRole('button', { name: 'Verify' }));
-    expect((await screen.findByRole('alert')).textContent).toMatch(/already reviewed/);
+    expect((await screen.findByRole('alert')).textContent).toMatch(/changed or was reviewed/);
     expect(screen.getByText('Acme')).toBeDefined();
   });
 });
@@ -193,11 +193,11 @@ describe('JobReportsQueue', () => {
 });
 
 describe('AdminPage', () => {
-  it('lists each platform metric term before its value, and passes the owner phone to the queue', async () => {
+  it('lists each platform metric term before its value, and passes the owner phone and reviewed version to the queue', async () => {
     m.requireRole.mockResolvedValue({ id: 'admin1' });
-    const { createdAt, phone, ...rest } = company('a', 'Acme');
+    const { createdAt, updatedAt, phone, ...rest } = company('a', 'Acme');
     m.companyFindMany.mockResolvedValue([
-      { ...rest, createdAt: new Date(createdAt), user: { phone } },
+      { ...rest, createdAt: new Date(createdAt), updatedAt: new Date(updatedAt), user: { phone } },
     ]);
     m.reportFindMany.mockResolvedValue([]);
     m.userCount.mockResolvedValue(1200);
@@ -210,5 +210,7 @@ describe('AdminPage', () => {
     );
     expect(pairs[0]).toEqual(['DT:Jobseekers', 'DD:1,200']);
     expect(screen.getByText('+256700000001')).toBeDefined();
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Verify' }));
+    expect(m.verifyCompany).toHaveBeenCalledWith('a', { status: 'VERIFIED' }, UPDATED_AT);
   });
 });

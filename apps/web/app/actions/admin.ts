@@ -25,19 +25,18 @@ function requiredReason(reason: string | undefined, missing: string): ActionResu
 
 class StaleDecision extends Error {}
 
-// `reviewed` is the name and website the admin saw: the decision applies only
-// while the profile is still PENDING with exactly that identity.
+// `reviewedUpdatedAt` is the profile version the admin's queue showed: every
+// write (an edit, a resubmission, another admin's decision) bumps @updatedAt,
+// so the decision applies only to exactly what the admin reviewed.
 export async function verifyCompany(
   companyProfileId: string,
   input: CompanyDecision,
-  reviewed: { companyName: string; website: string | null },
+  reviewedUpdatedAt: string,
 ): Promise<ActionResult> {
   const admin = await requireRole('ADMIN');
   // Prisma drops an undefined filter, which would silently unbind the decision.
-  if (
-    typeof reviewed?.companyName !== 'string' ||
-    (reviewed.website !== null && typeof reviewed.website !== 'string')
-  ) {
+  const reviewedVersion = new Date(reviewedUpdatedAt);
+  if (typeof reviewedUpdatedAt !== 'string' || Number.isNaN(reviewedVersion.getTime())) {
     return fail('Reload the page and review this company again.');
   }
 
@@ -85,12 +84,7 @@ export async function verifyCompany(
       },
       async (tx) => {
         const { count } = await tx.companyProfile.updateMany({
-          where: {
-            id: profile.id,
-            verificationStatus: 'PENDING',
-            companyName: reviewed.companyName,
-            website: reviewed.website,
-          },
+          where: { id: profile.id, verificationStatus: 'PENDING', updatedAt: reviewedVersion },
           data: { verificationStatus: status, rejectionReason, reviewedAt: new Date() },
         });
         if (count === 0) throw new StaleDecision();
@@ -112,9 +106,7 @@ export async function verifyCompany(
   } catch (err) {
     if (err instanceof StaleDecision) {
       return fail(
-        profile.verificationStatus === 'PENDING'
-          ? `${reviewed.companyName} changed its name or website since you loaded the queue. Reload the page and review it again.`
-          : `${profile.companyName} was already reviewed. Reload the page to see the queue.`,
+        'This company changed or was reviewed since you loaded the queue. Reload to see the latest.',
       );
     }
     throw err;

@@ -16,6 +16,7 @@ const m = vi.hoisted(() => {
     AuthError,
     requireRole: vi.fn(),
     profileFindUnique: vi.fn(),
+    profileFindFirst: vi.fn(),
     profileUpdateMany: vi.fn(),
     notifCreate: vi.fn(),
     notifCreateMany: vi.fn(),
@@ -35,7 +36,7 @@ const m = vi.hoisted(() => {
 vi.mock('@/lib/auth', () => ({ requireRole: m.requireRole, AuthError: m.AuthError }));
 vi.mock('@/lib/db', () => ({
   db: {
-    companyProfile: { findUnique: m.profileFindUnique },
+    companyProfile: { findUnique: m.profileFindUnique, findFirst: m.profileFindFirst },
     jobReport: { findUnique: m.reportFindUnique },
   },
 }));
@@ -70,6 +71,7 @@ vi.mock('next/headers', () => ({ headers: async () => new Map() }));
 vi.mock('@/lib/observability/logger', () => ({ logger: { info: vi.fn(), warn: vi.fn() } }));
 
 import { verifyCompany, resolveJobReport } from '@/app/actions/admin';
+import { updateCompanyProfile } from '@/app/actions/company';
 
 const PROFILE_ID = '11111111-1111-1111-1111-111111111111';
 
@@ -92,10 +94,10 @@ beforeEach(() => {
   m.sendEmail.mockResolvedValue({});
 });
 
-const REVIEWED = { companyName: 'Acme Inc', website: 'https://acme.test' };
-const verify = () => verifyCompany(PROFILE_ID, { status: 'VERIFIED' }, REVIEWED);
+const LOADED_AT = '2026-11-01T09:00:00.000Z';
+const verify = () => verifyCompany(PROFILE_ID, { status: 'VERIFIED' }, LOADED_AT);
 const reject = (reason: string | undefined) =>
-  verifyCompany(PROFILE_ID, { status: 'REJECTED', reason: reason as string }, REVIEWED);
+  verifyCompany(PROFILE_ID, { status: 'REJECTED', reason: reason as string }, LOADED_AT);
 
 async function runAfter() {
   for (const fn of m.afterCallbacks) await fn();
@@ -120,12 +122,7 @@ describe('verifyCompany', () => {
   it('verifies a pending company, clears any old reason, and notifies it', async () => {
     expect(await verify()).toEqual({ ok: true, data: undefined });
     expect(m.profileUpdateMany).toHaveBeenCalledWith({
-      where: {
-        id: PROFILE_ID,
-        verificationStatus: 'PENDING',
-        companyName: 'Acme Inc',
-        website: 'https://acme.test',
-      },
+      where: { id: PROFILE_ID, verificationStatus: 'PENDING', updatedAt: new Date(LOADED_AT) },
       data: { verificationStatus: 'VERIFIED', rejectionReason: null, reviewedAt: expect.any(Date) },
     });
     const notif = m.notifCreate.mock.calls[0]![0].data;
@@ -158,15 +155,14 @@ describe('verifyCompany', () => {
     expect(m.notifCreate).not.toHaveBeenCalled();
   });
 
-  it('refuses a decision that is not bound to a reviewed identity', async () => {
-    const res = await verifyCompany(
-      PROFILE_ID,
-      { status: 'VERIFIED' },
-      {} as { companyName: string; website: string | null },
-    );
-    expect(res).toMatchObject({ ok: false, error: expect.stringMatching(/reload/i) });
-    expect(m.profileUpdateMany).not.toHaveBeenCalled();
-  });
+  it.each([undefined, 'not a date'])(
+    'refuses a decision not bound to the version the admin reviewed (%j)',
+    async (loadedAt) => {
+      const res = await verifyCompany(PROFILE_ID, { status: 'VERIFIED' }, loadedAt as string);
+      expect(res).toMatchObject({ ok: false, error: expect.stringMatching(/reload/i) });
+      expect(m.profileUpdateMany).not.toHaveBeenCalled();
+    },
+  );
 
   it('refuses a decision on a company that is no longer pending (stale tab, second admin)', async () => {
     m.profileFindUnique.mockResolvedValue({
@@ -178,21 +174,66 @@ describe('verifyCompany', () => {
     });
     m.profileUpdateMany.mockResolvedValue({ count: 0 });
     const res = await reject('Website does not resolve');
-    expect(res).toMatchObject({ ok: false, error: expect.stringMatching(/already reviewed/i) });
+    expect(res).toMatchObject({
+      ok: false,
+      error:
+        'This company changed or was reviewed since you loaded the queue. Reload to see the latest.',
+    });
     expect(m.notifCreate).not.toHaveBeenCalled();
     expect(m.updateTag).not.toHaveBeenCalled();
     expect(m.afterCallbacks).toHaveLength(0);
   });
 
-  it('refuses to approve a company that changed its name or website after the admin loaded it', async () => {
-    m.profileUpdateMany.mockResolvedValue({ count: 0 });
-    const res = await verify();
-    expect(res).toMatchObject({
-      ok: false,
-      error: expect.stringMatching(/changed its name or website since you loaded/i),
-    });
+  it('refuses a stale approval after another admin rejected and the company resubmitted unchanged', async () => {
+    const row = {
+      id: PROFILE_ID,
+      userId: 'company1',
+      logoUrl: null,
+      companyName: 'Acme Inc',
+      website: 'https://acme.test',
+      verificationStatus: 'PENDING',
+      rejectionReason: null as string | null,
+      updatedAt: new Date(LOADED_AT),
+      user: { email: 'owner@acme.test', firstName: 'Ada' },
+    };
+    m.profileFindUnique.mockImplementation(async () => ({ ...row }));
+    m.profileFindFirst.mockResolvedValue(null);
+    // Matches the way Postgres filters and Prisma stamps @updatedAt on every write.
+    m.profileUpdateMany.mockImplementation(
+      async ({ where, data }: { where: Record<string, unknown>; data: object }) => {
+        const current = row as Record<string, unknown>;
+        const matches = Object.entries(where).every(([key, value]) =>
+          value instanceof Date
+            ? (current[key] as Date).getTime() === value.getTime()
+            : current[key] === value,
+        );
+        if (!matches) return { count: 0 };
+        Object.assign(row, data, { updatedAt: new Date(row.updatedAt.getTime() + 1000) });
+        return { count: 1 };
+      },
+    );
+
+    const adminA = row.updatedAt.toISOString();
+    const adminB = row.updatedAt.toISOString();
+    expect(
+      await verifyCompany(PROFILE_ID, { status: 'REJECTED', reason: 'No registration' }, adminB),
+    ).toMatchObject({ ok: true });
+    expect(
+      await updateCompanyProfile({
+        companyName: row.companyName,
+        industry: 'TECHNOLOGY',
+        companySize: 'SIZE_11_50',
+        description: 'Warehouse robots for East African logistics firms.',
+        website: row.website,
+      }),
+    ).toMatchObject({ ok: true });
+    expect(row).toMatchObject({ verificationStatus: 'PENDING', companyName: 'Acme Inc' });
+    m.notifCreate.mockClear();
+
+    const res = await verifyCompany(PROFILE_ID, { status: 'VERIFIED' }, adminA);
+    expect(res).toMatchObject({ ok: false, error: expect.stringMatching(/reload/i) });
+    expect(row.verificationStatus).toBe('PENDING');
     expect(m.notifCreate).not.toHaveBeenCalled();
-    expect(m.afterCallbacks).toHaveLength(0);
   });
 
   it('emails the company owner when it is verified', async () => {

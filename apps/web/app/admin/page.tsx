@@ -31,6 +31,7 @@ export default async function AdminPage() {
         contactPersonName: true,
         contactPersonPosition: true,
         createdAt: true,
+        updatedAt: true,
         user: { select: { phone: true } },
       },
     }),
@@ -91,10 +92,11 @@ export default async function AdminPage() {
         </div>
         <VerificationQueue
           headingId={VERIFICATION_HEADING}
-          initial={pending.map(({ user, createdAt, ...p }) => ({
+          initial={pending.map(({ user, createdAt, updatedAt, ...p }) => ({
             ...p,
             phone: user.phone,
             createdAt: createdAt.toISOString(),
+            updatedAt: updatedAt.toISOString(),
           }))}
         />
 

@@ -25,6 +25,7 @@ export type PendingCompany = {
   contactPersonName: string | null;
   contactPersonPosition: string | null;
   createdAt: string;
+  updatedAt: string;
 };
 
 const verifyId = (c: PendingCompany) => `verify-${c.id}`;
@@ -48,10 +49,10 @@ export function VerificationQueue({
     const prev = rows;
     focus(focusAfterRemoving(prev, company.id, verifyId, headingId));
     setRows((r) => r.filter((row) => row.id !== company.id)); // optimistic
-    const { companyName: name, website } = company;
+    const name = company.companyName;
     startTransition(async () => {
       try {
-        unwrap(await verifyCompany(company.id, decision, { companyName: name, website }));
+        unwrap(await verifyCompany(company.id, decision, company.updatedAt));
         if (decision.status === 'VERIFIED') {
           toast.success(`${name} verified`, 'They now appear in search and the directory.');
         } else {
