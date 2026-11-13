@@ -80,7 +80,7 @@ export function ApplyForm({
           <p className="m-0 text-danger">
             You need a resume first.{' '}
             <Link
-              href="/jobseeker/resumes"
+              href={`/jobseeker/resumes?returnTo=${encodeURIComponent(`/jobs/${jobSlug}/apply`)}`}
               className="inline-flex items-center gap-1 font-semibold text-brand underline"
             >
               Upload one

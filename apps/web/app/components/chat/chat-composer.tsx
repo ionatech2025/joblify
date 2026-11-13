@@ -1,6 +1,7 @@
 'use client';
 
 import { useActionState, useState } from 'react';
+import { unstable_rethrow } from 'next/navigation';
 import { sendChatMessage, type SendMessageResult } from '@/app/actions/chat';
 import { useRefreshChatMessages } from '@/lib/query/chat';
 import { Field, Input, Select, Textarea } from '@/app/components/ui/form';
@@ -14,7 +15,20 @@ import { Button } from '@/app/components/ui/button';
 // interview details" — MATERIAL pairs with an attachment link.
 export function ChatComposer({ chatAreaId }: { chatAreaId: string }) {
   const [state, formAction, isPending] = useActionState<SendMessageResult | null, FormData>(
-    sendChatMessage.bind(null, chatAreaId),
+    async (prev, formData) => {
+      try {
+        return await sendChatMessage(chatAreaId, prev, formData);
+      } catch (err) {
+        // A thrown failure (offline, DB, lost membership) would otherwise reach
+        // the error boundary and take the typed message with it. A redirect
+        // (signed out) still has to navigate.
+        unstable_rethrow(err);
+        return {
+          ok: false,
+          error: 'Your message wasn’t sent. Check your connection and try again.',
+        };
+      }
+    },
     null,
   );
   // The thread renders from React Query now. A Server Action revalidates the

@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-11-14 — Truthful, accessible jobseeker flow (phase 5a)
+
+- **Deadlines:** a job past its deadline says "Applications closed on <date>" on the job page, the
+  apply panel and the apply page, and drops out of similar jobs. Saved jobs that close stay
+  listed with a "No longer accepting applications" badge instead of vanishing.
+- **Honest copy:** the withdraw confirm says you cannot apply again; status notifications name
+  the job and company and link to the application; applying twice lands on an announced
+  "already applied" banner.
+- **Focus and announcements (WCAG 2.4.3, 4.1.3, 1.3.1):** removing a row keeps focus in the list,
+  pending buttons use `aria-disabled`, chat is a `role="log"`, unread notifications and the
+  submitted banner are announced, and background refreshes are silent.
+- **Chat resilience:** a failed send keeps the typed message with an inline error; polling backs
+  off to at most two minutes while refreshes fail and stops with a clear message on a 404.
+- **Résumé detour:** "Upload one" from the apply form returns to the application.
 ## 2026-11-14 — Adaptive console chrome and a resilient error shell (phase 2)
 
 - **Short and narrow screens:** on landscape phones and at 400% zoom the header, module nav and

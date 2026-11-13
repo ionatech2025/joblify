@@ -4,25 +4,35 @@ import { useState, useTransition } from 'react';
 import Link from 'next/link';
 import { Bookmark } from 'lucide-react';
 import { toggleSavedJob } from '@/app/actions/saved-jobs';
+import { Badge } from '@/app/components/ui/badge';
 import { Button, buttonClasses } from '@/app/components/ui/button';
 import { EmptyState } from '@/app/components/ui/empty-state';
 import { ListView, type ListColumn } from '@/app/components/console/list-view';
 import { toast } from '@/lib/stores/ui';
 import { unwrap } from '@/lib/action-result';
+import { moveFocusFromRowAction } from '../move-focus';
 
-type SavedRow = {
+export type SavedRow = {
   id: string;
   slug: string;
   title: string;
   company: string;
   location: string | null;
+  availability: 'open' | 'closed' | 'removed';
 };
 
-export function SavedList({ initial }: { initial: SavedRow[] }) {
+export function SavedList({
+  initial,
+  focusFallbackId,
+}: {
+  initial: SavedRow[];
+  focusFallbackId: string;
+}) {
   const [jobs, setJobs] = useState(initial);
   const [, startTransition] = useTransition();
 
-  function remove(jobId: string, title: string) {
+  function remove(jobId: string, title: string, button: HTMLElement) {
+    moveFocusFromRowAction(button, document.getElementById(focusFallbackId));
     const prev = jobs;
     setJobs((j) => j.filter((x) => x.id !== jobId)); // optimistic
     startTransition(async () => {
@@ -59,12 +69,21 @@ export function SavedList({ initial }: { initial: SavedRow[] }) {
       header: 'Role',
       cell: (j) => (
         <div className="min-w-0">
-          <Link
-            href={`/jobs/${j.slug}`}
-            className="text-fg font-medium no-underline hover:underline"
-          >
-            {j.title}
-          </Link>
+          {j.availability === 'removed' ? (
+            <span className="text-fg font-medium">{j.title}</span>
+          ) : (
+            <Link
+              href={`/jobs/${j.slug}`}
+              className="text-fg font-medium no-underline hover:underline"
+            >
+              {j.title}
+            </Link>
+          )}
+          {j.availability !== 'open' && (
+            <Badge tone="neutral" className="ml-2">
+              No longer accepting applications
+            </Badge>
+          )}
           <span className="text-fg-muted block text-[12px] sm:hidden">
             {j.company}
             {j.location ? ` · ${j.location}` : ''}
@@ -94,7 +113,8 @@ export function SavedList({ initial }: { initial: SavedRow[] }) {
           variant="danger"
           size="sm"
           type="button"
-          onClick={() => remove(j.id, j.title)}
+          data-row-action="remove-saved-job"
+          onClick={(e) => remove(j.id, j.title, e.currentTarget)}
           aria-label={`Remove ${j.title} from saved`}
         >
           Remove

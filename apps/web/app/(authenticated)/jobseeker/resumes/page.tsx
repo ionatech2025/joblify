@@ -8,8 +8,15 @@ import { buttonClasses } from '@/app/components/ui/button';
 
 export const metadata = { title: 'My resumes' };
 
-export default async function ResumesPage() {
+export default async function ResumesPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const user = await requireRole('JOB_SEEKER');
+  const { returnTo } = await searchParams;
+  const safeReturnTo =
+    typeof returnTo === 'string' && returnTo.startsWith('/jobs/') ? returnTo : null;
   const rows = await db.resume.findMany({
     where: { userId: user.id, deletedAt: null },
     orderBy: { createdAt: 'desc' },
@@ -44,7 +51,7 @@ export default async function ResumesPage() {
         }
       />
       <ConsoleWidth className="max-w-5xl py-3">
-        <ResumeManager userId={user.id} initialResumes={resumes} />
+        <ResumeManager userId={user.id} initialResumes={resumes} returnTo={safeReturnTo} />
       </ConsoleWidth>
     </main>
   );

@@ -1,5 +1,6 @@
 'use client';
 
+import { useRef } from 'react';
 import Link from 'next/link';
 import { ArrowRight, BellOff } from 'lucide-react';
 import {
@@ -11,6 +12,7 @@ import {
 import { EmptyState } from '@/app/components/ui/empty-state';
 import { buttonClasses } from '@/app/components/ui/button';
 import { TimeStamp } from '@/app/components/ui/timestamp';
+import { moveFocusFromRowAction } from '../move-focus';
 
 const KIND_LABEL: Record<string, string> = {
   APPLICATION_SUBMITTED: 'Application submitted',
@@ -35,6 +37,7 @@ export function NotificationsList({
 }) {
   const { data, isError } = useNotifications(NOTIFICATION_POLL_MS.list);
   const mark = useMarkNotificationRead();
+  const listRef = useRef<HTMLUListElement>(null);
   const items = data ?? initial;
 
   if (items.length === 0) {
@@ -66,9 +69,15 @@ export function NotificationsList({
           Live updates are paused — showing the last known list. Refresh to try again.
         </p>
       )}
-      <ul className="border-border bg-surface rounded-card divide-border m-0 list-none divide-y overflow-hidden border p-0">
+      <ul
+        ref={listRef}
+        tabIndex={-1}
+        aria-label="Notifications"
+        className="border-border bg-surface rounded-card divide-border m-0 list-none divide-y overflow-hidden border p-0"
+      >
         {items.map((n) => {
           const isRead = !!n.readAt;
+          const { jobTitle, companyName } = n.payload;
           return (
             <li
               key={n.id}
@@ -81,14 +90,31 @@ export function NotificationsList({
                   className={`text-fg mb-0.5 text-[13px] ${isRead ? 'font-medium' : 'font-semibold'}`}
                 >
                   {!isRead && (
-                    <span
-                      aria-hidden
-                      className="bg-brand mr-1.5 inline-block size-2 rounded-full align-middle"
-                    />
+                    <>
+                      <span
+                        aria-hidden
+                        className="bg-brand mr-1.5 inline-block size-2 rounded-full align-middle"
+                      />
+                      <span className="sr-only">Unread: </span>
+                    </>
                   )}
                   {KIND_LABEL[n.kind] ?? n.kind}
                 </p>
+                {typeof jobTitle === 'string' && typeof companyName === 'string' && (
+                  <p className="text-fg m-0 text-[13px]">
+                    {jobTitle} at {companyName}
+                  </p>
+                )}
                 <p className="text-fg-muted m-0 text-[13px]">{summarize(n.payload)}</p>
+                {role === 'JOB_SEEKER' && n.kind === 'APPLICATION_STATUS_CHANGED' && (
+                  <Link
+                    href="/jobseeker/applications"
+                    className="text-brand mt-1 inline-flex min-h-6 items-center gap-1 text-[13px] underline"
+                  >
+                    Track application
+                    <ArrowRight aria-hidden className="size-3.5" />
+                  </Link>
+                )}
                 {typeof n.payload.jobSlug === 'string' && (
                   <Link
                     href={`/jobs/${n.payload.jobSlug}`}
@@ -146,9 +172,14 @@ export function NotificationsList({
               {!isRead && (
                 <button
                   type="button"
-                  onClick={() => mark.mutate(n.id)}
-                  disabled={mark.isPending}
-                  className="text-brand inline-flex min-h-7 shrink-0 items-center self-start px-2 text-[13px] font-medium underline disabled:opacity-50"
+                  data-row-action="mark-read"
+                  onClick={(e) => {
+                    if (mark.isPending) return;
+                    moveFocusFromRowAction(e.currentTarget, listRef.current);
+                    mark.mutate(n.id);
+                  }}
+                  aria-disabled={mark.isPending || undefined}
+                  className="text-brand inline-flex min-h-7 shrink-0 items-center self-start px-2 text-[13px] font-medium underline aria-disabled:opacity-50"
                 >
                   Mark read
                 </button>

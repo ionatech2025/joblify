@@ -6,6 +6,7 @@ import { requireRole } from '@/lib/auth';
 import { ApplyForm } from './apply-form';
 import { PageHeader } from '@/app/components/ui/ambient';
 import ApplyLoading from './loading';
+import { applicationsClosed, formatDeadline } from '../deadline';
 
 type Params = Promise<{ slug: string }>;
 
@@ -40,7 +41,29 @@ async function ApplyContent({ slug }: { slug: string }) {
     where: { jobPostId_jobSeekerId: { jobPostId: job.id, jobSeekerId: user.id } },
     select: { id: true },
   });
-  if (existing) redirect(`/jobseeker/applications`);
+  if (existing) redirect('/jobseeker/applications?already_applied=1');
+
+  if (job.applicationDeadline && applicationsClosed(job.applicationDeadline)) {
+    return (
+      <main>
+        <PageHeader
+          eyebrow="Application"
+          title="No longer accepting applications"
+          subtitle={`${job.title} · ${job.company.companyProfile?.companyName ?? 'Company'}`}
+          width="max-w-3xl"
+        />
+        <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
+          <p className="mt-0 text-fg">
+            Applications for this role closed on {formatDeadline(job.applicationDeadline)}.
+          </p>
+          <p className="mb-0 flex flex-wrap gap-x-4 gap-y-2">
+            <Link href={`/jobs/${job.slug}`}>Back to the job</Link>
+            <Link href="/jobs">Browse open jobs</Link>
+          </p>
+        </div>
+      </main>
+    );
+  }
 
   // id + title only. This used to select every column — including parsedJson
   // and `embedding`, a 1536-dimension vector — per resume, to render a <Select>

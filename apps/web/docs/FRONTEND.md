@@ -211,7 +211,11 @@ try {
 ```
 
 Use `useActionState` instead where the failure should render inline and the form
-must keep its draft — `sendChatMessage` + `chat-composer.tsx` is the example.
+must keep its draft — `sendChatMessage` + `chat-composer.tsx` is the example. The
+composer wraps the action in a `try/catch`, so a fault (offline, DB, lost
+membership) also renders inline instead of reaching `error.tsx` with the draft.
+The `catch` calls `unstable_rethrow(err)` first, so a sign-in `redirect()` still
+navigates.
 
 ## Calling Server Actions from forms
 
@@ -272,6 +276,8 @@ Patterns:
 - Dialogs / popovers use Radix primitives — the header `ThemeToggle` (`@radix-ui/react-dropdown-menu`) is the first call site; reach for the same library rather than hand-rolling another one.
 - Skip-to-content link in `app/layout.tsx` (TODO when a header lands).
 - Tab order matches DOM order.
+- A control that removes or hides itself moves focus first: to the same action in the next row, else the list heading (`moveFocusFromRowAction` in `app/(authenticated)/jobseeker/move-focus.ts`). A control that is busy is `aria-disabled` with a click guard, never `disabled`, because disabling the focused element drops focus to `<body>`. `Button loading` does this for you.
+- Polled content: the chat thread is a `role="log"` region (additions only). A background-refresh hint ("Refreshing…") is not a live region.
 
 Manual SR test on the apply funnel before each release: NVDA on Windows + VoiceOver on macOS.
 

@@ -12,6 +12,7 @@ export function SaveButton({ jobId, initialSaved }: { jobId: string; initialSave
   const [pending, startTransition] = useTransition();
 
   function toggle() {
+    if (pending) return;
     const next = !saved;
     setSaved(next); // optimistic
     startTransition(async () => {
@@ -34,10 +35,12 @@ export function SaveButton({ jobId, initialSaved }: { jobId: string; initialSave
     <button
       type="button"
       onClick={toggle}
-      disabled={pending}
+      // aria-disabled, not disabled: disabling the focused button would drop
+      // a keyboard user to <body> mid-toggle.
+      aria-disabled={pending || undefined}
       aria-pressed={saved}
       className={cn(
-        'focus-visible:ring-brand focus-visible:ring-offset-canvas inline-flex items-center justify-center gap-2 rounded-full border px-4 py-2 font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-wait',
+        'focus-visible:ring-brand focus-visible:ring-offset-canvas inline-flex items-center justify-center gap-2 rounded-full border px-4 py-2 font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none aria-disabled:cursor-wait',
         saved
           ? 'border-border-strong bg-brand-subtle text-brand'
           : 'border-border-strong bg-surface text-fg-muted hover:bg-surface-sunken',

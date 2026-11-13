@@ -36,9 +36,29 @@ export function useChatMessages(chatAreaId: string, initialData: ChatMessagesRes
     // SSR and the first poll is a background refresh — no loading flash, and no
     // duplicate request on mount.
     initialData,
-    refetchInterval: CHAT_POLL_MS,
-    refetchOnWindowFocus: true,
+    refetchInterval: (query) => chatPollDelay(query.state),
+    refetchOnWindowFocus: (query) => !chatAccessLost(query.state.error),
   });
+}
+
+export const CHAT_MAX_BACKOFF_MS = 120_000;
+
+/**
+ * A 401 is not final: an expired session token on a background tab reads as
+ * signed out until Clerk refreshes it, so it keeps retrying.
+ */
+export function chatAccessLost(error: unknown): boolean {
+  return (error as { status?: unknown } | null)?.status === 404;
+}
+
+export function chatPollDelay(
+  state: { status: string; error: unknown; dataUpdatedAt: number },
+  now = Date.now(),
+): number | false {
+  if (state.status !== 'error') return CHAT_POLL_MS;
+  if (chatAccessLost(state.error)) return false;
+  const sinceLastGoodRead = now - state.dataUpdatedAt;
+  return Math.min(Math.max(sinceLastGoodRead, CHAT_POLL_MS), CHAT_MAX_BACKOFF_MS);
 }
 
 /**
