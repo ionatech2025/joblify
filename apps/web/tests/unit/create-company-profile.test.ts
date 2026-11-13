@@ -143,15 +143,16 @@ describe('updateCompanyProfile', () => {
     expect(data).not.toHaveProperty('verificationStatus');
   });
 
-  it('resubmits a rejected company: back to PENDING with the old reason cleared', async () => {
+  it('resubmits a rejected company: back to PENDING, keeping the old reason for the reviewer', async () => {
     m.companyFindUnique.mockResolvedValue(stored('REJECTED'));
     const res = await updateCompanyProfile({ ...PROFILE, companyName: 'Acme Technologies Ltd' });
     expect(res).toEqual({ ok: true, data: undefined });
-    expect(m.companyUpdateMany.mock.calls[0]![0].data).toMatchObject({
+    const { data } = m.companyUpdateMany.mock.calls[0]![0];
+    expect(data).toMatchObject({
       companyName: 'Acme Technologies Ltd',
       verificationStatus: 'PENDING',
-      rejectionReason: null,
     });
+    expect(data).not.toHaveProperty('rejectionReason');
   });
 
   it('writes only while the profile still has the status the rules were checked against', async () => {

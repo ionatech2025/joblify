@@ -26,6 +26,8 @@ export type PendingCompany = {
   contactPersonPosition: string | null;
   createdAt: string;
   updatedAt: string;
+  /** Set only on a resubmission: why the last review rejected it. */
+  rejectionReason: string | null;
 };
 
 const verifyId = (c: PendingCompany) => `verify-${c.id}`;
@@ -180,6 +182,11 @@ function CompanyDetails({ company: c }: { company: PendingCompany }) {
           </div>
         ))}
       </dl>
+      {c.rejectionReason ? (
+        <p className="text-fg-muted mt-1.5 mb-0 text-[12px] whitespace-pre-wrap">
+          <strong className="text-fg font-medium">Previously rejected:</strong> {c.rejectionReason}
+        </p>
+      ) : null}
     </div>
   );
 }

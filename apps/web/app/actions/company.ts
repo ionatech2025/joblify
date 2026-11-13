@@ -119,10 +119,9 @@ export async function updateCompanyProfile(
   }: VerifiedCompanyEditInput & Partial<CompanyProfileInput> = result.data;
   const identity = companyName === undefined ? null : { companyName, website: website || null };
 
+  // rejectionReason stays as history: the admin queue shows it beside the resubmission.
   const resubmission =
-    profile.verificationStatus === 'REJECTED'
-      ? { verificationStatus: 'PENDING' as const, rejectionReason: null }
-      : {};
+    profile.verificationStatus === 'REJECTED' ? { verificationStatus: 'PENDING' as const } : {};
 
   // '' clears the logo; a value must already be ours (uploadLogoDirect is the
   // only thing that mints one). A foreign URL is ignored rather than stored —

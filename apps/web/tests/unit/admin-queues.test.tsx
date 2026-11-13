@@ -44,6 +44,7 @@ const company = (id: string, name: string): PendingCompany => ({
   contactPersonPosition: 'Founder',
   createdAt: '2026-11-01T09:00:00.000Z',
   updatedAt: UPDATED_AT,
+  rejectionReason: null,
 });
 
 const report = (id: string, title: string): OpenReport => ({
@@ -86,6 +87,22 @@ describe('VerificationQueue', () => {
     expect(screen.getByRole('link', { name: 'a.example' }).getAttribute('href')).toBe(
       'https://a.example',
     );
+  });
+
+  it('shows why a resubmitted company was rejected before, and nothing for a first submission', () => {
+    render(
+      <VerificationQueue
+        headingId="queue-heading"
+        initial={[
+          { ...company('a', 'Acme'), rejectionReason: 'Website does not resolve' },
+          company('b', 'Beta'),
+        ]}
+      />,
+    );
+    expect(screen.getAllByText(/previously rejected/i)).toHaveLength(1);
+    const note = screen.getByText(/previously rejected/i).closest('p')!;
+    expect(note.textContent).toBe('Previously rejected: Website does not resolve');
+    expect(note.closest('tr')!.textContent).toContain('Acme');
   });
 
   it('asks for a reason before rejecting, then moves focus to the next row', async () => {

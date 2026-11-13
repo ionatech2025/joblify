@@ -32,6 +32,7 @@ export default async function AdminPage() {
         contactPersonPosition: true,
         createdAt: true,
         updatedAt: true,
+        rejectionReason: true,
         user: { select: { phone: true } },
       },
     }),
