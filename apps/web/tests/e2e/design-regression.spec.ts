@@ -199,14 +199,14 @@ test.describe('design system', () => {
 
   test('typography: display and body resolve to the self-hosted families', async ({ page }) => {
     await page.goto(CHROME_PAGE);
-    // next/font mangles the family name (__Inter_abc123), so match loosely.
+    // next/font mangles the family name (__Public_Sans_abc123), so match loosely.
     const body = await page.evaluate(() => getComputedStyle(document.body).fontFamily);
-    expect(body).toMatch(/inter/i);
+    expect(body).toMatch(/public.?sans/i);
     const display = await page
       .locator('.display')
       .first()
       .evaluate((el) => getComputedStyle(el).fontFamily);
-    expect(display).toMatch(/archivo/i);
+    expect(display).toMatch(/newsreader/i);
   });
 });
 

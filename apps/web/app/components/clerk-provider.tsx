@@ -17,7 +17,7 @@ import { resolvesDark } from '@/lib/ui/theme';
 // by doing colour math on these, and a var() string is not parseable by that
 // code. Keep them in step with the :root / .dark blocks. `fontFamily` is passed
 // straight through to CSS, so there a var() reference is fine.
-const CLERK_BASE = { borderRadius: '0.75rem', fontFamily: 'var(--font-inter)' } as const;
+const CLERK_BASE = { borderRadius: '0.75rem', fontFamily: 'var(--font-body-face)' } as const;
 
 const CLERK_LIGHT = {
   ...CLERK_BASE,

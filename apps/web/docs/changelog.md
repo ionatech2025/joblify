@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-11-13 — Calm type system (phase 1 of the November audit)
+
+- **Typefaces:** Newsreader (serif, weight 600) now carries editorial headlines and page `h1`/`h2`;
+  Public Sans replaces Inter for body and UI text in both registers. Preloaded font bytes stay
+  level with the old pair (85KB against 83KB), because Newsreader ships without its `opsz` axis.
+- **Quieter hierarchy:** `.display` weight 800 to 600 and tracking -0.03em to -0.015em; the home
+  headline is sentence case instead of all caps; eyebrow and caption tracking eased to 0.12em and
+  0.1em; paragraphs use `text-wrap: pretty`, headings `text-wrap: balance`.
+- **Console readability:** console body text rises from 13px to 14px, its headings stay in the
+  body face, and `tabular-nums` aligns dates, counts and salaries down a column.
+- The choice and the rejected pairings are recorded in `docs/DESIGN.md` (Lineage, Typography).
+
 ## 2026-10-15 — Flow & UI/UX completeness, consistency, reliability, and performance pass
 
 - **Pre-hydration form values (`defaultValue` / `defaultChecked`):** `CompanySettingsForm`,

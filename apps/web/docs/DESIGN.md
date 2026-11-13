@@ -15,7 +15,7 @@ Two passes, both distilled from supplied reference designs rather than invented:
    vocabulary for: a theme toggle in the header, arrow-in-circle CTAs, divided stat
    ledgers, sparklines in glass metric cards, a ⌘K command palette with keyboard hints,
    and crafted empty states.
-3. **This pass — the Odoo-enterprise console.** The first two passes applied one visual
+3. **2026-10 — the Odoo-enterprise console.** The first two passes applied one visual
    language to the whole product. That works for the public funnel and fights the back
    office, where the job is scanning and mutating records, not being persuaded: at
    `px-4 py-3` rows, 1rem radii and `py-10` page headers, a laptop showed six or seven
@@ -23,6 +23,14 @@ Two passes, both distilled from supplied reference designs rather than invented:
    borders, plum ink — with Odoo's structural vocabulary: control panel, breadcrumb,
    record pager, view switcher, searchview facets, form sheet, notebook, statusbar.
    See [Two registers](#two-registers) below.
+4. **2026-11 calm type pass.** The owner asked for type that reads as professional, trustworthy
+   and calm, drawing on the Hercules "Professional Design" guidance. That guidance publishes no
+   numeric scale; its usable rules are a distinctive display face paired with a refined body
+   face, no default Inter/Arial body, and colour carried by CSS variables. Four pairings were
+   rendered side by side at 390px and 1280px before choosing (see
+   [Typography](#typography)). Display weight dropped from 800 to 600, the home headline lost
+   its all-caps, eyebrow tracking eased from 0.18em to 0.12em, and the console body rose from
+   13px to 14px.
 
 Deliberately **not** adopted from the references: a language switcher (i18n is a declared
 V2 item in [ARCHITECTURE.md](./ARCHITECTURE.md)), 3D chrome renders, and licensed
@@ -37,7 +45,7 @@ The product is two things, and the design system says so:
 | Register      | Where                                                          | Reads as                                                                      |
 | ------------- | -------------------------------------------------------------- | ----------------------------------------------------------------------------- |
 | **Editorial** | `/`, `/jobs`, `/companies`, auth, legal, error pages           | Display type, pill CTAs, ambient wash, glass, 1rem radii, generous padding    |
-| **Console**   | `/company/*`, `/jobseeker/*`, `/admin`, onboarding, account/\* | 13px base, flat 4px corners, hairline borders, plum ink, opaque sticky chrome |
+| **Console**   | `/company/*`, `/jobseeker/*`, `/admin`, onboarding, account/\* | 14px base, flat 4px corners, hairline borders, plum ink, opaque sticky chrome |
 
 Both are the **same token names** with different values. `.o-console` — applied by
 [`ConsoleShell`](../app/components/console/shell.tsx) at the root of every back-office
@@ -103,7 +111,7 @@ shadows are invisible on a near-black canvas. That is why `surface-raised` exist
 
 ## Component classes
 
-- `.display` — editorial headline. Archivo, weight 800, tight tracking, balanced wrap.
+- `.display` — editorial headline. Newsreader, weight 600, -0.015em tracking, balanced wrap.
   Always paired with a size utility at the call site (`text-4xl`…`text-7xl`).
 - `.eyebrow` — small-caps letterspaced label above a headline, brand-coloured.
 - `.caption` — small-caps caption under a stat value. (Was duplicated inline at three
@@ -115,10 +123,24 @@ shadows are invisible on a near-black canvas. That is why `surface-raised` exist
 Self-hosted at build by `next/font` in [`app/layout.tsx`](../app/layout.tsx) — no runtime
 request, so the `font-src 'self' data:` CSP in `next.config.ts` is unchanged.
 
-- **Archivo** (variable) — display. Replaces the previous system-stack + `font-weight: 900`
-  approach, which rendered as Arial Black on Windows and Roboto on Android and was what
-  made the headlines read generic off macOS.
-- **Inter** (variable) — body and UI.
+- **Newsreader** (variable, `wght` only) — editorial display: `.display`, and raw `h1`/`h2`
+  outside the console. A text serif at 600 reads as accountable rather than loud. The `opsz`
+  axis is left out on purpose: it took the preloaded file from 58KB to 132KB, while the
+  `wght`-only build keeps both preloaded fonts at 85KB, level with the Archivo + Inter pair
+  it replaced (83KB). The console resets its headings to the body face, because serif
+  headings at 14–20px slow down scanning records.
+- **Public Sans** (variable) — body and UI in both registers. A neutral, highly legible
+  grotesque (the USWDS typeface) that does not read as a template default the way Inter does.
+  The console sets `tabular-nums` so dates, counts and salaries align down a column.
+
+Rejected in the side-by-side render: Archivo 650 with Atkinson Hyperlegible Next (its slashed
+zero turns every salary and date into something that reads like code), and keeping
+Archivo 800 with Inter (loud, and the body face the guidance names as a default to avoid).
+
+Scale: body 16px on editorial pages and 14px in the console, line height 1.65 for prose and
+1.5 in the console, page `h1` 2rem and `h2` 1.5rem at weight 600, eyebrows and captions 12px
+uppercase at 0.12em and 0.1em. Paragraphs use `text-wrap: pretty` and headings
+`text-wrap: balance`, so a heading never ends on one orphaned word.
 
 Both emit a metric-matched local fallback, so swapping costs no layout shift.
 
@@ -266,4 +288,4 @@ keyboard-operable without a parallel a11y implementation.
    reference is not usable there. Change a surface or foreground token and those two
    objects need the same change, or the auth pages drift out of step with the rest of the
    app. `fontFamily` is the exception: it is passed straight through to CSS, so it can and
-   does reference `var(--font-inter)`.
+   does reference `var(--font-body-face)`.

@@ -51,7 +51,7 @@ export function Header({ auth, mobileUser }: { auth?: ReactNode; mobileUser?: Re
         <Link
           href="/"
           onClick={close}
-          className="text-fg flex items-center gap-2 text-lg font-extrabold tracking-tight no-underline"
+          className="text-fg flex items-center gap-2 font-display text-xl font-semibold no-underline"
         >
           {/* eslint-disable-next-line @next/next/no-img-element -- small fixed-size brand mark */}
           <img src="/logo.png" alt="" width={28} height={28} className="size-7 rounded-md" />
