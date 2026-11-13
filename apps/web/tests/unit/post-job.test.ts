@@ -400,6 +400,106 @@ describe('updateJob', () => {
       data: undefined,
     });
   });
+
+  function savedRow(over: Record<string, unknown> = {}) {
+    return {
+      id: JOB_ID,
+      publishedAt: new Date('2026-01-01T00:00:00Z'),
+      chatArea: null,
+      title: 'Senior Rust Engineer',
+      description: 'Build fast, reliable distributed systems in Rust. Own services end to end.',
+      requirements: null,
+      industry: 'TECHNOLOGY',
+      jobType: 'FULL_TIME',
+      experienceLevel: 'SENIOR',
+      workMode: 'REMOTE',
+      location: 'Remote (EU)',
+      salaryMin: 100000,
+      salaryMax: 140000,
+      salaryCurrency: 'EUR',
+      salaryPeriod: 'YEAR',
+      locationCountry: null,
+      applicationDeadline: null,
+      ...over,
+    };
+  }
+  const PAST = '2020-01-01';
+  const future = () => new Date(Date.now() + 30 * 86_400_000).toISOString().slice(0, 10);
+
+  it('closing a post spends no posting budget and does not re-extract skills', async () => {
+    m.jobFindFirst.mockResolvedValueOnce(savedRow()).mockResolvedValueOnce(null);
+    m.postJobLimit.mockResolvedValue({ success: false });
+    expect(await updateJob(JOB_ID, input({ closed: true }))).toEqual({
+      ok: true,
+      data: undefined,
+    });
+    expect(m.jobUpdate.mock.calls[0]![0].data.status).toBe('CLOSED');
+    await runAfterCallbacks();
+    expect(m.postJobLimit).not.toHaveBeenCalled();
+    expect(m.generateObject).not.toHaveBeenCalled();
+  });
+
+  it('rate-limits and re-extracts skills when the JD text changes', async () => {
+    m.jobFindFirst
+      .mockResolvedValueOnce(savedRow({ description: 'An older description the edit replaces.' }))
+      .mockResolvedValueOnce(null);
+    await updateJob(JOB_ID, input());
+    expect(m.postJobLimit).toHaveBeenCalledWith('company1');
+    await runAfterCallbacks();
+    expect(m.generateObject).toHaveBeenCalledTimes(1);
+  });
+
+  it('refuses a JD text edit once the daily posting budget is spent', async () => {
+    m.jobFindFirst.mockResolvedValueOnce(savedRow({ title: 'Junior Rust Engineer' }));
+    m.postJobLimit.mockResolvedValue({ success: false });
+    expect(await updateJob(JOB_ID, input())).toMatchObject({
+      ok: false,
+      error: expect.stringMatching(/limit/i),
+    });
+    expect(m.jobUpdate).not.toHaveBeenCalled();
+  });
+
+  it('closes an expired post whose past deadline is unchanged', async () => {
+    m.jobFindFirst
+      .mockResolvedValueOnce(savedRow({ applicationDeadline: new Date(PAST) }))
+      .mockResolvedValueOnce(null);
+    expect(await updateJob(JOB_ID, input({ applicationDeadline: PAST, closed: true }))).toEqual({
+      ok: true,
+      data: undefined,
+    });
+    expect(m.jobUpdate.mock.calls[0]![0].data.status).toBe('CLOSED');
+  });
+
+  it("extends an expired post's deadline", async () => {
+    const next = future();
+    m.jobFindFirst
+      .mockResolvedValueOnce(savedRow({ applicationDeadline: new Date(PAST) }))
+      .mockResolvedValueOnce(null);
+    expect(await updateJob(JOB_ID, input({ applicationDeadline: next }))).toEqual({
+      ok: true,
+      data: undefined,
+    });
+    expect(m.jobUpdate.mock.calls[0]![0].data.applicationDeadline).toEqual(new Date(next));
+  });
+
+  it('will not republish an expired post without a new deadline', async () => {
+    m.jobFindFirst.mockResolvedValueOnce(savedRow({ applicationDeadline: new Date(PAST) }));
+    expect(await updateJob(JOB_ID, input({ applicationDeadline: PAST }))).toMatchObject({
+      ok: false,
+      error: expect.stringMatching(/future date/i),
+    });
+    expect(m.jobUpdate).not.toHaveBeenCalled();
+  });
+
+  it("keeps an expired post's details frozen, even while closing it", async () => {
+    m.jobFindFirst.mockResolvedValueOnce(savedRow({ applicationDeadline: new Date(PAST) }));
+    const res = await updateJob(
+      JOB_ID,
+      input({ applicationDeadline: PAST, closed: true, location: 'Kampala' }),
+    );
+    expect(res).toMatchObject({ ok: false, error: expect.stringMatching(/expired/i) });
+    expect(m.jobUpdate).not.toHaveBeenCalled();
+  });
 });
 
 describe('archiveJob', () => {
