@@ -17,7 +17,7 @@ export default function AiUsePage() {
   return (
     <main>
       <PageHeader eyebrow="Legal" title="How we use AI" width="max-w-3xl" />
-      <div className="prose-links mx-auto max-w-3xl px-4 py-10 sm:px-6">
+      <div className="prose-links measure mx-auto max-w-3xl px-4 py-10 sm:px-6">
         <p>
           AI is used in four places. In none of them does it decide anything about you on its own:
           people — you, and the employer — make every hiring decision.

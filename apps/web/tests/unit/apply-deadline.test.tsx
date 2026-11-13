@@ -120,6 +120,21 @@ describe('job detail page', () => {
     expect(out).toContain('Apply by');
     expect(out).toContain('Sign in to apply');
   });
+
+  it('vouches for the employer only when an admin verified it, and shows when it was posted', async () => {
+    const verified = job(FUTURE);
+    verified.company.companyProfile = {
+      companyName: 'Acme',
+      verificationStatus: 'VERIFIED',
+    } as typeof verified.company.companyProfile;
+    m.jobFindUnique.mockResolvedValue(verified);
+    const out = await page();
+    expect(out).toContain('Verified employer');
+    expect(out).toContain('Posted January 1, 2026');
+
+    m.jobFindUnique.mockResolvedValue(job(FUTURE));
+    expect(await page()).not.toContain('Verified employer');
+  });
 });
 
 describe('ApplyPanel', () => {

@@ -21,7 +21,7 @@ export function JobDetailSkeleton() {
   return (
     <main className="min-h-svh">
       <AmbientBand>
-        <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
+        <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
           <Skeleton className="bg-brand-subtle h-3 w-28" />
           <Skeleton className="rounded-card mt-4 h-10 w-2/3" />
           <div className="mt-5 flex flex-wrap gap-2">
@@ -31,9 +31,14 @@ export function JobDetailSkeleton() {
           </div>
         </div>
       </AmbientBand>
-      <div aria-hidden="true" className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
-        <SkeletonText lines={6} />
-        <SkeletonCard className="mt-12 h-40" />
+      <div
+        aria-hidden="true"
+        className="mx-auto grid max-w-6xl gap-12 px-4 py-10 sm:px-6 lg:grid-cols-[minmax(0,1fr)_20rem]"
+      >
+        <div className="max-w-[65ch]">
+          <SkeletonText lines={6} />
+        </div>
+        <SkeletonCard className="h-40" />
       </div>
     </main>
   );

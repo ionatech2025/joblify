@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-11-14 — Reading layout and trust signals on job pages (layout phase)
+
+- **Job page layout:** on desktop the description keeps a 65ch measure and the apply panel sits
+  in a sticky side column, so applying never means scrolling to the end; it stops sticking on
+  viewports under 32rem tall. Phones keep the single column.
+- **Trust line:** the job header says "Verified employer" when an admin verified the company,
+  and shows the posting date next to the deadline.
+- **Reading measure:** a new `.measure` class caps running text at 65ch on the legal, about and
+  accessibility pages (they ran at about 90 characters a line on desktop).
+
 ## 2026-11-14 — Truthful, accessible jobseeker flow (phase 5a)
 
 - **Deadlines:** a job past its deadline says "Applications closed on <date>" on the job page, the
@@ -14,6 +24,7 @@
 - **Chat resilience:** a failed send keeps the typed message with an inline error; polling backs
   off to at most two minutes while refreshes fail and stops with a clear message on a 404.
 - **Résumé detour:** "Upload one" from the apply form returns to the application.
+
 ## 2026-11-14 — Adaptive console chrome and a resilient error shell (phase 2)
 
 - **Short and narrow screens:** on landscape phones and at 400% zoom the header, module nav and

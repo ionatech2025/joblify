@@ -549,6 +549,13 @@
     text-underline-offset: 0.2em;
   }
 
+  /* Long-form reading width. 45-75 characters per line is the comfortable
+     range for running text; 65ch lands near 75 at body size. Zero specificity
+     so a utility on the element still wins. */
+  .measure :where(p, ul, ol, dl, blockquote, article) {
+    max-width: 65ch;
+  }
+
   /* Editorial display headline (marketing heroes, page titles that want
      weight). Pair with a size utility at the call site (text-4xl…text-7xl).
      Weight 600 and near-neutral tracking: the serif carries authority without
