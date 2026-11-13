@@ -28,13 +28,17 @@ import { useProfileDraftStore } from './profile-draft';
 export const DRAFT_STORAGE_KEY = /^joblify\..+-draft$/;
 export const DRAFT_OWNER_KEY = 'joblify.draft-owner';
 
-export function clearAllDrafts(storage: Storage = localStorage): void {
+function clearDraftMemory(): void {
   useProfileDraftStore.getState().clear();
   usePostJobDraftStore.getState().clear();
   useEmployerSetupDraftStore.getState().clear();
   useCompanySettingsDraftStore.getState().clear();
   const apply = useApplyDraftStore.getState();
   for (const jobId of Object.keys(apply.byJob)) apply.clear(jobId);
+}
+
+export function clearAllDrafts(storage: Storage = localStorage): void {
+  clearDraftMemory();
 
   // Anything a (possibly older) build persisted under a *-draft name.
   const stale: string[] = [];
@@ -81,6 +85,23 @@ export function clearDraftsOnSignOut(
   return () => {
     clerk.signOut = signOut;
   };
+}
+
+/**
+ * Another tab wipes the stored drafts on sign-out or a different sign-in, but
+ * this tab still holds them in memory, where the next restore or write would
+ * bring them back. This follows that tab. Clearing memory writes empty drafts,
+ * which other tabs ignore, so two tabs cannot set each other off. Returns the
+ * unsubscribe.
+ */
+export function followDraftWipesFromOtherTabs(): () => void {
+  const onStorage = ({ key, newValue }: StorageEvent) => {
+    const wiped =
+      key === null || key === DRAFT_OWNER_KEY || (DRAFT_STORAGE_KEY.test(key) && newValue === null);
+    if (wiped) clearDraftMemory();
+  };
+  window.addEventListener('storage', onStorage);
+  return () => window.removeEventListener('storage', onStorage);
 }
 
 /** Reconcile drafts with the signed-in user. Returns true when drafts were cleared. */

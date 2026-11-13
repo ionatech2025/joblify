@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import { useAuthHint } from '@/lib/stores/auth-hint';
-import { reconcileDraftOwner } from '@/lib/stores/clear-drafts';
+import { followDraftWipesFromOtherTabs, reconcileDraftOwner } from '@/lib/stores/clear-drafts';
 
 // Renders nothing. Carries the server's answer to "who is signed in" into the
 // client, for two jobs that used to need Clerk's browser SDK:
@@ -29,6 +29,8 @@ export function AuthHint({ userId }: { userId: string | null }) {
       // localStorage can throw in some privacy modes; drafts are best-effort.
     }
   }, [userId, setUserId]);
+
+  useEffect(() => followDraftWipesFromOtherTabs(), []);
 
   return null;
 }
