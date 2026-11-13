@@ -12,6 +12,7 @@ import { Card } from '@/app/components/ui/card';
 import { AmbientBand } from '@/app/components/ui/ambient';
 import { IslandBoundary } from '@/app/components/island-boundary';
 import { ApplyPanel } from './apply-panel';
+import { applicationsClosed, formatDeadline } from './deadline';
 import { JobDetailSkeleton } from './job-detail-skeleton';
 import { MatchBadge } from './match-badge';
 import { SimilarJobs } from './similar-jobs';
@@ -28,13 +29,6 @@ const JOB_TYPE_LABELS: Record<JobType, string> = {
   INTERNSHIP: 'Internship',
   TEMPORARY: 'Temporary',
 };
-
-// Deterministic formatting for the deadline (no locale drift between servers).
-const deadlineFormat = new Intl.DateTimeFormat('en-US', {
-  year: 'numeric',
-  month: 'long',
-  day: 'numeric',
-});
 
 // Glassy chip that reads well over the ambient band wash.
 const metaChip = META_CHIP;
@@ -164,7 +158,9 @@ async function JobDetailBody({ slug }: { slug: string }) {
           </div>
           {job.applicationDeadline && (
             <p className="mt-4 mb-0 text-sm font-semibold text-fg">
-              Apply by {deadlineFormat.format(job.applicationDeadline)}
+              {applicationsClosed(job.applicationDeadline)
+                ? `Applications closed on ${formatDeadline(job.applicationDeadline)}`
+                : `Apply by ${formatDeadline(job.applicationDeadline)}`}
             </p>
           )}
           {job.skills.length > 0 && (
@@ -203,7 +199,7 @@ async function JobDetailBody({ slug }: { slug: string }) {
         <section className="mt-12">
           <Card tone="glass" className="p-6 sm:p-8">
             <Suspense fallback={<p className="m-0 text-fg-muted">Loading apply options…</p>}>
-              <ApplyPanel jobId={job.id} slug={job.slug} />
+              <ApplyPanel jobId={job.id} slug={job.slug} deadline={job.applicationDeadline} />
             </Suspense>
           </Card>
           <ReportJob jobPostId={job.id} />

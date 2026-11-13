@@ -3,8 +3,9 @@ import type { IndustryType } from '@prisma/client';
 import { db } from '@/lib/db';
 import { Card } from '@/app/components/ui/card';
 
-// Dynamic island under the cached JD shell: other live jobs that share skills
-// with this one (falling back to the same industry), newest first.
+// Dynamic island under the cached JD shell: other live jobs, still taking
+// applications, that share skills with this one (falling back to the same
+// industry), newest first.
 export async function SimilarJobs({
   jobId,
   industry,
@@ -20,9 +21,12 @@ export async function SimilarJobs({
       status: 'PUBLISHED',
       deletedAt: null,
       company: { deletedAt: null },
-      ...(skillIds.length
-        ? { OR: [{ skills: { some: { skillId: { in: skillIds } } } }, { industry }] }
-        : { industry }),
+      AND: [
+        { OR: [{ applicationDeadline: null }, { applicationDeadline: { gt: new Date() } }] },
+        skillIds.length
+          ? { OR: [{ skills: { some: { skillId: { in: skillIds } } } }, { industry }] }
+          : { industry },
+      ],
     },
     orderBy: { publishedAt: 'desc' },
     take: 4,

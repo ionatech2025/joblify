@@ -6,15 +6,31 @@ import { buttonClasses } from '@/app/components/ui/button';
 import { applicationStatusLabel, applicationStatusTone } from '@/lib/ui/status';
 import { SaveButton } from './save-button';
 import { TimeStamp } from '@/app/components/ui/timestamp';
+import { applicationsClosed, formatDeadline } from './deadline';
 
 const primaryLink = `${buttonClasses('primary')} no-underline`;
 const heading = 'm-0 mb-2 text-lg font-semibold text-fg';
 
 // Dynamic island inside the cached JD page. Reads session, shows the right CTA.
-export async function ApplyPanel({ jobId, slug }: { jobId: string; slug: string }) {
+export async function ApplyPanel({
+  jobId,
+  slug,
+  deadline,
+}: {
+  jobId: string;
+  slug: string;
+  deadline: Date | null;
+}) {
   const user = await currentUser();
+  const closedNotice = deadline && applicationsClosed(deadline) && (
+    <>
+      <h3 className={heading}>No longer accepting applications</h3>
+      <p className="m-0 text-fg-muted">Applications closed on {formatDeadline(deadline)}.</p>
+    </>
+  );
 
   if (!user) {
+    if (closedNotice) return closedNotice;
     return (
       <>
         <h3 className={heading}>Apply for this role</h3>
@@ -60,12 +76,14 @@ export async function ApplyPanel({ jobId, slug }: { jobId: string; slug: string 
           </p>
         </>
       ) : (
-        <>
-          <h3 className={heading}>Apply for this role</h3>
-          <Link href={`/jobs/${slug}/apply`} className={primaryLink}>
-            Start application
-          </Link>
-        </>
+        closedNotice || (
+          <>
+            <h3 className={heading}>Apply for this role</h3>
+            <Link href={`/jobs/${slug}/apply`} className={primaryLink}>
+              Start application
+            </Link>
+          </>
+        )
       )}
       <div className="mt-3">
         <SaveButton jobId={jobId} initialSaved={!!saved} />
