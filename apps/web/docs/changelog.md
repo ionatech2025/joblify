@@ -1,5 +1,20 @@
 # Changelog
 
+## 2026-11-14 — Company verification lifecycle and safe admin decisions (phase 4)
+
+- **Rejection with a reason:** admins must give one; the company sees it on its setup page and by
+  email, fixes its details and resubmits for review. Approval sends an email too.
+- **Verified identity lock:** a verified company can no longer change its name or website; the
+  settings form shows both as read-only text. Legacy imported rows still save their other fields.
+- **Race-safe decisions:** an approval or rejection applies only to the exact pending profile the
+  admin reviewed (bound to `updatedAt`); a stale tab gets "reload" instead of approving a profile
+  that changed or was already decided. Report resolutions are race-safe in the same way.
+- **Reported jobs:** removal needs a reason and sends every applicant a safety notice.
+- **Admin queue:** shows the full company details and any previous rejection reason, and keeps
+  keyboard focus in place after each decision. Company websites must be http(s).
+- **Migration** `20261114120000_company_verification_review`: two nullable columns
+  (`rejectionReason`, `reviewedAt`) on `company_profiles`, expand-only.
+
 ## 2026-11-14 — Reading layout and trust signals on job pages (layout phase)
 
 - **Job page layout:** on desktop the description keeps a 65ch measure and the apply panel sits
