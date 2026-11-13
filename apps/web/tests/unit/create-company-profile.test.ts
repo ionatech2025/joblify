@@ -79,6 +79,17 @@ describe('createCompanyProfile', () => {
     expect(m.companyCreate).not.toHaveBeenCalled();
   });
 
+  it.each(['javascript:alert(1)', 'data:text/html,hi', 'ftp://acme.example'])(
+    'refuses a website that is not an http(s) address (%s)',
+    async (website) => {
+      expect(await createCompanyProfile({ ...PROFILE, website })).toEqual({
+        ok: false,
+        error: 'Use a website address that starts with http:// or https://',
+      });
+      expect(m.companyCreate).not.toHaveBeenCalled();
+    },
+  );
+
   it('returns the schema message for invalid input', async () => {
     expect(await createCompanyProfile({ ...PROFILE, description: 'short' })).toEqual({
       ok: false,
