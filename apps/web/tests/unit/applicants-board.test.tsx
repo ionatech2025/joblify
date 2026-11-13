@@ -60,6 +60,58 @@ describe('ApplicantsBoard', () => {
     await act(async () => settle());
   });
 
+  const withNote = (notes: string) => ({ ...row('a', 'Ada'), recruiterNotes: notes });
+  const notesFor = (name: string) =>
+    screen.getByRole('textbox', { name: `Notes for ${name}` }) as HTMLTextAreaElement;
+
+  it('shows a note saved elsewhere and never saves the stale one over it', async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(
+      <ApplicantsBoard applications={[withNote('X'), row('b', 'Bo')]} showClosed={false} />,
+    );
+    rerender(<ApplicantsBoard applications={[withNote('Y'), row('b', 'Bo')]} showClosed={false} />);
+
+    notesFor('Ada').focus();
+    await user.tab();
+
+    expect(notesFor('Ada').value).toBe('Y');
+    expect(m.saveNote).not.toHaveBeenCalled();
+  });
+
+  it('keeps an unsaved draft when a newer note arrives, and saves the draft once', async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(
+      <ApplicantsBoard applications={[withNote('X'), row('b', 'Bo')]} showClosed={false} />,
+    );
+    await user.type(notesFor('Ada'), ' and Y');
+    rerender(<ApplicantsBoard applications={[withNote('Y'), row('b', 'Bo')]} showClosed={false} />);
+    expect(notesFor('Ada').value).toBe('X and Y');
+
+    await user.tab();
+    notesFor('Ada').focus();
+    await user.tab();
+
+    expect(m.saveNote.mock.calls).toEqual([['a', 'X and Y']]);
+  });
+
+  it('keeps the draft after a failed save so leaving the field again retries it', async () => {
+    const user = userEvent.setup();
+    m.saveNote.mockRejectedValueOnce(new Error('Network down'));
+    render(<ApplicantsBoard applications={[withNote('X'), row('b', 'Bo')]} showClosed={false} />);
+
+    await user.type(notesFor('Ada'), ' and Y');
+    await user.tab();
+    await waitFor(() => expect(screen.queryByText('Saving…')).toBeNull());
+    expect(notesFor('Ada').value).toBe('X and Y');
+
+    notesFor('Ada').focus();
+    await user.tab();
+    expect(m.saveNote.mock.calls).toEqual([
+      ['a', 'X and Y'],
+      ['a', 'X and Y'],
+    ]);
+  });
+
   it('shows the server rows it is handed, without a reload', () => {
     const { rerender } = render(
       <ApplicantsBoard applications={[row('a', 'Ada')]} showClosed={false} />,
