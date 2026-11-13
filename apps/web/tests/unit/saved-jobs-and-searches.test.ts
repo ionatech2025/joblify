@@ -14,8 +14,8 @@ const m = vi.hoisted(() => {
     AuthError,
     requireRole: vi.fn(),
     savedJobFindUnique: vi.fn(),
-    savedJobDelete: vi.fn(),
-    savedJobCreate: vi.fn(),
+    savedJobDeleteMany: vi.fn(),
+    savedJobCreateMany: vi.fn(),
     jobPostFindFirst: vi.fn(),
     savedSearchCount: vi.fn(),
     savedSearchCreate: vi.fn(),
@@ -33,8 +33,8 @@ vi.mock('@/lib/db', () => ({
   db: {
     savedJob: {
       findUnique: m.savedJobFindUnique,
-      delete: m.savedJobDelete,
-      create: m.savedJobCreate,
+      deleteMany: m.savedJobDeleteMany,
+      createMany: m.savedJobCreateMany,
     },
     jobPost: {
       findFirst: m.jobPostFindFirst,
@@ -59,8 +59,8 @@ beforeEach(() => {
   vi.clearAllMocks();
   m.requireRole.mockResolvedValue({ id: 'seeker-1', userType: 'JOB_SEEKER' });
   m.savedJobFindUnique.mockResolvedValue(null);
-  m.savedJobDelete.mockResolvedValue({});
-  m.savedJobCreate.mockResolvedValue({});
+  m.savedJobDeleteMany.mockResolvedValue({ count: 1 });
+  m.savedJobCreateMany.mockResolvedValue({ count: 1 });
   m.jobPostFindFirst.mockResolvedValue({ id: 'job-1' });
   m.savedSearchCount.mockResolvedValue(0);
   m.savedSearchCreate.mockResolvedValue({});
@@ -72,24 +72,37 @@ describe('toggleSavedJob', () => {
   it('saves a live published job when not already saved', async () => {
     const res = await toggleSavedJob('job-1');
     expect(res).toEqual({ ok: true, data: { saved: true } });
-    expect(m.savedJobCreate).toHaveBeenCalledWith({
-      data: { userId: 'seeker-1', jobPostId: 'job-1' },
+    expect(m.savedJobCreateMany).toHaveBeenCalledWith({
+      data: [{ userId: 'seeker-1', jobPostId: 'job-1' }],
+      // ON CONFLICT DO NOTHING: a concurrent save of the same job is not an error.
+      skipDuplicates: true,
     });
+  });
+
+  it('reports saved when a concurrent request already saved the job', async () => {
+    m.savedJobCreateMany.mockResolvedValue({ count: 0 });
+    expect(await toggleSavedJob('job-1')).toEqual({ ok: true, data: { saved: true } });
+  });
+
+  it('reports unsaved when a concurrent request already removed the row', async () => {
+    m.savedJobFindUnique.mockResolvedValue({ id: 'saved-1' });
+    m.savedJobDeleteMany.mockResolvedValue({ count: 0 });
+    expect(await toggleSavedJob('job-1')).toEqual({ ok: true, data: { saved: false } });
   });
 
   it('unsaves an already-saved job', async () => {
     m.savedJobFindUnique.mockResolvedValue({ id: 'saved-1' });
     const res = await toggleSavedJob('job-1');
     expect(res).toEqual({ ok: true, data: { saved: false } });
-    expect(m.savedJobDelete).toHaveBeenCalledWith({ where: { id: 'saved-1' } });
-    expect(m.savedJobCreate).not.toHaveBeenCalled();
+    expect(m.savedJobDeleteMany).toHaveBeenCalledWith({ where: { id: 'saved-1' } });
+    expect(m.savedJobCreateMany).not.toHaveBeenCalled();
   });
 
   it('refuses to save a job that is not published or does not exist', async () => {
     m.jobPostFindFirst.mockResolvedValue(null);
     const res = await toggleSavedJob('job-missing');
     expect(res).toMatchObject({ ok: false, error: expect.stringMatching(/not available/i) });
-    expect(m.savedJobCreate).not.toHaveBeenCalled();
+    expect(m.savedJobCreateMany).not.toHaveBeenCalled();
   });
 });
 
