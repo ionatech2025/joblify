@@ -1,8 +1,4 @@
 // @vitest-environment jsdom
-//
-// The admin trust & safety queues on /admin: what an admin sees before
-// deciding, the reason a destructive decision requires, and where keyboard
-// focus lands once a decided row leaves the list (WCAG 2.4.3).
 
 import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest';
 import { cleanup, render, screen, within } from '@testing-library/react';

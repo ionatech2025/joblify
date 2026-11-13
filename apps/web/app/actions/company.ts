@@ -34,9 +34,6 @@ async function auditCtx() {
   };
 }
 
-// Self-serve: any authenticated user can create a company. This promotes them to
-// userType=COMPANY and creates the CompanyProfile in one transaction. The
-// client redirects to /company/jobs on success.
 export async function createCompanyProfile(input: CompanyProfileInput): Promise<ActionResult> {
   const user = await requireUser();
   const result = CompanyProfileSchema.safeParse(input);
@@ -96,8 +93,6 @@ export async function createCompanyProfile(input: CompanyProfileInput): Promise<
   return succeed();
 }
 
-// Also the resubmission path: a REJECTED company edits its profile on
-// /employer-setup, and saving puts it back in the admin queue.
 export async function updateCompanyProfile(input: CompanyProfileInput): Promise<ActionResult> {
   const user = await requireRole('COMPANY');
   const result = CompanyProfileSchema.safeParse(input);
@@ -110,8 +105,6 @@ export async function updateCompanyProfile(input: CompanyProfileInput): Promise<
   });
   if (!profile) throw new AuthError('FORBIDDEN');
 
-  // The verified badge vouches for the name and website an admin checked;
-  // changing them would let a verified account pass as someone else.
   if (
     profile.verificationStatus === 'VERIFIED' &&
     (parsed.companyName !== profile.companyName || (parsed.website || null) !== profile.website)

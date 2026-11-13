@@ -159,7 +159,7 @@ describe('verifyCompany', () => {
 
   it('emails the company owner when it is verified', async () => {
     await verifyCompany(PROFILE_ID, 'VERIFIED');
-    expect(m.sendEmail).not.toHaveBeenCalled(); // off the response path
+    expect(m.sendEmail).not.toHaveBeenCalled();
     await runAfter();
     const mail = m.sendEmail.mock.calls[0]![0];
     expect(mail.to).toBe('owner@acme.test');

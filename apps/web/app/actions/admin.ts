@@ -23,14 +23,8 @@ function requiredReason(reason: string | undefined, missing: string): ActionResu
   return succeed(text);
 }
 
-// Thrown inside the transaction to roll it back when the profile left PENDING
-// between the admin loading the queue and deciding.
 class AlreadyReviewed extends Error {}
 
-// Trust & safety: an ADMIN reviews a company's self-submitted profile and
-// either verifies it (unlocks full visibility — see JOB_UC_06.0's "unverified
-// companies do not appear in the list") or rejects it with a reason the
-// company reads on /employer-setup and in email, then fixes and resubmits.
 export async function verifyCompany(
   companyProfileId: string,
   status: 'VERIFIED' | 'REJECTED',
@@ -111,8 +105,6 @@ export async function verifyCompany(
   updateTag(tags.companies());
   updateTag(tags.notifications(profile.userId));
 
-  // A non-VERIFIED company is redirected away from /company/*, notifications
-  // included, so email is how it learns the outcome. Best-effort, after().
   after(async () => {
     try {
       if (await isEmailSuppressed(profile.user.email)) return;
@@ -139,15 +131,6 @@ export async function verifyCompany(
   return succeed();
 }
 
-/**
- * Resolve a job report.
- *
- * ACTIONED needs a reason (kept in the audit event), removes the posting
- * (archived + soft-deleted, so it leaves the site, sitemap and search at once),
- * tells the company, warns everyone who applied, and resolves every other open
- * report on the same job. DISMISSED closes just this report. Either way the
- * decision is audited with the admin's id.
- */
 export async function resolveJobReport(
   reportId: string,
   outcome: 'ACTIONED' | 'DISMISSED',
@@ -215,8 +198,6 @@ export async function resolveJobReport(
             },
           });
         }
-        // Even when the company had already archived it: a removed scam
-        // posting is exactly the one its applicants need to hear about.
         await tx.notification.createMany({
           data: applicantIds.map((userId) => ({
             userId,

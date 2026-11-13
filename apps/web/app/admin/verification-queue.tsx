@@ -158,8 +158,6 @@ export function VerificationQueue({
   );
 }
 
-// Everything an admin checks before vouching for a company, readable at every
-// width (the narrow layout drops the other columns).
 function CompanyDetails({ company: c }: { company: PendingCompany }) {
   const contact = [c.contactPersonName, c.contactPersonPosition].filter(Boolean).join(', ');
   const facts: [string, React.ReactNode][] = [

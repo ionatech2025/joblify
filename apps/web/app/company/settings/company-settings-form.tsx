@@ -44,7 +44,6 @@ export function CompanySettingsForm({
   verificationStatus: VerificationStatus;
 }) {
   const verified = verificationStatus === 'VERIFIED';
-  // A rejected company edits here (on /employer-setup) and saving resubmits.
   const resubmit = verificationStatus === 'REJECTED';
   const router = useRouter();
   const hydrated = useHydrated();

@@ -21,7 +21,6 @@ export function focusAfterRemoving<T extends { id: string }>(
   return next ? firstActionId(next) : headingId;
 }
 
-/** Focus an element by id after the render that (re)mounts it. */
 export function useFocusAfterRender(): (elementId: string) => void {
   const pending = useRef<string | null>(null);
   useEffect(() => {
@@ -34,7 +33,6 @@ export function useFocusAfterRender(): (elementId: string) => void {
   }, []);
 }
 
-/** The required free-text reason an admin gives for a destructive decision. */
 export function ReasonForm({
   label,
   hint,

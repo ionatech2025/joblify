@@ -74,7 +74,6 @@ export default async function AdminPage() {
       <ConsoleWidth className="max-w-6xl py-3">
         <div className="mb-2 flex items-baseline justify-between gap-2">
           <div>
-            {/* tabIndex -1: focus lands here when the last row is decided. */}
             <h2
               id={VERIFICATION_HEADING}
               tabIndex={-1}

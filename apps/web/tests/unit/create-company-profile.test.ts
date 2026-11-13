@@ -64,8 +64,6 @@ beforeEach(() => {
   m.userUpdate.mockResolvedValue({});
 });
 
-// Expected failures come back as results: a thrown message is replaced by a
-// generic one in production builds, so the user never saw "already registered".
 describe('createCompanyProfile', () => {
   it('creates the profile', async () => {
     expect(await createCompanyProfile(PROFILE)).toEqual({ ok: true, data: undefined });

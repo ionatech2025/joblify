@@ -1,6 +1,3 @@
-// Mail to a company account about its own verification. Same plain-text +
-// minimal HTML shape as templates.ts.
-
 export type CompanyDecision = { status: 'VERIFIED' } | { status: 'REJECTED'; reason: string };
 
 export function companyVerificationEmail(
