@@ -10,9 +10,12 @@ import { trustedLogoUrl } from '@/lib/storage/blob';
 import { logger } from '@/lib/observability/logger';
 import {
   CompanyProfileSchema,
+  VerifiedCompanyEditSchema,
   type CompanyProfileInput,
+  type VerifiedCompanyEditInput,
 } from '@/app/company/company-profile-schema';
 import { clientIp } from '@/lib/security/client-ip';
+import { type ActionResult, fail, succeed } from '@/lib/action-result';
 
 function slugify(name: string): string {
   const base =
@@ -33,20 +36,17 @@ async function auditCtx() {
   };
 }
 
-// Self-serve: any authenticated user can create a company. This promotes them to
-// userType=COMPANY and creates the CompanyProfile in one transaction. Returns
-// nothing — the client redirects to /company/jobs.
-export async function createCompanyProfile(input: CompanyProfileInput): Promise<void> {
+export async function createCompanyProfile(input: CompanyProfileInput): Promise<ActionResult> {
   const user = await requireUser();
-  const parsed = CompanyProfileSchema.parse(input);
+  const result = CompanyProfileSchema.safeParse(input);
+  if (!result.success) return fail(result.error.issues[0]?.message ?? 'Check the company details.');
+  const parsed = result.data;
 
   const existing = await db.companyProfile.findUnique({
     where: { userId: user.id },
     select: { id: true },
   });
-  if (existing) {
-    throw new Error('A company profile already exists for this account.');
-  }
+  if (existing) return fail('A company profile already exists for this account.');
 
   // Check for duplicate company name (JOB_UC_01.1 / JOB_UC_05.1)
   const duplicateName = await db.companyProfile.findFirst({
@@ -55,9 +55,7 @@ export async function createCompanyProfile(input: CompanyProfileInput): Promise<
     },
     select: { id: true },
   });
-  if (duplicateName) {
-    throw new Error('A company with this name is already registered.');
-  }
+  if (duplicateName) return fail('A company with this name is already registered.');
 
   const ctx = { ...(await auditCtx()), actorId: user.id };
 
@@ -94,17 +92,36 @@ export async function createCompanyProfile(input: CompanyProfileInput): Promise<
   );
 
   logger.info({ userId: user.id, companyProfileId: created.id }, 'company profile created');
+  return succeed();
 }
 
-export async function updateCompanyProfile(input: CompanyProfileInput): Promise<void> {
-  const user = await requireRole('COMPANY');
-  const parsed = CompanyProfileSchema.parse(input);
+class StatusChanged extends Error {}
 
+export async function updateCompanyProfile(
+  input: CompanyProfileInput | VerifiedCompanyEditInput,
+): Promise<ActionResult> {
+  const user = await requireRole('COMPANY');
   const profile = await db.companyProfile.findUnique({
     where: { userId: user.id },
-    select: { id: true, logoUrl: true },
+    select: { id: true, logoUrl: true, verificationStatus: true },
   });
   if (!profile) throw new AuthError('FORBIDDEN');
+
+  const result =
+    profile.verificationStatus === 'VERIFIED'
+      ? VerifiedCompanyEditSchema.safeParse(input)
+      : CompanyProfileSchema.safeParse(input);
+  if (!result.success) return fail(result.error.issues[0]?.message ?? 'Check the company details.');
+  const {
+    companyName,
+    website,
+    ...parsed
+  }: VerifiedCompanyEditInput & Partial<CompanyProfileInput> = result.data;
+  const identity = companyName === undefined ? null : { companyName, website: website || null };
+
+  // rejectionReason stays as history: the admin queue shows it beside the resubmission.
+  const resubmission =
+    profile.verificationStatus === 'REJECTED' ? { verificationStatus: 'PENDING' as const } : {};
 
   // '' clears the logo; a value must already be ours (uploadLogoDirect is the
   // only thing that mints one). A foreign URL is ignored rather than stored —
@@ -119,54 +136,68 @@ export async function updateCompanyProfile(input: CompanyProfileInput): Promise<
           ? { logoUrl: trustedLogo }
           : {};
 
-  const duplicateName = await db.companyProfile.findFirst({
-    where: {
-      companyName: { equals: parsed.companyName, mode: 'insensitive' },
-      id: { not: profile.id },
-    },
-    select: { id: true },
-  });
-  if (duplicateName) {
-    throw new Error('A company with this name is already registered.');
+  if (identity) {
+    const duplicateName = await db.companyProfile.findFirst({
+      where: {
+        companyName: { equals: identity.companyName, mode: 'insensitive' },
+        id: { not: profile.id },
+      },
+      select: { id: true },
+    });
+    if (duplicateName) return fail('A company with this name is already registered.');
   }
 
   const ctx = { ...(await auditCtx()), actorId: user.id };
 
-  await withAudit(
-    ctx,
-    {
-      action: 'COMPANY_PROFILE_UPDATED',
-      entity: 'company_profile',
-      entityId: profile.id,
-      after: () => parsed,
-    },
-    async (tx) => {
-      await tx.companyProfile.update({
-        where: { id: profile.id },
-        data: {
-          companyName: parsed.companyName,
-          industry: parsed.industry,
-          companySize: parsed.companySize,
-          description: parsed.description,
-          website: parsed.website || null,
-          linkedin: parsed.linkedin || null,
-          address: parsed.address || null,
-          contactPersonName: parsed.contactPersonName || null,
-          contactPersonPosition: parsed.contactPersonPosition || null,
-          ...logoPatch,
-        },
-      });
-      if (parsed.phone) {
-        await tx.user.update({
-          where: { id: user.id },
-          data: { phone: parsed.phone },
+  try {
+    await withAudit(
+      ctx,
+      {
+        action: 'COMPANY_PROFILE_UPDATED',
+        entity: 'company_profile',
+        entityId: profile.id,
+        before: { verificationStatus: profile.verificationStatus },
+        after: () => ({ ...parsed, ...identity, ...resubmission }),
+      },
+      async (tx) => {
+        // The lock and resubmit rules above were decided for the status we
+        // read; an admin decision since then must not let this write through.
+        const { count } = await tx.companyProfile.updateMany({
+          where: { id: profile.id, verificationStatus: profile.verificationStatus },
+          data: {
+            ...identity,
+            industry: parsed.industry,
+            companySize: parsed.companySize,
+            description: parsed.description,
+            linkedin: parsed.linkedin || null,
+            address: parsed.address || null,
+            contactPersonName: parsed.contactPersonName || null,
+            contactPersonPosition: parsed.contactPersonPosition || null,
+            ...logoPatch,
+            ...resubmission,
+          },
         });
-      }
-    },
-  );
+        if (count === 0) throw new StatusChanged();
+        if (parsed.phone) {
+          await tx.user.update({
+            where: { id: user.id },
+            data: { phone: parsed.phone },
+          });
+        }
+      },
+    );
+  } catch (err) {
+    if (err instanceof StatusChanged) {
+      return fail(
+        'Your verification status changed while you were editing. Reload the page and try again.',
+      );
+    }
+    throw err;
+  }
 
   updateTag(tags.company(user.id));
   updateTag(tags.companies());
 
   logger.info({ userId: user.id, companyProfileId: profile.id }, 'company profile updated');
+  return succeed();
 }

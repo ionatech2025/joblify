@@ -360,6 +360,7 @@ describe('Console list surfaces (SavedList, SavedSearchList, JobReportsQueue, Re
   it('renders JobReportsQueue as a console table with reason badges and aggregate count', () => {
     render(
       <JobReportsQueue
+        headingId="job-reports-heading"
         initial={[
           {
             id: 'rep_1',

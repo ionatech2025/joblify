@@ -11,6 +11,7 @@ import { ListView, type ListColumn } from '@/app/components/console/list-view';
 import { TimeStamp } from '@/app/components/ui/timestamp';
 import { unwrap } from '@/lib/action-result';
 import { toast } from '@/lib/stores/ui';
+import { focusAfterRemoving, ReasonForm, useFocusAfterRender } from './decision';
 
 export type OpenReport = {
   id: string;
@@ -30,33 +31,38 @@ const REASON_LABEL: Record<string, string> = {
   OTHER: 'Other',
 };
 
-export function JobReportsQueue({ initial }: { initial: OpenReport[] }) {
-  const [rows, setRows] = useState(initial);
-  const [busyId, setBusyId] = useState<string | null>(null);
-  const [, startTransition] = useTransition();
+const dismissId = (r: OpenReport) => `dismiss-${r.id}`;
 
-  function decide(report: OpenReport, outcome: 'ACTIONED' | 'DISMISSED') {
-    if (
-      outcome === 'ACTIONED' &&
-      !window.confirm(`Remove “${report.jobTitle}”? The company is notified and it leaves search.`)
-    ) {
-      return;
-    }
+export function JobReportsQueue({
+  initial,
+  headingId,
+}: {
+  initial: OpenReport[];
+  headingId: string;
+}) {
+  const [rows, setRows] = useState(initial);
+  const [removing, setRemoving] = useState<string | null>(null);
+  const [, startTransition] = useTransition();
+  const focus = useFocusAfterRender();
+
+  function decide(
+    report: OpenReport,
+    resolution: { outcome: 'ACTIONED'; reason: string } | { outcome: 'DISMISSED' },
+  ) {
+    setRemoving(null);
     const prev = rows;
-    setBusyId(report.id);
+    focus(focusAfterRemoving(prev, report.id, dismissId, headingId));
     setRows((r) => r.filter((x) => x.id !== report.id)); // optimistic
     startTransition(async () => {
       try {
-        unwrap(await resolveJobReport(report.id, outcome));
-        toast.success(outcome === 'ACTIONED' ? 'Job removed' : 'Report dismissed');
+        unwrap(await resolveJobReport(report.id, resolution));
+        toast.success(resolution.outcome === 'ACTIONED' ? 'Job removed' : 'Report dismissed');
       } catch (err) {
         setRows(prev);
         toast.error(
           "Couldn't resolve that report",
           err instanceof Error ? err.message : 'Try again.',
         );
-      } finally {
-        setBusyId(null);
       }
     });
   }
@@ -115,26 +121,38 @@ export function JobReportsQueue({ initial }: { initial: OpenReport[] }) {
       key: 'actions',
       header: 'Decision',
       align: 'end',
-      cell: (r) => (
-        <div className="flex justify-end gap-1.5">
-          <Button
-            size="sm"
-            variant="secondary"
-            disabled={busyId === r.id}
-            onClick={() => decide(r, 'DISMISSED')}
-          >
-            Dismiss
-          </Button>
-          <Button
-            size="sm"
-            variant="danger"
-            disabled={busyId === r.id}
-            onClick={() => decide(r, 'ACTIONED')}
-          >
-            Remove job
-          </Button>
-        </div>
-      ),
+      cell: (r) =>
+        removing === r.id ? (
+          <ReasonForm
+            label={`Reason for removing ${r.jobTitle}`}
+            hint="Kept in the audit log. The company and every applicant are told it was removed."
+            submitLabel="Remove job"
+            onSubmit={(reason) => decide(r, { outcome: 'ACTIONED', reason })}
+            onCancel={() => {
+              focus(`remove-${r.id}`);
+              setRemoving(null);
+            }}
+          />
+        ) : (
+          <div className="flex justify-end gap-1.5">
+            <Button
+              id={dismissId(r)}
+              size="sm"
+              variant="secondary"
+              onClick={() => decide(r, { outcome: 'DISMISSED' })}
+            >
+              Dismiss
+            </Button>
+            <Button
+              id={`remove-${r.id}`}
+              size="sm"
+              variant="danger"
+              onClick={() => setRemoving(r.id)}
+            >
+              Remove job
+            </Button>
+          </div>
+        ),
     },
   ];
 

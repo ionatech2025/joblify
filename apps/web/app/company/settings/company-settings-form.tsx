@@ -2,18 +2,21 @@
 
 import { useRef, useState, useTransition } from 'react';
 import { useForm } from 'react-hook-form';
+import type { VerificationStatus } from '@prisma/client';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
 import {
   CompanyProfileSchema,
+  VerifiedCompanyEditSchema,
   type CompanyProfileInput,
+  type VerifiedCompanyEditInput,
   INDUSTRY_OPTIONS,
   SIZE_VALUES,
   SIZE_LABELS,
 } from '@/app/company/company-profile-schema';
 import { updateCompanyProfile } from '@/app/actions/company';
 import { uploadLogoDirect } from '@/app/actions/uploads';
-import { unwrap } from '@/lib/action-result';
+import { errorMessage, unwrap } from '@/lib/action-result';
 import { Input, Select, Textarea } from '@/app/components/ui/form';
 import { Button } from '@/app/components/ui/button';
 import {
@@ -22,6 +25,7 @@ import {
   SheetGroup,
   SheetGroups,
   SheetTitle,
+  SheetValue,
 } from '@/app/components/console/sheet';
 import { DirtyBar } from '@/app/components/console/dirty-bar';
 import { useCompanySettingsDraftStore } from '@/lib/stores/company-settings-draft';
@@ -30,13 +34,28 @@ import { useHydrated } from '@/lib/use-hydrated';
 import { toast } from '@/lib/stores/ui';
 import { industryLabel } from '@/lib/ui/status';
 
+function LockedValue({ label, value }: { label: string; value: string }) {
+  return (
+    <SheetValue label={label}>
+      {value || 'Not given'}
+      <span className="text-fg-subtle mt-0.5 block text-[12px]">
+        Locked after verification. The verified badge vouches for it.
+      </span>
+    </SheetValue>
+  );
+}
+
 export function CompanySettingsForm({
   initial,
   logoUrl,
+  verificationStatus,
 }: {
   initial: CompanyProfileInput;
   logoUrl: string | null;
+  verificationStatus: VerificationStatus;
 }) {
+  const verified = verificationStatus === 'VERIFIED';
+  const resubmit = verificationStatus === 'REJECTED';
   const router = useRouter();
   const hydrated = useHydrated();
   const [pending, start] = useTransition();
@@ -55,7 +74,7 @@ export function CompanySettingsForm({
     reset,
     formState: { errors, isDirty },
   } = useForm<CompanyProfileInput>({
-    resolver: zodResolver(CompanyProfileSchema),
+    resolver: zodResolver(verified ? VerifiedCompanyEditSchema : CompanyProfileSchema),
     defaultValues: initial,
   });
 
@@ -68,24 +87,21 @@ export function CompanySettingsForm({
     onRestore: () => setRestoredDraft(true),
   });
 
-  function onSubmit(values: CompanyProfileInput) {
+  function onSubmit(values: CompanyProfileInput | VerifiedCompanyEditInput) {
     setError(null);
     start(async () => {
       try {
-        await updateCompanyProfile(values);
+        unwrap(await updateCompanyProfile(values));
         clearDraft();
         setRestoredDraft(false);
         // Rebase the dirty baseline onto what was just saved, so the bar reads
         // "All changes saved" rather than staying dirty until a reload.
         reset(values);
         router.refresh();
-        toast.success('Company profile saved');
+        if (resubmit) toast.success('Resubmitted for review', 'An administrator will review it.');
+        else toast.success('Company profile saved');
       } catch (err) {
-        let message = err instanceof Error ? err.message : 'Could not save. Try again.';
-        if (message.includes('Server Components render') || message.includes('digest')) {
-          message =
-            'A company with this name may already be registered, or your changes could not be saved.';
-        }
+        const message = errorMessage(err, 'Something went wrong saving your company. Try again.');
         setError(message);
         toast.error("Couldn't save", message);
       }
@@ -126,8 +142,12 @@ export function CompanySettingsForm({
       <fieldset disabled={!hydrated} className="m-0 contents border-0 p-0">
         <FormSheet>
           <SheetTitle
-            title="Company profile"
-            subtitle="This is what jobseekers see on your company page and job posts."
+            title={resubmit ? 'Fix and resubmit' : 'Company profile'}
+            subtitle={
+              resubmit
+                ? 'Update your details, then resubmit. An administrator reviews them again.'
+                : 'This is what jobseekers see on your company page and job posts.'
+            }
             aside={
               <div className="flex items-center gap-3">
                 {logo ? (
@@ -168,13 +188,17 @@ export function CompanySettingsForm({
 
           <SheetGroups>
             <SheetGroup title="Identity">
-              <SheetField label="Company name" error={errors.companyName?.message} required>
-                <Input
-                  defaultValue={initial.companyName}
-                  {...register('companyName')}
-                  autoComplete="organization"
-                />
-              </SheetField>
+              {verified ? (
+                <LockedValue label="Company name" value={initial.companyName} />
+              ) : (
+                <SheetField label="Company name" error={errors.companyName?.message} required>
+                  <Input
+                    defaultValue={initial.companyName}
+                    {...register('companyName')}
+                    autoComplete="organization"
+                  />
+                </SheetField>
+              )}
               <SheetField label="Industry">
                 <Select defaultValue={initial.industry} {...register('industry')}>
                   {INDUSTRY_OPTIONS.map((i) => (
@@ -229,15 +253,19 @@ export function CompanySettingsForm({
                   placeholder="+256 743 535 678"
                 />
               </SheetField>
-              <SheetField label="Website" error={errors.website?.message}>
-                <Input
-                  type="url"
-                  defaultValue={initial.website ?? ''}
-                  {...register('website')}
-                  autoComplete="url"
-                  placeholder="https://acme.com"
-                />
-              </SheetField>
+              {verified ? (
+                <LockedValue label="Website" value={initial.website ?? ''} />
+              ) : (
+                <SheetField label="Website" error={errors.website?.message}>
+                  <Input
+                    type="url"
+                    defaultValue={initial.website ?? ''}
+                    {...register('website')}
+                    autoComplete="url"
+                    placeholder="https://acme.com"
+                  />
+                </SheetField>
+              )}
               <SheetField label="LinkedIn" error={errors.linkedin?.message}>
                 <Input
                   type="url"
@@ -281,7 +309,7 @@ export function CompanySettingsForm({
               reset(initial);
               setRestoredDraft(false);
             }}
-            saveLabel="Save changes"
+            saveLabel={resubmit ? 'Resubmit for review' : 'Save changes'}
           />
         </FormSheet>
       </fieldset>

@@ -235,7 +235,7 @@ JPEG → soft-delete the row and abort. Legacy `.doc` (reported as `application/
 
 ## Error handling
 
-- **Server Actions**: _expected_ failures (validation, rate limit, "already applied", a refused transition) **return** an `ActionResult` — a thrown message is replaced by React's redaction paragraph in production. Unexpected ones (auth, DB) throw. See `lib/action-result.ts`.
+- **Server Actions**: _expected_ failures (validation, rate limit, "already applied", a refused transition) **return** an `ActionResult` — a thrown message is replaced by React's redaction paragraph in production. Unexpected ones (auth, DB) throw. See `lib/action-result.ts`. On the client, `errorMessage(err, fallback)` shows the fallback instead of that paragraph when something still throws.
 - **Route Handlers**: return `NextResponse.json({ error: 'machine-code', detail: dev-only }, { status: 4xx | 5xx })`.
 - **Workflows**: throw. Workflow retries handle transient errors; deterministic errors (mime mismatch, missing row) should not retry — they raise + log.
 - **AuthError**: thrown by `requireUser` / `requireRole` / `requireSelfOrAdmin`. Caught at the route or layout level (which redirects to `/sign-in`).

@@ -269,3 +269,14 @@ All expand-only (nullable or defaulted) so the previous build keeps working whil
 | `job_reports` (new table) | User reports of postings (`SCAM`/`DISCRIMINATORY`/`MISLEADING`/`DUPLICATE`/`OTHER`), one per (job, reporter), resolved by an admin. `reporterId` is SET NULL on user erasure; `resolvedBy` is deliberately not a foreign key. |
 
 `resumes.parsedJson` carries `_source`: `'model'`, `'heuristic'` (regex fallback — re-parsed by the sweep) or `'profile'` (generated from the profile).
+
+## Company verification review columns
+
+Migration `20261114120000_company_verification_review`. Expand-only: both columns are nullable.
+
+| Column                             | Why                                                                                                                                                                                                                                                                                                                                                              |
+| ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `company_profiles.rejectionReason` | The reason an admin must give to reject a company (`verifyCompany`). Shown to the company on `/employer-setup` while rejected, and sent by email. Kept when the company resubmits (`updateCompanyProfile` on a `REJECTED` profile sets `PENDING`) so the admin queue can show "Previously rejected"; replaced by the next rejection and cleared on verification. |
+| `company_profiles.reviewedAt`      | When an admin last decided. Kept through a resubmission.                                                                                                                                                                                                                                                                                                         |
+
+`verifyCompany` writes only `WHERE verificationStatus = 'PENDING'` and the `updatedAt` the admin's queue showed. Prisma bumps `@updatedAt` on every write, so a stale admin tab cannot flip a decided company or approve details edited, or rejected and resubmitted, after it loaded.

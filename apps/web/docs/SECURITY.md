@@ -177,9 +177,23 @@ private objects (log the pathname).
 
 Any signed-in user can report a posting (`app/actions/report-job.ts`: rate-limited, one report per
 reporter per job, not your own job). Admins resolve the queue on `/admin`
-(`resolveJobReport`): _remove_ archives the posting immediately, notifies the company, de-indexes it
-and closes every open report on it; _dismiss_ closes just that report. Company verification gates who
-can post; reports are the control for a verified account that goes bad.
+(`resolveJobReport`): _remove_ needs a reason (kept in the audit event), archives the posting
+immediately, notifies the company, warns every applicant in-app, de-indexes it and closes every open
+report on it; _dismiss_ closes just that report. Both write only while the report is still open, so a
+second admin or a stale tab gets "resolved since you loaded the queue" instead of archiving, notifying
+and auditing twice. Company verification gates who can post; reports are the control for a verified
+account that goes bad.
+
+Company verification (`verifyCompany`) decides only a `PENDING` profile whose `updatedAt` still
+matches the version the admin's queue showed. Every write bumps it, so a stale admin tab cannot flip a
+decided company or approve details that were edited, or rejected and resubmitted, after the admin
+loaded the queue. Rejecting needs a reason, which the company reads on `/employer-setup` and by email;
+editing a rejected profile there resubmits it as `PENDING`. A verified company cannot change its name
+or website, because the badge vouches for exactly those: the settings form shows them as text, and
+`updateCompanyProfile` leaves them out of validation and the write, so imported values that fail
+today's rules do not block other edits. `updateCompanyProfile` writes only while the profile still
+has the status it checked, so an edit that races an approval fails instead of landing on the verified
+profile.
 
 ## File uploads
 

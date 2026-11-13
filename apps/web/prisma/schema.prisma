@@ -359,6 +359,8 @@ model CompanyProfile {
   contactPersonPosition String?
 
   verificationStatus VerificationStatus @default(PENDING)
+  rejectionReason    String?
+  reviewedAt         DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

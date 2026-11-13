@@ -54,9 +54,26 @@ export const CompanyProfileSchema = z.object({
   contactPersonPosition: z.string().trim().max(100).optional().or(z.literal('')),
   phone: optionalPhone,
   address: z.string().trim().max(255).optional().or(z.literal('')),
-  website: z.string().trim().url('Invalid website URL').max(200).optional().or(z.literal('')),
+  // .url() alone accepts any scheme, javascript: included, and this renders as a link.
+  website: z
+    .string()
+    .trim()
+    .url('Invalid website URL')
+    .regex(/^https?:\/\//i, 'Use a website address that starts with http:// or https://')
+    .max(200)
+    .optional()
+    .or(z.literal('')),
   linkedin: z.string().trim().url('Invalid LinkedIn URL').max(200).optional().or(z.literal('')),
   logoUrl: z.string().trim().url('Invalid logo URL').optional().or(z.literal('')),
 });
 
 export type CompanyProfileInput = z.infer<typeof CompanyProfileSchema>;
+
+// A verified company's name and website are locked (the badge vouches for
+// them), so its edits leave them out rather than re-validating imported values.
+export const VerifiedCompanyEditSchema = CompanyProfileSchema.omit({
+  companyName: true,
+  website: true,
+});
+
+export type VerifiedCompanyEditInput = z.infer<typeof VerifiedCompanyEditSchema>;
