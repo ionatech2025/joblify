@@ -23,10 +23,12 @@ const m = vi.hoisted(() => {
     appFindFirst: vi.fn(),
     appCreate: vi.fn(),
     appUpdate: vi.fn(),
+    appUpdateMany: vi.fn(),
     notifCreate: vi.fn(),
     chatAreaFindUnique: vi.fn(),
     chatPartFindUnique: vi.fn(),
     chatPartCreate: vi.fn(),
+    chatPartDeleteMany: vi.fn(),
     send: vi.fn(),
     updateTag: vi.fn(),
   };
@@ -57,10 +59,14 @@ vi.mock('@/lib/db', () => ({
 vi.mock('@/lib/audit', () => ({
   withAudit: (_ctx: unknown, _meta: unknown, fn: (tx: unknown) => unknown) =>
     fn({
-      jobApplication: { create: m.appCreate, update: m.appUpdate },
+      jobApplication: { create: m.appCreate, update: m.appUpdate, updateMany: m.appUpdateMany },
       notification: { create: m.notifCreate },
       chatArea: { findUnique: m.chatAreaFindUnique },
-      chatParticipant: { findUnique: m.chatPartFindUnique, create: m.chatPartCreate },
+      chatParticipant: {
+        findUnique: m.chatPartFindUnique,
+        create: m.chatPartCreate,
+        deleteMany: m.chatPartDeleteMany,
+      },
     }),
 }));
 
@@ -122,6 +128,7 @@ describe('Phase 4: Application Flow (Tests 88–103)', () => {
     });
     m.appCreate.mockResolvedValue({ id: APP_ID, status: 'SUBMITTED' });
     m.appUpdate.mockResolvedValue({ id: APP_ID });
+    m.appUpdateMany.mockResolvedValue({ count: 1 });
     m.chatAreaFindUnique.mockResolvedValue({ id: 'chat-1', title: 'Backend Engineer Chat' });
     m.chatPartFindUnique.mockResolvedValue(null);
     m.chatPartCreate.mockResolvedValue({});
@@ -248,12 +255,10 @@ describe('Phase 4: Application Flow (Tests 88–103)', () => {
   it('98. Accepting an applicant updates their status to Accepted, notifies them, and adds them to the job-specific chat area if one exists (Premium)', async () => {
     m.requireRole.mockResolvedValue({ id: 'comp-user-1', userType: 'COMPANY', plan: 'PRO' });
     await updateApplicantStatus(APP_ID, 'SHORTLISTED');
-    expect(m.appUpdate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: { id: APP_ID },
-        data: { status: 'SHORTLISTED' },
-      }),
-    );
+    expect(m.appUpdateMany).toHaveBeenCalledWith({
+      where: { id: APP_ID, status: 'SUBMITTED' },
+      data: { status: 'SHORTLISTED' },
+    });
     expect(m.chatPartCreate).toHaveBeenCalledWith({
       data: { chatAreaId: 'chat-1', userId: 'seeker1' },
     });
@@ -263,12 +268,10 @@ describe('Phase 4: Application Flow (Tests 88–103)', () => {
   it('99. Rejecting an applicant updates their status to Rejected and sends a rejection notification; they are not added to the chat area', async () => {
     m.requireRole.mockResolvedValue({ id: 'comp-user-1', userType: 'COMPANY', plan: 'PRO' });
     await updateApplicantStatus(APP_ID, 'REJECTED');
-    expect(m.appUpdate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: { id: APP_ID },
-        data: { status: 'REJECTED' },
-      }),
-    );
+    expect(m.appUpdateMany).toHaveBeenCalledWith({
+      where: { id: APP_ID, status: 'SUBMITTED' },
+      data: { status: 'REJECTED' },
+    });
     expect(m.chatPartCreate).not.toHaveBeenCalled();
     expect(m.notifCreate).toHaveBeenCalledWith(
       expect.objectContaining({

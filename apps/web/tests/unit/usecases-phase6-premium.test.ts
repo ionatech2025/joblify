@@ -23,6 +23,7 @@ const m = vi.hoisted(() => {
     chatAreaUpdate: vi.fn(),
     chatPartFindUnique: vi.fn(),
     chatPartCreate: vi.fn(),
+    appFindFirst: vi.fn(),
     chatMessageCreate: vi.fn(),
     userFindFirst: vi.fn(),
     companyProfileFindUnique: vi.fn(),
@@ -59,6 +60,9 @@ vi.mock('@/lib/db', () => ({
     },
     chatMessage: {
       create: m.chatMessageCreate,
+    },
+    jobApplication: {
+      findFirst: m.appFindFirst,
     },
     user: {
       findFirst: m.userFindFirst,
@@ -99,7 +103,13 @@ describe('Phase 6: Premium & Future Features (Tests 121–133)', () => {
     m.requireUser.mockResolvedValue({ id: USER_ID, plan: 'PRO' });
     m.requireRole.mockResolvedValue({ id: 'comp-1', plan: 'PRO' });
     m.chatMessageLimit.mockResolvedValue({ success: true });
-    m.chatAreaFindFirst.mockResolvedValue({ id: CHAT_AREA_ID, kind: 'JOB', title: 'Rust Role' });
+    m.chatAreaFindFirst.mockResolvedValue({
+      id: CHAT_AREA_ID,
+      kind: 'JOB',
+      title: 'Rust Role',
+      jobPostId: JOB_ID,
+    });
+    m.appFindFirst.mockResolvedValue({ id: 'app-1' });
     m.chatAreaFindUnique.mockResolvedValue({ id: CHAT_AREA_ID, kind: 'JOB', title: 'Rust Role' });
     m.chatPartFindUnique.mockResolvedValue(null);
     m.chatPartCreate.mockResolvedValue({});

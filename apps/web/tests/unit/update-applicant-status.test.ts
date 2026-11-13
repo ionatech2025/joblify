@@ -18,13 +18,16 @@ const m = vi.hoisted(() => {
     requireRole: vi.fn(),
     appFindFirst: vi.fn(),
     appUpdate: vi.fn(),
+    appUpdateMany: vi.fn(),
     notifCreate: vi.fn(),
     areaFindUnique: vi.fn(),
     partFindUnique: vi.fn(),
     partCreate: vi.fn(),
+    partDeleteMany: vi.fn(),
     send: vi.fn(),
     isEmailSuppressed: vi.fn(),
     statusChangeTemplate: vi.fn(),
+    notSelectedTemplate: vi.fn(),
     updateTag: vi.fn(),
     afterCallbacks: [] as Array<() => unknown>,
   };
@@ -35,10 +38,14 @@ vi.mock('@/lib/db', () => ({ db: { jobApplication: { findFirst: m.appFindFirst }
 vi.mock('@/lib/audit', () => ({
   withAudit: (_ctx: unknown, _meta: unknown, fn: (tx: unknown) => unknown) =>
     fn({
-      jobApplication: { update: m.appUpdate },
+      jobApplication: { update: m.appUpdate, updateMany: m.appUpdateMany },
       notification: { create: m.notifCreate },
       chatArea: { findUnique: m.areaFindUnique },
-      chatParticipant: { findUnique: m.partFindUnique, create: m.partCreate },
+      chatParticipant: {
+        findUnique: m.partFindUnique,
+        create: m.partCreate,
+        deleteMany: m.partDeleteMany,
+      },
     }),
 }));
 vi.mock('@/lib/email/resend', () => ({
@@ -50,6 +57,10 @@ vi.mock('@/lib/email/templates', () => ({
   statusChange: (t: unknown) => {
     m.statusChangeTemplate(t);
     return { subject: 's', text: 't', html: 'h' };
+  },
+  notSelected: (t: unknown) => {
+    m.notSelectedTemplate(t);
+    return { subject: 'n', text: 't', html: 'h' };
   },
 }));
 // Side effects must be registered through after() (a floating promise is
@@ -87,6 +98,8 @@ beforeEach(() => {
   m.requireRole.mockResolvedValue({ id: 'company1', plan: 'PRO' });
   m.appFindFirst.mockResolvedValue({ ...APPLICATION });
   m.appUpdate.mockResolvedValue({});
+  m.appUpdateMany.mockResolvedValue({ count: 1 });
+  m.partDeleteMany.mockResolvedValue({ count: 0 });
   m.notifCreate.mockResolvedValue({});
   m.areaFindUnique.mockResolvedValue(null);
   m.partFindUnique.mockResolvedValue(null);
@@ -98,13 +111,13 @@ describe('updateApplicantStatus', () => {
   it('propagates the auth error for non-companies', async () => {
     m.requireRole.mockRejectedValue(new m.AuthError('FORBIDDEN'));
     await expect(updateApplicantStatus(APP_ID, 'SHORTLISTED')).rejects.toThrow();
-    expect(m.appUpdate).not.toHaveBeenCalled();
+    expect(m.appUpdateMany).not.toHaveBeenCalled();
   });
 
   it("rejects an application on another company's job (tenancy)", async () => {
     m.appFindFirst.mockResolvedValue(null);
     await expect(updateApplicantStatus(APP_ID, 'SHORTLISTED')).rejects.toThrow();
-    expect(m.appUpdate).not.toHaveBeenCalled();
+    expect(m.appUpdateMany).not.toHaveBeenCalled();
     expect(m.notifCreate).not.toHaveBeenCalled();
   });
 
@@ -114,7 +127,7 @@ describe('updateApplicantStatus', () => {
       ok: false,
       error: expect.stringMatching(/candidate can withdraw/i),
     });
-    expect(m.appUpdate).not.toHaveBeenCalled();
+    expect(m.appUpdateMany).not.toHaveBeenCalled();
     expect(m.notifCreate).not.toHaveBeenCalled();
   });
 
@@ -122,13 +135,13 @@ describe('updateApplicantStatus', () => {
     m.appFindFirst.mockResolvedValue({ ...APPLICATION, status: 'WITHDRAWN' });
     const res = await updateApplicantStatus(APP_ID, 'SHORTLISTED');
     expect(res).toMatchObject({ ok: false, error: expect.stringMatching(/withdrew/i) });
-    expect(m.appUpdate).not.toHaveBeenCalled();
+    expect(m.appUpdateMany).not.toHaveBeenCalled();
     expect(m.notifCreate).not.toHaveBeenCalled(); // and no "you were shortlisted" email
   });
 
   it('is a no-op when the status is unchanged', async () => {
     await updateApplicantStatus(APP_ID, 'SUBMITTED');
-    expect(m.appUpdate).not.toHaveBeenCalled();
+    expect(m.appUpdateMany).not.toHaveBeenCalled();
     expect(m.notifCreate).not.toHaveBeenCalled();
     expect(m.send).not.toHaveBeenCalled();
     expect(m.updateTag).not.toHaveBeenCalled();
@@ -137,8 +150,8 @@ describe('updateApplicantStatus', () => {
   it('writes the status and notifies the jobseeker on the happy path', async () => {
     const res = await updateApplicantStatus(APP_ID, 'SHORTLISTED');
     expect(res).toEqual({ ok: true, data: undefined });
-    expect(m.appUpdate).toHaveBeenCalledWith({
-      where: { id: APP_ID },
+    expect(m.appUpdateMany).toHaveBeenCalledWith({
+      where: { id: APP_ID, status: 'SUBMITTED' },
       data: { status: 'SHORTLISTED' },
     });
     const notif = m.notifCreate.mock.calls[0]![0].data;
@@ -165,10 +178,52 @@ describe('updateApplicantStatus', () => {
     expect(m.send.mock.calls[0]![0].to).toBe('seeker@x.com');
   });
 
-  it('emails the label a person reads ("Not selected"), not the enum', async () => {
+  it('emails the label a person reads ("Interview scheduled"), not the enum', async () => {
+    await updateApplicantStatus(APP_ID, 'INTERVIEW_SCHEDULED');
+    await runAfter();
+    expect(m.statusChangeTemplate.mock.calls[0]![0].status).toBe('Interview scheduled');
+  });
+
+  it('sends the dedicated not-selected email on rejection, not a bare status line', async () => {
     await updateApplicantStatus(APP_ID, 'REJECTED');
     await runAfter();
-    expect(m.statusChangeTemplate.mock.calls[0]![0].status).toBe('Not selected');
+    expect(m.statusChangeTemplate).not.toHaveBeenCalled();
+    expect(m.notSelectedTemplate.mock.calls[0]![0]).toMatchObject({
+      jobseekerName: 'Sam',
+      jobTitle: 'Engineer',
+      companyName: 'Acme',
+    });
+    expect(m.send.mock.calls[0]![0].subject).toBe('n');
+  });
+
+  it('does not email for VIEWED, only the in-app notification', async () => {
+    await updateApplicantStatus(APP_ID, 'VIEWED');
+    expect(m.notifCreate).toHaveBeenCalledTimes(1);
+    expect(m.afterCallbacks).toHaveLength(0);
+  });
+
+  it('does not email for a backward correction', async () => {
+    m.appFindFirst.mockResolvedValue({ ...APPLICATION, status: 'INTERVIEW_SCHEDULED' });
+    await updateApplicantStatus(APP_ID, 'SHORTLISTED');
+    expect(m.appUpdateMany).toHaveBeenCalledTimes(1);
+    expect(m.afterCallbacks).toHaveLength(0);
+  });
+
+  it('emails a rejected candidate who is brought back into the pipeline', async () => {
+    m.appFindFirst.mockResolvedValue({ ...APPLICATION, status: 'REJECTED' });
+    await updateApplicantStatus(APP_ID, 'SHORTLISTED');
+    await runAfter();
+    expect(m.send).toHaveBeenCalledTimes(1);
+  });
+
+  it('refuses, without notifying anyone, when the status moved after it was read', async () => {
+    m.appUpdateMany.mockResolvedValue({ count: 0 });
+    const res = await updateApplicantStatus(APP_ID, 'SHORTLISTED');
+    expect(res).toMatchObject({ ok: false, error: expect.stringMatching(/changed before/i) });
+    expect(m.notifCreate).not.toHaveBeenCalled();
+    expect(m.partCreate).not.toHaveBeenCalled();
+    expect(m.afterCallbacks).toHaveLength(0);
+    expect(m.updateTag).toHaveBeenCalledWith('job:job1:applicants');
   });
 
   it('does not email an address that bounced or complained (suppression applies here too)', async () => {
@@ -185,7 +240,7 @@ describe('updateApplicantStatus', () => {
       data: undefined,
     });
     await expect(runAfter()).resolves.toBeUndefined(); // the failure is contained
-    expect(m.appUpdate).toHaveBeenCalledTimes(1);
+    expect(m.appUpdateMany).toHaveBeenCalledTimes(1);
   });
 
   it("adds a shortlisted applicant to the job's chat area and tells them", async () => {
@@ -208,7 +263,7 @@ describe('updateApplicantStatus', () => {
     m.requireRole.mockResolvedValue({ id: 'company1', plan: 'FREE' });
     m.areaFindUnique.mockResolvedValue({ id: 'area1', title: 'Engineer' });
     await updateApplicantStatus(APP_ID, 'SHORTLISTED');
-    expect(m.appUpdate).toHaveBeenCalledTimes(1);
+    expect(m.appUpdateMany).toHaveBeenCalledTimes(1);
     expect(m.partCreate).not.toHaveBeenCalled();
   });
 
@@ -219,10 +274,27 @@ describe('updateApplicantStatus', () => {
     expect(m.partCreate).not.toHaveBeenCalled();
   });
 
-  it('does not touch the chat area on rejection', async () => {
+  it("removes a rejected candidate from the job's chat area and never adds them", async () => {
+    m.appFindFirst.mockResolvedValue({ ...APPLICATION, status: 'SHORTLISTED' });
     m.areaFindUnique.mockResolvedValue({ id: 'area1', title: 'Engineer' });
     await updateApplicantStatus(APP_ID, 'REJECTED');
+    expect(m.partDeleteMany).toHaveBeenCalledWith({
+      where: { userId: 'seeker1', chatArea: { jobPostId: 'job1' } },
+    });
     expect(m.partCreate).not.toHaveBeenCalled();
+  });
+
+  it('removes the chat seat even for a FREE-plan company', async () => {
+    m.requireRole.mockResolvedValue({ id: 'company1', plan: 'FREE' });
+    m.appFindFirst.mockResolvedValue({ ...APPLICATION, status: 'SHORTLISTED' });
+    await updateApplicantStatus(APP_ID, 'VIEWED');
+    expect(m.partDeleteMany).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the chat seat while the candidate moves within the chat-join stages', async () => {
+    m.appFindFirst.mockResolvedValue({ ...APPLICATION, status: 'SHORTLISTED' });
+    await updateApplicantStatus(APP_ID, 'INTERVIEW_SCHEDULED');
+    expect(m.partDeleteMany).not.toHaveBeenCalled();
   });
 });
 
