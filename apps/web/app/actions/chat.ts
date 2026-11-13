@@ -125,6 +125,20 @@ const NOT_SHORTLISTED = "Only candidates you've shortlisted for this job can joi
 
 class NoChatSeatError extends Error {}
 
+async function lockChatEligibleApplication(
+  tx: Prisma.TransactionClient,
+  jobPostId: string | null,
+  jobSeekerId: string,
+): Promise<boolean> {
+  const rows = await tx.$queryRaw<{ id: string }[]>`
+    SELECT id FROM job_applications
+     WHERE "jobPostId" = ${jobPostId}::uuid
+       AND "jobSeekerId" = ${jobSeekerId}::uuid
+       AND status::text IN (${Prisma.join(CHAT_JOIN_STATUSES)})
+       FOR UPDATE`;
+  return rows.length > 0;
+}
+
 // Add a job seeker to one of the company's chat areas (flowchart: "add seeker
 // of choice to job specific chat area" / "add virtual interns of interest").
 // JOB_UC_14.0: both add-to-job-chat and add-to-VI-chat are premium outreach
@@ -189,17 +203,11 @@ export async function addChatParticipant(
         after: () => ({ userId: seeker.id }),
       },
       async (tx) => {
-        if (area.kind === 'JOB') {
-          // Locking the application row orders this against a concurrent status
-          // change: a rejection either lands first and is seen here, or waits
-          // and then removes the seat this commits.
-          const [application] = await tx.$queryRaw<{ id: string }[]>`
-            SELECT id FROM job_applications
-             WHERE "jobPostId" = ${area.jobPostId}::uuid
-               AND "jobSeekerId" = ${seeker.id}::uuid
-               AND status::text IN (${Prisma.join(CHAT_JOIN_STATUSES)})
-               FOR UPDATE`;
-          if (!application) throw new NoChatSeatError();
+        if (
+          area.kind === 'JOB' &&
+          !(await lockChatEligibleApplication(tx, area.jobPostId, seeker.id))
+        ) {
+          throw new NoChatSeatError();
         }
         await tx.chatParticipant.create({ data: { chatAreaId: area.id, userId: seeker.id } });
         await tx.notification.create({

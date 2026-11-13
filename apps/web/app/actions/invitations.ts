@@ -72,7 +72,6 @@ export async function inviteJobseeker(
   if (existing?.status === 'PENDING' && existing.expiresAt > new Date()) {
     return fail(ALREADY_INVITED);
   }
-  // An accepted invitation stops counting once the seeker unsubscribes.
   if (existing?.status === 'ACCEPTED') {
     const subscribed = await db.companySubscription.findUnique({
       where: {

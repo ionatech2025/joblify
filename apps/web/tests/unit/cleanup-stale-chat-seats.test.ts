@@ -2,10 +2,6 @@ import { describe, it, expect } from 'vitest';
 import type { ApplicationStatus } from '@prisma/client';
 import { isStaleSeat, type JobChatSeat } from '@/scripts/cleanup-stale-chat-seats';
 
-// A job chat area seats only candidates whose application to that job is
-// shortlisted or further. The cleanup removes every other seeker seat that
-// predates that rule, and never a company's own seat.
-
 const seat = (over: Partial<JobChatSeat> = {}): JobChatSeat => ({
   chatAreaId: 'area1',
   title: 'Engineer',

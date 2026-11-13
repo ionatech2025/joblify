@@ -169,19 +169,18 @@ function ApplicantCard({
   const [openCover, setOpenCover] = useState(false);
   const serverNotes = row.recruiterNotes ?? '';
   const [notes, setNotes] = useState(serverNotes);
-  // The note this card last loaded or saved; `notes` differing from it is an unsaved draft.
-  const [baseline, setBaseline] = useState(serverNotes);
-  if (serverNotes !== baseline && notes === baseline) {
-    setBaseline(serverNotes);
+  const [savedNotes, setSavedNotes] = useState(serverNotes);
+  if (serverNotes !== savedNotes && notes === savedNotes) {
+    setSavedNotes(serverNotes);
     setNotes(serverNotes);
   }
   const [noteState, setNoteState] = useState<'idle' | 'saving' | 'saved'>('idle');
   const [, startTransition] = useTransition();
 
   function saveNote() {
-    if (notes === baseline) return;
-    const previous = baseline;
-    setBaseline(notes);
+    if (notes === savedNotes) return;
+    const previous = savedNotes;
+    setSavedNotes(notes);
     setNoteState('saving');
     startTransition(async () => {
       onPatch({ id: row.id, recruiterNotes: notes || null });
@@ -189,7 +188,7 @@ function ApplicantCard({
         await saveApplicantNote(row.id, notes);
         setNoteState('saved');
       } catch (err) {
-        setBaseline(previous);
+        setSavedNotes(previous);
         setNoteState('idle');
         const message = err instanceof Error ? err.message : 'Note failed to save.';
         toast.error("Couldn't save note", message);

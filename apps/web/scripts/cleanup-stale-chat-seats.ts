@@ -1,19 +1,6 @@
-/* eslint-disable no-console -- CLI reporter; matches scripts/migrate-mongo-to-neon.ts */
-/**
- * Removes job chat seats that the current rules would not grant.
- *
- * A job chat area seats only candidates whose application to that job is in
- * CHAT_JOIN_STATUSES (lib/applications/transitions.ts). Seats granted before
- * that rule existed are still there: candidates rejected before it shipped,
- * and seekers added by the old addChatParticipant. Company seats and
- * virtual-intern areas are never touched.
- *
- * Reports by default and deletes only with --apply. Safe to rerun.
- *
- *   bun run scripts/cleanup-stale-chat-seats.ts           # counts per chat area
- *   bun run scripts/cleanup-stale-chat-seats.ts --apply   # delete them
- */
-import { PrismaClient, type ApplicationStatus, type UserType } from '@prisma/client';
+/* eslint-disable no-console */
+// Usage: bun run scripts/cleanup-stale-chat-seats.ts [--apply]
+import { PrismaClient, type ApplicationStatus, type Prisma, type UserType } from '@prisma/client';
 import { CHAT_JOIN_STATUSES } from '../lib/applications/transitions';
 
 export type JobChatSeat = {
@@ -30,6 +17,18 @@ export function isStaleSeat(seat: JobChatSeat): boolean {
     seat.userType === 'JOB_SEEKER' &&
     !(seat.applicationStatus !== null && CHAT_JOIN_STATUSES.includes(seat.applicationStatus))
   );
+}
+
+function stillStale(seat: JobChatSeat): Prisma.ChatParticipantWhereInput {
+  return {
+    chatAreaId: seat.chatAreaId,
+    userId: seat.userId,
+    user: {
+      applications: {
+        none: { jobPostId: seat.jobPostId, status: { in: [...CHAT_JOIN_STATUSES] } },
+      },
+    },
+  };
 }
 
 async function main(apply: boolean): Promise<void> {
@@ -59,18 +58,7 @@ async function main(apply: boolean): Promise<void> {
     if (stale.length === 0) return;
 
     const { count } = await prisma.chatParticipant.deleteMany({
-      where: {
-        OR: stale.map((s) => ({
-          chatAreaId: s.chatAreaId,
-          userId: s.userId,
-          // Re-checked by the DELETE itself, so a seat earned since the read stays.
-          user: {
-            applications: {
-              none: { jobPostId: s.jobPostId, status: { in: [...CHAT_JOIN_STATUSES] } },
-            },
-          },
-        })),
-      },
+      where: { OR: stale.map(stillStale) },
     });
     console.log(`Deleted ${count} seat(s).`);
   } finally {

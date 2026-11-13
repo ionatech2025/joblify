@@ -358,7 +358,6 @@ export async function updateJob(
 
   after(async () => {
     try {
-      // A failed extraction leaves the job with no skills, so a later save retries it.
       const retry =
         !jdTextChanged &&
         (await db.jobPostSkill.count({ where: { jobPostId: jobId } })) === 0 &&

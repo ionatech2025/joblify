@@ -52,11 +52,10 @@ export const CHAT_JOIN_STATUSES: readonly ApplicationStatus[] = [
   'HIRED',
 ];
 
-// The candidate acts on these emails, so moving off one is emailed even when the move is backward.
-const OUTCOME_STATUSES: readonly ApplicationStatus[] = ['OFFER_EXTENDED', 'HIRED', 'REJECTED'];
+const EMAILED_WHEN_LEFT: readonly ApplicationStatus[] = ['OFFER_EXTENDED', 'HIRED', 'REJECTED'];
 
 export function emailsCandidate(from: ApplicationStatus, to: ApplicationStatus): boolean {
-  if (to === 'REJECTED' || OUTCOME_STATUSES.includes(from)) return true;
+  if (to === 'REJECTED' || EMAILED_WHEN_LEFT.includes(from)) return true;
   if (!CHAT_JOIN_STATUSES.includes(to)) return false;
   return RECRUITER_STATUSES.indexOf(to) > RECRUITER_STATUSES.indexOf(from);
 }
