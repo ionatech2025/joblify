@@ -196,7 +196,9 @@ Never trust the URL. See `app/actions/update-applicant-status.ts` for the canoni
 Two kinds:
 
 - **Transactional** (apply confirm, status change, password reset): inline `await resend().emails.send(...)`. Best-effort — wrap in `.catch` so the user-facing path never fails because of email.
-- **Bulk** (daily digest): batched in a workflow. One send per user.
+- **Bulk** (daily digest): batched in a workflow. One send per user per UTC day: the Resend idempotency key `digest/<userId>/<date>` drops a repeat when a crashed run is re-run before its watermark was stamped.
+
+The Resend SDK does not throw on an API failure; it resolves with `{ data: null, error }`. Check `error` wherever a failed send must change what happens next.
 
 A status change always creates the in-app notification, but it emails only for a forward move into shortlisted, interview, offer or hired, for a rejection, and for any move away from an offer, a hire or a rejection, so the candidate's last email never states an outcome that was taken back (`emailsCandidate` in `lib/applications/transitions.ts`). VIEWED and other backward corrections stay in-app. A rejection uses the `notSelected` template, not the generic status line.
 

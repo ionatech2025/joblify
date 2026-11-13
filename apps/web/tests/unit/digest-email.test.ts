@@ -110,7 +110,11 @@ describe('runDigest', () => {
   it('stamps lastDigestAt per chunk for processed users and leaves failed sends unstamped', async () => {
     m.userFind.mockResolvedValueOnce([seeker('u1'), seeker('u2')]);
     m.jobFind.mockResolvedValueOnce([job]);
-    m.send.mockResolvedValueOnce({}).mockRejectedValueOnce(new Error('resend down'));
+    // The Resend SDK resolves with `error` on an API failure; it does not throw.
+    m.send.mockResolvedValueOnce({}).mockResolvedValueOnce({
+      data: null,
+      error: { name: 'rate_limit_exceeded', message: 'Too many requests' },
+    });
     const r = await runDigest();
     expect(r).toEqual({ sent: 1, skipped: 0, failed: 1, stoppedEarly: false });
     // Only the successful send advanced its watermark…
@@ -125,6 +129,27 @@ describe('runDigest', () => {
     });
     // …and the next page query excludes the failed id so the loop can't spin on it.
     expect(m.userFind.mock.calls[1]![0].where.id).toEqual({ notIn: [uid('u2')] });
+  });
+
+  it('gives each user one idempotency key per UTC day, so a re-run after a lost stamp cannot send twice', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    try {
+      m.jobFind.mockResolvedValue([job]);
+      // Run 1 sends to u1 and then loses its stamp; run 2 the same morning selects u1 again.
+      m.userFind
+        .mockResolvedValueOnce([seeker('u1')])
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([seeker('u1')]);
+      vi.setSystemTime(new Date('2026-03-04T08:00:00Z'));
+      await runDigest();
+      vi.setSystemTime(new Date('2026-03-04T08:20:00Z'));
+      await runDigest();
+    } finally {
+      vi.useRealTimers();
+    }
+    expect(m.send).toHaveBeenCalledTimes(2);
+    expect(m.send.mock.calls[0]![1]).toEqual({ idempotencyKey: `digest/${uid('u1')}/2026-03-04` });
+    expect(m.send.mock.calls[1]![1]).toEqual(m.send.mock.calls[0]![1]);
   });
 
   it('advances the watermark for users with nothing new (skipped, no email, no re-selection)', async () => {

@@ -14,8 +14,10 @@
 //   3. Each page is sent in Promise.allSettled chunks of CHUNK_SIZE. Right
 //      after a chunk settles, every processed user's lastDigestAt (and, for
 //      saved-search users, SavedSearch.lastNotifiedAt) is stamped in one
-//      updateMany — so an interrupted run double-sends at most the in-flight
-//      chunk, and the next run resumes where this one stopped.
+//      updateMany, and the next run resumes where this one stopped. A user
+//      whose email went out but whose stamp was lost to a crash is selected
+//      again; Resend's idempotency key (one per user per UTC day) drops the
+//      repeat send.
 //   4. Users with saved searches get a personalized list (each search diffed
 //      since its own lastNotifiedAt); everyone else shares the generic list.
 //   5. The run stops cleanly at the caller-provided wall-clock deadline
@@ -103,6 +105,7 @@ async function processUser(
   searches: SavedSearchLite[],
   since: Date,
   genericJobs: DigestJob[],
+  runDay: string,
 ): Promise<'sent' | 'skipped'> {
   const newJobs = await digestJobsFor(searches, since, genericJobs);
   if (newJobs.length === 0) return 'skipped';
@@ -113,20 +116,25 @@ async function processUser(
   const link = unsubscribeUrl(user.id);
   if (!link) throw new Error('unsubscribe link unavailable — refusing to send');
 
-  await resend().emails.send({
-    from: EMAIL_FROM,
-    to: user.email,
-    subject: `${newJobs.length} new jobs for you on Joblify`,
-    text: textBody(user.firstName ?? user.email, newJobs, link),
-    html: htmlBody(user.firstName ?? user.email, newJobs, link),
-    // RFC 8058 one-click: mailbox providers show their native "Unsubscribe"
-    // button and POST here. Requires the message to be DKIM-signed (Resend
-    // signs for the verified sending domain).
-    headers: {
-      'List-Unsubscribe': `<${link}>`,
-      'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+  // The SDK reports API failures in `error` rather than throwing.
+  const { error } = await resend().emails.send(
+    {
+      from: EMAIL_FROM,
+      to: user.email,
+      subject: `${newJobs.length} new jobs for you on Joblify`,
+      text: textBody(user.firstName ?? user.email, newJobs, link),
+      html: htmlBody(user.firstName ?? user.email, newJobs, link),
+      // RFC 8058 one-click: mailbox providers show their native "Unsubscribe"
+      // button and POST here. Requires the message to be DKIM-signed (Resend
+      // signs for the verified sending domain).
+      headers: {
+        'List-Unsubscribe': `<${link}>`,
+        'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+      },
     },
-  });
+    { idempotencyKey: `digest/${user.id}/${runDay}` },
+  );
+  if (error) throw new Error(`resend: ${error.name}: ${error.message}`);
   return 'sent';
 }
 
@@ -148,6 +156,7 @@ export async function runDigest({
   const deadline = runStart + deadlineMs;
   const since = new Date(runStart - SINCE_HOURS * 3600 * 1000);
   const eligibleBefore = new Date(runStart - (SINCE_HOURS - ELIGIBILITY_SLACK_HOURS) * 3600 * 1000);
+  const runDay = new Date(runStart).toISOString().slice(0, 10);
 
   // The generic 24h list — computed once, shared by every user without saved
   // searches.
@@ -211,7 +220,7 @@ export async function runDigest({
       const chunk = page.slice(i, i + CHUNK_SIZE);
       const results = await Promise.allSettled(
         chunk.map((user) =>
-          processUser(user, searchesByUser.get(user.id) ?? [], since, genericJobs),
+          processUser(user, searchesByUser.get(user.id) ?? [], since, genericJobs, runDay),
         ),
       );
 
