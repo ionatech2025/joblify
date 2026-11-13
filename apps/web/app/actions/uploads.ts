@@ -212,12 +212,17 @@ export async function uploadResumeDirect(
 /**
  * Delete a résumé.
  *
- * A résumé that no application references is erased outright — row and stored
- * file. One that an employer has already received with an application is only
- * hidden from the owner (`deletedAt`): the employer's copy of what was
+ * A résumé that no application references is erased outright — stored file,
+ * then row. One that an employer has already received with an application is
+ * only hidden from the owner (`deletedAt`): the employer's copy of what was
  * submitted is not the candidate's to recall, `JobApplication.resumeId` is a
  * RESTRICT foreign key, and the retention sweep removes the file once the
  * applications that reference it are gone.
+ *
+ * Hiding comes first so the résumé cannot be picked for a new application
+ * while it is being erased. The row is deleted only once the file is: a file
+ * whose delete failed keeps its hidden row, which the retention sweep retries,
+ * whereas a file with no row is a personal document nothing can find again.
  */
 export async function deleteResume(resumeId: string): Promise<void> {
   const user = await requireRole('JOB_SEEKER');
@@ -227,13 +232,11 @@ export async function deleteResume(resumeId: string): Promise<void> {
   });
   if (!resume) throw new AuthError('FORBIDDEN');
 
-  const referenced = await db.jobApplication.count({ where: { resumeId: resume.id } });
-  if (referenced === 0) {
-    await db.resume.delete({ where: { id: resume.id } });
-    await deleteStored(resume.fileBlobUrl, 'private');
-    return;
-  }
   await db.resume.update({ where: { id: resume.id }, data: { deletedAt: new Date() } });
+  const referenced = await db.jobApplication.count({ where: { resumeId: resume.id } });
+  if (referenced === 0 && (await deleteStored(resume.fileBlobUrl, 'private')) !== 'failed') {
+    await db.resume.delete({ where: { id: resume.id } });
+  }
 }
 
 /**

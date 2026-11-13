@@ -228,8 +228,9 @@ configured they return an expected failure. (`data:` locators remain for local d
 Reading: résumés are served only by `GET /api/v1/resumes/[id]/file` (owner, or a company with a live
 application that used it), as an attachment. The storage locator never leaves the server.
 
-Deleting: a résumé no application references is erased (row + file) immediately; otherwise it is hidden
-from its owner and removed by the retention sweep once the applications are gone. Account erasure removes
+Deleting: a résumé no application references is erased (file, then row) immediately; otherwise it is
+hidden from its owner and removed by the retention sweep once the applications are gone. If the store
+refuses the file delete, the row stays hidden and the sweep retries it. Account erasure also removes
 files before rows.
 
 Magic-byte check (`file-type`) rejects mime mismatches — declared `application/pdf` but the bytes are a
