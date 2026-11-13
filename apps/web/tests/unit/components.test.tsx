@@ -31,7 +31,6 @@ vi.mock('@/app/actions/profile', () => ({
   saveProfile: vi.fn().mockResolvedValue(undefined),
 }));
 
-// jsdom has no ResizeObserver; the forms' DirtyBar measures itself with one.
 vi.stubGlobal(
   'ResizeObserver',
   class {

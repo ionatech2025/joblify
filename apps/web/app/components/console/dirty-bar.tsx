@@ -51,10 +51,6 @@ export function DirtyBar({
     return () => window.removeEventListener('beforeunload', onBeforeUnload);
   }, [dirty, saving]);
 
-  // Published like CookieBanner's --consent-banner-h. globals.css reserves it
-  // as scroll-padding-bottom, so a field tabbed to below the fold stops above
-  // the bar instead of under it (WCAG 2.2 SC 2.4.11), and the Toaster stacks
-  // above it so a toast never covers Save.
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const el = ref.current;

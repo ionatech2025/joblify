@@ -56,9 +56,7 @@ export function Toaster() {
   return (
     // aria-live on the always-present container (not on each toast) is what
     // makes additions announce: a live region has to exist in the DOM before
-    // the content lands in it. `polite` so it never interrupts. Lifted above a
-    // form's sticky DirtyBar (which publishes --dirty-bar-h), since an error
-    // toast stays until dismissed and would otherwise sit on Save and Discard.
+    // the content lands in it. `polite` so it never interrupts.
     <div
       role="status"
       aria-live="polite"

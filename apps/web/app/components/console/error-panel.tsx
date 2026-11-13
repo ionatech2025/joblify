@@ -6,11 +6,6 @@ import { reportClientError } from '@/lib/observability/sentry-client';
 import { Button, buttonClasses } from '@/app/components/ui/button';
 import { ConsoleBody } from './shell';
 
-/**
- * Body of every console segment's error.tsx. Rendering it at the segment, not
- * only at the root, keeps the console register and the module nav around a
- * failed page, so the person can still move to another section.
- */
 export function ConsoleError({
   error,
   retry,

@@ -36,9 +36,6 @@
    win normally. The class is set on <html> by the no-flash script in layout.tsx. */
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* A viewport too short for stacked sticky chrome: a landscape phone, or 400%
-   zoom (1280x1024 renders 320x256 CSS px). The header, module nav and control
-   panel alone would fill it (WCAG 1.4.10), so there they scroll with the page. */
 @custom-variant short {
   @media (max-height: 32rem) {
     @slot;
@@ -114,12 +111,7 @@
      one edit moves all three. */
   --o-header-h: 3.5rem;
   --o-nav-h: 2.3125rem;
-  /* Ceiling, not an exact height: from sm up the control panel is one or two
-     rows depending on whether the page supplies actions/search/views. Below sm
-     it wraps further and is not sticky, so nothing reads this there. Only the
-     focus-scroll reserve below reads it, where over-reserving costs a little
-     extra scroll and under-reserving hides the focused control. */
-  --o-control-h: 4.75rem;
+  --o-control-max-h: 4.75rem;
 
   /* Radii, raw. `control` = inputs/selects, `card` = every elevated surface,
      `canvas` = big inset hero panels, `pill` = the editorial capsule (buttons,
@@ -456,7 +448,7 @@
      the app header. `.o-console` is applied by ConsoleShell *inside* <body>,
      and the scrolling element is <html> — :has() is the only way up. */
   html:has(.o-console) {
-    scroll-padding-top: calc(var(--o-header-h) + var(--o-nav-h) + var(--o-control-h) + 1rem);
+    scroll-padding-top: calc(var(--o-header-h) + var(--o-nav-h) + var(--o-control-max-h) + 1rem);
     @variant max-sm {
       scroll-padding-top: calc(var(--o-header-h) + var(--o-nav-h) + 1rem);
     }
@@ -522,11 +514,6 @@
     color: var(--brand);
   }
 
-  /* Published by <CookieBanner> while its fixed bar is showing, and by
-     <DirtyBar> while a form's sticky save bar is mounted (0 otherwise). Keeps a
-     focused element, and the last row of the page, clear of both bars —
-     WCAG 2.2 SC 2.4.11. Body padding is the banner's alone: the dirty bar is
-     sticky, so it already occupies its own space in the flow. */
   html {
     scroll-padding-bottom: calc(var(--consent-banner-h, 0px) + var(--dirty-bar-h, 0px));
   }
@@ -704,8 +691,6 @@
   }
 }
 
-/* The app header is the one sticky bar outside the console; it follows the
-   `short` rule too. Unlayered, so it outranks the `sticky` utility it carries. */
 body > header {
   @variant short {
     position: static;

@@ -1,10 +1,4 @@
 // @vitest-environment jsdom
-//
-// Console chrome contracts from the 2026-11 accessibility and resilience audit:
-// state that has to reach assistive tech (unread counts, applied filters, sort
-// order), the save bar's published height that keeps focus and toasts clear of
-// it, and error boundaries that refetch instead of re-rendering the payload
-// that just failed.
 
 import type { ComponentType } from 'react';
 import { describe, it, expect, afterEach, vi } from 'vitest';
@@ -24,8 +18,6 @@ const reportClientError = vi.hoisted(() => vi.fn());
 vi.mock('@/lib/observability/sentry-client', () => ({ reportClientError }));
 vi.mock('next/navigation', () => ({ usePathname: () => '/company/jobs' }));
 
-// jsdom has no ResizeObserver. Keeping the last callback lets a test replay a
-// resize the way the browser would deliver it.
 let lastResizeCallback: (() => void) | undefined;
 vi.stubGlobal(
   'ResizeObserver',
