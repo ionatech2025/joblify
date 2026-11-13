@@ -50,6 +50,15 @@ curl -H "Authorization: Bearer ${CRON_SECRET}" "${URL}/api/v1/cron/<name>"
 
 **Retention cron looks wrong (0 deletes for days, or a sudden spike).** Confirm it actually ran: Vercel Observability → Functions → `/api/v1/cron/retention` → check invocation history and response body counts. Manually trigger with the curl command above to see fresh counts. Cross-check against the policy table in [COMPLIANCE.md](./COMPLIANCE.md#retention-policy) — a spike usually means a backlog from a prior failed run (harmless, it'll catch up), a silence usually means the cron stopped firing (check `vercel.ts` crons config didn't get dropped in a deploy) or `CRON_SECRET` rotated without updating Vercel env.
 
+**Job chat area shows candidates who are not shortlisted.** A job chat area seats only candidates whose application to that job is shortlisted or further (`CHAT_JOIN_STATUSES` in `lib/applications/transitions.ts`). Seats granted before that rule shipped stay until you remove them. From `apps/web`, run the cleanup script. It reports by default and deletes only with `--apply`:
+
+```bash
+DATABASE_URL=<target database URL> bun run scripts/cleanup-stale-chat-seats.ts           # report counts per chat area
+DATABASE_URL=<target database URL> bun run scripts/cleanup-stale-chat-seats.ts --apply   # delete those seats
+```
+
+Bun loads `.env.local` automatically, so without an explicit `DATABASE_URL` the script uses the database that file names. The script removes only job-seeker seats in job chat areas. It never removes a company seat or a seat in a virtual-intern area. It is safe to rerun: a second run reports 0.
+
 ## Secrets rotation cadence
 
 - Clerk webhook secret: rotate on any suspicion of leak.
