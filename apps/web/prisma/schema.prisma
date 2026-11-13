@@ -359,6 +359,9 @@ model CompanyProfile {
   contactPersonPosition String?
 
   verificationStatus VerificationStatus @default(PENDING)
+  // Shown to the company on /employer-setup; cleared when it resubmits.
+  rejectionReason    String?
+  reviewedAt         DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
