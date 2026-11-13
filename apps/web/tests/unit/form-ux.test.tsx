@@ -46,6 +46,15 @@ vi.mock('@/app/actions/account', () => ({ deleteMyAccount: deleteAccount }));
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }),
 }));
+// jsdom has no ResizeObserver; DirtyBar measures itself with one.
+vi.stubGlobal(
+  'ResizeObserver',
+  class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  },
+);
 
 afterEach(() => {
   cleanup();

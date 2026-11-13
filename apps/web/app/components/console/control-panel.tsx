@@ -33,7 +33,8 @@ export function ControlPanel({
 }) {
   const hasSecondRow = Boolean(actions || search || views);
   return (
-    <div className="o-chrome-bar shadow-o-chrome sticky top-[calc(var(--o-header-h)+var(--o-nav-h))] z-30 border-b">
+    // Below sm the rows wrap to several lines, too tall to keep pinned on a phone.
+    <div className="o-chrome-bar shadow-o-chrome short:static sticky top-[calc(var(--o-header-h)+var(--o-nav-h))] z-30 border-b max-sm:static">
       <ConsoleWidth className="py-1.5">
         <div className="flex min-h-7 flex-wrap items-center justify-between gap-x-4 gap-y-1">
           {breadcrumb}

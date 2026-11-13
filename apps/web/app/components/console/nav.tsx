@@ -84,7 +84,7 @@ export function ConsoleNav({
   return (
     <nav
       aria-label={module}
-      className="o-chrome-bar shadow-o-chrome sticky top-[var(--o-header-h)] z-40 border-b"
+      className="o-chrome-bar shadow-o-chrome short:static sticky top-[var(--o-header-h)] z-40 border-b"
     >
       <ConsoleWidth className="flex h-[calc(var(--o-nav-h)-1px)] items-stretch gap-1 overflow-x-auto">
         <span className="flex shrink-0 items-center pr-3 text-[13px] font-semibold tracking-tight">

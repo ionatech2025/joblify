@@ -56,12 +56,14 @@ export function Toaster() {
   return (
     // aria-live on the always-present container (not on each toast) is what
     // makes additions announce: a live region has to exist in the DOM before
-    // the content lands in it. `polite` so it never interrupts.
+    // the content lands in it. `polite` so it never interrupts. Lifted above a
+    // form's sticky DirtyBar (which publishes --dirty-bar-h), since an error
+    // toast stays until dismissed and would otherwise sit on Save and Discard.
     <div
       role="status"
       aria-live="polite"
       aria-relevant="additions text"
-      className="pointer-events-none fixed inset-x-0 bottom-0 z-[70] flex flex-col items-center gap-2 p-4 sm:inset-x-auto sm:right-4 sm:bottom-4 sm:w-88 sm:items-end"
+      className="pointer-events-none fixed inset-x-0 bottom-[var(--dirty-bar-h,0px)] z-[70] flex flex-col items-center gap-2 p-4 sm:inset-x-auto sm:right-4 sm:bottom-[calc(var(--dirty-bar-h,0px)+1rem)] sm:w-88 sm:items-end"
     >
       {toasts.map((t) => (
         <ToastItem key={t.id} toast={t} />
