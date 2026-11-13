@@ -18,19 +18,21 @@ export type SavedRow = {
   title: string;
   company: string;
   location: string | null;
-  /**
-   * `closed`: past its deadline, page still public. `unlisted`: no longer
-   * published, so there is no page to link to.
-   */
-  availability: 'open' | 'closed' | 'unlisted';
+  availability: 'open' | 'closed' | 'removed';
 };
 
-export function SavedList({ initial, headingId }: { initial: SavedRow[]; headingId: string }) {
+export function SavedList({
+  initial,
+  focusFallbackId,
+}: {
+  initial: SavedRow[];
+  focusFallbackId: string;
+}) {
   const [jobs, setJobs] = useState(initial);
   const [, startTransition] = useTransition();
 
   function remove(jobId: string, title: string, button: HTMLElement) {
-    moveFocusFromRowAction(button, document.getElementById(headingId));
+    moveFocusFromRowAction(button, document.getElementById(focusFallbackId));
     const prev = jobs;
     setJobs((j) => j.filter((x) => x.id !== jobId)); // optimistic
     startTransition(async () => {
@@ -67,7 +69,7 @@ export function SavedList({ initial, headingId }: { initial: SavedRow[]; heading
       header: 'Role',
       cell: (j) => (
         <div className="min-w-0">
-          {j.availability === 'unlisted' ? (
+          {j.availability === 'removed' ? (
             <span className="text-fg font-medium">{j.title}</span>
           ) : (
             <Link

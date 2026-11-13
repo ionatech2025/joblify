@@ -29,9 +29,7 @@ export function ChatThread({
 }) {
   return (
     <Card>
-      {/* A log region, so messages that arrive by polling are announced. It is
-          there even when empty, so the first message is announced too.
-          additions only: the timestamps re-render at hydration. */}
+      {/* Mounted even when empty, so the first message is announced too. */}
       <div role="log" aria-label="Messages" aria-relevant="additions">
         {messages.length === 0 ? (
           <EmptyState

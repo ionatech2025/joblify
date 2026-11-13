@@ -10,15 +10,12 @@ import { buttonClasses } from '@/app/components/ui/button';
 
 export const metadata = { title: 'Saved' };
 
-// Where focus lands when the last row of a list is removed.
 const SAVED_JOBS_HEADING = 'saved-jobs-heading';
 const SAVED_SEARCHES_HEADING = 'saved-searches-heading';
 
 export default async function SavedJobsPage() {
   const user = await requireRole('JOB_SEEKER');
   const [savedJobs, savedSearches] = await Promise.all([
-    // Not filtered to PUBLISHED: a saved job that closes stays on the list,
-    // marked, instead of silently vanishing.
     db.savedJob.findMany({
       where: { userId: user.id, jobPost: { deletedAt: null } },
       orderBy: { createdAt: 'desc' },
@@ -56,10 +53,9 @@ export default async function SavedJobsPage() {
     title: j.title,
     company: j.company.companyProfile?.companyName ?? 'Company',
     location: j.location,
-    // Mirrors getJobBySlug: an unpublished job or a deleted company's has no page.
     availability:
       j.status !== 'PUBLISHED' || j.company.deletedAt
-        ? 'unlisted'
+        ? 'removed'
         : applicationsClosed(j.applicationDeadline)
           ? 'closed'
           : 'open',
@@ -85,7 +81,7 @@ export default async function SavedJobsPage() {
               {jobs.length} {jobs.length === 1 ? 'role' : 'roles'}
             </span>
           </div>
-          <SavedList initial={jobs} headingId={SAVED_JOBS_HEADING} />
+          <SavedList initial={jobs} focusFallbackId={SAVED_JOBS_HEADING} />
         </section>
 
         <section className="mt-6">
@@ -104,7 +100,7 @@ export default async function SavedJobsPage() {
           <p className="text-fg-muted mb-2 text-[12px]">
             Re-run a search in one click, or get new matches in your daily digest.
           </p>
-          <SavedSearchList initial={savedSearches} headingId={SAVED_SEARCHES_HEADING} />
+          <SavedSearchList initial={savedSearches} focusFallbackId={SAVED_SEARCHES_HEADING} />
         </section>
       </ConsoleWidth>
     </main>

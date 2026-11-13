@@ -2,11 +2,6 @@ import { vi, describe, it, expect, beforeEach } from 'vitest';
 import type { ReactNode } from 'react';
 import { prerender } from 'react-dom/static';
 
-// A job whose deadline has passed used to look open everywhere until submit:
-// the JD page said "Apply by …", the panel offered "Start application", the
-// apply page rendered the whole form, and similar-jobs kept listing it. Only
-// submitApplication refused it, after the cover letter was written.
-
 const m = vi.hoisted(() => ({
   currentUser: vi.fn(),
   requireRole: vi.fn(),
@@ -48,8 +43,7 @@ import { ApplyPanel } from '@/app/(marketing)/jobs/[slug]/apply-panel';
 import { SimilarJobs } from '@/app/(marketing)/jobs/[slug]/similar-jobs';
 import { applicationsClosed } from '@/app/(marketing)/jobs/[slug]/deadline';
 
-// Resolves async server components; drops React's text-node separators so
-// assertions can read sentences.
+// Drops React's text-node separators so assertions can read sentences.
 async function html(node: ReactNode): Promise<string> {
   const { prelude } = await prerender(node, { onError: () => {} });
   return (await new Response(prelude).text()).replaceAll('<!-- -->', '');

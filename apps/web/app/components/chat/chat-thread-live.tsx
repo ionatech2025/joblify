@@ -41,7 +41,7 @@ export function ChatThreadLive({
           Showing the latest {LATEST_MESSAGES_TAKE} messages.
         </p>
       )}
-      {/* Always mounted so the change is announced; empty, it takes no space. */}
+      {/* Always mounted so the change is announced. */}
       <p role="status" className={cn('text-fg-muted m-0 text-xs', notice && 'mb-3')}>
         {notice}
       </p>

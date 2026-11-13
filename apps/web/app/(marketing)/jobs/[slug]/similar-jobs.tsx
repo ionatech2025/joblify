@@ -3,9 +3,6 @@ import type { IndustryType } from '@prisma/client';
 import { db } from '@/lib/db';
 import { Card } from '@/app/components/ui/card';
 
-// Dynamic island under the cached JD shell: other live jobs, still taking
-// applications, that share skills with this one (falling back to the same
-// industry), newest first.
 export async function SimilarJobs({
   jobId,
   industry,

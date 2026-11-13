@@ -14,7 +14,6 @@ export default async function ResumesPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const user = await requireRole('JOB_SEEKER');
-  // Only a job path is honoured, so the link cannot be pointed off-site.
   const { returnTo } = await searchParams;
   const safeReturnTo =
     typeof returnTo === 'string' && returnTo.startsWith('/jobs/') ? returnTo : null;

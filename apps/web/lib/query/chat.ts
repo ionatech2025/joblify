@@ -41,30 +41,24 @@ export function useChatMessages(chatAreaId: string, initialData: ChatMessagesRes
   });
 }
 
-/** The longest gap between polls while the thread keeps failing to refresh. */
 export const CHAT_MAX_BACKOFF_MS = 120_000;
 
 /**
- * 404 is the messages route saying the viewer is no longer a member. It is
- * final, unlike a 401: an expired session token on a background tab also reads
- * as signed out until Clerk refreshes it, so that one keeps retrying.
+ * A 401 is not final: an expired session token on a background tab reads as
+ * signed out until Clerk refreshes it, so it keeps retrying.
  */
 export function chatAccessLost(error: unknown): boolean {
   return (error as { status?: unknown } | null)?.status === 404;
 }
 
-/**
- * Delay before the next poll. While failing, wait as long as it has been since
- * the last good read, so the gap roughly doubles up to the cap; a thread the
- * viewer has lost access to stops polling.
- */
 export function chatPollDelay(
   state: { status: string; error: unknown; dataUpdatedAt: number },
   now = Date.now(),
 ): number | false {
   if (state.status !== 'error') return CHAT_POLL_MS;
   if (chatAccessLost(state.error)) return false;
-  return Math.min(Math.max(now - state.dataUpdatedAt, CHAT_POLL_MS), CHAT_MAX_BACKOFF_MS);
+  const sinceLastGoodRead = now - state.dataUpdatedAt;
+  return Math.min(Math.max(sinceLastGoodRead, CHAT_POLL_MS), CHAT_MAX_BACKOFF_MS);
 }
 
 /**

@@ -2,9 +2,6 @@ import { vi, describe, it, expect, beforeEach } from 'vitest';
 import type { ReactNode } from 'react';
 import { prerender } from 'react-dom/static';
 
-// Server-rendered jobseeker pages: the banners that explain how you got here,
-// the résumé page's way back to an application, and saved jobs that close.
-
 const m = vi.hoisted(() => ({
   requireRole: vi.fn(),
   appFindMany: vi.fn(),

@@ -35,7 +35,6 @@ export function ResumeManager({
 }: {
   userId: string;
   initialResumes: ResumeRow[];
-  /** The apply page that sent the person here for a résumé, already validated. */
   returnTo: string | null;
 }) {
   const router = useRouter();

@@ -43,8 +43,6 @@ async function ApplyContent({ slug }: { slug: string }) {
   });
   if (existing) redirect('/jobseeker/applications?already_applied=1');
 
-  // Checked before the form is shown, not only at submit: otherwise the first
-  // a person hears of the deadline is after writing their cover letter.
   if (job.applicationDeadline && applicationsClosed(job.applicationDeadline)) {
     return (
       <main>

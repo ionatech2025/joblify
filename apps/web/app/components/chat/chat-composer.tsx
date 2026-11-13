@@ -7,8 +7,8 @@ import { useRefreshChatMessages } from '@/lib/query/chat';
 import { Field, Input, Select, Textarea } from '@/app/components/ui/form';
 import { Button } from '@/app/components/ui/button';
 
-// Message form. Submits through useActionState so the draft survives any
-// failure: Send locks (label flips to "Sending…") while the action is
+// Message form. Submits through useActionState so the draft survives expected
+// failures: Send locks (label flips to "Sending…") while the action is
 // pending, an { ok: false } result renders inline next to the button with
 // role="alert", and the fields only clear after a confirmed send. The kind
 // select carries the flowchart's "share material, orient & communicate

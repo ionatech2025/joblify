@@ -12,12 +12,18 @@ import { moveFocusFromRowAction } from '../move-focus';
 
 type Row = { id: string; label: string; query: string };
 
-export function SavedSearchList({ initial, headingId }: { initial: Row[]; headingId: string }) {
+export function SavedSearchList({
+  initial,
+  focusFallbackId,
+}: {
+  initial: Row[];
+  focusFallbackId: string;
+}) {
   const [rows, setRows] = useState(initial);
   const [, startTransition] = useTransition();
 
   function remove(id: string, label: string, button: HTMLElement) {
-    moveFocusFromRowAction(button, document.getElementById(headingId));
+    moveFocusFromRowAction(button, document.getElementById(focusFallbackId));
     const prev = rows;
     setRows((r) => r.filter((x) => x.id !== id)); // optimistic
     startTransition(async () => {

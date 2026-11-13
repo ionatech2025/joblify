@@ -1,9 +1,4 @@
 // @vitest-environment jsdom
-//
-// Jobseeker list and toggle controls: where focus goes when a control removes
-// itself (WCAG 2.4.3), what is announced (4.1.3), and what unread means to a
-// screen reader (1.3.1). Before this, each of these controls either unmounted
-// or set `disabled` under the user's focus, which drops focus to <body>.
 
 import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest';
 import type { ReactNode } from 'react';
@@ -232,18 +227,18 @@ describe('SavedList', () => {
   it('keeps a closed job with a badge, and does not link one whose page is gone', () => {
     render(
       <SavedList
-        headingId="h"
+        focusFallbackId="h"
         initial={[
           saved('j1', 'Open Role', 'open'),
           saved('j2', 'Past Deadline', 'closed'),
-          saved('j3', 'Taken Down', 'unlisted'),
+          saved('j3', 'Taken Down', 'removed'),
         ]}
       />,
     );
-    const [, open, closed, unlisted] = screen.getAllByRole('row');
+    const [, open, closed, removed] = screen.getAllByRole('row');
     expect(open!.textContent).not.toContain('No longer accepting applications');
     expect(closed!.textContent).toContain('No longer accepting applications');
-    expect(unlisted!.textContent).toContain('No longer accepting applications');
+    expect(removed!.textContent).toContain('No longer accepting applications');
     expect(screen.getByRole('link', { name: 'Past Deadline' }).getAttribute('href')).toBe(
       '/jobs/job-j2',
     );
@@ -258,7 +253,7 @@ describe('SavedList', () => {
           Saved jobs
         </h2>
         <SavedList
-          headingId="saved-heading"
+          focusFallbackId="saved-heading"
           initial={[saved('j1', 'First', 'open'), saved('j2', 'Second', 'open')]}
         />
       </>,
@@ -281,7 +276,7 @@ describe('SavedSearchList', () => {
           Saved searches
         </h2>
         <SavedSearchList
-          headingId="searches-heading"
+          focusFallbackId="searches-heading"
           initial={[{ id: 's1', label: 'Remote Rust', query: 'q=rust' }]}
         />
       </>,

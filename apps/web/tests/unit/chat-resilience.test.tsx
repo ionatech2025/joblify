@@ -1,9 +1,4 @@
 // @vitest-environment jsdom
-//
-// The chat thread and composer when things fail: a thrown send used to reach
-// the error boundary and lose the typed message, and a poll that started
-// failing kept polling at full rate with nothing on screen saying the thread
-// had stopped updating.
 
 import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest';
 import { Component, type ReactNode } from 'react';

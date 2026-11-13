@@ -60,8 +60,6 @@ export function ApplicationsList({
     ) {
       return;
     }
-    // The row stays but its Withdraw goes, so land on the next one or on this
-    // row's job link.
     moveFocusFromRowAction(button, button.closest('tr')?.querySelector('a'));
     withdraw.mutate(a.id, {
       onSuccess: () => toast.success('Application withdrawn'),
@@ -174,7 +172,6 @@ export function ApplicationsList({
       ) : (
         <ListView caption="My applications" rows={items} rowKey={(a) => a.id} columns={columns} />
       )}
-      {/* Visual only: announcing every background poll was noise. */}
       <p className="text-fg-subtle mt-1 h-4 text-[12px]">{isFetching ? 'Refreshing…' : ''}</p>
     </>
   );
