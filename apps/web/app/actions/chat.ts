@@ -162,7 +162,7 @@ export async function addChatParticipant(
         where: {
           jobPostId: area.jobPostId,
           jobSeekerId: seeker.id,
-          status: { in: CHAT_JOIN_STATUSES },
+          status: { in: [...CHAT_JOIN_STATUSES] },
         },
         select: { id: true },
       }));

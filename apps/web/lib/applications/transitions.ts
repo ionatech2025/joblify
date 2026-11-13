@@ -45,7 +45,7 @@ export function checkRecruiterTransition(
   return { ok: true };
 }
 
-export const CHAT_JOIN_STATUSES: ApplicationStatus[] = [
+export const CHAT_JOIN_STATUSES: readonly ApplicationStatus[] = [
   'SHORTLISTED',
   'INTERVIEW_SCHEDULED',
   'OFFER_EXTENDED',

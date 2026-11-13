@@ -154,7 +154,7 @@ async function getAddableSeekers(
     const applications = await db.jobApplication.findMany({
       where: {
         jobPostId: area.jobPost.id,
-        status: { in: CHAT_JOIN_STATUSES },
+        status: { in: [...CHAT_JOIN_STATUSES] },
         jobSeeker: { deletedAt: null },
       },
       orderBy: { appliedAt: 'desc' },
