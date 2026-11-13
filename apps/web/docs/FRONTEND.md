@@ -135,6 +135,12 @@ synchronously on the main thread, once per keystroke. The hook takes the store
 itself (a module singleton, so a stable dep), debounces the write, and flushes
 it on unmount so accidental navigation still saves.
 
+It restores a draft only when `ownsDrafts()` (`lib/stores/clear-drafts.ts`) says its
+owner is the person signed in now, and re-checks when `<AuthHint>`'s answer arrives.
+Do not restore a draft any other way: drafts survive a signed-out render (so an expired
+session gets its work back), and a form can mount before `<AuthHint>` wipes another
+person's drafts.
+
 **Never wrap a control in its `<label>`.** `Field` and `SheetField` associate via
 `htmlFor`/`id`, because a wrapping label contributes _all_ of its text to the
 control's accessible name — with a hint and an error on screen, a screen reader

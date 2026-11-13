@@ -1,6 +1,5 @@
 import { cache } from 'react';
 import { auth as clerkAuth, currentUser as clerkCurrentUser } from '@clerk/nextjs/server';
-import { redirect } from 'next/navigation';
 import type { User, UserType, PlanTier } from '@prisma/client';
 import { db } from './db';
 
@@ -63,13 +62,9 @@ async function provisionFromClerk(clerkUserId: string): Promise<AuthContext | nu
 export async function requireUser(): Promise<AuthContext> {
   const user = await currentUser();
   if (user) return user;
-  // Signed out: Clerk's redirect carries redirect_url back to the request it
-  // saw (for a Server Action, the page it was posted from). A live Clerk session
-  // with no usable local user must not be sent back, or sign-in would bounce
-  // straight back into this redirect.
-  const { userId, redirectToSignIn } = await clerkAuth();
-  if (!userId) redirectToSignIn();
-  redirect('/sign-in');
+  // Clerk's redirect carries redirect_url back to the request it saw (for a
+  // Server Action, the page it was posted from).
+  return (await clerkAuth()).redirectToSignIn();
 }
 
 export async function requireRole(role: UserType): Promise<AuthContext> {

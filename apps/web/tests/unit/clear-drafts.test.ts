@@ -1,19 +1,28 @@
 // @vitest-environment jsdom
-import { describe, it, expect, beforeEach } from 'vitest';
-import { clearAllDrafts, reconcileDraftOwner, DRAFT_OWNER_KEY } from '@/lib/stores/clear-drafts';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { createElement } from 'react';
+import { cleanup, render } from '@testing-library/react';
+import {
+  clearAllDrafts,
+  clearDraftsOnSignOut,
+  reconcileDraftOwner,
+  DRAFT_OWNER_KEY,
+} from '@/lib/stores/clear-drafts';
+import { AuthHint } from '@/app/components/auth-hint';
 import { useProfileDraftStore } from '@/lib/stores/profile-draft';
 import { useApplyDraftStore } from '@/lib/stores/apply-draft';
 
 // Drafts hold unsaved PII (name, phone, bio, cover letters) under fixed,
 // unkeyed localStorage names. On a shared computer the next sign-in must not
-// inherit them — in memory OR in storage. The same person signing back in after
-// an expired session must.
+// inherit them — in memory OR in storage.
 
 beforeEach(() => {
   localStorage.clear();
   useProfileDraftStore.setState({ draft: {} });
   useApplyDraftStore.setState({ byJob: {} });
 });
+
+afterEach(cleanup);
 
 describe('reconcileDraftOwner', () => {
   it('wipes the previous user’s drafts when a different user signs in', () => {
@@ -37,14 +46,18 @@ describe('reconcileDraftOwner', () => {
     expect(reconcileDraftOwner('alice')).toBe(false);
     expect(useProfileDraftStore.getState().draft.headline).toBe('keep me');
   });
+});
 
-  it('keeps drafts through a signed-out render, so an expired session can sign back in to them', () => {
-    reconcileDraftOwner('alice');
+describe('<AuthHint> across an expired session', () => {
+  const header = (userId: string | null) => createElement(AuthHint, { userId });
+
+  it('keeps drafts through the signed-out render, so the same user signs back in to them', () => {
+    const { rerender } = render(header('alice'));
     useProfileDraftStore.getState().update({ headline: 'half-typed' });
     useApplyDraftStore.getState().update('job-1', { coverLetter: 'Dear hiring manager…' });
 
-    expect(reconcileDraftOwner(null)).toBe(false); // the /sign-in page renders signed out
-    expect(reconcileDraftOwner('alice')).toBe(false);
+    rerender(header(null));
+    rerender(header('alice'));
 
     expect(useProfileDraftStore.getState().draft.headline).toBe('half-typed');
     expect(useApplyDraftStore.getState().get('job-1').coverLetter).toBe('Dear hiring manager…');
@@ -52,18 +65,33 @@ describe('reconcileDraftOwner', () => {
   });
 
   it('still wipes them when someone else signs in after the signed-out render', () => {
-    reconcileDraftOwner('alice');
+    const { rerender } = render(header('alice'));
     useProfileDraftStore.getState().update({ headline: 'Alice’s secret' });
-    reconcileDraftOwner(null);
 
-    expect(reconcileDraftOwner('bob')).toBe(true);
+    rerender(header(null));
+    rerender(header('bob'));
+
     expect(useProfileDraftStore.getState().draft).toEqual({});
     expect(localStorage.getItem('joblify.profile-draft') ?? '').not.toContain('Alice');
     expect(localStorage.getItem(DRAFT_OWNER_KEY)).toBe('bob');
   });
+});
 
-  it('does nothing for an anonymous visitor with no draft owner', () => {
-    expect(reconcileDraftOwner(null)).toBe(false);
+describe('clearDraftsOnSignOut', () => {
+  it('wipes every draft and the owner before an explicit sign-out goes ahead', async () => {
+    reconcileDraftOwner('alice');
+    useProfileDraftStore.getState().update({ headline: 'secret', phone: '0700' });
+    const signOut = vi.fn(async () => {
+      expect(useProfileDraftStore.getState().draft).toEqual({});
+    });
+    const clerk = { signOut };
+    clearDraftsOnSignOut(clerk);
+
+    await clerk.signOut();
+
+    expect(signOut).toHaveBeenCalledTimes(1);
+    expect(localStorage.getItem('joblify.profile-draft') ?? '').not.toContain('secret');
+    expect(localStorage.getItem(DRAFT_OWNER_KEY)).toBeNull();
   });
 });
 

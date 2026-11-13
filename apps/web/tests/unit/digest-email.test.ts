@@ -135,11 +135,13 @@ describe('runDigest', () => {
     vi.useFakeTimers({ toFake: ['Date'] });
     try {
       m.jobFind.mockResolvedValue([job]);
-      // Run 1 sends to u1 and then loses its stamp; run 2 the same morning selects u1 again.
+      const firstRunPage = [seeker('u1')];
+      const firstRunEnd: never[] = [];
+      const reRunPageWithStampLost = [seeker('u1')];
       m.userFind
-        .mockResolvedValueOnce([seeker('u1')])
-        .mockResolvedValueOnce([])
-        .mockResolvedValueOnce([seeker('u1')]);
+        .mockResolvedValueOnce(firstRunPage)
+        .mockResolvedValueOnce(firstRunEnd)
+        .mockResolvedValueOnce(reRunPageWithStampLost);
       vi.setSystemTime(new Date('2026-03-04T08:00:00Z'));
       await runDigest();
       vi.setSystemTime(new Date('2026-03-04T08:20:00Z'));

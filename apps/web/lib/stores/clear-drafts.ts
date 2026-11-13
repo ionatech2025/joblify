@@ -11,8 +11,16 @@ import { useProfileDraftStore } from './profile-draft';
  * salary expectations, cover letters. They are stored under fixed, unkeyed
  * localStorage names, so on a shared computer (an internet café, a library) the
  * next person to sign in saw the previous person's unsaved profile restored
- * over their own, and nothing ever cleared it. reconcileDraftOwner() calls this
- * when a different person signs in.
+ * over their own, and nothing ever cleared it.
+ *
+ * Drafts are wiped when a different person signs in (reconcileDraftOwner) and
+ * on an explicit sign-out (clearDraftsOnSignOut), and are restored only to
+ * their owner (ownsDrafts). A signed-out render keeps them: a session that
+ * expires mid-form lands on /sign-in, which renders signed out, and clearing
+ * there erased the work the person was about to sign back in to submit. The
+ * cost: after an expiry nobody signs back in from, the drafts stay in this
+ * browser's localStorage until the next sign-in. No one else is shown them,
+ * but someone with the browser's developer tools could read them.
  *
  * Both layers are cleared: removing the keys alone would leave the live zustand
  * state in memory, which the next write would just persist again.
@@ -38,19 +46,48 @@ export function clearAllDrafts(storage: Storage = localStorage): void {
 }
 
 /**
- * Reconcile drafts with the signed-in user. Returns true when drafts were
- * cleared. `userId === null` means signed out.
- *
- * Signed out keeps the drafts and their owner. A session that expires mid-form
- * lands on /sign-in, which renders signed out, and clearing there erased the
- * work the person was about to sign back in to submit. The owner check below
- * wipes them when anyone else signs in.
+ * Whether the stored drafts belong to the person signed in right now. clerk-js,
+ * once loaded, learns of a sign-in before the server-rendered hint refreshes,
+ * so it wins; without it no sign-in can have happened in this tab, so the hint
+ * is current. Unreadable storage counts as not owned.
  */
-export function reconcileDraftOwner(
-  userId: string | null,
+export function ownsDrafts(
+  hintUserId: string | null | undefined,
   storage: Storage = localStorage,
 ): boolean {
-  if (!userId) return false;
+  const clerk = (window as { Clerk?: { loaded?: boolean; user?: { id: string } | null } }).Clerk;
+  const userId = clerk?.loaded ? clerk.user?.id : hintUserId;
+  try {
+    return !!userId && storage.getItem(DRAFT_OWNER_KEY) === userId;
+  } catch {
+    return false;
+  }
+}
+
+type SignOut = (...args: never[]) => Promise<unknown>;
+
+/** Wraps a Clerk instance's signOut to wipe every draft first. Returns the unwrap. */
+export function clearDraftsOnSignOut(
+  clerk: { signOut: SignOut },
+  storage: Storage = localStorage,
+): () => void {
+  const signOut = clerk.signOut;
+  clerk.signOut = (...args) => {
+    try {
+      clearAllDrafts(storage);
+      storage.removeItem(DRAFT_OWNER_KEY);
+    } catch {
+      // localStorage can throw in some privacy modes; the sign-out must still happen.
+    }
+    return signOut(...args);
+  };
+  return () => {
+    clerk.signOut = signOut;
+  };
+}
+
+/** Reconcile drafts with the signed-in user. Returns true when drafts were cleared. */
+export function reconcileDraftOwner(userId: string, storage: Storage = localStorage): boolean {
   if (storage.getItem(DRAFT_OWNER_KEY) === userId) return false;
   clearAllDrafts(storage);
   storage.setItem(DRAFT_OWNER_KEY, userId);

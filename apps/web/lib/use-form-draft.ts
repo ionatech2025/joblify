@@ -2,6 +2,8 @@
 
 import { useEffect, useRef } from 'react';
 import type { FieldValues, UseFormReturn } from 'react-hook-form';
+import { useAuthHint } from '@/lib/stores/auth-hint';
+import { ownsDrafts } from '@/lib/stores/clear-drafts';
 
 /**
  * Restore-on-mount plus debounced persist for the console's long form drafts.
@@ -27,6 +29,10 @@ import type { FieldValues, UseFormReturn } from 'react-hook-form';
  * A draft exists to survive a closed tab, not to be durable to the keystroke —
  * so a debounce costs nothing real, and the pending write is flushed on
  * unmount so navigating away still saves the last thing typed.
+ *
+ * Restore waits until the draft's owner is the person signed in now
+ * (ownsDrafts in lib/stores/clear-drafts.ts), rather than trusting that
+ * <AuthHint> wiped another person's drafts before this form mounted.
  */
 
 /** The flat `{ draft, update, clear }` shape all four draft stores share. */
@@ -62,14 +68,20 @@ export function useFormDraft<T extends FieldValues>({
   const resetRef = useRef(reset);
   const initialRef = useRef(initial);
   const onRestoreRef = useRef(onRestore);
+  const restoredRef = useRef(false);
+  // Re-checked when the server's answer about who is signed in arrives or
+  // changes, which can be after mount.
+  const hintUserId = useAuthHint((s) => s.userId);
 
   useEffect(() => {
+    if (restoredRef.current || !ownsDrafts(hintUserId)) return;
+    restoredRef.current = true;
     const { draft } = store.getState();
     if (Object.keys(draft).length > 0) {
       resetRef.current({ ...initialRef.current, ...draft });
       onRestoreRef.current?.();
     }
-  }, [store]);
+  }, [store, hintUserId]);
 
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | undefined;
