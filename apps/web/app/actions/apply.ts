@@ -47,8 +47,7 @@ export async function submitApplication(formData: FormData): Promise<ActionResul
   });
   if (!parsed.success) return fail('Invalid application data.');
 
-  // 4. Ownership: resume must belong to this user. Not found is also a résumé
-  // deleted in another tab after this form loaded, so it is an expected failure.
+  // 4. Ownership: resume must belong to this user.
   const resume = await db.resume.findFirst({
     where: { id: parsed.data.resumeId, userId: user.id, deletedAt: null },
     select: { id: true },
@@ -85,8 +84,7 @@ export async function submitApplication(formData: FormData): Promise<ActionResul
   });
   if (existing) return fail('You already applied to this job.');
 
-  // 6. Rate limit per user (20/day). Last of the checks, so a request refused
-  // for any other reason does not use up the day's quota.
+  // 6. Rate limit per user (20/day).
   const rl = await applyLimit(user.id);
   if (!rl.success) return fail('Daily application limit reached. Try again tomorrow.');
 
@@ -131,9 +129,6 @@ export async function submitApplication(formData: FormData): Promise<ActionResul
       return app;
     },
   ).catch((err: unknown) => {
-    // A double submit's second request passes the already-applied check above
-    // and loses the race on the unique index: the application it asked for
-    // exists, so it succeeded.
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') return null;
     throw err;
   });

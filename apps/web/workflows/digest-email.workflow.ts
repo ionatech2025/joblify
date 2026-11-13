@@ -14,10 +14,7 @@
 //   3. Each page is sent in Promise.allSettled chunks of CHUNK_SIZE. Right
 //      after a chunk settles, every processed user's lastDigestAt (and, for
 //      saved-search users, SavedSearch.lastNotifiedAt) is stamped in one
-//      updateMany, and the next run resumes where this one stopped. A user
-//      whose email went out but whose stamp was lost to a crash is selected
-//      again; Resend's idempotency key (one per user per UTC day) drops the
-//      repeat send.
+//      updateMany, and the next run resumes where this one stopped.
 //   4. Users with saved searches get a personalized list (each search diffed
 //      since its own lastNotifiedAt); everyone else shares the generic list.
 //   5. The run stops cleanly at the caller-provided wall-clock deadline

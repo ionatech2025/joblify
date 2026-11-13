@@ -76,8 +76,6 @@ async function hardDeleteExpiredUsers(
   let users = 0;
   let files = 0;
   let deferred = 0;
-  // Walks ids in order, so a user deferred below is behind the cursor and is
-  // not fetched again by every later batch of this run.
   let after: string | undefined;
 
   for (let batch = 0; batch < MAX_USER_BATCHES; batch++) {

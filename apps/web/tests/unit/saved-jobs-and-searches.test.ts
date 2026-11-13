@@ -74,7 +74,6 @@ describe('toggleSavedJob', () => {
     expect(res).toEqual({ ok: true, data: { saved: true } });
     expect(m.savedJobCreateMany).toHaveBeenCalledWith({
       data: [{ userId: 'seeker-1', jobPostId: 'job-1' }],
-      // ON CONFLICT DO NOTHING: a concurrent save of the same job is not an error.
       skipDuplicates: true,
     });
   });
