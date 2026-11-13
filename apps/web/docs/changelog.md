@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-14 — /jobs results start on a phone's first screen
+
+- **Folded secondary filters:** below `md`, work mode, job type, experience and salary sit behind
+  a "More filters" toggle (`aria-expanded`, `aria-controls`) that says how many of them are on.
+  Keyword and location stay visible. From `md` up the rail is unchanged. Before this, a 390px
+  phone showed seven filter fields and no job until the user scrolled.
+- The Suspense skeleton folds the same rows, so hydration does not shift the results.
+
 ## 2026-11-13 — Calm type system (phase 1 of the November audit)
 
 - **Typefaces:** Newsreader (serif, weight 600) now carries editorial headlines and page `h1`/`h2`;

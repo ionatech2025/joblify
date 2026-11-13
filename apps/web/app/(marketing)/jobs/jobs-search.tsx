@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
-import { ChevronLeft, ChevronRight, SearchX } from 'lucide-react';
+import { ChevronLeft, ChevronRight, SearchX, SlidersHorizontal } from 'lucide-react';
 import {
   canonicalSearchString,
   type JobCardRecord,
@@ -19,6 +19,17 @@ import { SaveSearchButton } from './save-search-button';
 import { JobResultsSkeleton } from './jobs-search-skeleton';
 import { formatSalary } from '@/lib/ui/salary';
 import { useAuthHint } from '@/lib/stores/auth-hint';
+import { cn } from '@/lib/cn';
+
+// Folded behind "More filters" on phones; counted so the toggle says when any
+// of them is narrowing the results.
+const MORE_FILTER_KEYS = [
+  'workMode',
+  'jobType',
+  'experienceLevel',
+  'salaryMin',
+  'salaryMax',
+] as const;
 
 const SELECTS = {
   workMode: [
@@ -80,6 +91,8 @@ export function JobsSearch({
   const [locText, setLocText] = useState(getp('location'));
   const [salMin, setSalMin] = useState(getp('salaryMin'));
   const [salMax, setSalMax] = useState(getp('salaryMax'));
+  const [moreOpen, setMoreOpen] = useState(false);
+  const activeMore = MORE_FILTER_KEYS.filter((k) => getp(k)).length;
 
   // Resync local inputs to the URL when it changes externally (shared link,
   // back/forward, clear). Adjusting state during render — guarded so it can't
@@ -181,43 +194,61 @@ export function JobsSearch({
           value={locText}
           onChange={(e) => setLocText(e.target.value)}
         />
-        <p aria-hidden="true" className="caption m-0 pt-1">
-          Role preferences
-        </p>
-        {(['workMode', 'jobType', 'experienceLevel'] as const).map((field) => (
-          <Select
-            key={field}
-            aria-label={FILTER_LABELS[field]}
-            value={getp(field)}
-            onChange={(e) => patch({ [field]: e.target.value, page: '' })}
-          >
-            {SELECTS[field].map(([v, label]) => (
-              <option key={v} value={v}>
-                {label}
-              </option>
-            ))}
-          </Select>
-        ))}
-        <p aria-hidden="true" className="caption m-0 pt-1">
-          Annual salary
-        </p>
-        <div className="grid grid-cols-2 gap-2">
-          <Input
-            type="number"
-            min={0}
-            placeholder="Min salary"
-            aria-label="Minimum salary"
-            value={salMin}
-            onChange={(e) => setSalMin(e.target.value)}
-          />
-          <Input
-            type="number"
-            min={0}
-            placeholder="Max salary"
-            aria-label="Maximum salary"
-            value={salMax}
-            onChange={(e) => setSalMax(e.target.value)}
-          />
+        {/* On phones the secondary filters fold away so results start on the
+            first screen; from md up the rail always shows them. */}
+        <Button
+          variant="secondary"
+          size="sm"
+          className="md:hidden"
+          aria-expanded={moreOpen}
+          aria-controls="job-filters-more"
+          onClick={() => setMoreOpen((o) => !o)}
+          icon={<SlidersHorizontal aria-hidden className="size-4" />}
+        >
+          {activeMore > 0 ? `More filters (${activeMore} on)` : 'More filters'}
+        </Button>
+        <div
+          id="job-filters-more"
+          className={cn('flex-col gap-3', moreOpen ? 'flex' : 'hidden md:flex')}
+        >
+          <p aria-hidden="true" className="caption m-0 pt-1">
+            Role preferences
+          </p>
+          {(['workMode', 'jobType', 'experienceLevel'] as const).map((field) => (
+            <Select
+              key={field}
+              aria-label={FILTER_LABELS[field]}
+              value={getp(field)}
+              onChange={(e) => patch({ [field]: e.target.value, page: '' })}
+            >
+              {SELECTS[field].map(([v, label]) => (
+                <option key={v} value={v}>
+                  {label}
+                </option>
+              ))}
+            </Select>
+          ))}
+          <p aria-hidden="true" className="caption m-0 pt-1">
+            Annual salary
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            <Input
+              type="number"
+              min={0}
+              placeholder="Min salary"
+              aria-label="Minimum salary"
+              value={salMin}
+              onChange={(e) => setSalMin(e.target.value)}
+            />
+            <Input
+              type="number"
+              min={0}
+              placeholder="Max salary"
+              aria-label="Maximum salary"
+              value={salMax}
+              onChange={(e) => setSalMax(e.target.value)}
+            />
+          </div>
         </div>
         {qs.length > 0 && (
           <Button variant="ghost" size="sm" onClick={() => navigate('')}>
