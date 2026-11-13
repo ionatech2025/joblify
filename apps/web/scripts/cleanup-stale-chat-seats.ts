@@ -22,14 +22,13 @@ export type JobChatSeat = {
   jobPostId: string;
   userId: string;
   userType: UserType;
-  /** The seat holder's application to the area's job, if any. */
-  status: ApplicationStatus | null;
+  applicationStatus: ApplicationStatus | null;
 };
 
 export function isStaleSeat(seat: JobChatSeat): boolean {
   return (
     seat.userType === 'JOB_SEEKER' &&
-    !(seat.status !== null && CHAT_JOIN_STATUSES.includes(seat.status))
+    !(seat.applicationStatus !== null && CHAT_JOIN_STATUSES.includes(seat.applicationStatus))
   );
 }
 
@@ -37,7 +36,8 @@ async function main(apply: boolean): Promise<void> {
   const prisma = new PrismaClient();
   try {
     const seats = await prisma.$queryRaw<JobChatSeat[]>`
-      SELECT p."chatAreaId", a.title, a."jobPostId", p."userId", u."userType", ja.status
+      SELECT p."chatAreaId", a.title, a."jobPostId", p."userId", u."userType",
+             ja.status AS "applicationStatus"
         FROM chat_participants p
         JOIN chat_areas a ON a.id = p."chatAreaId"
         JOIN users u ON u.id = p."userId"

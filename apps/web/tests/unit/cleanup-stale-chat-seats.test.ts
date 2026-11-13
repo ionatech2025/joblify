@@ -12,7 +12,7 @@ const seat = (over: Partial<JobChatSeat> = {}): JobChatSeat => ({
   jobPostId: 'job1',
   userId: 'seeker1',
   userType: 'JOB_SEEKER',
-  status: null,
+  applicationStatus: null,
   ...over,
 });
 
@@ -24,14 +24,14 @@ describe('isStaleSeat', () => {
   it.each<ApplicationStatus>(['SUBMITTED', 'VIEWED', 'REJECTED', 'WITHDRAWN'])(
     'removes a seeker whose application is %s',
     (status) => {
-      expect(isStaleSeat(seat({ status }))).toBe(true);
+      expect(isStaleSeat(seat({ applicationStatus: status }))).toBe(true);
     },
   );
 
   it.each<ApplicationStatus>(['SHORTLISTED', 'INTERVIEW_SCHEDULED', 'OFFER_EXTENDED', 'HIRED'])(
     'keeps a seeker whose application is %s',
     (status) => {
-      expect(isStaleSeat(seat({ status }))).toBe(false);
+      expect(isStaleSeat(seat({ applicationStatus: status }))).toBe(false);
     },
   );
 
