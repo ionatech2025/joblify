@@ -25,6 +25,9 @@ function requiredReason(reason: string | undefined, missing: string): ActionResu
 
 class StaleDecision extends Error {}
 
+const REPORT_RESOLVED =
+  'This report was resolved since you loaded the queue. Reload to see the latest.';
+
 // `reviewedUpdatedAt` is the profile version the admin's queue showed: every
 // write (an edit, a resubmission, another admin's decision) bumps @updatedAt,
 // so the decision applies only to exactly what the admin reviewed.
@@ -175,58 +178,65 @@ export async function resolveJobReport(
     },
   });
   if (!report) return fail('Report not found.');
-  if (report.status !== 'OPEN') return succeed();
+  if (report.status !== 'OPEN') return fail(REPORT_RESOLVED);
 
   const applicantIds = report.jobPost.applications.map((a) => a.jobSeekerId);
   const h = await headers();
   const now = new Date();
-  await withAudit(
-    { actorId: admin.id, ip: clientIp(h), ua: h.get('user-agent') },
-    {
-      action: 'JOB_REPORT_RESOLVED',
-      entity: 'job_post',
-      entityId: report.jobPostId,
-      after: () => ({ reportId, outcome, reason: removalReason }),
-    },
-    async (tx) => {
-      if (outcome === 'ACTIONED') {
-        await tx.jobReport.updateMany({
-          where: { jobPostId: report.jobPostId, status: 'OPEN' },
-          data: { status: 'ACTIONED', resolvedAt: now, resolvedBy: admin.id },
-        });
-        if (!report.jobPost.deletedAt) {
-          await tx.jobPost.update({
-            where: { id: report.jobPostId },
-            data: { status: 'ARCHIVED', deletedAt: now },
+  try {
+    await withAudit(
+      { actorId: admin.id, ip: clientIp(h), ua: h.get('user-agent') },
+      {
+        action: 'JOB_REPORT_RESOLVED',
+        entity: 'job_post',
+        entityId: report.jobPostId,
+        after: () => ({ reportId, outcome, reason: removalReason }),
+      },
+      async (tx) => {
+        if (outcome === 'ACTIONED') {
+          const { count } = await tx.jobReport.updateMany({
+            where: { jobPostId: report.jobPostId, status: 'OPEN' },
+            data: { status: 'ACTIONED', resolvedAt: now, resolvedBy: admin.id },
           });
-          await tx.notification.create({
-            data: {
-              userId: report.jobPost.companyId,
-              kind: 'ACCOUNT_UPDATE',
-              payload: {
-                message: `Your job post "${report.jobPost.title}" was removed after a report was reviewed.`,
+          if (count === 0) throw new StaleDecision();
+          if (!report.jobPost.deletedAt) {
+            await tx.jobPost.update({
+              where: { id: report.jobPostId },
+              data: { status: 'ARCHIVED', deletedAt: now },
+            });
+            await tx.notification.create({
+              data: {
+                userId: report.jobPost.companyId,
+                kind: 'ACCOUNT_UPDATE',
+                payload: {
+                  message: `Your job post "${report.jobPost.title}" was removed after a report was reviewed.`,
+                },
               },
-            },
+            });
+          }
+          await tx.notification.createMany({
+            data: applicantIds.map((userId) => ({
+              userId,
+              kind: 'SYSTEM' as const,
+              payload: {
+                jobId: report.jobPostId,
+                message: `A job you applied to, "${report.jobPost.title}", was removed after a safety review. Do not send money or personal documents to anyone who contacts you about it.`,
+              },
+            })),
           });
+        } else {
+          const { count } = await tx.jobReport.updateMany({
+            where: { id: reportId, status: 'OPEN' },
+            data: { status: 'DISMISSED', resolvedAt: now, resolvedBy: admin.id },
+          });
+          if (count === 0) throw new StaleDecision();
         }
-        await tx.notification.createMany({
-          data: applicantIds.map((userId) => ({
-            userId,
-            kind: 'SYSTEM' as const,
-            payload: {
-              jobId: report.jobPostId,
-              message: `A job you applied to, "${report.jobPost.title}", was removed after a safety review. Do not send money or personal documents to anyone who contacts you about it.`,
-            },
-          })),
-        });
-      } else {
-        await tx.jobReport.update({
-          where: { id: reportId },
-          data: { status: 'DISMISSED', resolvedAt: now, resolvedBy: admin.id },
-        });
-      }
-    },
-  );
+      },
+    );
+  } catch (err) {
+    if (err instanceof StaleDecision) return fail(REPORT_RESOLVED);
+    throw err;
+  }
 
   if (outcome === 'ACTIONED') {
     updateTag(tags.job(report.jobPostId));

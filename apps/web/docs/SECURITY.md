@@ -179,8 +179,10 @@ Any signed-in user can report a posting (`app/actions/report-job.ts`: rate-limit
 reporter per job, not your own job). Admins resolve the queue on `/admin`
 (`resolveJobReport`): _remove_ needs a reason (kept in the audit event), archives the posting
 immediately, notifies the company, warns every applicant in-app, de-indexes it and closes every open
-report on it; _dismiss_ closes just that report. Company verification gates who can post; reports are
-the control for a verified account that goes bad.
+report on it; _dismiss_ closes just that report. Both write only while the report is still open, so a
+second admin or a stale tab gets "resolved since you loaded the queue" instead of archiving, notifying
+and auditing twice. Company verification gates who can post; reports are the control for a verified
+account that goes bad.
 
 Company verification (`verifyCompany`) decides only a `PENDING` profile whose `updatedAt` still
 matches the version the admin's queue showed. Every write bumps it, so a stale admin tab cannot flip a

@@ -25,7 +25,6 @@ const m = vi.hoisted(() => {
     sendEmail: vi.fn(),
     updateTag: vi.fn(),
     reportFindUnique: vi.fn(),
-    reportUpdate: vi.fn(),
     reportUpdateMany: vi.fn(),
     jobUpdate: vi.fn(),
     reindexJob: vi.fn(),
@@ -61,7 +60,7 @@ vi.mock('@/lib/audit', () => ({
     return fn({
       companyProfile: { updateMany: m.profileUpdateMany },
       notification: { create: m.notifCreate, createMany: m.notifCreateMany },
-      jobReport: { update: m.reportUpdate, updateMany: m.reportUpdateMany },
+      jobReport: { updateMany: m.reportUpdateMany },
       jobPost: { update: m.jobUpdate },
     });
   },
@@ -285,7 +284,6 @@ describe('resolveJobReport', () => {
 
   beforeEach(() => {
     m.reportFindUnique.mockResolvedValue({ ...REPORT });
-    m.reportUpdate.mockResolvedValue({});
     m.reportUpdateMany.mockResolvedValue({ count: 2 });
     m.jobUpdate.mockResolvedValue({});
     m.reindexJob.mockResolvedValue(undefined);
@@ -354,9 +352,13 @@ describe('resolveJobReport', () => {
   });
 
   it('DISMISSED closes only that report and leaves the job alone', async () => {
-    await resolveJobReport('rep1', { outcome: 'DISMISSED' });
-    expect(m.reportUpdate).toHaveBeenCalledWith({
-      where: { id: 'rep1' },
+    m.reportUpdateMany.mockResolvedValue({ count: 1 });
+    expect(await resolveJobReport('rep1', { outcome: 'DISMISSED' })).toEqual({
+      ok: true,
+      data: undefined,
+    });
+    expect(m.reportUpdateMany).toHaveBeenCalledWith({
+      where: { id: 'rep1', status: 'OPEN' },
       data: { status: 'DISMISSED', resolvedAt: expect.any(Date), resolvedBy: 'admin1' },
     });
     expect(m.jobUpdate).not.toHaveBeenCalled();
@@ -365,14 +367,35 @@ describe('resolveJobReport', () => {
     expect(m.afterCallbacks).toHaveLength(0);
   });
 
-  it('is idempotent for an already-resolved report', async () => {
-    m.reportFindUnique.mockResolvedValue({ ...REPORT, status: 'ACTIONED' });
-    expect(await resolveJobReport('rep1', { outcome: 'ACTIONED', reason: 'Scam' })).toEqual({
-      ok: true,
-      data: undefined,
-    });
+  const ALREADY_RESOLVED = {
+    ok: false,
+    error: 'This report was resolved since you loaded the queue. Reload to see the latest.',
+  };
+
+  it('refuses a stale tab deciding a report that is already resolved', async () => {
+    m.reportFindUnique.mockResolvedValue({ ...REPORT, status: 'DISMISSED' });
+    expect(await resolveJobReport('rep1', { outcome: 'ACTIONED', reason: 'Scam' })).toEqual(
+      ALREADY_RESOLVED,
+    );
+    expect(m.reportUpdateMany).not.toHaveBeenCalled();
     expect(m.jobUpdate).not.toHaveBeenCalled();
   });
+
+  it.each([
+    ['removes', { outcome: 'ACTIONED' as const, reason: 'Scam' }],
+    ['dismisses', { outcome: 'DISMISSED' as const }],
+  ])(
+    'when another admin resolves it first, %s nothing, notifies no one and keeps the job listed',
+    async (_verb, resolution) => {
+      m.reportUpdateMany.mockResolvedValue({ count: 0 });
+      expect(await resolveJobReport('rep1', resolution)).toEqual(ALREADY_RESOLVED);
+      expect(m.jobUpdate).not.toHaveBeenCalled();
+      expect(m.notifCreate).not.toHaveBeenCalled();
+      expect(m.notifCreateMany).not.toHaveBeenCalled();
+      expect(m.updateTag).not.toHaveBeenCalled();
+      expect(m.afterCallbacks).toHaveLength(0);
+    },
+  );
 
   it('reports an unknown id as an expected failure', async () => {
     m.reportFindUnique.mockResolvedValue(null);
