@@ -191,6 +191,9 @@ export async function getCompanyBySlug(slug: string) {
     where: { slug },
     include: { user: { select: { deletedAt: true } } },
   });
+  // Tagged before the verification check, so the null cached for a pending
+  // company clears when verifyCompany or a profile save updates these tags.
+  cacheTag(profile ? tags.company(profile.userId) : tags.companies());
   if (
     !profile ||
     profile.user?.deletedAt ||
@@ -199,6 +202,5 @@ export async function getCompanyBySlug(slug: string) {
     return null;
   }
 
-  cacheTag(tags.company(profile.userId));
   return profile;
 }
