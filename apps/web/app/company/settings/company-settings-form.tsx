@@ -7,7 +7,9 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
 import {
   CompanyProfileSchema,
+  VerifiedCompanyEditSchema,
   type CompanyProfileInput,
+  type VerifiedCompanyEditInput,
   INDUSTRY_OPTIONS,
   SIZE_VALUES,
   SIZE_LABELS,
@@ -23,6 +25,7 @@ import {
   SheetGroup,
   SheetGroups,
   SheetTitle,
+  SheetValue,
 } from '@/app/components/console/sheet';
 import { DirtyBar } from '@/app/components/console/dirty-bar';
 import { useCompanySettingsDraftStore } from '@/lib/stores/company-settings-draft';
@@ -31,8 +34,16 @@ import { useHydrated } from '@/lib/use-hydrated';
 import { toast } from '@/lib/stores/ui';
 import { industryLabel } from '@/lib/ui/status';
 
-const LOCKED_HINT = 'Locked after verification. The verified badge vouches for it.';
-const LOCKED_CLASS = 'bg-surface-sunken text-fg-muted';
+function LockedValue({ label, value }: { label: string; value: string }) {
+  return (
+    <SheetValue label={label}>
+      {value || 'Not given'}
+      <span className="text-fg-subtle mt-0.5 block text-[12px]">
+        Locked after verification. The verified badge vouches for it.
+      </span>
+    </SheetValue>
+  );
+}
 
 export function CompanySettingsForm({
   initial,
@@ -63,7 +74,7 @@ export function CompanySettingsForm({
     reset,
     formState: { errors, isDirty },
   } = useForm<CompanyProfileInput>({
-    resolver: zodResolver(CompanyProfileSchema),
+    resolver: zodResolver(verified ? VerifiedCompanyEditSchema : CompanyProfileSchema),
     defaultValues: initial,
   });
 
@@ -76,7 +87,7 @@ export function CompanySettingsForm({
     onRestore: () => setRestoredDraft(true),
   });
 
-  function onSubmit(values: CompanyProfileInput) {
+  function onSubmit(values: CompanyProfileInput | VerifiedCompanyEditInput) {
     setError(null);
     start(async () => {
       try {
@@ -177,20 +188,17 @@ export function CompanySettingsForm({
 
           <SheetGroups>
             <SheetGroup title="Identity">
-              <SheetField
-                label="Company name"
-                error={errors.companyName?.message}
-                hint={verified ? LOCKED_HINT : undefined}
-                required
-              >
-                <Input
-                  defaultValue={initial.companyName}
-                  {...register('companyName')}
-                  readOnly={verified}
-                  className={verified ? LOCKED_CLASS : undefined}
-                  autoComplete="organization"
-                />
-              </SheetField>
+              {verified ? (
+                <LockedValue label="Company name" value={initial.companyName} />
+              ) : (
+                <SheetField label="Company name" error={errors.companyName?.message} required>
+                  <Input
+                    defaultValue={initial.companyName}
+                    {...register('companyName')}
+                    autoComplete="organization"
+                  />
+                </SheetField>
+              )}
               <SheetField label="Industry">
                 <Select defaultValue={initial.industry} {...register('industry')}>
                   {INDUSTRY_OPTIONS.map((i) => (
@@ -245,21 +253,19 @@ export function CompanySettingsForm({
                   placeholder="+256 743 535 678"
                 />
               </SheetField>
-              <SheetField
-                label="Website"
-                error={errors.website?.message}
-                hint={verified ? LOCKED_HINT : undefined}
-              >
-                <Input
-                  type="url"
-                  defaultValue={initial.website ?? ''}
-                  {...register('website')}
-                  readOnly={verified}
-                  className={verified ? LOCKED_CLASS : undefined}
-                  autoComplete="url"
-                  placeholder="https://acme.com"
-                />
-              </SheetField>
+              {verified ? (
+                <LockedValue label="Website" value={initial.website ?? ''} />
+              ) : (
+                <SheetField label="Website" error={errors.website?.message}>
+                  <Input
+                    type="url"
+                    defaultValue={initial.website ?? ''}
+                    {...register('website')}
+                    autoComplete="url"
+                    placeholder="https://acme.com"
+                  />
+                </SheetField>
+              )}
               <SheetField label="LinkedIn" error={errors.linkedin?.message}>
                 <Input
                   type="url"

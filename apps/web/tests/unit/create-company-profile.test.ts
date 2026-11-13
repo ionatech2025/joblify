@@ -97,25 +97,38 @@ describe('updateCompanyProfile', () => {
     verificationStatus,
   });
 
-  it.each([
-    ['name', { companyName: 'Acme Bank' }],
-    ['website', { website: 'https://acme-bank.example' }],
-  ])('refuses to change a verified company %s', async (_field, change) => {
-    m.companyFindUnique.mockResolvedValue(stored('VERIFIED'));
-    const res = await updateCompanyProfile({ ...PROFILE, ...change });
-    expect(res).toMatchObject({ ok: false, error: expect.stringMatching(/once verified/i) });
-    expect(m.companyUpdateMany).not.toHaveBeenCalled();
+  it("saves other fields for a verified company whose imported name and website fail today's rules", async () => {
+    m.companyFindUnique.mockResolvedValue({
+      ...stored('VERIFIED'),
+      companyName: '  Legacy Co ',
+      website: '',
+    });
+    const res = await updateCompanyProfile({
+      industry: PROFILE.industry,
+      companySize: PROFILE.companySize,
+      description: PROFILE.description,
+      address: 'Plot 9, Jinja Road',
+    });
+    expect(res).toEqual({ ok: true, data: undefined });
+    const { data } = m.companyUpdateMany.mock.calls[0]![0];
+    expect(data.address).toBe('Plot 9, Jinja Road');
+    expect(data).not.toHaveProperty('companyName');
+    expect(data).not.toHaveProperty('website');
   });
 
-  it('lets a verified company edit everything else and stay verified', async () => {
+  it('keeps a verified company verified under its name and website, whatever the request sends', async () => {
     m.companyFindUnique.mockResolvedValue(stored('VERIFIED'));
     const res = await updateCompanyProfile({
       ...PROFILE,
+      companyName: 'Acme Bank',
+      website: 'acme-bank.example',
       description: 'A new, longer company story.',
     });
     expect(res).toEqual({ ok: true, data: undefined });
     const { data } = m.companyUpdateMany.mock.calls[0]![0];
     expect(data.description).toBe('A new, longer company story.');
+    expect(data).not.toHaveProperty('companyName');
+    expect(data).not.toHaveProperty('website');
     expect(data).not.toHaveProperty('verificationStatus');
   });
 
@@ -151,7 +164,7 @@ describe('updateCompanyProfile', () => {
   });
 
   it('returns the schema message for invalid input', async () => {
-    m.companyFindUnique.mockResolvedValue(stored('VERIFIED'));
+    m.companyFindUnique.mockResolvedValue(stored('PENDING'));
     expect(await updateCompanyProfile({ ...PROFILE, website: 'not a url' })).toEqual({
       ok: false,
       error: 'Invalid website URL',

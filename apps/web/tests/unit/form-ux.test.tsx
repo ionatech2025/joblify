@@ -371,21 +371,37 @@ describe('CompanySettingsForm verification states', () => {
     website: 'https://acme-robotics.example',
   };
 
-  it('locks the verified name and website and says why', () => {
+  it('shows the verified name and website as text rather than fields, and says why', () => {
     render(<CompanySettingsForm logoUrl={null} verificationStatus="VERIFIED" initial={initial} />);
-    const name = screen.getByRole('textbox', { name: 'Company name' }) as HTMLInputElement;
-    const website = screen.getByRole('textbox', { name: 'Website' }) as HTMLInputElement;
-    expect(name.readOnly).toBe(true);
-    expect(website.readOnly).toBe(true);
-    expect(name.getAttribute('aria-describedby')).toBeTruthy();
-    expect(document.getElementById(name.getAttribute('aria-describedby')!)?.textContent).toMatch(
-      /locked after verification/i,
-    );
+    expect(screen.queryByRole('textbox', { name: 'Company name' })).toBeNull();
+    expect(screen.queryByRole('textbox', { name: 'Website' })).toBeNull();
+    expect(screen.getByText('Acme Robotics')).toBeDefined();
+    expect(screen.getByText('https://acme-robotics.example')).toBeDefined();
+    expect(screen.getAllByText(/locked after verification/i)).toHaveLength(2);
     expect(
       (screen.getByRole('textbox', { name: 'Contact person' }) as HTMLInputElement).readOnly,
     ).toBe(false);
     expect(screen.getByRole('button', { name: 'Save changes' })).toBeDefined();
   });
+
+  it("saves a verified profile whose imported website fails today's URL rules", async () => {
+    const user = userEvent.setup();
+    updateCompany.mockResolvedValue({ ok: true, data: undefined });
+    render(
+      <CompanySettingsForm
+        logoUrl={null}
+        verificationStatus="VERIFIED"
+        initial={{ ...initial, website: 'acme-robotics.example' }}
+      />,
+    );
+    await user.type(screen.getByRole('textbox', { name: 'Contact person' }), 'Grace');
+    await user.click(screen.getByRole('button', { name: 'Save changes' }));
+    await vi.waitFor(() => expect(updateCompany).toHaveBeenCalled(), { timeout: 5000 });
+    const sent = updateCompany.mock.calls[0]![0];
+    expect(sent).toMatchObject({ contactPersonName: 'Grace' });
+    expect(sent).not.toHaveProperty('companyName');
+    expect(sent).not.toHaveProperty('website');
+  }, 30_000);
 
   it('lets a rejected company edit everything and resubmit', async () => {
     const user = userEvent.setup();
@@ -427,7 +443,7 @@ describe('Server HTML pre-hydration form values', () => {
     const settingsHtml = renderToString(
       <CompanySettingsForm
         logoUrl={null}
-        verificationStatus="VERIFIED"
+        verificationStatus="PENDING"
         initial={{
           companyName: 'Acme Robotics',
           industry: 'TECHNOLOGY',

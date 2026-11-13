@@ -60,3 +60,12 @@ export const CompanyProfileSchema = z.object({
 });
 
 export type CompanyProfileInput = z.infer<typeof CompanyProfileSchema>;
+
+// A verified company's name and website are locked (the badge vouches for
+// them), so its edits leave them out rather than re-validating imported values.
+export const VerifiedCompanyEditSchema = CompanyProfileSchema.omit({
+  companyName: true,
+  website: true,
+});
+
+export type VerifiedCompanyEditInput = z.infer<typeof VerifiedCompanyEditSchema>;

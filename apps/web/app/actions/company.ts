@@ -10,7 +10,9 @@ import { trustedLogoUrl } from '@/lib/storage/blob';
 import { logger } from '@/lib/observability/logger';
 import {
   CompanyProfileSchema,
+  VerifiedCompanyEditSchema,
   type CompanyProfileInput,
+  type VerifiedCompanyEditInput,
 } from '@/app/company/company-profile-schema';
 import { clientIp } from '@/lib/security/client-ip';
 import { type ActionResult, fail, succeed } from '@/lib/action-result';
@@ -95,26 +97,28 @@ export async function createCompanyProfile(input: CompanyProfileInput): Promise<
 
 class StatusChanged extends Error {}
 
-export async function updateCompanyProfile(input: CompanyProfileInput): Promise<ActionResult> {
+export async function updateCompanyProfile(
+  input: CompanyProfileInput | VerifiedCompanyEditInput,
+): Promise<ActionResult> {
   const user = await requireRole('COMPANY');
-  const result = CompanyProfileSchema.safeParse(input);
-  if (!result.success) return fail(result.error.issues[0]?.message ?? 'Check the company details.');
-  const parsed = result.data;
-
   const profile = await db.companyProfile.findUnique({
     where: { userId: user.id },
-    select: { id: true, logoUrl: true, companyName: true, website: true, verificationStatus: true },
+    select: { id: true, logoUrl: true, verificationStatus: true },
   });
   if (!profile) throw new AuthError('FORBIDDEN');
 
-  if (
-    profile.verificationStatus === 'VERIFIED' &&
-    (parsed.companyName !== profile.companyName || (parsed.website || null) !== profile.website)
-  ) {
-    return fail(
-      "Company name and website can't be changed once verified. The verified badge vouches for them.",
-    );
-  }
+  const result =
+    profile.verificationStatus === 'VERIFIED'
+      ? VerifiedCompanyEditSchema.safeParse(input)
+      : CompanyProfileSchema.safeParse(input);
+  if (!result.success) return fail(result.error.issues[0]?.message ?? 'Check the company details.');
+  const {
+    companyName,
+    website,
+    ...parsed
+  }: VerifiedCompanyEditInput & Partial<CompanyProfileInput> = result.data;
+  const identity = companyName === undefined ? null : { companyName, website: website || null };
+
   const resubmission =
     profile.verificationStatus === 'REJECTED'
       ? { verificationStatus: 'PENDING' as const, rejectionReason: null }
@@ -133,14 +137,16 @@ export async function updateCompanyProfile(input: CompanyProfileInput): Promise<
           ? { logoUrl: trustedLogo }
           : {};
 
-  const duplicateName = await db.companyProfile.findFirst({
-    where: {
-      companyName: { equals: parsed.companyName, mode: 'insensitive' },
-      id: { not: profile.id },
-    },
-    select: { id: true },
-  });
-  if (duplicateName) return fail('A company with this name is already registered.');
+  if (identity) {
+    const duplicateName = await db.companyProfile.findFirst({
+      where: {
+        companyName: { equals: identity.companyName, mode: 'insensitive' },
+        id: { not: profile.id },
+      },
+      select: { id: true },
+    });
+    if (duplicateName) return fail('A company with this name is already registered.');
+  }
 
   const ctx = { ...(await auditCtx()), actorId: user.id };
 
@@ -152,7 +158,7 @@ export async function updateCompanyProfile(input: CompanyProfileInput): Promise<
         entity: 'company_profile',
         entityId: profile.id,
         before: { verificationStatus: profile.verificationStatus },
-        after: () => ({ ...parsed, ...resubmission }),
+        after: () => ({ ...parsed, ...identity, ...resubmission }),
       },
       async (tx) => {
         // The lock and resubmit rules above were decided for the status we
@@ -160,11 +166,10 @@ export async function updateCompanyProfile(input: CompanyProfileInput): Promise<
         const { count } = await tx.companyProfile.updateMany({
           where: { id: profile.id, verificationStatus: profile.verificationStatus },
           data: {
-            companyName: parsed.companyName,
+            ...identity,
             industry: parsed.industry,
             companySize: parsed.companySize,
             description: parsed.description,
-            website: parsed.website || null,
             linkedin: parsed.linkedin || null,
             address: parsed.address || null,
             contactPersonName: parsed.contactPersonName || null,

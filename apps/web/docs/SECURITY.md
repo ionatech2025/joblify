@@ -187,12 +187,13 @@ account that goes bad.
 Company verification (`verifyCompany`) decides only a `PENDING` profile whose `updatedAt` still
 matches the version the admin's queue showed. Every write bumps it, so a stale admin tab cannot flip a
 decided company or approve details that were edited, or rejected and resubmitted, after the admin
-loaded the queue. Rejecting needs a reason, which the
-company reads on `/employer-setup` and by email; editing a rejected profile there resubmits it as
-`PENDING`. A verified company cannot change its name or website (`updateCompanyProfile` refuses),
-because the badge vouches for exactly those. `updateCompanyProfile` writes only while the profile
-still has the status it checked, so an edit that races an approval fails instead of landing on the
-verified profile.
+loaded the queue. Rejecting needs a reason, which the company reads on `/employer-setup` and by email;
+editing a rejected profile there resubmits it as `PENDING`. A verified company cannot change its name
+or website, because the badge vouches for exactly those: the settings form shows them as text, and
+`updateCompanyProfile` leaves them out of validation and the write, so imported values that fail
+today's rules do not block other edits. `updateCompanyProfile` writes only while the profile still
+has the status it checked, so an edit that races an approval fails instead of landing on the verified
+profile.
 
 ## File uploads
 
