@@ -36,17 +36,15 @@ export function ApplyForm({
   const stored = useApplyDraftStore((s) => s.get(jobId));
   const update = useApplyDraftStore((s) => s.update);
   const clear = useApplyDraftStore((s) => s.clear);
-  // Until the stored draft is known to be this person's, they type into a blank
-  // one of their own, which must not overwrite the stored one either.
   const owned = useOwnsDrafts();
-  const [unowned, setUnowned] = useState<ApplyDraft>({
+  const [untilOwnerKnown, setUntilOwnerKnown] = useState<ApplyDraft>({
     resumeId: null,
     coverLetter: '',
     acknowledgedDataUse: false,
   });
-  const draft = owned ? stored : unowned;
+  const draft = owned ? stored : untilOwnerKnown;
   const edit = (patch: Partial<ApplyDraft>) =>
-    owned ? update(jobId, patch) : setUnowned((d) => ({ ...d, ...patch }));
+    owned ? update(jobId, patch) : setUntilOwnerKnown((d) => ({ ...d, ...patch }));
 
   // Characters left are only worth saying out loud near the limit; announcing
   // every keystroke of a long letter would be noise.

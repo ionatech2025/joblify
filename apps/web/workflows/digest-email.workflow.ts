@@ -11,11 +11,10 @@
 //      overall cap: the watermark itself is the cursor — processed users drop
 //      out of the selection, so each page query returns the next unprocessed
 //      slice.
-//   3. Each page is sent in Promise.allSettled chunks of CHUNK_SIZE, with
-//      emails spaced SEND_INTERVAL_MS apart. Right after a chunk settles,
-//      every processed user's lastDigestAt (and, for saved-search users,
-//      SavedSearch.lastNotifiedAt) is stamped in one updateMany, and the next
-//      run resumes where this one stopped.
+//   3. Each page is sent in Promise.allSettled chunks of CHUNK_SIZE. Right
+//      after a chunk settles, every processed user's lastDigestAt (and, for
+//      saved-search users, SavedSearch.lastNotifiedAt) is stamped in one
+//      updateMany, and the next run resumes where this one stopped.
 //   4. Users with saved searches get a personalized list (each search diffed
 //      since its own lastNotifiedAt); everyone else shares the generic list.
 //   5. The run stops cleanly at the caller-provided wall-clock deadline

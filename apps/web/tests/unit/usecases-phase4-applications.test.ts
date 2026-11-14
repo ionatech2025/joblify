@@ -56,11 +56,12 @@ vi.mock('@/lib/db', () => ({
   },
 }));
 
+const resumeStillLive = async () => [{}];
+
 vi.mock('@/lib/audit', () => ({
   withAudit: (_ctx: unknown, _meta: unknown, fn: (tx: unknown) => unknown) =>
     fn({
-      // The résumé is still live when the transaction re-checks it.
-      $queryRaw: async () => [{}],
+      $queryRaw: resumeStillLive,
       jobApplication: { create: m.appCreate, update: m.appUpdate, updateMany: m.appUpdateMany },
       notification: { create: m.notifCreate },
       chatArea: { findUnique: m.chatAreaFindUnique },

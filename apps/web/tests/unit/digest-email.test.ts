@@ -35,7 +35,6 @@ import { runDigest } from '@/workflows/digest-email.workflow';
 import { verifyUnsubscribeToken } from '@/lib/email/unsubscribe';
 
 const HOUR = 3600 * 1000;
-// Every test but the pacing one sends without waiting between emails.
 const unpaced = { sendIntervalMs: 0 };
 
 // Real users are UUIDs and the unsubscribe token is only minted for UUIDs.
@@ -159,7 +158,6 @@ describe('runDigest', () => {
   it('counts a user Resend already mailed today under the same key as sent, and stamps them', async () => {
     m.userFind.mockResolvedValueOnce([seeker('u1')]);
     m.jobFind.mockResolvedValueOnce([job]);
-    // A re-run after a lost stamp built a different job list for the same key.
     m.send.mockResolvedValueOnce({
       data: null,
       error: { name: 'invalid_idempotent_request', message: 'Key used with a different payload' },

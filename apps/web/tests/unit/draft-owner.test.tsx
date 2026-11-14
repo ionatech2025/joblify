@@ -21,8 +21,6 @@ vi.mock('next/navigation', async (importOriginal) => ({
   useRouter: () => ({ push: vi.fn() }),
 }));
 
-// Alice's session expired mid-application and she never signed out, so her
-// drafts are still in this browser when the next person sits down.
 const ALICE_LETTER = 'Alice’s private cover letter';
 const ALICE_BIO = 'Alice’s private bio';
 
@@ -36,8 +34,7 @@ function aliceLeftHerDrafts() {
   useProfileDraftStore.getState().update({ bio: ALICE_BIO });
 }
 
-/** Bob signs in through clerk-js; the header still carries the signed-out /sign-in render. */
-function bobJustSignedIn() {
+function bobSignedInBeforeTheHeaderCaughtUp() {
   (window as { Clerk?: unknown }).Clerk = { loaded: true, user: { id: 'bob' } };
   render(<AuthHint userId={null} />);
 }
@@ -64,7 +61,7 @@ afterEach(() => {
 describe('ApplyForm with a previous person’s draft in the browser', () => {
   it('shows someone who just signed in none of it', () => {
     aliceLeftHerDrafts();
-    bobJustSignedIn();
+    bobSignedInBeforeTheHeaderCaughtUp();
     render(applyForm);
 
     expect(coverLetter().value).toBe('');
@@ -104,7 +101,7 @@ describe('BioCoachPanel with a previous person’s draft in the browser', () => 
 
   it('sends the signed-in person’s saved bio, not the draft someone else left', async () => {
     aliceLeftHerDrafts();
-    bobJustSignedIn();
+    bobSignedInBeforeTheHeaderCaughtUp();
     expect((await askTheCoach()).currentBio).toBe('Bob’s saved bio');
   });
 
@@ -116,7 +113,6 @@ describe('BioCoachPanel with a previous person’s draft in the browser', () => 
 });
 
 describe('a second open tab', () => {
-  /** What this tab sees when another tab of the same browser writes storage. */
   function anotherTabSets(key: string, newValue: string | null) {
     const oldValue = localStorage.getItem(key);
     if (newValue === null) localStorage.removeItem(key);
@@ -145,12 +141,10 @@ describe('a second open tab', () => {
     const { rerender } = render(<AuthHint userId="alice" />);
     aliceLeftHerDrafts();
 
-    // The other tab: Alice signs out, which wipes storage, then Bob signs in.
     anotherTabSets('joblify.profile-draft', null);
     anotherTabSets('joblify.apply-draft', null);
     anotherTabSets(DRAFT_OWNER_KEY, null);
     anotherTabSets(DRAFT_OWNER_KEY, 'bob');
-    // This tab refreshes as Bob.
     rerender(<AuthHint userId="bob" />);
 
     expect(mountProfileForm()).not.toHaveBeenCalled();

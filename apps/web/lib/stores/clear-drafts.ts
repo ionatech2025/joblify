@@ -13,16 +13,6 @@ import { useProfileDraftStore } from './profile-draft';
  * next person to sign in saw the previous person's unsaved profile restored
  * over their own, and nothing ever cleared it.
  *
- * Drafts are wiped when a different person signs in (reconcileDraftOwner), on
- * an explicit sign-out (clearDraftsOnSignOut) or account deletion (wipeDrafts),
- * and when another tab wipes them (followDraftWipesFromOtherTabs). They are
- * shown only to their owner (ownsDrafts). A signed-out render keeps them: a
- * session that expires mid-form lands on /sign-in, which renders signed out,
- * and clearing there erased the work the person was about to sign back in to
- * submit. The cost: after an expiry nobody signs back in from, the drafts stay
- * in this browser's localStorage until the next sign-in. No one else is shown
- * them, but someone with the browser's developer tools could read them.
- *
  * Both layers are cleared: removing the keys alone would leave the live zustand
  * state in memory, which the next write would just persist again.
  */
@@ -66,7 +56,6 @@ export function ownsDrafts(hintUserId: string | null | undefined): boolean {
   }
 }
 
-/** Wipe every draft and forget whose they were. Never throws. */
 export function wipeDrafts(): void {
   try {
     clearAllDrafts();
@@ -90,18 +79,12 @@ export function clearDraftsOnSignOut(clerk: { signOut: SignOut }): () => void {
   };
 }
 
-/**
- * Another tab wipes the stored drafts on sign-out or a different sign-in, but
- * this tab still holds them in memory, where the next restore or write would
- * bring them back. This follows that tab. Clearing memory writes empty drafts,
- * which other tabs ignore, so two tabs cannot set each other off. Returns the
- * unsubscribe.
- */
 export function followDraftWipesFromOtherTabs(): () => void {
   const onStorage = ({ key, newValue }: StorageEvent) => {
-    const wiped =
-      key === null || key === DRAFT_OWNER_KEY || (DRAFT_STORAGE_KEY.test(key) && newValue === null);
-    if (wiped) clearDraftMemory();
+    const storageCleared = key === null;
+    const ownerChanged = key === DRAFT_OWNER_KEY;
+    const draftRemoved = key !== null && DRAFT_STORAGE_KEY.test(key) && newValue === null;
+    if (storageCleared || ownerChanged || draftRemoved) clearDraftMemory();
   };
   window.addEventListener('storage', onStorage);
   return () => window.removeEventListener('storage', onStorage);

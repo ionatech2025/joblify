@@ -87,12 +87,11 @@ describe('<AuthHint> across an expired session', () => {
 });
 
 describe('signing out from the avatar menu', () => {
-  it('wipes every draft and the owner before clerk-js signs out', async () => {
+  it('wipes every draft and the owner, then signs out through clerk-js on its own instance', async () => {
     reconcileDraftOwner('alice');
     useProfileDraftStore.getState().update({ headline: 'secret', phone: '0700' });
     const clerk: { signOut: (...args: never[]) => Promise<void> } = {
       signOut: async function (this: unknown) {
-        // clerk-js methods may read their own instance.
         expect(this).toBe(clerk);
         expect(useProfileDraftStore.getState().draft).toEqual({});
       },

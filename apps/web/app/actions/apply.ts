@@ -105,13 +105,10 @@ export async function submitApplication(formData: FormData): Promise<ActionResul
       after: (r) => ({ id: r.id, status: r.status }),
     },
     async (tx) => {
-      // deleteResume marks the résumé deleted before it counts the applications
-      // that keep its file. This lock conflicts with that mark, so either the
-      // delete waits and counts this application, or this sees the mark.
-      const live = await tx.$queryRaw<unknown[]>`
+      const stillLive = await tx.$queryRaw<unknown[]>`
         SELECT 1 FROM resumes WHERE id = ${resume.id}::uuid AND "deletedAt" IS NULL FOR SHARE
       `;
-      if (live.length === 0) throw new ResumeGone();
+      if (stillLive.length === 0) throw new ResumeGone();
 
       const app = await tx.jobApplication.create({
         data: {

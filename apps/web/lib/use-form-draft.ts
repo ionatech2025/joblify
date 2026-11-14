@@ -30,18 +30,8 @@ import { useHydrated } from '@/lib/use-hydrated';
  * A draft exists to survive a closed tab, not to be durable to the keystroke —
  * so a debounce costs nothing real, and the pending write is flushed on
  * unmount so navigating away still saves the last thing typed.
- *
- * Restore waits until the draft's owner is the person signed in now
- * (useOwnsDrafts below), rather than trusting that <AuthHint> wiped another
- * person's drafts before this form mounted.
  */
 
-/**
- * Whether the drafts in this browser belong to the person signed in now
- * (ownsDrafts in lib/stores/clear-drafts.ts). False on the server and during
- * hydration, so no draft reaches the server HTML or the first client render.
- * Re-checked when the header's answer about who is signed in changes.
- */
 export function useOwnsDrafts(): boolean {
   const hydrated = useHydrated();
   const hintUserId = useAuthHint((s) => s.userId);
