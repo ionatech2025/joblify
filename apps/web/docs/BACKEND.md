@@ -233,7 +233,8 @@ application that used it), as an attachment. The storage locator never leaves th
 Deleting: a résumé no application references is erased (file, then row) immediately; otherwise it is
 hidden from its owner and removed by the retention sweep once the applications are gone. If the store
 refuses the file delete, the row stays hidden and the sweep retries it. Account erasure also removes
-files before rows.
+files before rows. `submitApplication` re-reads the résumé `FOR SHARE` inside its transaction, so a
+delete either waits for the application and keeps the file, or the apply sees the deletion and refuses.
 
 Magic-byte check (`file-type`) rejects mime mismatches — declared `application/pdf` but the bytes are a
 JPEG → soft-delete the row and abort. Legacy `.doc` (reported as `application/x-cfb`) is not accepted.
