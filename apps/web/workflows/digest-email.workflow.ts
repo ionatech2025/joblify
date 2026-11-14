@@ -14,8 +14,7 @@
 //   3. Each page is sent in Promise.allSettled chunks of CHUNK_SIZE. Right
 //      after a chunk settles, every processed user's lastDigestAt (and, for
 //      saved-search users, SavedSearch.lastNotifiedAt) is stamped in one
-//      updateMany — so an interrupted run double-sends at most the in-flight
-//      chunk, and the next run resumes where this one stopped.
+//      updateMany, and the next run resumes where this one stopped.
 //   4. Users with saved searches get a personalized list (each search diffed
 //      since its own lastNotifiedAt); everyone else shares the generic list.
 //   5. The run stops cleanly at the caller-provided wall-clock deadline
@@ -38,6 +37,9 @@ const ELIGIBILITY_SLACK_HOURS = 2;
 const PAGE_SIZE = 200;
 const CHUNK_SIZE = 25;
 const JOBS_PER_EMAIL = 5;
+// Resend allows 10 requests a second per team by default, shared with the
+// transactional mail, and its SDK does not retry a 429. The digest takes half.
+const SEND_INTERVAL_MS = 200;
 
 const jobInclude = {
   company: { include: { companyProfile: true } },
@@ -103,6 +105,8 @@ async function processUser(
   searches: SavedSearchLite[],
   since: Date,
   genericJobs: DigestJob[],
+  runDay: string,
+  sendSlot: () => Promise<void>,
 ): Promise<'sent' | 'skipped'> {
   const newJobs = await digestJobsFor(searches, since, genericJobs);
   if (newJobs.length === 0) return 'skipped';
@@ -113,26 +117,37 @@ async function processUser(
   const link = unsubscribeUrl(user.id);
   if (!link) throw new Error('unsubscribe link unavailable — refusing to send');
 
-  await resend().emails.send({
-    from: EMAIL_FROM,
-    to: user.email,
-    subject: `${newJobs.length} new jobs for you on Joblify`,
-    text: textBody(user.firstName ?? user.email, newJobs, link),
-    html: htmlBody(user.firstName ?? user.email, newJobs, link),
-    // RFC 8058 one-click: mailbox providers show their native "Unsubscribe"
-    // button and POST here. Requires the message to be DKIM-signed (Resend
-    // signs for the verified sending domain).
-    headers: {
-      'List-Unsubscribe': `<${link}>`,
-      'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+  await sendSlot();
+  // The SDK reports API failures in `error` rather than throwing.
+  const { error } = await resend().emails.send(
+    {
+      from: EMAIL_FROM,
+      to: user.email,
+      subject: `${newJobs.length} new jobs for you on Joblify`,
+      text: textBody(user.firstName ?? user.email, newJobs, link),
+      html: htmlBody(user.firstName ?? user.email, newJobs, link),
+      // RFC 8058 one-click: mailbox providers show their native "Unsubscribe"
+      // button and POST here. Requires the message to be DKIM-signed (Resend
+      // signs for the verified sending domain).
+      headers: {
+        'List-Unsubscribe': `<${link}>`,
+        'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+      },
     },
-  });
+    { idempotencyKey: `digest/${user.id}/${runDay}` },
+  );
+  // invalid_idempotent_request: today's key was already used with another job
+  // list, so today's digest already went out.
+  if (error && error.name !== 'invalid_idempotent_request') {
+    throw new Error(`resend: ${error.name}: ${error.message}`);
+  }
   return 'sent';
 }
 
 export async function runDigest({
   deadlineMs = 240_000,
-}: { deadlineMs?: number } = {}): Promise<DigestSummary> {
+  sendIntervalMs = SEND_INTERVAL_MS,
+}: { deadlineMs?: number; sendIntervalMs?: number } = {}): Promise<DigestSummary> {
   // Fail closed: with no signing secret / absolute site URL there is no way to
   // honour the unsubscribe requirement, so the run does nothing (loudly) rather
   // than mailing people an email they cannot opt out of.
@@ -148,6 +163,14 @@ export async function runDigest({
   const deadline = runStart + deadlineMs;
   const since = new Date(runStart - SINCE_HOURS * 3600 * 1000);
   const eligibleBefore = new Date(runStart - (SINCE_HOURS - ELIGIBILITY_SLACK_HOURS) * 3600 * 1000);
+  const runDay = new Date(runStart).toISOString().slice(0, 10);
+
+  let nextSendAt = 0;
+  const sendSlot = async () => {
+    const wait = nextSendAt - Date.now();
+    nextSendAt = Math.max(Date.now(), nextSendAt) + sendIntervalMs;
+    if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait));
+  };
 
   // The generic 24h list — computed once, shared by every user without saved
   // searches.
@@ -211,7 +234,14 @@ export async function runDigest({
       const chunk = page.slice(i, i + CHUNK_SIZE);
       const results = await Promise.allSettled(
         chunk.map((user) =>
-          processUser(user, searchesByUser.get(user.id) ?? [], since, genericJobs),
+          processUser(
+            user,
+            searchesByUser.get(user.id) ?? [],
+            since,
+            genericJobs,
+            runDay,
+            sendSlot,
+          ),
         ),
       );
 

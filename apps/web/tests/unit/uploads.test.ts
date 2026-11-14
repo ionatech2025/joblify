@@ -270,10 +270,21 @@ describe('deleteResume', () => {
 
   it('erases row AND file when no application references the résumé', async () => {
     m.appCount.mockResolvedValue(0);
+    m.deleteStored.mockResolvedValue('deleted');
     await deleteResume('res-1');
     expect(m.resumeDelete).toHaveBeenCalledWith({ where: { id: 'res-1' } });
     expect(m.deleteStored).toHaveBeenCalledWith(PDF_URL, 'private');
-    expect(m.resumeUpdate).not.toHaveBeenCalled();
+  });
+
+  it('keeps a hidden row when the file could not be deleted, so the retention sweep retries it', async () => {
+    m.appCount.mockResolvedValue(0);
+    m.deleteStored.mockResolvedValue('failed');
+    await deleteResume('res-1');
+    expect(m.resumeDelete).not.toHaveBeenCalled();
+    expect(m.resumeUpdate).toHaveBeenCalledWith({
+      where: { id: 'res-1' },
+      data: { deletedAt: expect.any(Date) },
+    });
   });
 
   it('only hides it from the owner when an employer already received it', async () => {

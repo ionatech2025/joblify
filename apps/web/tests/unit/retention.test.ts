@@ -174,6 +174,34 @@ describe('runRetention', () => {
       expect(m.userDeleteMany).toHaveBeenCalledWith({ where: { id: { in: ['ok'] } } });
       expect(s).toMatchObject({ hardDeletedUsers: 1, deferredUsers: 1 });
     });
+
+    it('gets past a full batch of users whose files are stuck, without fetching them again', async () => {
+      const stuck = Array.from({ length: 200 }, (_, i) =>
+        user(`stuck-${String(i).padStart(3, '0')}`, [
+          `https://s.private.blob.vercel-storage.com/resumes/stuck/${i}.pdf`,
+        ]),
+      );
+      const table = [
+        ...stuck,
+        user('zz-ok', ['https://s.private.blob.vercel-storage.com/resumes/ok/a.pdf']),
+      ];
+      m.userFindMany.mockImplementation(
+        async ({ where, take }: { where: { id?: { gt: string } }; take: number }) =>
+          table.filter((u) => !where.id || u.id > where.id.gt).slice(0, take),
+      );
+      m.deleteStored.mockImplementation(async (url: string) =>
+        url.includes('/stuck/') ? 'failed' : 'deleted',
+      );
+      m.userDeleteMany.mockImplementation(
+        async ({ where }: { where: { id: { in: string[] } } }) => ({
+          count: where.id.in.length,
+        }),
+      );
+
+      const s = await runRetention();
+      expect(m.userDeleteMany).toHaveBeenCalledWith({ where: { id: { in: ['zz-ok'] } } });
+      expect(s).toMatchObject({ hardDeletedUsers: 1, deferredUsers: 200 });
+    });
   });
 
   describe('résumé and audit-log retention', () => {

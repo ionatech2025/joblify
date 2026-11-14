@@ -1,4 +1,5 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest';
+import { Prisma } from '@prisma/client';
 
 const m = vi.hoisted(() => {
   class AuthError extends Error {
@@ -15,6 +16,7 @@ const m = vi.hoisted(() => {
     requireRole: vi.fn(),
     applyLimit: vi.fn(),
     resumeFindFirst: vi.fn(),
+    liveResume: vi.fn(),
     jobFindFirst: vi.fn(),
     appFindUnique: vi.fn(),
     appCreate: vi.fn(),
@@ -46,6 +48,7 @@ vi.mock('@/lib/db', () => ({
 vi.mock('@/lib/audit', () => ({
   withAudit: (_ctx: unknown, _meta: unknown, fn: (tx: unknown) => unknown) =>
     fn({
+      $queryRaw: m.liveResume,
       jobApplication: { create: m.appCreate, update: m.appUpdate },
       notification: { create: m.notifCreate },
       chatParticipant: { deleteMany: m.chatPartDeleteMany },
@@ -99,6 +102,7 @@ describe('submitApplication', () => {
     m.requireRole.mockResolvedValue({ id: 'user1', email: 'a@x.com', firstName: 'A' });
     m.applyLimit.mockResolvedValue({ success: true });
     m.resumeFindFirst.mockResolvedValue({ id: RESUME_ID });
+    m.liveResume.mockResolvedValue([{ id: RESUME_ID }]);
     m.jobFindFirst.mockResolvedValue({
       id: JOB_ID,
       title: 'Engineer',
@@ -177,10 +181,42 @@ describe('submitApplication', () => {
     });
   });
 
-  it('rejects a resume the user does not own', async () => {
+  it('refuses a résumé that is not the caller’s, or was deleted in another tab, with a message', async () => {
     m.resumeFindFirst.mockResolvedValue(null);
-    await expect(submitApplication(fd())).rejects.toThrow();
+    expect(await submitApplication(fd())).toEqual({
+      ok: false,
+      error: 'That résumé is no longer available. Choose another.',
+    });
     expect(m.appCreate).not.toHaveBeenCalled();
+  });
+
+  it('refuses a résumé deleted after the check but before the insert, creating nothing', async () => {
+    m.liveResume.mockResolvedValue([]);
+    expect(await submitApplication(fd())).toEqual({
+      ok: false,
+      error: 'That résumé is no longer available. Choose another.',
+    });
+    expect(m.appCreate).not.toHaveBeenCalled();
+    expect(m.notifCreate).not.toHaveBeenCalled();
+  });
+
+  it('does not spend the daily quota on a request it refuses for another reason', async () => {
+    m.appFindUnique.mockResolvedValue({ id: 'existing-app' });
+    await submitApplication(fd());
+    m.jobFindFirst.mockResolvedValue(null);
+    await submitApplication(fd());
+    await submitApplication(fd({ resumeId: 'nope' }));
+    expect(m.applyLimit).not.toHaveBeenCalled();
+  });
+
+  it('treats a double submit that loses the race on the unique index as applied', async () => {
+    m.appCreate.mockRejectedValue(
+      new Prisma.PrismaClientKnownRequestError('Unique constraint failed', {
+        code: 'P2002',
+        clientVersion: 'test',
+      }),
+    );
+    expect(await submitApplication(fd())).toEqual({ ok: true, data: undefined });
   });
 
   it('rejects a job that is not live', async () => {

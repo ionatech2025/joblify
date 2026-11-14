@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 import { SignIn, SignUp, UserButton } from '@clerk/nextjs';
 import { useAuth } from '@clerk/clerk-react';
 import { useClerkSlots, type ClerkSlotEntry } from '@/lib/stores/clerk-slots';
+import { clearDraftsOnSignOut } from '@/lib/stores/clear-drafts';
 import { ClerkClientProvider } from './clerk-provider';
 
 // The part of the Clerk integration that actually imports Clerk's React SDK and
@@ -26,6 +27,22 @@ function ReadySignal() {
   return null;
 }
 
+/**
+ * The UserButton's "Sign out" wipes the form drafts. It calls the clerk-js
+ * instance's signOut, which offers no callback of its own, so the wrap goes on
+ * that instance (window.Clerk) once it has loaded.
+ */
+function SignOutClearsDrafts() {
+  const { isLoaded } = useAuth();
+
+  useEffect(() => {
+    const clerk = (window as Window & { Clerk?: Parameters<typeof clearDraftsOnSignOut>[0] }).Clerk;
+    if (isLoaded && clerk) return clearDraftsOnSignOut(clerk);
+  }, [isLoaded]);
+
+  return null;
+}
+
 function Widget({ slot }: { slot: ClerkSlotEntry }) {
   switch (slot.widget) {
     case 'userButton':
@@ -43,6 +60,7 @@ export default function ClerkRuntime() {
   return (
     <ClerkClientProvider>
       <ReadySignal />
+      <SignOutClearsDrafts />
       {/* A widget that suspends must not take the page's root with it. */}
       <Suspense fallback={null}>
         {slots.map((slot) => createPortal(<Widget slot={slot} />, slot.node, slot.id))}

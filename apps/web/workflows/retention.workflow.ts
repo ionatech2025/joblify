@@ -76,18 +76,21 @@ async function hardDeleteExpiredUsers(
   let users = 0;
   let files = 0;
   let deferred = 0;
+  let after: string | undefined;
 
   for (let batch = 0; batch < MAX_USER_BATCHES; batch++) {
     const rows = await db.user.findMany({
-      where: { deletedAt: { lt: cutoff } },
+      where: { deletedAt: { lt: cutoff }, ...(after ? { id: { gt: after } } : {}) },
       select: {
         id: true,
         resumes: { select: { fileBlobUrl: true } },
         companyProfile: { select: { logoUrl: true } },
       },
+      orderBy: { id: 'asc' },
       take: USER_BATCH,
     });
     if (rows.length === 0) break;
+    after = rows.at(-1)!.id;
 
     const deletable: string[] = [];
     for (const row of rows) {
@@ -106,9 +109,10 @@ async function hardDeleteExpiredUsers(
       else deletable.push(row.id);
     }
 
-    if (deletable.length === 0) break; // everything left is waiting on the store; try tomorrow
-    const result = await db.user.deleteMany({ where: { id: { in: deletable } } });
-    users += result.count;
+    if (deletable.length > 0) {
+      const result = await db.user.deleteMany({ where: { id: { in: deletable } } });
+      users += result.count;
+    }
     if (rows.length < USER_BATCH) break;
   }
 

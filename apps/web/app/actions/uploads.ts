@@ -227,13 +227,11 @@ export async function deleteResume(resumeId: string): Promise<void> {
   });
   if (!resume) throw new AuthError('FORBIDDEN');
 
-  const referenced = await db.jobApplication.count({ where: { resumeId: resume.id } });
-  if (referenced === 0) {
-    await db.resume.delete({ where: { id: resume.id } });
-    await deleteStored(resume.fileBlobUrl, 'private');
-    return;
-  }
   await db.resume.update({ where: { id: resume.id }, data: { deletedAt: new Date() } });
+  const referenced = await db.jobApplication.count({ where: { resumeId: resume.id } });
+  if (referenced === 0 && (await deleteStored(resume.fileBlobUrl, 'private')) !== 'failed') {
+    await db.resume.delete({ where: { id: resume.id } });
+  }
 }
 
 /**

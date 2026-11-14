@@ -15,7 +15,7 @@ export async function toggleSavedJob(jobPostId: string): Promise<ActionResult<{ 
   });
 
   if (existing) {
-    await db.savedJob.delete({ where: { id: existing.id } });
+    await db.savedJob.deleteMany({ where: { id: existing.id } });
     return succeed({ saved: false });
   }
 
@@ -26,6 +26,6 @@ export async function toggleSavedJob(jobPostId: string): Promise<ActionResult<{ 
   });
   if (!job) return fail('Job not available.');
 
-  await db.savedJob.create({ data: { userId: user.id, jobPostId } });
+  await db.savedJob.createMany({ data: [{ userId: user.id, jobPostId }], skipDuplicates: true });
   return succeed({ saved: true });
 }

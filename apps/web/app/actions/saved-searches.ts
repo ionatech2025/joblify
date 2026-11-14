@@ -14,9 +14,10 @@ const SaveSchema = z.object({
 
 export async function saveSearch(input: { query: string; label?: string }): Promise<ActionResult> {
   const user = await requireRole('JOB_SEEKER');
-  const parsed = SaveSchema.parse(input);
-  const query = parsed.query.replace(/^\?+/, '').trim();
-  const label = (parsed.label?.trim() || defaultSearchLabel(query)).slice(0, 120);
+  const parsed = SaveSchema.safeParse(input);
+  if (!parsed.success) return fail('That search is too long to save.');
+  const query = parsed.data.query.replace(/^\?+/, '').trim();
+  const label = (parsed.data.label?.trim() || defaultSearchLabel(query)).slice(0, 120);
 
   // Cap per user so the daily digest stays bounded.
   const count = await db.savedSearch.count({ where: { userId: user.id } });

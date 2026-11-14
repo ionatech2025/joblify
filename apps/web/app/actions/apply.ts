@@ -3,6 +3,7 @@
 import { updateTag } from 'next/cache';
 import { z } from 'zod';
 import { headers } from 'next/headers';
+import { Prisma } from '@prisma/client';
 import { requireRole, AuthError } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { applyLimit } from '@/lib/ratelimit';
@@ -28,6 +29,9 @@ const ApplySchema = z.object({
   acknowledgedDataUse: z.literal('on'),
 });
 
+const RESUME_GONE = 'That résumé is no longer available. Choose another.';
+class ResumeGone extends Error {}
+
 export async function submitApplication(formData: FormData): Promise<ActionResult> {
   // 1. BotID Pro on the apply funnel.
   const verdict = await checkBotId();
@@ -36,11 +40,7 @@ export async function submitApplication(formData: FormData): Promise<ActionResul
   // 2. Auth.
   const user = await requireRole('JOB_SEEKER');
 
-  // 3. Rate limit per user (20/day).
-  const rl = await applyLimit(user.id);
-  if (!rl.success) return fail('Daily application limit reached. Try again tomorrow.');
-
-  // 4. Validate.
+  // 3. Validate.
   const parsed = ApplySchema.safeParse({
     jobId: formData.get('jobId'),
     jobSlug: formData.get('jobSlug'),
@@ -50,14 +50,14 @@ export async function submitApplication(formData: FormData): Promise<ActionResul
   });
   if (!parsed.success) return fail('Invalid application data.');
 
-  // 5. Ownership: resume must belong to this user.
+  // 4. Ownership: resume must belong to this user.
   const resume = await db.resume.findFirst({
     where: { id: parsed.data.resumeId, userId: user.id, deletedAt: null },
     select: { id: true },
   });
-  if (!resume) throw new AuthError('FORBIDDEN');
+  if (!resume) return fail(RESUME_GONE);
 
-  // 6. Job must be live and, if it has a deadline, still open.
+  // 5. Job must be live and, if it has a deadline, still open.
   const job = await db.jobPost.findFirst({
     where: { id: parsed.data.jobId, status: 'PUBLISHED', deletedAt: null },
     include: { company: { include: { companyProfile: true } } },
@@ -87,6 +87,10 @@ export async function submitApplication(formData: FormData): Promise<ActionResul
   });
   if (existing) return fail('You already applied to this job.');
 
+  // 6. Rate limit per user (20/day).
+  const rl = await applyLimit(user.id);
+  if (!rl.success) return fail('Daily application limit reached. Try again tomorrow.');
+
   // 7. Capture audit context.
   const h = await headers();
   const ip = clientIp(h);
@@ -101,6 +105,11 @@ export async function submitApplication(formData: FormData): Promise<ActionResul
       after: (r) => ({ id: r.id, status: r.status }),
     },
     async (tx) => {
+      const stillLive = await tx.$queryRaw<unknown[]>`
+        SELECT 1 FROM resumes WHERE id = ${resume.id}::uuid AND "deletedAt" IS NULL FOR SHARE
+      `;
+      if (stillLive.length === 0) throw new ResumeGone();
+
       const app = await tx.jobApplication.create({
         data: {
           jobPostId: job.id,
@@ -127,7 +136,13 @@ export async function submitApplication(formData: FormData): Promise<ActionResul
 
       return app;
     },
-  );
+  ).catch((err: unknown) => {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') return null;
+    if (err instanceof ResumeGone) return 'resume-gone' as const;
+    throw err;
+  });
+  if (application === 'resume-gone') return fail(RESUME_GONE);
+  if (!application) return succeed();
 
   // 9. Invalidate downstream caches.
   updateTag(tags.userApplications(user.id));

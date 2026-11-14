@@ -2,6 +2,9 @@
 
 import { useEffect, useRef } from 'react';
 import type { FieldValues, UseFormReturn } from 'react-hook-form';
+import { useAuthHint } from '@/lib/stores/auth-hint';
+import { ownsDrafts } from '@/lib/stores/clear-drafts';
+import { useHydrated } from '@/lib/use-hydrated';
 
 /**
  * Restore-on-mount plus debounced persist for the console's long form drafts.
@@ -28,6 +31,12 @@ import type { FieldValues, UseFormReturn } from 'react-hook-form';
  * so a debounce costs nothing real, and the pending write is flushed on
  * unmount so navigating away still saves the last thing typed.
  */
+
+export function useOwnsDrafts(): boolean {
+  const hydrated = useHydrated();
+  const hintUserId = useAuthHint((s) => s.userId);
+  return hydrated && ownsDrafts(hintUserId);
+}
 
 /** The flat `{ draft, update, clear }` shape all four draft stores share. */
 type DraftStoreApi<T> = {
@@ -62,14 +71,18 @@ export function useFormDraft<T extends FieldValues>({
   const resetRef = useRef(reset);
   const initialRef = useRef(initial);
   const onRestoreRef = useRef(onRestore);
+  const restoredRef = useRef(false);
+  const owned = useOwnsDrafts();
 
   useEffect(() => {
+    if (restoredRef.current || !owned) return;
+    restoredRef.current = true;
     const { draft } = store.getState();
     if (Object.keys(draft).length > 0) {
       resetRef.current({ ...initialRef.current, ...draft });
       onRestoreRef.current?.();
     }
-  }, [store]);
+  }, [store, owned]);
 
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | undefined;

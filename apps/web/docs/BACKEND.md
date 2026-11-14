@@ -196,7 +196,9 @@ Never trust the URL. See `app/actions/update-applicant-status.ts` for the canoni
 Two kinds:
 
 - **Transactional** (apply confirm, status change, password reset): inline `await resend().emails.send(...)`. Best-effort — wrap in `.catch` so the user-facing path never fails because of email.
-- **Bulk** (daily digest): batched in a workflow. One send per user.
+- **Bulk** (daily digest): batched in a workflow. One send per user per UTC day: the Resend idempotency key `digest/<userId>/<date>` drops a repeat when a crashed run is re-run before its watermark was stamped. If the re-run builds a different job list, Resend answers `invalid_idempotent_request` (409), which the digest counts as sent. Digest sends are spaced 200 ms apart (5 a second), half of Resend's default limit of 10 requests a second per team, which the transactional mail shares; the SDK does not retry a 429.
+
+The Resend SDK does not throw on an API failure; it resolves with `{ data: null, error }`. Check `error` wherever a failed send must change what happens next.
 
 A status change always creates the in-app notification, but it emails only for a forward move into shortlisted, interview, offer or hired, for a rejection, and for any move away from an offer, a hire or a rejection, so the candidate's last email never states an outcome that was taken back (`emailsCandidate` in `lib/applications/transitions.ts`). VIEWED and other backward corrections stay in-app. A rejection uses the `notSelected` template, not the generic status line.
 
@@ -228,9 +230,11 @@ configured they return an expected failure. (`data:` locators remain for local d
 Reading: résumés are served only by `GET /api/v1/resumes/[id]/file` (owner, or a company with a live
 application that used it), as an attachment. The storage locator never leaves the server.
 
-Deleting: a résumé no application references is erased (row + file) immediately; otherwise it is hidden
-from its owner and removed by the retention sweep once the applications are gone. Account erasure removes
-files before rows.
+Deleting: a résumé no application references is erased (file, then row) immediately; otherwise it is
+hidden from its owner and removed by the retention sweep once the applications are gone. If the store
+refuses the file delete, the row stays hidden and the sweep retries it. Account erasure also removes
+files before rows. `submitApplication` re-reads the résumé `FOR SHARE` inside its transaction, so a
+delete either waits for the application and keeps the file, or the apply sees the deletion and refuses.
 
 Magic-byte check (`file-type`) rejects mime mismatches — declared `application/pdf` but the bytes are a
 JPEG → soft-delete the row and abort. Legacy `.doc` (reported as `application/x-cfb`) is not accepted.

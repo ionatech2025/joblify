@@ -1,11 +1,13 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import { unstable_rethrow } from 'next/navigation';
 import { deleteMyAccount } from '@/app/actions/account';
+import { wipeDrafts } from '@/lib/stores/clear-drafts';
 import { Button } from '@/app/components/ui/button';
 import { Input } from '@/app/components/ui/form';
 import { toast } from '@/lib/stores/ui';
-import { unwrap } from '@/lib/action-result';
+import { errorMessage, unwrap } from '@/lib/action-result';
 
 export function DeleteForm({ expectedConfirmation }: { expectedConfirmation: string }) {
   const [confirmation, setConfirmation] = useState('');
@@ -16,13 +18,14 @@ export function DeleteForm({ expectedConfirmation }: { expectedConfirmation: str
     e.preventDefault();
     setError(null);
     startTransition(async () => {
+      // Wiped before the request: success ends in a redirect, which reaches this
+      // component only as a thrown navigation, the same as a sign-in redirect.
+      wipeDrafts();
       try {
-        // On success this redirects server-side (see deleteMyAccount) and
-        // never returns to this component, so only the failure path needs
-        // handling here.
         unwrap(await deleteMyAccount(confirmation));
       } catch (err) {
-        const message = err instanceof Error ? err.message : 'Delete failed';
+        unstable_rethrow(err);
+        const message = errorMessage(err, 'We could not delete your account. Try again.');
         setError(message);
         toast.error('Delete failed', message);
       }

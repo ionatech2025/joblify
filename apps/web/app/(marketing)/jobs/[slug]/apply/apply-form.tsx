@@ -4,7 +4,8 @@ import { useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
-import { useApplyDraftStore } from '@/lib/stores/apply-draft';
+import { type ApplyDraft, useApplyDraftStore } from '@/lib/stores/apply-draft';
+import { useOwnsDrafts } from '@/lib/use-form-draft';
 import { submitApplication } from '@/app/actions/apply';
 import { Field, Select, Textarea } from '@/app/components/ui/form';
 import { Button } from '@/app/components/ui/button';
@@ -32,9 +33,18 @@ export function ApplyForm({
   // Use the store's stable getter (returns the shared `blank` ref when empty).
   // An inline `?? {…}` here returns a NEW object every render → Zustand's
   // snapshot never matches → infinite re-render (React #185).
-  const draft = useApplyDraftStore((s) => s.get(jobId));
+  const stored = useApplyDraftStore((s) => s.get(jobId));
   const update = useApplyDraftStore((s) => s.update);
   const clear = useApplyDraftStore((s) => s.clear);
+  const owned = useOwnsDrafts();
+  const [untilOwnerKnown, setUntilOwnerKnown] = useState<ApplyDraft>({
+    resumeId: null,
+    coverLetter: '',
+    acknowledgedDataUse: false,
+  });
+  const draft = owned ? stored : untilOwnerKnown;
+  const edit = (patch: Partial<ApplyDraft>) =>
+    owned ? update(jobId, patch) : setUntilOwnerKnown((d) => ({ ...d, ...patch }));
 
   // Characters left are only worth saying out loud near the limit; announcing
   // every keystroke of a long letter would be noise.
@@ -94,7 +104,7 @@ export function ApplyForm({
             required
             value={draft.resumeId ?? ''}
             onChange={(e) => {
-              update(jobId, { resumeId: e.target.value || null });
+              edit({ resumeId: e.target.value || null });
               if (fieldErrors.resume) setFieldErrors((f) => ({ ...f, resume: undefined }));
             }}
           >
@@ -122,7 +132,7 @@ export function ApplyForm({
           name="coverLetter"
           rows={8}
           value={draft.coverLetter}
-          onChange={(e) => update(jobId, { coverLetter: e.target.value })}
+          onChange={(e) => edit({ coverLetter: e.target.value })}
           maxLength={COVER_LETTER_MAX}
           placeholder="Tell the team why you'd be a great fit."
         />
@@ -140,7 +150,7 @@ export function ApplyForm({
             aria-describedby={fieldErrors.consent ? 'consent-error' : undefined}
             checked={draft.acknowledgedDataUse}
             onChange={(e) => {
-              update(jobId, { acknowledgedDataUse: e.target.checked });
+              edit({ acknowledgedDataUse: e.target.checked });
               if (fieldErrors.consent) setFieldErrors((f) => ({ ...f, consent: undefined }));
             }}
             className="mt-1"

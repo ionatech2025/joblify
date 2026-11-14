@@ -6,6 +6,8 @@
 // problem, and a counter near a length limit.
 
 import { describe, it, expect, afterEach, vi } from 'vitest';
+import { Component, type ReactNode } from 'react';
+import type * as Navigation from 'next/navigation';
 import { renderToString } from 'react-dom/server';
 import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -24,6 +26,7 @@ import { useEmployerSetupDraftStore } from '@/lib/stores/employer-setup-draft';
 import { useCompanySettingsDraftStore } from '@/lib/stores/company-settings-draft';
 import { EmployerSetupForm } from '@/app/(authenticated)/employer-setup/employer-setup-form';
 import { DeleteForm } from '@/app/(authenticated)/account/delete/delete-form';
+import { useUiStore } from '@/lib/stores/ui';
 
 const submit = vi.hoisted(() => vi.fn());
 vi.mock('@/app/actions/apply', () => ({ submitApplication: submit }));
@@ -43,7 +46,8 @@ vi.mock('@/app/actions/post-job', () => ({
 }));
 const deleteAccount = vi.hoisted(() => vi.fn());
 vi.mock('@/app/actions/account', () => ({ deleteMyAccount: deleteAccount }));
-vi.mock('next/navigation', () => ({
+vi.mock('next/navigation', async (importOriginal) => ({
+  ...(await importOriginal<typeof Navigation>()),
   useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }),
 }));
 
@@ -462,6 +466,36 @@ describe('DeleteForm', () => {
     await user.click(screen.getByRole('button', { name: /delete my account/i }));
     const alert = await screen.findByRole('alert', {}, { timeout: 5000 });
     expect(alert.textContent).toContain('Could not delete right now.');
+  });
+
+  it('lets the redirect that ends a successful delete through instead of calling it a failure', async () => {
+    class Boundary extends Component<{ children: ReactNode }, { caught: boolean }> {
+      state = { caught: false };
+      static getDerivedStateFromError() {
+        return { caught: true };
+      }
+      render() {
+        return this.state.caught ? <p>navigated away</p> : this.props.children;
+      }
+    }
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    useUiStore.setState({ toasts: [] });
+    deleteAccount.mockRejectedValue(
+      Object.assign(new Error('NEXT_REDIRECT'), {
+        digest: 'NEXT_REDIRECT;push;/?account_deleted=1;303;',
+      }),
+    );
+    const user = userEvent.setup();
+    render(
+      <Boundary>
+        <DeleteForm expectedConfirmation="me@example.com" />
+      </Boundary>,
+    );
+    await user.type(screen.getByRole('textbox'), 'me@example.com');
+    await user.click(screen.getByRole('button', { name: /delete my account/i }));
+
+    await screen.findByText('navigated away');
+    expect(useUiStore.getState().toasts).toEqual([]);
   });
 });
 

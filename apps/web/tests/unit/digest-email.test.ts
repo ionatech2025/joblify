@@ -35,6 +35,7 @@ import { runDigest } from '@/workflows/digest-email.workflow';
 import { verifyUnsubscribeToken } from '@/lib/email/unsubscribe';
 
 const HOUR = 3600 * 1000;
+const unpaced = { sendIntervalMs: 0 };
 
 // Real users are UUIDs and the unsubscribe token is only minted for UUIDs.
 const uid = (label: string) =>
@@ -67,7 +68,7 @@ describe('runDigest', () => {
   });
 
   it('selects only opted-in, non-suppressed, non-deleted jobseekers with a null-or-stale watermark', async () => {
-    await runDigest();
+    await runDigest(unpaced);
     const args = m.userFind.mock.calls[0]![0];
     expect(args.where.userType).toBe('JOB_SEEKER');
     expect(args.where.deletedAt).toBeNull();
@@ -97,7 +98,7 @@ describe('runDigest', () => {
   it('computes the generic 24h job list once per run, not once per user', async () => {
     m.userFind.mockResolvedValueOnce([seeker('u1'), seeker('u2'), seeker('u3')]);
     m.jobFind.mockResolvedValueOnce([job]); // the single generic-list query
-    const r = await runDigest();
+    const r = await runDigest(unpaced);
     expect(m.jobFind).toHaveBeenCalledTimes(1);
     const where = m.jobFind.mock.calls[0]![0].where;
     expect(where.status).toBe('PUBLISHED');
@@ -110,8 +111,12 @@ describe('runDigest', () => {
   it('stamps lastDigestAt per chunk for processed users and leaves failed sends unstamped', async () => {
     m.userFind.mockResolvedValueOnce([seeker('u1'), seeker('u2')]);
     m.jobFind.mockResolvedValueOnce([job]);
-    m.send.mockResolvedValueOnce({}).mockRejectedValueOnce(new Error('resend down'));
-    const r = await runDigest();
+    // The Resend SDK resolves with `error` on an API failure; it does not throw.
+    m.send.mockResolvedValueOnce({}).mockResolvedValueOnce({
+      data: null,
+      error: { name: 'rate_limit_exceeded', message: 'Too many requests' },
+    });
+    const r = await runDigest(unpaced);
     expect(r).toEqual({ sent: 1, skipped: 0, failed: 1, stoppedEarly: false });
     // Only the successful send advanced its watermark…
     expect(m.userUpdate).toHaveBeenCalledTimes(1);
@@ -127,10 +132,64 @@ describe('runDigest', () => {
     expect(m.userFind.mock.calls[1]![0].where.id).toEqual({ notIn: [uid('u2')] });
   });
 
+  it('gives each user one idempotency key per UTC day, so a re-run after a lost stamp cannot send twice', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    try {
+      m.jobFind.mockResolvedValue([job]);
+      const firstRunPage = [seeker('u1')];
+      const firstRunEnd: never[] = [];
+      const reRunPageWithStampLost = [seeker('u1')];
+      m.userFind
+        .mockResolvedValueOnce(firstRunPage)
+        .mockResolvedValueOnce(firstRunEnd)
+        .mockResolvedValueOnce(reRunPageWithStampLost);
+      vi.setSystemTime(new Date('2026-03-04T08:00:00Z'));
+      await runDigest(unpaced);
+      vi.setSystemTime(new Date('2026-03-04T08:20:00Z'));
+      await runDigest(unpaced);
+    } finally {
+      vi.useRealTimers();
+    }
+    expect(m.send).toHaveBeenCalledTimes(2);
+    expect(m.send.mock.calls[0]![1]).toEqual({ idempotencyKey: `digest/${uid('u1')}/2026-03-04` });
+    expect(m.send.mock.calls[1]![1]).toEqual(m.send.mock.calls[0]![1]);
+  });
+
+  it('counts a user Resend already mailed today under the same key as sent, and stamps them', async () => {
+    m.userFind.mockResolvedValueOnce([seeker('u1')]);
+    m.jobFind.mockResolvedValueOnce([job]);
+    m.send.mockResolvedValueOnce({
+      data: null,
+      error: { name: 'invalid_idempotent_request', message: 'Key used with a different payload' },
+    });
+    const r = await runDigest(unpaced);
+    expect(r).toEqual({ sent: 1, skipped: 0, failed: 0, stoppedEarly: false });
+    expect(m.userUpdate).toHaveBeenCalledWith({
+      where: { id: { in: [uid('u1')] } },
+      data: { lastDigestAt: expect.any(Date) },
+    });
+    expect(m.captureException).not.toHaveBeenCalled();
+  });
+
+  it('sends at most 5 emails a second by default, half of Resend’s per-team limit', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout'] });
+    try {
+      m.userFind.mockResolvedValueOnce(Array.from({ length: 12 }, (_, i) => seeker(`u${i}`)));
+      m.jobFind.mockResolvedValueOnce([job]);
+      const run = runDigest();
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(m.send.mock.calls.length).toBeLessThanOrEqual(6);
+      await vi.runAllTimersAsync();
+      expect((await run).sent).toBe(12);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('advances the watermark for users with nothing new (skipped, no email, no re-selection)', async () => {
     m.userFind.mockResolvedValueOnce([seeker('u1')]);
     m.jobFind.mockResolvedValue([]); // generic list empty
-    const r = await runDigest();
+    const r = await runDigest(unpaced);
     expect(r).toEqual({ sent: 0, skipped: 1, failed: 0, stoppedEarly: false });
     expect(m.send).not.toHaveBeenCalled();
     expect(m.userUpdate).toHaveBeenCalledWith({
@@ -143,7 +202,7 @@ describe('runDigest', () => {
     const users = Array.from({ length: 30 }, (_, i) => seeker(`u${i}`));
     m.userFind.mockResolvedValueOnce(users);
     m.jobFind.mockResolvedValueOnce([job]);
-    const r = await runDigest();
+    const r = await runDigest(unpaced);
     expect(r.sent).toBe(30);
     // 30 users → a 25-chunk and a 5-chunk, each stamped right after settling.
     expect(m.userUpdate).toHaveBeenCalledTimes(2);
@@ -159,7 +218,7 @@ describe('runDigest', () => {
     m.jobFind
       .mockResolvedValueOnce([]) // generic list (computed once, unused here)
       .mockResolvedValueOnce([job]); // the saved-search diff
-    const r = await runDigest();
+    const r = await runDigest(unpaced);
     expect(r).toEqual({ sent: 1, skipped: 0, failed: 0, stoppedEarly: false });
     expect(m.send.mock.calls[0]![0].to).toBe('u1@x.com');
     // The saved-search query carried the structured filter + its own window.
@@ -177,7 +236,7 @@ describe('runDigest', () => {
   it('puts a working one-click unsubscribe in every email: link in the body AND RFC 8058 headers', async () => {
     m.userFind.mockResolvedValueOnce([seeker('u7')]);
     m.jobFind.mockResolvedValueOnce([job]);
-    await runDigest();
+    await runDigest(unpaced);
     const mail = m.send.mock.calls[0]![0];
 
     // Headers mailbox providers use for their native "Unsubscribe" button.
@@ -197,14 +256,14 @@ describe('runDigest', () => {
     delete process.env.EMAIL_UNSUBSCRIBE_SECRET;
     delete process.env.CRON_SECRET;
     m.userFind.mockResolvedValueOnce([seeker('u1')]);
-    const r = await runDigest();
+    const r = await runDigest(unpaced);
     expect(r).toEqual({ sent: 0, skipped: 0, failed: 0, stoppedEarly: true });
     expect(m.userFind).not.toHaveBeenCalled();
     expect(m.send).not.toHaveBeenCalled();
   });
 
   it('stops cleanly at the wall-clock deadline before selecting users', async () => {
-    const r = await runDigest({ deadlineMs: -1 });
+    const r = await runDigest({ ...unpaced, deadlineMs: -1 });
     expect(r).toEqual({ sent: 0, skipped: 0, failed: 0, stoppedEarly: true });
     expect(m.userFind).not.toHaveBeenCalled();
     expect(m.send).not.toHaveBeenCalled();

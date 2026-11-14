@@ -1,6 +1,10 @@
 // @vitest-environment jsdom
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { createElement } from 'react';
+import { cleanup, render } from '@testing-library/react';
 import { clearAllDrafts, reconcileDraftOwner, DRAFT_OWNER_KEY } from '@/lib/stores/clear-drafts';
+import { AuthHint } from '@/app/components/auth-hint';
+import ClerkRuntime from '@/app/components/clerk-runtime';
 import { useProfileDraftStore } from '@/lib/stores/profile-draft';
 import { useApplyDraftStore } from '@/lib/stores/apply-draft';
 
@@ -13,6 +17,21 @@ beforeEach(() => {
   useProfileDraftStore.setState({ draft: {} });
   useApplyDraftStore.setState({ byJob: {} });
 });
+
+afterEach(() => {
+  cleanup();
+  delete (window as { Clerk?: unknown }).Clerk;
+});
+
+vi.mock('@clerk/nextjs', () => ({
+  SignIn: () => null,
+  SignUp: () => null,
+  UserButton: () => null,
+}));
+vi.mock('@clerk/clerk-react', () => ({ useAuth: () => ({ isLoaded: true }) }));
+vi.mock('@/app/components/clerk-provider', () => ({
+  ClerkClientProvider: ({ children }: { children: unknown }) => children,
+}));
 
 describe('reconcileDraftOwner', () => {
   it('wipes the previous user’s drafts when a different user signs in', () => {
@@ -36,17 +55,57 @@ describe('reconcileDraftOwner', () => {
     expect(reconcileDraftOwner('alice')).toBe(false);
     expect(useProfileDraftStore.getState().draft.headline).toBe('keep me');
   });
+});
 
-  it('wipes everything on sign-out', () => {
-    reconcileDraftOwner('alice');
-    useProfileDraftStore.getState().update({ headline: 'secret' });
-    expect(reconcileDraftOwner(null)).toBe(true);
-    expect(useProfileDraftStore.getState().draft).toEqual({});
-    expect(localStorage.getItem(DRAFT_OWNER_KEY)).toBeNull();
+describe('<AuthHint> across an expired session', () => {
+  const header = (userId: string | null) => createElement(AuthHint, { userId });
+
+  it('keeps drafts through the signed-out render, so the same user signs back in to them', () => {
+    const { rerender } = render(header('alice'));
+    useProfileDraftStore.getState().update({ headline: 'half-typed' });
+    useApplyDraftStore.getState().update('job-1', { coverLetter: 'Dear hiring manager…' });
+
+    rerender(header(null));
+    rerender(header('alice'));
+
+    expect(useProfileDraftStore.getState().draft.headline).toBe('half-typed');
+    expect(useApplyDraftStore.getState().get('job-1').coverLetter).toBe('Dear hiring manager…');
+    expect(localStorage.getItem('joblify.profile-draft')).toContain('half-typed');
   });
 
-  it('does nothing for an anonymous visitor with no draft owner', () => {
-    expect(reconcileDraftOwner(null)).toBe(false);
+  it('still wipes them when someone else signs in after the signed-out render', () => {
+    const { rerender } = render(header('alice'));
+    useProfileDraftStore.getState().update({ headline: 'Alice’s secret' });
+
+    rerender(header(null));
+    rerender(header('bob'));
+
+    expect(useProfileDraftStore.getState().draft).toEqual({});
+    expect(localStorage.getItem('joblify.profile-draft') ?? '').not.toContain('Alice');
+    expect(localStorage.getItem(DRAFT_OWNER_KEY)).toBe('bob');
+  });
+});
+
+describe('signing out from the avatar menu', () => {
+  it('wipes every draft and the owner, then signs out through clerk-js on its own instance', async () => {
+    reconcileDraftOwner('alice');
+    useProfileDraftStore.getState().update({ headline: 'secret', phone: '0700' });
+    const clerk: { signOut: (...args: never[]) => Promise<void> } = {
+      signOut: async function (this: unknown) {
+        expect(this).toBe(clerk);
+        expect(useProfileDraftStore.getState().draft).toEqual({});
+      },
+    };
+    const signOut = vi.spyOn(clerk, 'signOut');
+    (window as { Clerk?: unknown }).Clerk = clerk;
+    render(createElement(ClerkRuntime));
+
+    // What <UserButton>'s "Sign out" calls.
+    await clerk.signOut();
+
+    expect(signOut).toHaveBeenCalledTimes(1);
+    expect(localStorage.getItem('joblify.profile-draft') ?? '').not.toContain('secret');
+    expect(localStorage.getItem(DRAFT_OWNER_KEY)).toBeNull();
   });
 });
 

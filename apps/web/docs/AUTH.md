@@ -74,12 +74,12 @@ Three layers means a single misconfiguration in any one doesn't break the gate.
 
 ## Helpers (`lib/auth.ts`)
 
-| Helper                   | Returns        | Behavior                                                                     |
-| ------------------------ | -------------- | ---------------------------------------------------------------------------- |
-| `currentUser()`          | `User \| null` | The mirrored Postgres user. `null` if no Clerk session or user soft-deleted. |
-| `requireUser()`          | `User`         | Like `currentUser` but redirects to `/sign-in` if no user.                   |
-| `requireRole(role)`      | `User`         | `requireUser` + throws `AuthError('FORBIDDEN')` if wrong `userType`.         |
-| `requireSelfOrAdmin(id)` | `User`         | `requireUser` + ensures `user.id === id \|\| user.userType === 'ADMIN'`.     |
+| Helper                   | Returns        | Behavior                                                                                                            |
+| ------------------------ | -------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `currentUser()`          | `User \| null` | The mirrored Postgres user. `null` if no Clerk session or user soft-deleted.                                        |
+| `requireUser()`          | `User`         | Like `currentUser` but redirects to sign-in if no user; a signed-out caller gets a `redirect_url` back to the page. |
+| `requireRole(role)`      | `User`         | `requireUser` + throws `AuthError('FORBIDDEN')` if wrong `userType`.                                                |
+| `requireSelfOrAdmin(id)` | `User`         | `requireUser` + ensures `user.id === id \|\| user.userType === 'ADMIN'`.                                            |
 
 Use these in Server Components, Server Actions, Route Handlers. Same surface, same guarantees.
 
@@ -136,6 +136,8 @@ Two paths:
 
 1. **User-initiated**: Clerk's `<UserButton>` / `<SignOutButton>` UI components. Handle via Clerk.
 2. **Server-initiated** (e.g. on `deleteMyAccount`): redirect to `/sign-out?reason=deleted`. We don't currently revoke server-side sessions via `clerkClient().sessions.revokeSession()` — add that to `app/actions/account.ts:deleteMyAccount` when you wire the full delete flow.
+
+Form drafts kept in `localStorage` (`lib/stores/clear-drafts.ts`) are cleared on an explicit sign-out (the UserButton's sign-out, wrapped in `clerk-runtime.tsx`), on account deletion (`delete-form.tsx`), and when a different user signs in (`<AuthHint>`). `<AuthHint>` also clears another tab's wipe from this tab's memory, so a second open tab cannot restore the previous person's drafts. A session that merely expires keeps them: it renders signed out on its way back to sign-in, and clearing there erased the work the person signed back in to submit. Drafts are shown or restored only when their owner is the user signed in at that moment (`useOwnsDrafts`). The tradeoff: after an expiry nobody signs back in from, the drafts stay in that browser's storage until the next sign-in. Nobody else is shown them, but they are readable with the browser's developer tools.
 
 ## Adding a new protected page
 
