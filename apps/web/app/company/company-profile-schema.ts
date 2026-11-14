@@ -41,6 +41,18 @@ export const SIZE_LABELS: Record<(typeof SIZE_VALUES)[number], string> = {
   SIZE_1001_PLUS: '1,001+',
 };
 
+// zod's .url() accepts javascript:, data: and ftp: links. Every stored company
+// URL may end up in an href, so only http(s) is allowed.
+const httpUrl = (message: string) =>
+  z
+    .string()
+    .trim()
+    .url(message)
+    .regex(/^https?:\/\//i, 'Use an address that starts with http:// or https://')
+    .max(200)
+    .optional()
+    .or(z.literal(''));
+
 export const CompanyProfileSchema = z.object({
   companyName: z.string().trim().min(2, 'Company name must be at least 2 characters').max(140),
   industry: z.enum(INDUSTRY_OPTIONS, {
@@ -55,15 +67,8 @@ export const CompanyProfileSchema = z.object({
   phone: optionalPhone,
   address: z.string().trim().max(255).optional().or(z.literal('')),
   // .url() alone accepts any scheme, javascript: included, and this renders as a link.
-  website: z
-    .string()
-    .trim()
-    .url('Invalid website URL')
-    .regex(/^https?:\/\//i, 'Use a website address that starts with http:// or https://')
-    .max(200)
-    .optional()
-    .or(z.literal('')),
-  linkedin: z.string().trim().url('Invalid LinkedIn URL').max(200).optional().or(z.literal('')),
+  website: httpUrl('Invalid website URL'),
+  linkedin: httpUrl('Invalid LinkedIn URL'),
   logoUrl: z.string().trim().url('Invalid logo URL').optional().or(z.literal('')),
 });
 

@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-14 — Company LinkedIn links must be http(s) too
+
+- The company website rule now also covers the LinkedIn field, through one shared `httpUrl` schema
+  helper: zod's `.url()` accepts `javascript:` and `data:` links, and any stored company URL may end
+  up in an `href`. LinkedIn is not rendered as a link today, so this closes the gap before it can be.
+
 ## 2026-11-14 — Deadline day stays open, and withdrawals cannot overwrite a decision
 
 - **Deadline day:** a job that says "Apply by Nov 14" now accepts applications through the whole
