@@ -196,7 +196,7 @@ Never trust the URL. See `app/actions/update-applicant-status.ts` for the canoni
 Two kinds:
 
 - **Transactional** (apply confirm, status change, password reset): inline `await resend().emails.send(...)`. Best-effort — wrap in `.catch` so the user-facing path never fails because of email.
-- **Bulk** (daily digest): batched in a workflow. One send per user per UTC day: the Resend idempotency key `digest/<userId>/<date>` drops a repeat when a crashed run is re-run before its watermark was stamped.
+- **Bulk** (daily digest): batched in a workflow. One send per user per UTC day: the Resend idempotency key `digest/<userId>/<date>` drops a repeat when a crashed run is re-run before its watermark was stamped. If the re-run builds a different job list, Resend answers `invalid_idempotent_request` (409), which the digest counts as sent. Digest sends are spaced 200 ms apart (5 a second), half of Resend's default limit of 10 requests a second per team, which the transactional mail shares; the SDK does not retry a 429.
 
 The Resend SDK does not throw on an API failure; it resolves with `{ data: null, error }`. Check `error` wherever a failed send must change what happens next.
 
