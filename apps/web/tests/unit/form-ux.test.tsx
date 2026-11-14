@@ -7,6 +7,7 @@
 
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { Component, type ReactNode } from 'react';
+import type * as Navigation from 'next/navigation';
 import { renderToString } from 'react-dom/server';
 import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -46,7 +47,7 @@ vi.mock('@/app/actions/post-job', () => ({
 const deleteAccount = vi.hoisted(() => vi.fn());
 vi.mock('@/app/actions/account', () => ({ deleteMyAccount: deleteAccount }));
 vi.mock('next/navigation', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('next/navigation')>()),
+  ...(await importOriginal<typeof Navigation>()),
   useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }),
 }));
 
