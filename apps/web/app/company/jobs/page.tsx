@@ -45,6 +45,7 @@ type Row = {
   applicants: number;
   posted: Date;
   location: string | null;
+  expired: boolean;
 };
 
 export default async function CompanyJobsPage({
@@ -105,6 +106,7 @@ export default async function CompanyJobsPage({
         title: true,
         status: true,
         location: true,
+        applicationDeadline: true,
         publishedAt: true,
         createdAt: true,
         _count: { select: { applications: true } },
@@ -117,6 +119,7 @@ export default async function CompanyJobsPage({
     }),
   ]);
 
+  const now = new Date();
   const items: Row[] = rows.map((j) => ({
     id: j.id,
     slug: j.slug,
@@ -125,6 +128,8 @@ export default async function CompanyJobsPage({
     applicants: j._count.applications,
     posted: j.publishedAt ?? j.createdAt,
     location: j.location,
+    expired:
+      j.status === 'PUBLISHED' && j.applicationDeadline !== null && j.applicationDeadline < now,
   }));
 
   const statusCount = new Map(byStatus.map((g) => [g.status, g._count._all]));
@@ -247,6 +252,11 @@ export default async function CompanyJobsPage({
                         {j.location ? (
                           <p className="text-fg-subtle mt-0.5 text-[11px]">{j.location}</p>
                         ) : null}
+                        {j.expired ? (
+                          <Badge tone="warn" className="mt-1">
+                            Expired
+                          </Badge>
+                        ) : null}
                         <div className="mt-1.5 flex items-center justify-between gap-2">
                           <Link
                             href={`/company/applicants/${j.id}`}
@@ -312,7 +322,7 @@ function COLUMNS(total: number): ListColumn<Row>[] {
       cell: (j) => (
         <div className="min-w-0">
           <Link
-            href={`/jobs/${j.slug}`}
+            href={j.status === 'PUBLISHED' ? `/jobs/${j.slug}` : `/company/jobs/${j.id}/edit`}
             className="text-fg font-medium no-underline hover:underline"
           >
             {j.title}
@@ -328,7 +338,12 @@ function COLUMNS(total: number): ListColumn<Row>[] {
       key: 'status',
       header: 'Status',
       sort: 'status',
-      cell: (j) => <Badge tone={JOB_STATUS_TONE[j.status]}>{JOB_STATUS_LABEL[j.status]}</Badge>,
+      cell: (j) => (
+        <span className="inline-flex flex-wrap gap-1">
+          <Badge tone={JOB_STATUS_TONE[j.status]}>{JOB_STATUS_LABEL[j.status]}</Badge>
+          {j.expired ? <Badge tone="warn">Expired</Badge> : null}
+        </span>
+      ),
     },
     {
       key: 'applicants',

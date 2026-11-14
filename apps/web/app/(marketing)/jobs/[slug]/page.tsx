@@ -258,10 +258,14 @@ export async function getJobBySlug(slug: string) {
     },
   });
 
+  // Tagged before the visibility check: a null cached for a draft must clear
+  // when updateJob publishes it (job tag), and a slug no row has yet clears on
+  // the next postJob (jobs tag).
+  cacheTag(...(job ? [tags.job(job.id), tags.company(job.companyId)] : [tags.jobs()]));
+
   // A deleted company's postings are not live (deleteMyAccount also archives
   // them; this covers rows that predate that and any other path).
   if (!job || job.deletedAt || job.status !== 'PUBLISHED' || job.company.deletedAt) return null;
 
-  cacheTag(tags.job(job.id), tags.company(job.companyId));
   return job;
 }

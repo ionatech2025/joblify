@@ -5,6 +5,7 @@ import { ChatThreadLive } from '@/app/components/chat/chat-thread-live';
 import { ChatComposer } from '@/app/components/chat/chat-composer';
 import { LATEST_MESSAGES_TAKE, toChatMessages } from '@/app/components/chat/latest-messages';
 import { Breadcrumb, ControlPanel } from '@/app/components/console/control-panel';
+import { CHAT_JOIN_STATUSES } from '@/lib/applications/transitions';
 import { AddParticipantButton } from './add-participant-button';
 
 export const metadata = { title: 'Chat area' };
@@ -116,7 +117,9 @@ export default async function CompanyChatAreaPage({ params }: { params: Params }
             <div>
               <div className="border-border mb-2 flex items-center justify-between border-b pb-1.5">
                 <h2 className="text-fg-muted m-0 text-[12px] font-semibold tracking-wider uppercase">
-                  {area.kind === 'VIRTUAL_INTERN' ? 'Add virtual interns' : 'Add applicants'}
+                  {area.kind === 'VIRTUAL_INTERN'
+                    ? 'Add virtual interns'
+                    : 'Add shortlisted applicants'}
                 </h2>
                 <span className="text-fg-subtle text-[12px] font-semibold tabular-nums">
                   {candidates.length}
@@ -141,8 +144,6 @@ export default async function CompanyChatAreaPage({ params }: { params: Params }
   );
 }
 
-// JOB areas draw from that job's applicants; the VIRTUAL_INTERN area draws
-// from the company's virtual-intern subscribers.
 async function getAddableSeekers(
   area: { kind: 'JOB' | 'VIRTUAL_INTERN'; jobPost: { id: string } | null },
   companyUserId: string,
@@ -151,7 +152,11 @@ async function getAddableSeekers(
   if (area.kind === 'JOB') {
     if (!area.jobPost) return [];
     const applications = await db.jobApplication.findMany({
-      where: { jobPostId: area.jobPost.id, jobSeeker: { deletedAt: null } },
+      where: {
+        jobPostId: area.jobPost.id,
+        status: { in: [...CHAT_JOIN_STATUSES] },
+        jobSeeker: { deletedAt: null },
+      },
       orderBy: { appliedAt: 'desc' },
       take: 50,
       select: { jobSeeker: { select: { id: true, firstName: true, lastName: true } } },

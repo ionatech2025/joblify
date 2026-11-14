@@ -33,6 +33,8 @@ const m = vi.hoisted(() => {
     companyFindUnique: vi.fn(),
     userFindFirst: vi.fn(),
     partFindUnique: vi.fn(),
+    appFindFirst: vi.fn(),
+    queryRaw: vi.fn(),
     msgCreate: vi.fn(),
     areaUpdate: vi.fn(),
     transaction: vi.fn(),
@@ -63,6 +65,7 @@ vi.mock('@/lib/db', () => ({
     chatArea: { findUnique: m.areaFindUnique, findFirst: m.areaFindFirst, update: m.areaUpdate },
     companyProfile: { findUnique: m.companyFindUnique },
     user: { findFirst: m.userFindFirst },
+    jobApplication: { findFirst: m.appFindFirst },
     chatParticipant: { findUnique: m.partFindUnique },
     chatMessage: { create: m.msgCreate },
     $transaction: m.transaction,
@@ -71,6 +74,7 @@ vi.mock('@/lib/db', () => ({
 vi.mock('@/lib/audit', () => ({
   withAudit: (_ctx: unknown, _meta: unknown, fn: (tx: unknown) => unknown) =>
     fn({
+      $queryRaw: m.queryRaw,
       chatArea: { create: m.areaCreate },
       chatParticipant: { create: m.partCreate },
       notification: { create: m.notifCreate },
@@ -160,7 +164,40 @@ describe('openVirtualInternChatArea', () => {
 
 describe('addChatParticipant', () => {
   beforeEach(() => {
-    m.areaFindFirst.mockResolvedValue({ id: 'area1', kind: 'JOB', title: 'Engineer' });
+    m.areaFindFirst.mockResolvedValue({
+      id: 'area1',
+      kind: 'JOB',
+      title: 'Engineer',
+      jobPostId: 'job1',
+    });
+    m.appFindFirst.mockResolvedValue({ id: 'app1' });
+    m.queryRaw.mockResolvedValue([{ id: 'app1' }]);
+  });
+
+  it("refuses an applicant who isn't shortlisted (or further) for the area's job", async () => {
+    m.appFindFirst.mockResolvedValue(null);
+    expect(await addChatParticipant('area1', 'seeker1')).toMatchObject({
+      ok: false,
+      error: expect.stringMatching(/shortlisted/),
+    });
+    expect(m.appFindFirst.mock.calls[0]![0].where).toMatchObject({
+      jobPostId: 'job1',
+      jobSeekerId: 'seeker1',
+      status: { in: ['SHORTLISTED', 'INTERVIEW_SCHEDULED', 'OFFER_EXTENDED', 'HIRED'] },
+    });
+    expect(m.partCreate).not.toHaveBeenCalled();
+  });
+
+  it('adds no seat when the application leaves the chat stages before the seat is written', async () => {
+    m.queryRaw.mockResolvedValue([]);
+    expect(await addChatParticipant('area1', 'seeker1')).toMatchObject({
+      ok: false,
+      error: expect.stringMatching(/shortlisted/),
+    });
+    expect(m.queryRaw.mock.calls[0]![0].join('?')).toMatch(/FOR UPDATE/);
+    expect(m.partCreate).not.toHaveBeenCalled();
+    expect(m.notifCreate).not.toHaveBeenCalled();
+    expect(m.updateTag).not.toHaveBeenCalled();
   });
 
   it('propagates the auth error for non-companies', async () => {

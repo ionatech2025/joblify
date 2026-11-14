@@ -63,6 +63,10 @@ real traffic.
 10. **Run `next build`/e2e with real Clerk + DB secrets** — this pass verified everything that can be
     verified without them (unit, type, lint, build, bundle budget). Authenticated Playwright suites
     still self-skip without `E2E_*`.
+11. **Remove stale job chat seats** (added 2026-11-14). Candidates rejected before the chat-seat rule
+    shipped, and seekers added under the old `addChatParticipant`, still sit in job chat areas. After the
+    deploy, run `bun run scripts/cleanup-stale-chat-seats.ts` against production, read the report, then
+    rerun it with `--apply`. See [OPERATIONS.md](./OPERATIONS.md#common-runbook-plays).
 
 ### Found by the live verification, not fixed in code (2026-10-10)
 

@@ -88,7 +88,7 @@ Prompt cache strategy: system prompt + Zod schema are stable; they're cached. Re
 - Output: linked skill rows with `weight = 2` (required) or `weight = 1` (nice-to-have).
 - Cost: ~$0.0005 per job.
 
-Best-effort. If Haiku fails, the job is still posted; skills can be linked later via a backfill.
+Best-effort. If Haiku fails, the job is still posted. `updateJob` re-runs the extraction when the JD text changes (inside the `postJobLimit` posting budget). A save that leaves the JD unchanged also retries it while the job has no linked skills, at most 5 times a day per company (`skillRetryLimit`); past that the save still lands and the retry waits.
 
 ### 3. Match score (workflow)
 

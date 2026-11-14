@@ -18,12 +18,14 @@ const m = vi.hoisted(() => {
     AuthError,
     requireRole: vi.fn(),
     postJobLimit: vi.fn(),
+    skillRetryLimit: vi.fn(),
     jobCreate: vi.fn(),
     jobUpdate: vi.fn(),
     jobFindFirst: vi.fn(),
     skillFindMany: vi.fn(),
     jpsDeleteMany: vi.fn(),
     jpsCreateMany: vi.fn(),
+    jpsCount: vi.fn(),
     companyProfileFindUnique: vi.fn(),
     seekersFindMany: vi.fn(),
     notifCreateMany: vi.fn(),
@@ -47,12 +49,15 @@ vi.mock('@/lib/auth', async (importOriginal) => {
   const actual = await importOriginal<typeof AuthModule>();
   return { ...actual, requireRole: m.requireRole, AuthError: m.AuthError };
 });
-vi.mock('@/lib/ratelimit', () => ({ postJobLimit: m.postJobLimit }));
+vi.mock('@/lib/ratelimit', () => ({
+  postJobLimit: m.postJobLimit,
+  skillRetryLimit: m.skillRetryLimit,
+}));
 vi.mock('@/lib/db', () => ({
   db: {
     jobPost: { findFirst: m.jobFindFirst },
     skill: { findMany: m.skillFindMany },
-    jobPostSkill: { deleteMany: m.jpsDeleteMany, createMany: m.jpsCreateMany },
+    jobPostSkill: { deleteMany: m.jpsDeleteMany, createMany: m.jpsCreateMany, count: m.jpsCount },
     companyProfile: { findUnique: m.companyProfileFindUnique },
     jobSeekerProfile: { findMany: m.seekersFindMany },
     notification: { createMany: m.notifCreateMany },
@@ -116,6 +121,7 @@ beforeEach(() => {
   m.embedJobPost.mockResolvedValue([0.1, 0.2]);
   m.requireRole.mockResolvedValue({ id: 'company1', plan: 'PRO' });
   m.postJobLimit.mockResolvedValue({ success: true });
+  m.skillRetryLimit.mockResolvedValue({ success: true });
   m.companyProfileFindUnique.mockResolvedValue({
     verificationStatus: 'VERIFIED',
     companyName: 'Acme',
@@ -134,6 +140,7 @@ beforeEach(() => {
   ]);
   m.jpsDeleteMany.mockResolvedValue({ count: 0 });
   m.jpsCreateMany.mockResolvedValue({ count: 2 });
+  m.jpsCount.mockResolvedValue(2);
   m.reindexJob.mockResolvedValue(undefined);
 });
 
@@ -399,6 +406,130 @@ describe('updateJob', () => {
       ok: true,
       data: undefined,
     });
+  });
+
+  function savedRow(over: Record<string, unknown> = {}) {
+    return {
+      id: JOB_ID,
+      publishedAt: new Date('2026-01-01T00:00:00Z'),
+      chatArea: null,
+      title: 'Senior Rust Engineer',
+      description: 'Build fast, reliable distributed systems in Rust. Own services end to end.',
+      requirements: null,
+      industry: 'TECHNOLOGY',
+      jobType: 'FULL_TIME',
+      experienceLevel: 'SENIOR',
+      workMode: 'REMOTE',
+      location: 'Remote (EU)',
+      salaryMin: 100000,
+      salaryMax: 140000,
+      salaryCurrency: 'EUR',
+      salaryPeriod: 'YEAR',
+      locationCountry: null,
+      applicationDeadline: null,
+      ...over,
+    };
+  }
+  const PAST = '2020-01-01';
+  const future = () => new Date(Date.now() + 30 * 86_400_000).toISOString().slice(0, 10);
+
+  it('closing a post spends no posting budget and does not re-extract skills', async () => {
+    m.jobFindFirst.mockResolvedValueOnce(savedRow()).mockResolvedValueOnce(null);
+    m.postJobLimit.mockResolvedValue({ success: false });
+    expect(await updateJob(JOB_ID, input({ closed: true }))).toEqual({
+      ok: true,
+      data: undefined,
+    });
+    expect(m.jobUpdate.mock.calls[0]![0].data.status).toBe('CLOSED');
+    await runAfterCallbacks();
+    expect(m.postJobLimit).not.toHaveBeenCalled();
+    expect(m.generateObject).not.toHaveBeenCalled();
+  });
+
+  it('rate-limits and re-extracts skills when the JD text changes', async () => {
+    m.jobFindFirst
+      .mockResolvedValueOnce(savedRow({ description: 'An older description the edit replaces.' }))
+      .mockResolvedValueOnce(null);
+    await updateJob(JOB_ID, input());
+    expect(m.postJobLimit).toHaveBeenCalledWith('company1');
+    await runAfterCallbacks();
+    expect(m.generateObject).toHaveBeenCalledTimes(1);
+  });
+
+  it('retries skill extraction on any save while the job has no linked skills', async () => {
+    m.jobFindFirst.mockResolvedValueOnce(savedRow()).mockResolvedValueOnce(null);
+    m.jpsCount.mockResolvedValue(0);
+    await updateJob(JOB_ID, input());
+    await runAfterCallbacks();
+    expect(m.postJobLimit).not.toHaveBeenCalled();
+    expect(m.generateObject).toHaveBeenCalledTimes(1);
+    expect(m.jpsCreateMany).toHaveBeenCalledTimes(1);
+  });
+
+  it('saves a job with no linked skills but skips the extraction retry once over its limit', async () => {
+    m.jobFindFirst.mockResolvedValueOnce(savedRow()).mockResolvedValueOnce(null);
+    m.jpsCount.mockResolvedValue(0);
+    m.skillRetryLimit.mockResolvedValue({ success: false });
+    expect(await updateJob(JOB_ID, input({ closed: true }))).toEqual({
+      ok: true,
+      data: undefined,
+    });
+    expect(m.jobUpdate.mock.calls[0]![0].data.status).toBe('CLOSED');
+    await runAfterCallbacks();
+    expect(m.skillRetryLimit).toHaveBeenCalledWith('company1');
+    expect(m.generateObject).not.toHaveBeenCalled();
+  });
+
+  it('refuses a JD text edit once the daily posting budget is spent', async () => {
+    m.jobFindFirst.mockResolvedValueOnce(savedRow({ title: 'Junior Rust Engineer' }));
+    m.postJobLimit.mockResolvedValue({ success: false });
+    expect(await updateJob(JOB_ID, input())).toMatchObject({
+      ok: false,
+      error: expect.stringMatching(/limit/i),
+    });
+    expect(m.jobUpdate).not.toHaveBeenCalled();
+  });
+
+  it('closes an expired post whose past deadline is unchanged', async () => {
+    m.jobFindFirst
+      .mockResolvedValueOnce(savedRow({ applicationDeadline: new Date(PAST) }))
+      .mockResolvedValueOnce(null);
+    expect(await updateJob(JOB_ID, input({ applicationDeadline: PAST, closed: true }))).toEqual({
+      ok: true,
+      data: undefined,
+    });
+    expect(m.jobUpdate.mock.calls[0]![0].data.status).toBe('CLOSED');
+  });
+
+  it("extends an expired post's deadline", async () => {
+    const next = future();
+    m.jobFindFirst
+      .mockResolvedValueOnce(savedRow({ applicationDeadline: new Date(PAST) }))
+      .mockResolvedValueOnce(null);
+    expect(await updateJob(JOB_ID, input({ applicationDeadline: next }))).toEqual({
+      ok: true,
+      data: undefined,
+    });
+    expect(m.jobUpdate.mock.calls[0]![0].data.applicationDeadline).toEqual(new Date(next));
+  });
+
+  it('will not republish an expired post without a new deadline', async () => {
+    m.jobFindFirst.mockResolvedValueOnce(savedRow({ applicationDeadline: new Date(PAST) }));
+    expect(await updateJob(JOB_ID, input({ applicationDeadline: PAST }))).toMatchObject({
+      ok: false,
+      error: expect.stringMatching(/future date/i),
+    });
+    expect(m.jobUpdate).not.toHaveBeenCalled();
+  });
+
+  it("keeps an expired post's details frozen, even while closing it", async () => {
+    m.jobFindFirst.mockResolvedValueOnce(savedRow({ applicationDeadline: new Date(PAST) }));
+    const res = await updateJob(
+      JOB_ID,
+      input({ applicationDeadline: PAST, closed: true, location: 'Kampala' }),
+    );
+    expect(res).toMatchObject({ ok: false, error: expect.stringMatching(/expired/i) });
+    expect(m.jobUpdate).not.toHaveBeenCalled();
   });
 });
 

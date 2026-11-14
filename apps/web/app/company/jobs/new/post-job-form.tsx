@@ -76,7 +76,7 @@ export function PostJobForm() {
         const id = unwrap(await postJob(values));
         clearDraft();
         setRestoredDraft(false);
-        toast.success('Job posted');
+        toast.success(values.publish ? 'Job posted' : 'Draft saved');
         router.push(`/company/jobs/${id}/edit?just_posted=1`);
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Failed to post job.';

@@ -208,6 +208,9 @@ export async function withdrawApplication(applicationId: string): Promise<Action
         where: { id: applicationId },
         data: { status: 'WITHDRAWN' },
       });
+      await tx.chatParticipant.deleteMany({
+        where: { userId: user.id, chatArea: { jobPostId: application.jobPost.id } },
+      });
       await tx.notification.create({
         data: {
           userId: application.jobPost.companyId,

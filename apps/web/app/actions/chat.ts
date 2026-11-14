@@ -13,6 +13,7 @@ import { chatMessageLimit } from '@/lib/ratelimit';
 import { logger } from '@/lib/observability/logger';
 import { type ActionResult, fail, succeed } from '@/lib/action-result';
 import { clientIp } from '@/lib/security/client-ip';
+import { CHAT_JOIN_STATUSES } from '@/lib/applications/transitions';
 
 async function auditCtx(actorId: string) {
   const h = await headers();
@@ -120,6 +121,24 @@ async function ensureVirtualInternChatArea(companyUserId: string): Promise<{ id:
   }
 }
 
+const NOT_SHORTLISTED = "Only candidates you've shortlisted for this job can join its chat area.";
+
+class NoChatSeatError extends Error {}
+
+async function lockChatEligibleApplication(
+  tx: Prisma.TransactionClient,
+  jobPostId: string | null,
+  jobSeekerId: string,
+): Promise<boolean> {
+  const rows = await tx.$queryRaw<{ id: string }[]>`
+    SELECT id FROM job_applications
+     WHERE "jobPostId" = ${jobPostId}::uuid
+       AND "jobSeekerId" = ${jobSeekerId}::uuid
+       AND status::text IN (${Prisma.join(CHAT_JOIN_STATUSES)})
+       FOR UPDATE`;
+  return rows.length > 0;
+}
+
 // Add a job seeker to one of the company's chat areas (flowchart: "add seeker
 // of choice to job specific chat area" / "add virtual interns of interest").
 // JOB_UC_14.0: both add-to-job-chat and add-to-VI-chat are premium outreach
@@ -134,7 +153,7 @@ export async function addChatParticipant(
 
   const area = await db.chatArea.findFirst({
     where: { id: chatAreaId, companyId: user.id },
-    select: { id: true, kind: true, title: true },
+    select: { id: true, kind: true, title: true, jobPostId: true },
   });
   if (!area) throw new AuthError('FORBIDDEN');
 
@@ -154,6 +173,19 @@ export async function addChatParticipant(
   if (area.kind === 'VIRTUAL_INTERN' && seeker.jobSeekerProfile?.profileType !== 'VIRTUAL_INTERN') {
     return fail('Only virtual-intern profiles can join a virtual-intern chat area.');
   }
+  if (area.kind === 'JOB') {
+    const seat =
+      area.jobPostId &&
+      (await db.jobApplication.findFirst({
+        where: {
+          jobPostId: area.jobPostId,
+          jobSeekerId: seeker.id,
+          status: { in: [...CHAT_JOIN_STATUSES] },
+        },
+        select: { id: true },
+      }));
+    if (!seat) return fail(NOT_SHORTLISTED);
+  }
 
   const already = await db.chatParticipant.findUnique({
     where: { chatAreaId_userId: { chatAreaId: area.id, userId: seeker.id } },
@@ -161,28 +193,39 @@ export async function addChatParticipant(
   });
   if (already) return succeed();
 
-  await withAudit(
-    await auditCtx(user.id),
-    {
-      action: 'CHAT_PARTICIPANT_ADDED',
-      entity: 'chat_area',
-      entityId: area.id,
-      after: () => ({ userId: seeker.id }),
-    },
-    async (tx) => {
-      await tx.chatParticipant.create({ data: { chatAreaId: area.id, userId: seeker.id } });
-      await tx.notification.create({
-        data: {
-          userId: seeker.id,
-          kind: 'CHAT_AREA_ADDED',
-          payload: {
-            chatAreaId: area.id,
-            message: `You were added to the chat area “${area.title}”.`,
+  try {
+    await withAudit(
+      await auditCtx(user.id),
+      {
+        action: 'CHAT_PARTICIPANT_ADDED',
+        entity: 'chat_area',
+        entityId: area.id,
+        after: () => ({ userId: seeker.id }),
+      },
+      async (tx) => {
+        if (
+          area.kind === 'JOB' &&
+          !(await lockChatEligibleApplication(tx, area.jobPostId, seeker.id))
+        ) {
+          throw new NoChatSeatError();
+        }
+        await tx.chatParticipant.create({ data: { chatAreaId: area.id, userId: seeker.id } });
+        await tx.notification.create({
+          data: {
+            userId: seeker.id,
+            kind: 'CHAT_AREA_ADDED',
+            payload: {
+              chatAreaId: area.id,
+              message: `You were added to the chat area “${area.title}”.`,
+            },
           },
-        },
-      });
-    },
-  );
+        });
+      },
+    );
+  } catch (err) {
+    if (err instanceof NoChatSeatError) return fail(NOT_SHORTLISTED);
+    throw err;
+  }
 
   updateTag(tags.notifications(seeker.id));
   return succeed();

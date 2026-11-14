@@ -110,7 +110,9 @@ export default async function EditJobPage({
       <ConsoleWidth className="max-w-5xl py-3">
         {sp.just_posted && (
           <p className="rounded-card bg-success-subtle text-success-subtle-fg border-success/25 mb-3 border px-3 py-2 text-[13px]">
-            Job posted — it&apos;s live on /jobs and indexed within a minute.
+            {job.status === 'PUBLISHED'
+              ? 'Job posted. It’s live on /jobs and indexed within a minute.'
+              : 'Draft saved. It stays private until you publish it.'}
           </p>
         )}
         {/* The old "Current status: X. Saving re-extracts skills…" paragraph is

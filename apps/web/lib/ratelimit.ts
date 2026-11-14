@@ -147,6 +147,7 @@ export const uploadSignLimit: Limiter = makeLimit('upload-sign', 40, '1 h');
 // Algolia reindex — unthrottled writes are a direct cost-abuse vector, not
 // just a spam nuisance.
 export const postJobLimit: Limiter = makeLimit('post-job', 10, '1 d');
+export const skillRetryLimit: Limiter = makeLimit('skill-retry', 5, '1 d');
 export const inviteLimit: Limiter = makeLimit('invite', 30, '1 d');
 export const chatMessageLimit: Limiter = makeLimit('chat-message', 60, '10 m');
 // The view beacon is unauthenticated and writes two rows per hit. Generous for

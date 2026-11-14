@@ -1,4 +1,5 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest';
+import { Prisma } from '@prisma/client';
 import type * as AuthModule from '@/lib/auth';
 
 // Typed invitations (JOB_UC_10): a company invites a seeker to subscribe as
@@ -34,6 +35,7 @@ const m = vi.hoisted(() => {
     invCreate: vi.fn(),
     invUpdate: vi.fn(),
     subUpsert: vi.fn(),
+    subFindUnique: vi.fn(),
     notifCreate: vi.fn(),
     updateTag: vi.fn(),
     redirect: vi.fn((url: string) => {
@@ -57,6 +59,7 @@ vi.mock('@/lib/db', () => ({
       update: m.invUpdateDirect,
     },
     jobSeekerProfile: { findUnique: m.profileFindUnique },
+    companySubscription: { findUnique: m.subFindUnique },
   },
 }));
 vi.mock('@/lib/audit', () => ({
@@ -92,6 +95,7 @@ beforeEach(() => {
   m.invCreate.mockResolvedValue({ id: 'inv1' });
   m.invUpdate.mockResolvedValue({ id: 'inv1' });
   m.subUpsert.mockResolvedValue({});
+  m.subFindUnique.mockResolvedValue(null);
   m.notifCreate.mockResolvedValue({});
 });
 
@@ -135,9 +139,16 @@ describe('inviteJobseeker', () => {
     expect(m.invCreate).not.toHaveBeenCalled();
   });
 
-  it('leaves a still-pending invitation untouched', async () => {
-    m.invFindUnique.mockResolvedValue({ id: 'inv1', status: 'PENDING' });
-    await inviteJobseeker('seeker1', 'EMPLOYABLE');
+  it('says so, and leaves it untouched, when an invitation is still pending', async () => {
+    m.invFindUnique.mockResolvedValue({
+      id: 'inv1',
+      status: 'PENDING',
+      expiresAt: new Date(Date.now() + 86_400_000),
+    });
+    expect(await inviteJobseeker('seeker1', 'EMPLOYABLE')).toMatchObject({
+      ok: false,
+      error: expect.stringMatching(/already invited/i),
+    });
     expect(m.invCreate).not.toHaveBeenCalled();
     expect(m.invUpdate).not.toHaveBeenCalled();
     expect(m.updateTag).not.toHaveBeenCalled();
@@ -154,6 +165,48 @@ describe('inviteJobseeker', () => {
     expect(notif.userId).toBe('seeker1');
     expect(notif.kind).toBe('INVITATION_RECEIVED');
     expect(m.updateTag).toHaveBeenCalledWith('user:seeker1:notifications');
+  });
+
+  it('never resets an accepted invitation while the seeker is still subscribed', async () => {
+    m.invFindUnique.mockResolvedValue({ id: 'inv1', status: 'ACCEPTED', expiresAt: new Date() });
+    m.subFindUnique.mockResolvedValue({ id: 'sub1' });
+    expect(await inviteJobseeker('seeker1', 'EMPLOYABLE')).toMatchObject({
+      ok: false,
+      error: expect.stringMatching(/already accepted/i),
+    });
+    expect(m.invUpdate).not.toHaveBeenCalled();
+    expect(m.notifCreate).not.toHaveBeenCalled();
+  });
+
+  it('invites again a seeker who accepted and has since unsubscribed', async () => {
+    m.invFindUnique.mockResolvedValue({ id: 'inv1', status: 'ACCEPTED', expiresAt: new Date() });
+    expect(await inviteJobseeker('seeker1', 'EMPLOYABLE')).toEqual({ ok: true, data: undefined });
+    expect(m.invUpdate.mock.calls[0]![0].data.status).toBe('PENDING');
+    expect(m.notifCreate.mock.calls[0]![0].data.kind).toBe('INVITATION_RECEIVED');
+  });
+
+  it('says the seeker is already invited when a concurrent invite wins the race', async () => {
+    m.invCreate.mockRejectedValue(
+      new Prisma.PrismaClientKnownRequestError('Unique constraint failed', {
+        code: 'P2002',
+        clientVersion: 'test',
+      }),
+    );
+    expect(await inviteJobseeker('seeker1', 'EMPLOYABLE')).toMatchObject({
+      ok: false,
+      error: expect.stringMatching(/already invited/i),
+    });
+    expect(m.updateTag).not.toHaveBeenCalled();
+  });
+
+  it('re-sends a pending invitation whose window has lapsed', async () => {
+    m.invFindUnique.mockResolvedValue({
+      id: 'inv1',
+      status: 'PENDING',
+      expiresAt: new Date(Date.now() - 1000),
+    });
+    expect(await inviteJobseeker('seeker1', 'EMPLOYABLE')).toEqual({ ok: true, data: undefined });
+    expect(m.invUpdate.mock.calls[0]![0].data.expiresAt.getTime()).toBeGreaterThan(Date.now());
   });
 
   it('re-arms a previously declined invitation instead of creating a new one', async () => {

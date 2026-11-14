@@ -20,6 +20,7 @@ const m = vi.hoisted(() => {
     appCreate: vi.fn(),
     appFindFirst: vi.fn(),
     appUpdate: vi.fn(),
+    chatPartDeleteMany: vi.fn(),
     notifCreate: vi.fn(),
     isEmailSuppressed: vi.fn(),
     send: vi.fn(),
@@ -47,6 +48,7 @@ vi.mock('@/lib/audit', () => ({
     fn({
       jobApplication: { create: m.appCreate, update: m.appUpdate },
       notification: { create: m.notifCreate },
+      chatParticipant: { deleteMany: m.chatPartDeleteMany },
     }),
 }));
 vi.mock('@/lib/cache', () => ({
@@ -290,5 +292,12 @@ describe('withdrawApplication', () => {
     });
     expect(m.notifCreate).toHaveBeenCalledTimes(1);
     expect(m.notifCreate.mock.calls[0]![0].data.userId).toBe('company1');
+  });
+
+  it("removes the candidate from the job's chat area", async () => {
+    await withdrawApplication(APP_ID);
+    expect(m.chatPartDeleteMany).toHaveBeenCalledWith({
+      where: { userId: 'user1', chatArea: { jobPostId: JOB_ID } },
+    });
   });
 });

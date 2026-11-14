@@ -16,7 +16,7 @@ import { fenceUntrusted, sanitizeUntrustedText, untrustedInputNotice } from '@/l
 import { clientIp } from '@/lib/security/client-ip';
 import { reindexJob } from '@/lib/search/index-job';
 import { logger } from '@/lib/observability/logger';
-import { postJobLimit } from '@/lib/ratelimit';
+import { postJobLimit, skillRetryLimit } from '@/lib/ratelimit';
 import { embedJobPost } from '@/workflows/match-score.workflow';
 import { PostJobFormSchema } from '../company/jobs/job-form-schema';
 import { type ActionResult, fail, succeed } from '@/lib/action-result';
@@ -241,9 +241,6 @@ export async function updateJob(
 ): Promise<ActionResult> {
   const user = await requireRole('COMPANY');
 
-  const rl = await postJobLimit(user.id);
-  if (!rl.success) return fail('Daily job-posting limit reached. Try again tomorrow.');
-
   const result = Input.safeParse(input);
   if (!result.success) return fail(result.error.issues[0]?.message ?? 'Check the job details.');
   const parsed = result.data;
@@ -260,29 +257,51 @@ export async function updateJob(
   // Tenancy: the job must belong to this company.
   const existing = await db.jobPost.findFirst({
     where: { id: jobId, companyId: user.id, deletedAt: null },
-    select: {
-      id: true,
-      publishedAt: true,
-      title: true,
-      description: true,
-      requirements: true,
-      applicationDeadline: true,
-      chatArea: { select: { id: true } },
-    },
+    include: { chatArea: { select: { id: true } } },
   });
   if (!existing) throw new AuthError('FORBIDDEN');
 
-  // JOB_UC_11.1: Attempting to edit an expired job post is blocked (Test 84)
-  if (existing.applicationDeadline && existing.applicationDeadline < new Date()) {
-    return fail('Cannot edit an expired job post.');
+  const details = {
+    title: parsed.title,
+    description: parsed.description,
+    requirements: parsed.requirements || null,
+    industry: parsed.industry,
+    jobType: parsed.jobType,
+    experienceLevel: parsed.experienceLevel,
+    workMode: parsed.workMode,
+    location: parsed.location || null,
+    salaryMin: parsed.salaryMin,
+    salaryMax: parsed.salaryMax,
+    salaryCurrency: parsed.salaryCurrency,
+    salaryPeriod: parsed.salaryPeriod,
+    locationCountry: parsed.locationCountry || null,
+  };
+  const changed = (keys: (keyof typeof details)[]) =>
+    keys.some((key) => details[key] !== existing[key]);
+  const detailsChanged = changed(Object.keys(details) as (keyof typeof details)[]);
+  const jdTextChanged = changed(['title', 'description', 'requirements']);
+
+  if (jdTextChanged) {
+    const rl = await postJobLimit(user.id);
+    if (!rl.success) return fail('Daily job-posting limit reached. Try again tomorrow.');
   }
 
-  // JOB_UC_11.1: Editing a job post with a past deadline is blocked (Test 82)
-  if (parsed.applicationDeadline) {
+  const now = new Date();
+  const deadlineChanged =
+    (parsed.applicationDeadline || '') !==
+    (existing.applicationDeadline?.toISOString().slice(0, 10) ?? '');
+
+  if (parsed.applicationDeadline && (deadlineChanged || isPublishing)) {
     const deadlineDate = new Date(parsed.applicationDeadline);
-    if (isNaN(deadlineDate.getTime()) || deadlineDate <= new Date()) {
+    if (isNaN(deadlineDate.getTime()) || deadlineDate <= now) {
       return fail('Application deadline must be a future date.');
     }
+  }
+
+  if (existing.applicationDeadline && existing.applicationDeadline < now && detailsChanged) {
+    return fail(
+      "This job post has expired, so its details can't be edited. Set a new deadline and save, then edit the details.",
+    );
   }
 
   // JOB_UC_11.0: only gate when this update would actually create the area.
@@ -315,19 +334,7 @@ export async function updateJob(
       tx.jobPost.update({
         where: { id: existing.id },
         data: {
-          title: parsed.title,
-          description: parsed.description,
-          requirements: parsed.requirements || null,
-          industry: parsed.industry,
-          jobType: parsed.jobType,
-          experienceLevel: parsed.experienceLevel,
-          workMode: parsed.workMode,
-          location: parsed.location || null,
-          salaryMin: parsed.salaryMin,
-          salaryMax: parsed.salaryMax,
-          salaryCurrency: parsed.salaryCurrency,
-          salaryPeriod: parsed.salaryPeriod,
-          locationCountry: parsed.locationCountry || null,
+          ...details,
           applicationDeadline: parsed.applicationDeadline
             ? new Date(parsed.applicationDeadline)
             : null,
@@ -349,19 +356,20 @@ export async function updateJob(
       }),
   );
 
-  const jdTextChanged =
-    parsed.title !== existing.title ||
-    parsed.description !== existing.description ||
-    (parsed.requirements || null) !== existing.requirements;
-
   after(async () => {
     try {
-      await extractAndLinkSkills(
-        jobId,
-        parsed.title,
-        parsed.description,
-        parsed.requirements ?? '',
-      );
+      const retry =
+        !jdTextChanged &&
+        (await db.jobPostSkill.count({ where: { jobPostId: jobId } })) === 0 &&
+        (await skillRetryLimit(user.id)).success;
+      if (jdTextChanged || retry) {
+        await extractAndLinkSkills(
+          jobId,
+          parsed.title,
+          parsed.description,
+          parsed.requirements ?? '',
+        );
+      }
     } catch (err) {
       logger.warn({ err, jobId }, 'JD skill re-extraction failed (non-blocking)');
       Sentry.captureException(err, { tags: { jobId } });
