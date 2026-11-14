@@ -7,7 +7,7 @@ import { wipeDrafts } from '@/lib/stores/clear-drafts';
 import { Button } from '@/app/components/ui/button';
 import { Input } from '@/app/components/ui/form';
 import { toast } from '@/lib/stores/ui';
-import { unwrap } from '@/lib/action-result';
+import { errorMessage, unwrap } from '@/lib/action-result';
 
 export function DeleteForm({ expectedConfirmation }: { expectedConfirmation: string }) {
   const [confirmation, setConfirmation] = useState('');
@@ -25,7 +25,7 @@ export function DeleteForm({ expectedConfirmation }: { expectedConfirmation: str
         unwrap(await deleteMyAccount(confirmation));
       } catch (err) {
         unstable_rethrow(err);
-        const message = err instanceof Error ? err.message : 'Delete failed';
+        const message = errorMessage(err, 'We could not delete your account. Try again.');
         setError(message);
         toast.error('Delete failed', message);
       }

@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-11-14 — Session, draft privacy and action robustness (phase 5b)
+
+- **Drafts survive an expired session, and only their owner sees them:** signing back in returns
+  you to the page and restores your draft. Drafts are wiped on an explicit sign-out, on account
+  deletion and when a different person signs in; a second open tab drops them when another person
+  signs in; the apply form and bio coach no longer show a draft before its owner is confirmed.
+- **Résumé deletion** never leaves the file behind when storage fails, and an application in
+  flight cannot point at a résumé whose file is being deleted.
+- **Apply** no longer uses up the daily limit on refused attempts, and a double submit succeeds
+  once instead of erroring.
+- **Account deletion** no longer shows a "Delete failed" toast after it succeeded.
+- **Digest email** cannot send twice in a day, no longer marks failed sends as sent, and paces
+  sends within Resend's rate limit. The retention sweep gets past users whose files are stuck.
+
 ## 2026-11-14 — Applicant pipeline integrity (phase 3)
 
 - **Board shows the server's truth:** sort changes, new applicants and saved notes appear without a
