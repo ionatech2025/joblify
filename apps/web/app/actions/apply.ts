@@ -29,6 +29,9 @@ const ApplySchema = z.object({
   acknowledgedDataUse: z.literal('on'),
 });
 
+const RESUME_GONE = 'That résumé is no longer available. Choose another.';
+class ResumeGone extends Error {}
+
 export async function submitApplication(formData: FormData): Promise<ActionResult> {
   // 1. BotID Pro on the apply funnel.
   const verdict = await checkBotId();
@@ -52,7 +55,7 @@ export async function submitApplication(formData: FormData): Promise<ActionResul
     where: { id: parsed.data.resumeId, userId: user.id, deletedAt: null },
     select: { id: true },
   });
-  if (!resume) return fail('That résumé is no longer available. Choose another.');
+  if (!resume) return fail(RESUME_GONE);
 
   // 5. Job must be live and, if it has a deadline, still open.
   const job = await db.jobPost.findFirst({
@@ -102,6 +105,14 @@ export async function submitApplication(formData: FormData): Promise<ActionResul
       after: (r) => ({ id: r.id, status: r.status }),
     },
     async (tx) => {
+      // deleteResume marks the résumé deleted before it counts the applications
+      // that keep its file. This lock conflicts with that mark, so either the
+      // delete waits and counts this application, or this sees the mark.
+      const live = await tx.$queryRaw<unknown[]>`
+        SELECT 1 FROM resumes WHERE id = ${resume.id}::uuid AND "deletedAt" IS NULL FOR SHARE
+      `;
+      if (live.length === 0) throw new ResumeGone();
+
       const app = await tx.jobApplication.create({
         data: {
           jobPostId: job.id,
@@ -130,8 +141,10 @@ export async function submitApplication(formData: FormData): Promise<ActionResul
     },
   ).catch((err: unknown) => {
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') return null;
+    if (err instanceof ResumeGone) return 'resume-gone' as const;
     throw err;
   });
+  if (application === 'resume-gone') return fail(RESUME_GONE);
   if (!application) return succeed();
 
   // 9. Invalidate downstream caches.
