@@ -13,7 +13,7 @@ import { Card } from '@/app/components/ui/card';
 import { AmbientBand } from '@/app/components/ui/ambient';
 import { IslandBoundary } from '@/app/components/island-boundary';
 import { ApplyPanel } from './apply-panel';
-import { applicationsClosed, formatDeadline } from './deadline';
+import { applicationsClosed, formatDeadline } from '@/lib/jobs/deadline';
 import { JobDetailSkeleton } from './job-detail-skeleton';
 import { MatchBadge } from './match-badge';
 import { SimilarJobs } from './similar-jobs';

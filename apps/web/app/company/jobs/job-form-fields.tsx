@@ -184,7 +184,10 @@ export function JobFormFields({
               </span>
             </span>
           </SheetField>
-          <SheetField label="Deadline">
+          <SheetField
+            label="Deadline"
+            hint="Applications stay open through the end of this day (UTC)."
+          >
             <Input
               type="date"
               defaultValue={defaults?.applicationDeadline ?? ''}

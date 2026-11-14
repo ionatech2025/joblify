@@ -14,6 +14,7 @@ import { formatSalary } from '@/lib/ui/salary';
 import { companySizeLabel, industryLabel } from '@/lib/ui/status';
 import { CompanyDetailSkeleton } from './company-detail-skeleton';
 import { SubscribeButton } from './subscribe-button';
+import { openDeadlineWhere } from '@/lib/jobs/deadline';
 
 type Params = Promise<{ slug: string }>;
 
@@ -68,7 +69,7 @@ async function CompanyDetailBody({ slug }: { slug: string }) {
       companyId: company.userId,
       status: 'PUBLISHED',
       deletedAt: null,
-      OR: [{ applicationDeadline: null }, { applicationDeadline: { gt: new Date() } }],
+      ...openDeadlineWhere(),
     },
     orderBy: { publishedAt: 'desc' },
     take: 20,

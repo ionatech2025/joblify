@@ -345,7 +345,7 @@ describe('Phase 3: Job Exploration and Posting (Tests 57–87)', () => {
     const result = await postJob(pastDeadline);
     expect(result).toMatchObject({
       ok: false,
-      error: expect.stringMatching(/future date/i),
+      error: expect.stringMatching(/today or later/i),
     });
   });
 
@@ -454,7 +454,7 @@ describe('Phase 3: Job Exploration and Posting (Tests 57–87)', () => {
     );
     expect(pastResult).toMatchObject({
       ok: false,
-      error: expect.stringMatching(/future date/i),
+      error: expect.stringMatching(/today or later/i),
     });
   });
 

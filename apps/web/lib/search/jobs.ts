@@ -3,6 +3,7 @@ import type { Prisma } from '@prisma/client';
 import { searchClient, INDEX, type JobSearchRecord } from '@/lib/search/algolia';
 import { salaryOverlapWhere } from '@/lib/search/salary';
 import { db } from '@/lib/db';
+import { applicationsClosed } from '@/lib/jobs/deadline';
 
 // The job search itself, shared by GET /api/v1/jobs/search (client-side
 // filtering) and the /jobs server render (the first page, so the listing is in
@@ -176,7 +177,7 @@ export async function searchJobs(
 
       const now = new Date();
       const hits: JobSearchRecord[] = jobs
-        .filter((j) => !(j.applicationDeadline && j.applicationDeadline < now))
+        .filter((j) => !applicationsClosed(j.applicationDeadline, now))
         .map((j) => ({
           objectID: j.id,
           slug: j.slug,

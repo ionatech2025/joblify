@@ -41,7 +41,7 @@ import JobDetailPage from '@/app/(marketing)/jobs/[slug]/page';
 import ApplyPage from '@/app/(marketing)/jobs/[slug]/apply/page';
 import { ApplyPanel } from '@/app/(marketing)/jobs/[slug]/apply-panel';
 import { SimilarJobs } from '@/app/(marketing)/jobs/[slug]/similar-jobs';
-import { applicationsClosed } from '@/app/(marketing)/jobs/[slug]/deadline';
+import { applicationsClosed } from '@/lib/jobs/deadline';
 
 // Drops React's text-node separators so assertions can read sentences.
 async function html(node: ReactNode): Promise<string> {
@@ -93,11 +93,12 @@ beforeEach(() => {
 });
 
 describe('applicationsClosed', () => {
-  it('is closed only once the deadline instant has passed', () => {
-    const now = new Date('2026-03-01T12:00:00Z');
-    expect(applicationsClosed(null, now)).toBe(false);
-    expect(applicationsClosed(new Date('2026-03-01T11:59:59Z'), now)).toBe(true);
-    expect(applicationsClosed(new Date('2026-03-01T12:00:01Z'), now)).toBe(false);
+  it('keeps applications open through the whole deadline day (UTC), closing at the next midnight', () => {
+    const deadline = new Date('2026-11-14T00:00:00Z');
+    expect(applicationsClosed(null, new Date('2030-01-01T00:00:00Z'))).toBe(false);
+    expect(applicationsClosed(deadline, new Date('2026-11-14T00:00:00Z'))).toBe(false);
+    expect(applicationsClosed(deadline, new Date('2026-11-14T23:59:59Z'))).toBe(false);
+    expect(applicationsClosed(deadline, new Date('2026-11-15T00:00:00Z'))).toBe(true);
   });
 });
 
@@ -189,7 +190,10 @@ describe('SimilarJobs', () => {
     const where = m.jobFindMany.mock.lastCall?.[0].where;
     const open = where.AND[0].OR;
     expect(open[0]).toEqual({ applicationDeadline: null });
-    expect(open[1].applicationDeadline.gt.getTime()).toBeGreaterThanOrEqual(before);
+    // A job whose deadline is today is still open, so the cutoff sits a day back.
+    const cutoff = open[1].applicationDeadline.gt.getTime();
+    expect(cutoff).toBeGreaterThanOrEqual(before - 24 * 60 * 60 * 1000);
+    expect(cutoff).toBeLessThan(before);
     expect(where.AND[1]).toEqual({
       OR: [{ skills: { some: { skillId: { in: ['s1'] } } } }, { industry: 'TECHNOLOGY' }],
     });
