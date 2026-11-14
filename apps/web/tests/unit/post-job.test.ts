@@ -185,6 +185,14 @@ describe('postJob', () => {
     expect(data.slug).toMatch(/^senior-rust-engineer-[a-z0-9]{6}$/);
   });
 
+  it("accepts today's date as the deadline, since applications stay open all that day", async () => {
+    const today = new Date().toISOString().slice(0, 10);
+    expect(await postJob(input({ applicationDeadline: today }))).toEqual({
+      ok: true,
+      data: JOB_ID,
+    });
+  });
+
   it('saves a draft without publishedAt when publish=false', async () => {
     await postJob(input({ publish: false }));
     const data = m.jobCreate.mock.calls[0]![0].data;
@@ -517,7 +525,7 @@ describe('updateJob', () => {
     m.jobFindFirst.mockResolvedValueOnce(savedRow({ applicationDeadline: new Date(PAST) }));
     expect(await updateJob(JOB_ID, input({ applicationDeadline: PAST }))).toMatchObject({
       ok: false,
-      error: expect.stringMatching(/future date/i),
+      error: expect.stringMatching(/today or later/i),
     });
     expect(m.jobUpdate).not.toHaveBeenCalled();
   });

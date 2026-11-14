@@ -3,7 +3,7 @@ import { requireRole } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { SavedList, type SavedRow } from './saved-list';
 import { SavedSearchList } from './saved-search-list';
-import { applicationsClosed } from '@/app/(marketing)/jobs/[slug]/deadline';
+import { applicationsClosed } from '@/lib/jobs/deadline';
 import { ConsoleWidth } from '@/app/components/console/shell';
 import { Breadcrumb, ControlPanel } from '@/app/components/console/control-panel';
 import { buttonClasses } from '@/app/components/ui/button';

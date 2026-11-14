@@ -6,7 +6,7 @@ import { buttonClasses } from '@/app/components/ui/button';
 import { applicationStatusLabel, applicationStatusTone } from '@/lib/ui/status';
 import { SaveButton } from './save-button';
 import { TimeStamp } from '@/app/components/ui/timestamp';
-import { applicationsClosed, formatDeadline } from './deadline';
+import { applicationsClosed, formatDeadline } from '@/lib/jobs/deadline';
 
 const primaryLink = `${buttonClasses('primary')} no-underline`;
 const heading = 'm-0 mb-2 text-lg font-semibold text-fg';

@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-11-14 — Deadline day stays open, and withdrawals cannot overwrite a decision
+
+- **Deadline day:** a job that says "Apply by Nov 14" now accepts applications through the whole
+  of Nov 14 (UTC). Before, every check compared the stored UTC-midnight date with "now", so the
+  job closed as the deadline day began, and a company could not set today as the deadline. One
+  rule in `lib/jobs/deadline.ts` now serves the apply action, job edits, search, the home and
+  company pages, similar jobs, saved jobs and the company jobs list. The form says the deadline
+  is inclusive.
+- **Withdraw race:** a withdrawal applies only to the status the candidate saw, so a recruiter's
+  decision that lands in between is no longer overwritten.
+
 ## 2026-11-14 — Session, draft privacy and action robustness (phase 5b)
 
 - **Drafts survive an expired session, and only their owner sees them:** signing back in returns

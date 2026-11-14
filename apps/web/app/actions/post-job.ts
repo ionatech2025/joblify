@@ -20,6 +20,7 @@ import { postJobLimit, skillRetryLimit } from '@/lib/ratelimit';
 import { embedJobPost } from '@/workflows/match-score.workflow';
 import { PostJobFormSchema } from '../company/jobs/job-form-schema';
 import { type ActionResult, fail, succeed } from '@/lib/action-result';
+import { applicationsClosed } from '@/lib/jobs/deadline';
 
 function slugify(title: string): string {
   return title
@@ -67,11 +68,11 @@ export async function postJob(input: z.infer<typeof Input>): Promise<ActionResul
   const blocked = await verificationBlock(user.id);
   if (blocked) return fail(blocked);
 
-  // JOB_UC_11.0: Job deadline must be a future date
+  // JOB_UC_11.0: the deadline may be today or later (open through that whole day)
   if (parsed.applicationDeadline) {
     const deadlineDate = new Date(parsed.applicationDeadline);
-    if (isNaN(deadlineDate.getTime()) || deadlineDate <= new Date()) {
-      return fail('Application deadline must be a future date.');
+    if (isNaN(deadlineDate.getTime()) || applicationsClosed(deadlineDate)) {
+      return fail('Application deadline must be today or later.');
     }
   }
 
@@ -293,12 +294,12 @@ export async function updateJob(
 
   if (parsed.applicationDeadline && (deadlineChanged || isPublishing)) {
     const deadlineDate = new Date(parsed.applicationDeadline);
-    if (isNaN(deadlineDate.getTime()) || deadlineDate <= now) {
-      return fail('Application deadline must be a future date.');
+    if (isNaN(deadlineDate.getTime()) || applicationsClosed(deadlineDate, now)) {
+      return fail('Application deadline must be today or later.');
     }
   }
 
-  if (existing.applicationDeadline && existing.applicationDeadline < now && detailsChanged) {
+  if (applicationsClosed(existing.applicationDeadline, now) && detailsChanged) {
     return fail(
       "This job post has expired, so its details can't be edited. Set a new deadline and save, then edit the details.",
     );

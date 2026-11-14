@@ -16,6 +16,7 @@ import { buttonClasses } from '@/app/components/ui/button';
 import { AmbientCanvas } from '@/app/components/ui/ambient';
 import { GlobeLazy } from '@/app/components/globe-lazy';
 import { formatSalary } from '@/lib/ui/salary';
+import { openDeadlineWhere } from '@/lib/jobs/deadline';
 
 export const metadata = {
   title: 'Find your next role',
@@ -134,7 +135,7 @@ async function getFeaturedJobs() {
       status: 'PUBLISHED',
       deletedAt: null,
       company: { deletedAt: null },
-      OR: [{ applicationDeadline: null }, { applicationDeadline: { gt: new Date() } }],
+      ...openDeadlineWhere(),
     },
     orderBy: { publishedAt: 'desc' },
     take: 6,

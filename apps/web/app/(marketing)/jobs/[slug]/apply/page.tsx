@@ -6,7 +6,7 @@ import { requireRole } from '@/lib/auth';
 import { ApplyForm } from './apply-form';
 import { PageHeader } from '@/app/components/ui/ambient';
 import ApplyLoading from './loading';
-import { applicationsClosed, formatDeadline } from '../deadline';
+import { applicationsClosed, formatDeadline } from '@/lib/jobs/deadline';
 
 type Params = Promise<{ slug: string }>;
 

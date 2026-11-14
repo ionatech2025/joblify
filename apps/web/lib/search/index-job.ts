@@ -2,6 +2,7 @@ import * as Sentry from '@sentry/nextjs';
 import { db } from '@/lib/db';
 import { upsertJob, deleteJob, toJobRecord } from './algolia';
 import { logger } from '@/lib/observability/logger';
+import { applicationsClosed } from '@/lib/jobs/deadline';
 
 const MAX_INDEX_ATTEMPTS = 10;
 
@@ -29,7 +30,7 @@ export async function syncJobToAlgolia(jobId: string): Promise<void> {
     },
   });
 
-  const expired = job?.applicationDeadline != null && job.applicationDeadline < new Date();
+  const expired = applicationsClosed(job?.applicationDeadline);
   if (!job || job.deletedAt || job.status !== 'PUBLISHED' || expired) {
     await deleteJob(jobId);
     return;

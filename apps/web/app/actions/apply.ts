@@ -20,6 +20,7 @@ import { runResumeParse } from '@/workflows/resume-parse.workflow';
 import { runMatchScore } from '@/workflows/match-score.workflow';
 import { CLOSED_APPLICATION_STATUSES } from '@/lib/ui/status';
 import { clientIp } from '@/lib/security/client-ip';
+import { applicationsClosed } from '@/lib/jobs/deadline';
 
 const ApplySchema = z.object({
   jobId: z.string().uuid(),
@@ -75,7 +76,7 @@ export async function submitApplication(formData: FormData): Promise<ActionResul
   // even though the row lives on until the retention sweep removes it.
   if (job.company.deletedAt) return fail('Job not available for application.');
 
-  if (job.applicationDeadline && job.applicationDeadline < new Date()) {
+  if (applicationsClosed(job.applicationDeadline)) {
     return fail('The application deadline for this job has passed.');
   }
 
@@ -193,6 +194,8 @@ export async function submitApplication(formData: FormData): Promise<ActionResul
   return succeed();
 }
 
+class ApplicationMovedError extends Error {}
+
 export async function withdrawApplication(applicationId: string): Promise<ActionResult> {
   const user = await requireRole('JOB_SEEKER');
 
@@ -209,37 +212,48 @@ export async function withdrawApplication(applicationId: string): Promise<Action
   const ip = clientIp(h);
   const ua = h.get('user-agent') ?? null;
 
-  await withAudit(
-    { actorId: user.id, ip, ua },
-    {
-      action: 'APPLICATION_STATUS_CHANGED',
-      entity: 'job_application',
-      entityId: applicationId,
-      before: { status: application.status },
-      after: () => ({ status: 'WITHDRAWN' }),
-    },
-    async (tx) => {
-      await tx.jobApplication.update({
-        where: { id: applicationId },
-        data: { status: 'WITHDRAWN' },
-      });
-      await tx.chatParticipant.deleteMany({
-        where: { userId: user.id, chatArea: { jobPostId: application.jobPost.id } },
-      });
-      await tx.notification.create({
-        data: {
-          userId: application.jobPost.companyId,
-          kind: 'APPLICATION_STATUS_CHANGED',
-          payload: {
-            applicationId,
-            jobTitle: application.jobPost.title,
-            status: 'WITHDRAWN',
-            message: `${user.firstName ?? 'An applicant'} withdrew their application for ${application.jobPost.title}.`,
+  try {
+    await withAudit(
+      { actorId: user.id, ip, ua },
+      {
+        action: 'APPLICATION_STATUS_CHANGED',
+        entity: 'job_application',
+        entityId: applicationId,
+        before: { status: application.status },
+        after: () => ({ status: 'WITHDRAWN' }),
+      },
+      async (tx) => {
+        // Only from the status the candidate saw: a recruiter's decision that
+        // lands in between must not be overwritten by the withdrawal.
+        const { count } = await tx.jobApplication.updateMany({
+          where: { id: applicationId, status: application.status },
+          data: { status: 'WITHDRAWN' },
+        });
+        if (count === 0) throw new ApplicationMovedError();
+        await tx.chatParticipant.deleteMany({
+          where: { userId: user.id, chatArea: { jobPostId: application.jobPost.id } },
+        });
+        await tx.notification.create({
+          data: {
+            userId: application.jobPost.companyId,
+            kind: 'APPLICATION_STATUS_CHANGED',
+            payload: {
+              applicationId,
+              jobTitle: application.jobPost.title,
+              status: 'WITHDRAWN',
+              message: `${user.firstName ?? 'An applicant'} withdrew their application for ${application.jobPost.title}.`,
+            },
           },
-        },
-      });
-    },
-  );
+        });
+      },
+    );
+  } catch (err) {
+    if (!(err instanceof ApplicationMovedError)) throw err;
+    updateTag(tags.userApplications(user.id));
+    return fail(
+      'This application changed before your withdrawal was saved, so nothing was changed. Refresh to see its current status.',
+    );
+  }
 
   updateTag(tags.userApplications(user.id));
   updateTag(tags.jobApplicants(application.jobPost.id));

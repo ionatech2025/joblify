@@ -2,6 +2,7 @@ import Link from 'next/link';
 import type { IndustryType } from '@prisma/client';
 import { db } from '@/lib/db';
 import { Card } from '@/app/components/ui/card';
+import { openDeadlineWhere } from '@/lib/jobs/deadline';
 
 export async function SimilarJobs({
   jobId,
@@ -19,7 +20,7 @@ export async function SimilarJobs({
       deletedAt: null,
       company: { deletedAt: null },
       AND: [
-        { OR: [{ applicationDeadline: null }, { applicationDeadline: { gt: new Date() } }] },
+        openDeadlineWhere(),
         skillIds.length
           ? { OR: [{ skills: { some: { skillId: { in: skillIds } } } }, { industry }] }
           : { industry },

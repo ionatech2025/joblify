@@ -22,6 +22,7 @@ const m = vi.hoisted(() => {
     appCreate: vi.fn(),
     appFindFirst: vi.fn(),
     appUpdate: vi.fn(),
+    appUpdateMany: vi.fn(),
     chatPartDeleteMany: vi.fn(),
     notifCreate: vi.fn(),
     isEmailSuppressed: vi.fn(),
@@ -49,7 +50,7 @@ vi.mock('@/lib/audit', () => ({
   withAudit: (_ctx: unknown, _meta: unknown, fn: (tx: unknown) => unknown) =>
     fn({
       $queryRaw: m.liveResume,
-      jobApplication: { create: m.appCreate, update: m.appUpdate },
+      jobApplication: { create: m.appCreate, update: m.appUpdate, updateMany: m.appUpdateMany },
       notification: { create: m.notifCreate },
       chatParticipant: { deleteMany: m.chatPartDeleteMany },
     }),
@@ -291,20 +292,20 @@ describe('withdrawApplication', () => {
       status: 'SUBMITTED',
       jobPost: { id: JOB_ID, title: 'Engineer', companyId: 'company1' },
     });
-    m.appUpdate.mockResolvedValue({});
+    m.appUpdateMany.mockResolvedValue({ count: 1 });
     m.notifCreate.mockResolvedValue({});
   });
 
   it('propagates the auth error for non-jobseekers', async () => {
     m.requireRole.mockRejectedValue(new m.AuthError('FORBIDDEN'));
     await expect(withdrawApplication(APP_ID)).rejects.toThrow();
-    expect(m.appUpdate).not.toHaveBeenCalled();
+    expect(m.appUpdateMany).not.toHaveBeenCalled();
   });
 
   it("rejects an application that isn't the caller's own", async () => {
     m.appFindFirst.mockResolvedValue(null);
     await expect(withdrawApplication(APP_ID)).rejects.toThrow();
-    expect(m.appUpdate).not.toHaveBeenCalled();
+    expect(m.appUpdateMany).not.toHaveBeenCalled();
   });
 
   it('rejects withdrawing an already-closed application', async () => {
@@ -317,13 +318,13 @@ describe('withdrawApplication', () => {
       ok: false,
       error: expect.stringMatching(/already closed/i),
     });
-    expect(m.appUpdate).not.toHaveBeenCalled();
+    expect(m.appUpdateMany).not.toHaveBeenCalled();
   });
 
   it('sets WITHDRAWN and notifies the company on the happy path', async () => {
     await withdrawApplication(APP_ID);
-    expect(m.appUpdate).toHaveBeenCalledWith({
-      where: { id: APP_ID },
+    expect(m.appUpdateMany).toHaveBeenCalledWith({
+      where: { id: APP_ID, status: 'SUBMITTED' },
       data: { status: 'WITHDRAWN' },
     });
     expect(m.notifCreate).toHaveBeenCalledTimes(1);
@@ -335,5 +336,14 @@ describe('withdrawApplication', () => {
     expect(m.chatPartDeleteMany).toHaveBeenCalledWith({
       where: { userId: 'user1', chatArea: { jobPostId: JOB_ID } },
     });
+  });
+  it('does not overwrite a recruiter decision that landed after the candidate loaded the page', async () => {
+    m.appUpdateMany.mockResolvedValue({ count: 0 });
+    expect(await withdrawApplication(APP_ID)).toMatchObject({
+      ok: false,
+      error: expect.stringMatching(/changed before your withdrawal/i),
+    });
+    expect(m.notifCreate).not.toHaveBeenCalled();
+    expect(m.chatPartDeleteMany).not.toHaveBeenCalled();
   });
 });

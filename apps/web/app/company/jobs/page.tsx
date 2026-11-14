@@ -15,6 +15,7 @@ import { FilterMenu } from '@/app/components/console/filter-menu';
 import { makeHref, orderParam, readListQuery } from '@/lib/ui/list-params';
 import { JOB_STATUS_LABEL, JOB_STATUS_TONE } from './job-status';
 import { TimeStamp } from '@/app/components/ui/timestamp';
+import { applicationsClosed } from '@/lib/jobs/deadline';
 
 export const metadata = { title: 'Jobs' };
 
@@ -128,8 +129,7 @@ export default async function CompanyJobsPage({
     applicants: j._count.applications,
     posted: j.publishedAt ?? j.createdAt,
     location: j.location,
-    expired:
-      j.status === 'PUBLISHED' && j.applicationDeadline !== null && j.applicationDeadline < now,
+    expired: j.status === 'PUBLISHED' && applicationsClosed(j.applicationDeadline, now),
   }));
 
   const statusCount = new Map(byStatus.map((g) => [g.status, g._count._all]));

@@ -64,6 +64,14 @@ export async function doThing(input: z.infer<typeof Input>): Promise<R> {
 
 Skipping any step is a bug. See `app/actions/apply.ts` for a complete example with BotID + email + workflow trigger.
 
+## Application deadlines
+
+`applicationDeadline` is a calendar date stored at UTC midnight. Applications stay open through
+that whole day (UTC), so "Apply by Nov 14" closes at the start of Nov 15. Every check goes
+through [`lib/jobs/deadline.ts`](../lib/jobs/deadline.ts): `applicationsClosed()` for a row in
+hand and `openDeadlineWhere()` for a Prisma filter. Do not compare `applicationDeadline` with
+`new Date()` directly; that closes a job a full day early, which is the bug this module fixed.
+
 ## Route Handler patterns
 
 ### Cron
