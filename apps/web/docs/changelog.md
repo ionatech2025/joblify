@@ -1,5 +1,22 @@
 # Changelog
 
+## 2026-11-14 — Applicant pipeline integrity (phase 3)
+
+- **Board shows the server's truth:** sort changes, new applicants and saved notes appear without a
+  reload; tabbing through an unedited note never overwrites a newer one; focus follows a moved card.
+- **Race-safe status changes:** a status write applies only to the status the recruiter saw, so a
+  candidate's withdrawal can no longer be overwritten.
+- **Chat seats follow status:** rejected, withdrawn or demoted candidates leave the job chat, and
+  only shortlisted-or-later applicants can be added (row-locked against a concurrent rejection).
+  `scripts/cleanup-stale-chat-seats.ts` reports, and with `--apply` removes, seats left over from
+  before this change (owner action, see `docs/OPERATIONS.md`).
+- **Honest email:** candidates are emailed for real progress or a decision, with a considerate
+  rejection message, and when an offer, hire or rejection is reversed.
+- **Job edits:** closing or extending a job no longer uses the daily posting limit; expired jobs can
+  be closed or extended and show an Expired badge; failed skill extraction retries under its own
+  limit; draft pages no longer stay hidden after publishing; messages follow the saved status.
+- **Invitations:** duplicates say so, and an accepted invite is never reset.
+
 ## 2026-11-14 — Company verification lifecycle and safe admin decisions (phase 4)
 
 - **Rejection with a reason:** admins must give one; the company sees it on its setup page and by
