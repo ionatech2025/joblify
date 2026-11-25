@@ -11,6 +11,7 @@ import { DeleteForm } from '@/app/(authenticated)/account/delete/delete-form';
 import { useApplyDraftStore } from '@/lib/stores/apply-draft';
 import { useProfileDraftStore } from '@/lib/stores/profile-draft';
 import { useAuthHint } from '@/lib/stores/auth-hint';
+import { getQueryClient } from '@/lib/query/client';
 import { DRAFT_OWNER_KEY } from '@/lib/stores/clear-drafts';
 import { useFormDraft } from '@/lib/use-form-draft';
 
@@ -166,6 +167,29 @@ describe('a second open tab', () => {
     anotherTabSets('joblify.apply-draft', JSON.stringify({ state: { byJob: {} }, version: 1 }));
     expect(useProfileDraftStore.getState().draft.bio).toBe(ALICE_BIO);
     expect(useApplyDraftStore.getState().get('job-x').coverLetter).toBe(ALICE_LETTER);
+  });
+});
+
+describe('cached data across a change of account in the same tab', () => {
+  const cached = () => getQueryClient().getQueryData(['notifications']);
+  beforeEach(() => getQueryClient().setQueryData(['notifications'], [{ id: 'alice-1' }]));
+  afterEach(() => getQueryClient().clear());
+
+  it.each([
+    ['someone else signs in', 'bob'],
+    ['the user signs out', null],
+  ])('is dropped when %s, even if the header remounted in between', (_, next) => {
+    render(<AuthHint userId="alice" />);
+    expect(cached()).toBeDefined();
+    cleanup();
+    render(<AuthHint userId={next} />);
+    expect(cached()).toBeUndefined();
+  });
+
+  it('is kept when the same person is confirmed again', () => {
+    const { rerender } = render(<AuthHint userId="alice" />);
+    rerender(<AuthHint userId="alice" />);
+    expect(cached()).toEqual([{ id: 'alice-1' }]);
   });
 });
 
