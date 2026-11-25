@@ -79,9 +79,20 @@ export const NOTIFICATION_KIND: Record<
   },
 };
 
+type KindEntry = (typeof NOTIFICATION_KIND)[NotificationKind];
+
+/**
+ * The registry entry for a kind as it arrived over the wire. A tab still running
+ * the previous deploy can be sent a kind this build has never heard of; it shows
+ * the raw kind and opens nothing instead of failing the whole list.
+ */
+export function notificationKind(kind: NotificationKind): KindEntry {
+  return NOTIFICATION_KIND[kind] ?? { label: kind, icon: Bell, opens: {} };
+}
+
 export function notificationHref(
   n: { kind: NotificationKind; payload: Payload },
   audience: NotificationAudience,
 ): string | null {
-  return NOTIFICATION_KIND[n.kind].opens[audience]?.(n.payload) ?? null;
+  return notificationKind(n.kind).opens[audience]?.(n.payload) ?? null;
 }

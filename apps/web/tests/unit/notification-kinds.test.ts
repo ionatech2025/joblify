@@ -1,6 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import type { NotificationKind } from '@prisma/client';
-import { notificationHref, type NotificationAudience } from '@/lib/ui/notifications';
+import {
+  notificationHref,
+  notificationKind,
+  type NotificationAudience,
+} from '@/lib/ui/notifications';
 
 // Payloads as the writers in app/actions store them.
 const cases: [NotificationKind, NotificationAudience, Record<string, unknown>, string | null][] = [
@@ -47,5 +51,13 @@ describe('notificationHref', () => {
     expect(
       notificationHref({ kind: 'JOB_SHARED', payload: { jobSlug: '../admin?x=1' } }, 'JOB_SEEKER'),
     ).toBe('/jobs/..%2Fadmin%3Fx%3D1');
+  });
+});
+
+describe('notificationKind', () => {
+  it('falls back to the raw kind for one this build does not know', () => {
+    const kind = 'PROMOTED_JOB' as NotificationKind;
+    expect(notificationKind(kind).label).toBe('PROMOTED_JOB');
+    expect(notificationHref({ kind, payload: { jobSlug: 'x' } }, 'JOB_SEEKER')).toBeNull();
   });
 });

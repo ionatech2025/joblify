@@ -12,8 +12,8 @@ import {
   type NotificationItem,
 } from '@/lib/query/notifications';
 import {
-  NOTIFICATION_KIND,
   notificationHref,
+  notificationKind,
   type NotificationAudience,
 } from '@/lib/ui/notifications';
 import { cn } from '@/lib/cn';
@@ -125,7 +125,7 @@ export function NotificationsList({
         )}
         {shown.map((n) => {
           const isRead = !!n.readAt;
-          const { label, icon: Icon } = NOTIFICATION_KIND[n.kind];
+          const { label, icon: Icon } = notificationKind(n.kind);
           const href = notificationHref(n, role);
           const { jobTitle, companyName } = n.payload;
           const detailId = `notification-${n.id}-detail`;
