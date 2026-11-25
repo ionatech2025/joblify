@@ -6,7 +6,7 @@ import { db } from '@/lib/db';
 const ReadAllSchema = z.object({ upTo: z.string().datetime() });
 
 // `upTo` is the newest notification the client showed, so one that lands after
-// the list was drawn stays unread. A repeat finds nothing left and updates 0.
+// the list was drawn stays unread.
 export async function POST(req: Request) {
   const user = await currentUser();
   if (!user) return NextResponse.json({ error: 'unauthenticated' }, { status: 401 });

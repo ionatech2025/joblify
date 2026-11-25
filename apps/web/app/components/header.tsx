@@ -81,8 +81,8 @@ export function Header({ auth, mobileUser }: { auth?: ReactNode; mobileUser?: Re
         </nav>
 
         {/* Mobile controls. The buttons and gaps (this row's and the one
-            beside the logo) are in px, not size-9 (2.25rem) and gap-2: at a
-            200% root font size (Android's largest text setting) three
+            beside the logo) are in px, not size-9 (2.25rem), gap-2 and gap-4:
+            at a 200% root font size (Android's largest text setting) three
             rem-sized buttons total 248px and pushed "Toggle menu" off the
             right edge, out of reach without horizontal scrolling. For the same
             reason the theme control moves into the menu panel on phones,

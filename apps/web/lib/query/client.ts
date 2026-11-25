@@ -67,8 +67,6 @@ export const APPLICATIONS_PAGE_CAP = 50;
 
 /**
  * How many notifications the list, its route handler and the header bell see.
- * The bell's count is derived from these rows, so at the cap it says "50 or
- * more" rather than a number it cannot know. Lives here for the same reason as
- * APPLICATIONS_PAGE_CAP.
+ * Lives here for the same reason as APPLICATIONS_PAGE_CAP.
  */
 export const NOTIFICATIONS_PAGE_CAP = 50;

@@ -6,9 +6,9 @@ import { NOTIFICATIONS_PAGE_CAP } from '@/lib/query/client';
 import { NOTIFICATION_POLL_MS, useUnreadNotificationCount } from '@/lib/query/notifications';
 
 /**
- * Header bell with an unread-count badge. It is rendered twice (the desktop
- * and mobile header islands are both mounted, one CSS-hidden), so only the
- * one passed `poll` runs the badge interval.
+ * It is rendered twice (the desktop and mobile header islands are both
+ * mounted, one CSS-hidden), so only the one passed `poll` runs the badge
+ * interval.
  *
  * The number lives in the link's name, not a live region: a background poll
  * must not interrupt a screen reader, and the name is current whenever focus

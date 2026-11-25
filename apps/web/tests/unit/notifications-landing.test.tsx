@@ -3,9 +3,6 @@ import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-// The header bell's one destination. Each role must land on a list it can
-// open, including a company the company console still turns away.
-
 const m = vi.hoisted(() => {
   class RedirectError extends Error {
     constructor(public url: string) {
@@ -37,7 +34,10 @@ import NotificationsLandingPage from '@/app/(authenticated)/dashboard/notificati
 const REJECTION = 'Acme was not verified. Reason: documents unreadable';
 
 beforeEach(() => {
-  vi.stubGlobal('fetch', vi.fn(() => new Promise<never>(() => {})));
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(() => new Promise<never>(() => {})),
+  );
   m.notifications.mockResolvedValue([
     {
       id: 'n1',
