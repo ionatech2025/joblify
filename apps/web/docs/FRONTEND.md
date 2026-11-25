@@ -94,7 +94,7 @@ shell (the `next build` route table is unchanged).
 - **Identity changes.** `AuthHint` clears the browser QueryClient when the signed-in user
   changes or signs out, so the next account never sees the previous one's cached rows.
 - **Mobile width budget.** Below `sm` the cluster is `[Search][Bell][Avatar][Menu]` signed in and
-  `[Search][Menu]` signed out, with buttons and gaps in px so it still fits a 390 px phone at a
+  `[Search][Menu]` signed out, with buttons and gaps in px so it stays inside a 390 px phone at a
   200% root font size. The theme control lives in the mobile menu panel as a "Theme" row for
   the same reason. On desktop it stays in the nav.
 - **Opening is reading.** Each notification row is one stretched link to the place it is about

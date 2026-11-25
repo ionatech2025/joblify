@@ -47,7 +47,7 @@ export function Header({ auth, mobileUser }: { auth?: ReactNode; mobileUser?: Re
   // stack underneath and need an exact offset to sit flush against it.
   return (
     <header className="glass border-border short:static sticky top-0 z-50 border-b">
-      <Container className="flex h-[var(--o-header-h)] items-center justify-between gap-4">
+      <Container className="flex h-[var(--o-header-h)] items-center justify-between gap-[16px]">
         <Link
           href="/"
           onClick={close}
@@ -80,13 +80,13 @@ export function Header({ auth, mobileUser }: { auth?: ReactNode; mobileUser?: Re
           {auth}
         </nav>
 
-        {/* Mobile controls. The buttons and gaps are in px, not size-9
-            (2.25rem) and gap-2: at a 200% root font size (Android's largest
-            text setting) three rem-sized buttons total 248px and pushed
-            "Toggle menu" off the right edge, out of reach without horizontal
-            scrolling. For the same reason the theme control moves into the
-            menu panel on phones, leaving room for the signed-in bell and
-            avatar. */}
+        {/* Mobile controls. The buttons and gaps (this row's and the one
+            beside the logo) are in px, not size-9 (2.25rem) and gap-2: at a
+            200% root font size (Android's largest text setting) three
+            rem-sized buttons total 248px and pushed "Toggle menu" off the
+            right edge, out of reach without horizontal scrolling. For the same
+            reason the theme control moves into the menu panel on phones,
+            leaving room for the signed-in bell and avatar. */}
         <div className="flex items-center gap-[8px] sm:hidden">
           <button
             type="button"
