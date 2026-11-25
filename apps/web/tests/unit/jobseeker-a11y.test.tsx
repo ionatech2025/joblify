@@ -2,7 +2,7 @@
 
 import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest';
 import type { ReactNode } from 'react';
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ApplicationsList } from '@/app/(authenticated)/jobseeker/applications/applications-list';
@@ -16,6 +16,7 @@ import { SaveButton } from '@/app/(marketing)/jobs/[slug]/save-button';
 import { ApplyForm } from '@/app/(marketing)/jobs/[slug]/apply/apply-form';
 import type { ApplicationListItem } from '@/lib/query/applications';
 import type { NotificationItem } from '@/lib/query/notifications';
+import { useUiStore } from '@/lib/stores/ui';
 
 const m = vi.hoisted(() => ({
   withdrawApplication: vi.fn(),
@@ -136,18 +137,114 @@ function notification(id: string, over: Partial<NotificationItem> = {}): Notific
 }
 
 describe('NotificationsList', () => {
-  it('names the job and company on a status update and links to the application', () => {
+  // jsdom cannot follow a link to another document; the tests only need the click.
+  const stayOnPage = (e: MouseEvent) => e.preventDefault();
+  beforeEach(() => document.addEventListener('click', stayOnPage));
+  afterEach(() => document.removeEventListener('click', stayOnPage));
+
+  const READ = '2026-10-02T00:00:00Z';
+  const posts = () => vi.mocked(fetch).mock.calls.filter(([, init]) => init?.method === 'POST');
+  const answerPosts = (status = 200) =>
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((_url: string, init?: RequestInit) =>
+        init?.method === 'POST' ? Promise.resolve(new Response(null, { status })) : never(),
+      ),
+    );
+
+  it('opens a status update at the application and marks it read on the way', async () => {
+    answerPosts();
     render(withQuery(<NotificationsList initial={[notification('n1')]} />));
     expect(screen.getByText('Backend Engineer at Acme')).toBeDefined();
     expect(screen.getByText('Your application status changed to Shortlisted.')).toBeDefined();
-    expect(screen.getByRole('link', { name: 'Track application' }).getAttribute('href')).toBe(
-      '/jobseeker/applications',
+    const row = screen.getByRole('link', { name: /^Unread:\s?Application update$/ });
+    expect(row.getAttribute('href')).toBe('/jobseeker/applications');
+
+    await userEvent.click(row);
+    expect(posts().map(([url]) => url)).toEqual(['/api/v1/notifications/n1/read']);
+  });
+
+  it('marks a row read when it is middle-clicked open in a new tab', async () => {
+    answerPosts();
+    render(withQuery(<NotificationsList initial={[notification('n1')]} />));
+    fireEvent(
+      screen.getByRole('link', { name: /Application update/ }),
+      new MouseEvent('auxclick', { bubbles: true, button: 1 }),
+    );
+    await waitFor(() =>
+      expect(posts().map(([url]) => url)).toEqual(['/api/v1/notifications/n1/read']),
     );
   });
 
-  it('does not offer a jobseeker link on the company side', () => {
+  it('does not mark an already-read row again when it is opened', async () => {
+    answerPosts();
+    render(withQuery(<NotificationsList initial={[notification('n1', { readAt: READ })]} />));
+    await userEvent.click(screen.getByRole('link', { name: 'Application update' }));
+    expect(posts()).toEqual([]);
+  });
+
+  it('renders a row with nowhere to go as text, not a link', () => {
+    // A company's withdrawal notice carries no jobId to open.
     render(withQuery(<NotificationsList initial={[notification('n1')]} role="COMPANY" />));
-    expect(screen.queryByRole('link', { name: 'Track application' })).toBeNull();
+    expect(screen.getByText('Application update')).toBeDefined();
+    expect(screen.queryByRole('link')).toBeNull();
+  });
+
+  it('filters to unread rows, and offers the way back when none are left', async () => {
+    render(
+      withQuery(
+        <NotificationsList initial={[notification('n1'), notification('n2', { readAt: READ })]} />,
+      ),
+    );
+    const unreadPill = screen.getByRole('button', { name: /^Unread\s?1$/ });
+    await userEvent.click(unreadPill);
+    expect(unreadPill.getAttribute('aria-pressed')).toBe('true');
+    expect(screen.getAllByRole('listitem')).toHaveLength(1);
+    expect(screen.getByRole('listitem').textContent).toContain('Unread:');
+
+    cleanup();
+    render(withQuery(<NotificationsList initial={[notification('n1', { readAt: READ })]} />));
+    await userEvent.click(screen.getByRole('button', { name: 'Unread' }));
+    expect(screen.getByText('No unread notifications')).toBeDefined();
+    await userEvent.click(screen.getByRole('button', { name: 'Show all' }));
+    expect(screen.getByRole('button', { name: 'All' }).getAttribute('aria-pressed')).toBe('true');
+    expect(screen.getByRole('link', { name: 'Application update' })).toBeDefined();
+    expect(document.activeElement).toBe(screen.getByRole('list', { name: 'Notifications' }));
+  });
+
+  it('marks everything up to the newest row read at once and keeps focus in the list', async () => {
+    answerPosts();
+    const items = [
+      notification('n2', { createdAt: '2026-10-03T00:00:00.000Z' }),
+      notification('n1'),
+    ];
+    render(withQuery(<NotificationsList initial={items} />, [['notifications'], items]));
+    await userEvent.click(screen.getByRole('button', { name: 'Mark all as read' }));
+
+    const [[url, init]] = posts() as [[string, RequestInit]];
+    expect(url).toBe('/api/v1/notifications/read-all');
+    expect(JSON.parse(init.body as string)).toEqual({ upTo: '2026-10-03T00:00:00.000Z' });
+    const list = screen.getByRole('list', { name: 'Notifications' });
+    expect(list.textContent).not.toContain('Unread:');
+    expect(screen.queryByRole('button', { name: 'Mark all as read' })).toBeNull();
+    expect(document.activeElement).toBe(list);
+  });
+
+  it('puts the rows back and says so when marking all fails', async () => {
+    answerPosts(500);
+    useUiStore.setState({ toasts: [] });
+    const items = [notification('n1'), notification('n2')];
+    render(withQuery(<NotificationsList initial={items} />, [['notifications'], items]));
+    await userEvent.click(screen.getByRole('button', { name: 'Mark all as read' }));
+
+    await waitFor(() =>
+      expect(useUiStore.getState().toasts).toEqual([
+        expect.objectContaining({ tone: 'error', title: "Couldn't mark as read" }),
+      ]),
+    );
+    expect(screen.getAllByRole('listitem').every((li) => li.textContent?.includes('Unread:'))).toBe(
+      true,
+    );
   });
 
   it('says "Unread" in text, not only with a dot and bold type', () => {

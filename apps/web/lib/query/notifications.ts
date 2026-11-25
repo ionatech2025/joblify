@@ -1,12 +1,13 @@
 'use client';
 
+import type { NotificationKind } from '@prisma/client';
 import { queryOptions, useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from './client';
 import { toast } from '@/lib/stores/ui';
 
 export type NotificationItem = {
   id: string;
-  kind: string;
+  kind: NotificationKind;
   payload: Record<string, unknown>;
   readAt: string | null;
   createdAt: string;
@@ -67,24 +68,51 @@ export function useUnreadNotificationCount(pollMs: number | false) {
 }
 
 export function useMarkNotificationRead() {
+  return useMarkRead(
+    (id: string) => fetch(`/api/v1/notifications/${id}/read`, { method: 'POST' }),
+    (n, id) => n.id === id,
+  );
+}
+
+/**
+ * Marks read every unread row created at or before `upTo`, the newest row the
+ * user was shown, so one that arrives in the meantime stays unread.
+ */
+export function useMarkAllNotificationsRead() {
+  return useMarkRead(
+    (upTo: string) =>
+      fetch('/api/v1/notifications/read-all', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ upTo }),
+      }),
+    (n, upTo) => Date.parse(n.createdAt) <= Date.parse(upTo),
+  );
+}
+
+function useMarkRead<V>(
+  send: (vars: V) => Promise<Response>,
+  marks: (n: NotificationItem, vars: V) => boolean,
+) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string) => {
-      const res = await fetch(`/api/v1/notifications/${id}/read`, { method: 'POST' });
+    mutationFn: async (vars: V) => {
+      const res = await send(vars);
       if (!res.ok) throw Object.assign(new Error('mark read failed'), { status: res.status });
     },
-    onMutate: async (id) => {
+    onMutate: async (vars) => {
       await queryClient.cancelQueries({ queryKey: queryKeys.notifications() });
       const previous = queryClient.getQueryData<NotificationItem[]>(queryKeys.notifications());
       if (previous) {
+        const readAt = new Date().toISOString();
         queryClient.setQueryData<NotificationItem[]>(
           queryKeys.notifications(),
-          previous.map((n) => (n.id === id ? { ...n, readAt: new Date().toISOString() } : n)),
+          previous.map((n) => (!n.readAt && marks(n, vars) ? { ...n, readAt } : n)),
         );
       }
       return { previous };
     },
-    onError: (_err, _id, ctx) => {
+    onError: (_err, _vars, ctx) => {
       if (ctx?.previous) {
         queryClient.setQueryData(queryKeys.notifications(), ctx.previous);
       }
