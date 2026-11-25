@@ -6,7 +6,6 @@ import {
   type NotificationAudience,
 } from '@/lib/ui/notifications';
 
-// Payloads as the writers in app/actions store them.
 const cases: [NotificationKind, NotificationAudience, Record<string, unknown>, string | null][] = [
   [
     'APPLICATION_STATUS_CHANGED',
@@ -56,7 +55,7 @@ describe('notificationHref', () => {
 
 describe('notificationKind', () => {
   it('falls back to the raw kind for one this build does not know', () => {
-    const kind = 'PROMOTED_JOB' as NotificationKind;
+    const kind = 'PROMOTED_JOB';
     expect(notificationKind(kind).label).toBe('PROMOTED_JOB');
     expect(notificationHref({ kind, payload: { jobSlug: 'x' } }, 'JOB_SEEKER')).toBeNull();
   });

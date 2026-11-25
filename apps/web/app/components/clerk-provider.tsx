@@ -53,10 +53,15 @@ const CLERK_DARK = {
 // Clerk's inputs render at 13px by default, and iOS Safari zooms the page when
 // a focused field is under 16px (and does not zoom back). Touch pointers and
 // narrow viewports get 16px; desktop keeps Clerk's density.
+//
+// The avatar is pinned in px like the other phone header controls: Clerk sizes
+// it in rem, so a 200% root font (Android's largest text) doubled it to 56px and
+// pushed "Toggle menu" past a 360px screen.
 const CLERK_ELEMENTS = {
   formFieldInput: {
     '@media (pointer: coarse), (max-width: 639px)': { fontSize: '16px' },
   },
+  userButtonAvatarBox: { width: '28px', height: '28px' },
 } as const;
 
 const APPEARANCE_LIGHT = { variables: CLERK_LIGHT, elements: CLERK_ELEMENTS };

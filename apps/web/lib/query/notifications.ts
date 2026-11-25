@@ -1,13 +1,13 @@
 'use client';
 
-import type { NotificationKind } from '@prisma/client';
 import { queryOptions, useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from './client';
 import { toast } from '@/lib/stores/ui';
 
 export type NotificationItem = {
   id: string;
-  kind: NotificationKind;
+  /** A NotificationKind, but the wire can carry one added by a later deploy. */
+  kind: string;
   payload: Record<string, unknown>;
   readAt: string | null;
   createdAt: string;

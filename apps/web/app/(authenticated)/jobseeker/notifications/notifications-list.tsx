@@ -22,6 +22,11 @@ import { buttonClasses } from '@/app/components/ui/button';
 import { TimeStamp } from '@/app/components/ui/timestamp';
 import { moveFocusFromRowAction } from '../move-focus';
 
+// The title link's ::after covers its whole row (the <li> is `relative`), so
+// the row is one click target; "Mark read" sits above it with `relative z-10`.
+const ROW_COVER_LINK =
+  'text-fg focus-visible:after:ring-brand no-underline group-hover:underline after:absolute after:inset-0 focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-inset';
+
 export function NotificationsList({
   initial,
   role = 'JOB_SEEKER',
@@ -165,7 +170,6 @@ export function NotificationsList({
                   )}
                 >
                   {href ? (
-                    // The ::after box stretches this link over the whole row.
                     <Link
                       href={href}
                       aria-describedby={detailId}
@@ -173,7 +177,7 @@ export function NotificationsList({
                       onAuxClick={(e) => {
                         if (e.button === 1) markOpened(n);
                       }}
-                      className="text-fg focus-visible:after:ring-brand no-underline group-hover:underline after:absolute after:inset-0 focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-inset"
+                      className={ROW_COVER_LINK}
                     >
                       {title}
                     </Link>

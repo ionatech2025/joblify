@@ -29,11 +29,10 @@ const jobPage: Destination = (p) => under('/jobs/', p.jobSlug);
 const subscribers: Destination = () => '/company/jobseekers?filter=subscribed';
 
 /**
- * Every notification kind's label, icon, and the one place its row opens for
- * each audience. The destinations follow the payloads the writers in
- * app/actions actually store: a company's withdrawal notice carries no jobId
- * and a closed or removed job's notice no jobSlug (its page is gone), so those
- * rows open nothing rather than a broken link.
+ * The destinations follow the payloads the writers in app/actions actually
+ * store: a company's withdrawal notice carries no jobId and a closed or removed
+ * job's notice no jobSlug (its page is gone), so those rows open nothing rather
+ * than a broken link.
  */
 export const NOTIFICATION_KIND: Record<
   NotificationKind,
@@ -82,16 +81,18 @@ export const NOTIFICATION_KIND: Record<
 type KindEntry = (typeof NOTIFICATION_KIND)[NotificationKind];
 
 /**
- * The registry entry for a kind as it arrived over the wire. A tab still running
- * the previous deploy can be sent a kind this build has never heard of; it shows
- * the raw kind and opens nothing instead of failing the whole list.
+ * A tab still running the previous deploy can be sent a kind this build has
+ * never heard of; it shows the raw kind and opens nothing instead of failing
+ * the whole list.
  */
-export function notificationKind(kind: NotificationKind): KindEntry {
-  return NOTIFICATION_KIND[kind] ?? { label: kind, icon: Bell, opens: {} };
+export function notificationKind(kind: string): KindEntry {
+  return Object.hasOwn(NOTIFICATION_KIND, kind)
+    ? NOTIFICATION_KIND[kind as NotificationKind]
+    : { label: kind, icon: Bell, opens: {} };
 }
 
 export function notificationHref(
-  n: { kind: NotificationKind; payload: Payload },
+  n: { kind: string; payload: Payload },
   audience: NotificationAudience,
 ): string | null {
   return notificationKind(n.kind).opens[audience]?.(n.payload) ?? null;

@@ -83,8 +83,6 @@ async function HeaderAuthState() {
       <Link href="/dashboard" className={navLink}>
         Dashboard
       </Link>
-      {/* This island is always mounted for a signed-in visitor (CSS-hidden
-          below sm), so its bell is the page's one notifications poller. */}
       <NotificationBell poll />
       <UserButtonSlot />
     </>
@@ -102,7 +100,7 @@ async function HeaderUserMobileState() {
 }
 
 function UserButtonPlaceholder() {
-  return <Skeleton className="size-7 shrink-0" />;
+  return <Skeleton className="size-[28px] shrink-0" />;
 }
 
 // Pulse blocks sized like the signed-out links ("Sign in" text + the "Sign up"
