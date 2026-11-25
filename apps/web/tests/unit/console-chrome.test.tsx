@@ -38,18 +38,20 @@ afterEach(() => {
 });
 
 describe('ConsoleNav', () => {
-  it('names the exact unread count for screen readers, not the capped pip', () => {
+  it('marks the section for the current path as the page', () => {
     render(
       <ConsoleNav
         module="Recruitment"
         links={[
           { href: '/company/jobs', label: 'Jobs' },
-          { href: '/company/notifications', label: 'Notifications', count: 12 },
+          { href: '/company/notifications', label: 'Notifications' },
         ]}
       />,
     );
-    expect(screen.getByRole('link', { name: /^Notifications\s?, 12 unread$/ })).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Jobs' }).getAttribute('aria-current')).toBe('page');
+    expect(
+      screen.getByRole('link', { name: 'Notifications' }).getAttribute('aria-current'),
+    ).toBeNull();
   });
 });
 

@@ -59,7 +59,7 @@ export function Header({ auth, mobileUser }: { auth?: ReactNode; mobileUser?: Re
         </Link>
 
         {/* Desktop nav */}
-        <nav aria-label="Main" className="hidden items-center gap-6 text-sm sm:flex">
+        <nav aria-label="Main" className="hidden items-center gap-5 text-sm sm:flex md:gap-6">
           {NAV.map((item) => (
             <Link key={item.href} href={item.href} className={navLink}>
               {item.label}
@@ -80,11 +80,14 @@ export function Header({ auth, mobileUser }: { auth?: ReactNode; mobileUser?: Re
           {auth}
         </nav>
 
-        {/* Mobile controls. The buttons are 36px in px, not size-9 (2.25rem):
-            at a 200% root font size (Android's largest text setting) three
-            rem-sized buttons total 248px and pushed "Toggle menu" off the
-            right edge, out of reach without horizontal scrolling. */}
-        <div className="flex items-center gap-2 sm:hidden">
+        {/* Mobile controls. The buttons and gaps are in px, not size-9
+            (2.25rem) and gap-2: at a 200% root font size (Android's largest
+            text setting) three rem-sized buttons total 248px and pushed
+            "Toggle menu" off the right edge, out of reach without horizontal
+            scrolling. For the same reason the theme control moves into the
+            menu panel on phones, leaving room for the signed-in bell and
+            avatar. */}
+        <div className="flex items-center gap-[8px] sm:hidden">
           <button
             type="button"
             onClick={() => {
@@ -96,7 +99,6 @@ export function Header({ auth, mobileUser }: { auth?: ReactNode; mobileUser?: Re
           >
             <Search aria-hidden className="size-4" />
           </button>
-          <ThemeToggle />
           {mobileUser}
           <button
             type="button"
@@ -143,6 +145,10 @@ export function Header({ auth, mobileUser }: { auth?: ReactNode; mobileUser?: Re
                 Dashboard
               </Link>
             )}
+            <div className="flex items-center justify-between py-1">
+              <span className="text-fg-muted">Theme</span>
+              <ThemeToggle />
+            </div>
           </Container>
         </nav>
       )}

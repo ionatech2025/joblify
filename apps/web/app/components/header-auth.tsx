@@ -5,6 +5,7 @@ import { auth } from '@clerk/nextjs/server';
 import { clerkFrontendOrigin } from '@/lib/clerk-origin';
 import { AuthHint } from './auth-hint';
 import { ClerkSlot } from './clerk-slot';
+import { NotificationBell } from './notification-bell';
 import { Skeleton } from '@/app/components/ui/skeleton';
 
 const navLink = 'text-fg-muted transition-colors hover:text-fg';
@@ -12,9 +13,10 @@ const navLink = 'text-fg-muted transition-colors hover:text-fg';
 // The parts of the header that read the Clerk session on the server. auth()
 // reads request headers (uncached), so each streams inside its own Suspense
 // boundary while the header shell and the page around it prerender. The
-// wrapper reserves enough width for either signed state and the fallback
-// mirrors the signed-out links' footprint, so the stream-in never shifts the
-// surrounding nav (no CLS).
+// wrapper reserves enough width for either signed state (the signed-in
+// Dashboard + bell + avatar is the wider) and the fallback mirrors the
+// signed-out links' footprint, so the stream-in never shifts the surrounding
+// nav (no CLS).
 //
 // These are also what decide whether the page loads Clerk's browser SDK at
 // all: a signed-out visitor gets plain links and nothing else; only a
@@ -23,7 +25,7 @@ const navLink = 'text-fg-muted transition-colors hover:text-fg';
 // component puts its chunk in every page's scripts (lib/stores/clerk-slots.ts).
 export function HeaderAuth() {
   return (
-    <div className="flex min-w-36 items-center justify-end gap-6">
+    <div className="flex min-w-[10.5rem] items-center justify-end gap-4">
       <Suspense fallback={<HeaderAuthFallback />}>
         <HeaderAuthState />
       </Suspense>
@@ -81,6 +83,9 @@ async function HeaderAuthState() {
       <Link href="/dashboard" className={navLink}>
         Dashboard
       </Link>
+      {/* This island is always mounted for a signed-in visitor (CSS-hidden
+          below sm), so its bell is the page's one notifications poller. */}
+      <NotificationBell poll />
       <UserButtonSlot />
     </>
   );
@@ -88,7 +93,12 @@ async function HeaderAuthState() {
 
 async function HeaderUserMobileState() {
   const { userId } = await auth();
-  return userId ? <UserButtonSlot /> : null;
+  return userId ? (
+    <>
+      <NotificationBell />
+      <UserButtonSlot />
+    </>
+  ) : null;
 }
 
 function UserButtonPlaceholder() {
