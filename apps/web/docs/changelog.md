@@ -1,5 +1,24 @@
 # Changelog
 
+## 2026-11-26 — Unread notifications in the header, cleared in one click
+
+- **Header bell:** a signed-in user sees how many notifications are unread from any page, on a
+  bell between Dashboard and the avatar (before the avatar on phones). It opens
+  `/dashboard/notifications`, which sends each role to its own list and shows an unverified
+  company its list inline. The count comes from the same cached rows as the list, so it moves
+  the moment a row is read. Screen readers hear the exact number in the link's name.
+- **Opening a notification marks it read:** each row is now one link to the place it is about,
+  replacing six per-kind action links that never cleared the row. Middle click counts too.
+- **All / Unread and Mark all as read:** the list filters to unread rows and clears a backlog in
+  one click through the new `POST /api/v1/notifications/read-all`. A notification that arrives
+  after the list was drawn stays unread, and repeating the call changes nothing.
+- **Kind icons:** each row leads with an icon for its kind. Labels, icons and destinations live in
+  one registry keyed by the database enum, so a new kind fails the build until it is described.
+- **Phones:** the theme control moves into the menu panel so the signed-in header still fits at
+  200% text. The console module bar no longer repeats the count as a pip.
+- **Account switch:** signing out, or in as someone else, in the same tab now drops the previous
+  account's cached data instead of showing its notifications for a moment.
+
 ## 2026-11-14 — Company LinkedIn links must be http(s) too
 
 - The company website rule now also covers the LinkedIn field, through one shared `httpUrl` schema

@@ -75,6 +75,33 @@ defaultOptions: {
 - `initialData` is the standard hydration pattern: Server Component fetches, passes data to the client list, `useQuery` refreshes from there.
 - `useMutation` only when the mutation is a Route Handler hit (e.g. mark-notification-read). For form submits, prefer Server Actions.
 
+### The site header and the notification bell
+
+`<Header>` renders inside `<Providers>` in `app/layout.tsx`, so header islands share the page's
+QueryClient. Providers renders no DOM and reads no request, so every route keeps its prerendered
+shell (the `next build` route table is unchanged).
+
+- **One cache.** A signed-in visitor's header shows a bell (`components/notification-bell.tsx`)
+  linking to `/dashboard/notifications`, which sends each role to its own list. Its count is
+  derived from `['notifications']`, the same newest-50 rows the list renders, so a row marked
+  read on the list drops the bell in the same frame. There is no separate unread-count query.
+- **One poller.** `useNotifications(pollMs)` has no default. The desktop bell passes
+  `NOTIFICATION_POLL_MS.badge` (120 s), the list page passes `list` (30 s), and every other
+  reader, the mobile bell included, passes `false`. Do not add another interval for this key.
+- **Accessible count.** The number lives in the link's name ("Notifications, 3 unread", "50 or
+  more" at the cap) and the badge is `aria-hidden`, showing "9+" above nine. There is no live
+  region, because a background poll must not interrupt a screen reader.
+- **Identity changes.** `AuthHint` clears the browser QueryClient when the signed-in user
+  changes or signs out, so the next account never sees the previous one's cached rows.
+- **Mobile width budget.** Below `sm` the cluster is `[Search][Bell][Avatar][Menu]` signed in and
+  `[Search][Menu]` signed out, with buttons and gaps in px so it still fits a 390 px phone at a
+  200% root font size. The theme control lives in the mobile menu panel as a "Theme" row for
+  the same reason. On desktop it stays in the nav.
+- **Opening is reading.** Each notification row is one stretched link to the place it is about
+  (`lib/ui/notifications.ts` holds every kind's label, icon and destination). Opening it marks it
+  read. "Mark all as read" posts `/api/v1/notifications/read-all` with the newest row shown as
+  the cutoff.
+
 ### Zustand — client state
 
 Stores in `lib/stores/`. Decision rule: if the data lives on the server, it does NOT belong in Zustand.
