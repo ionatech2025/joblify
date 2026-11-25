@@ -51,11 +51,19 @@ export function Header({ auth, mobileUser }: { auth?: ReactNode; mobileUser?: Re
         <Link
           href="/"
           onClick={close}
-          className="text-fg flex items-center gap-2 font-display text-xl font-semibold no-underline"
+          className="text-fg flex min-w-0 items-center gap-[8px] font-display text-xl font-semibold no-underline"
         >
           {/* eslint-disable-next-line @next/next/no-img-element -- small fixed-size brand mark */}
-          <img src="/logo.png" alt="" width={28} height={28} className="size-7 rounded-md" />
-          Joblify
+          <img
+            src="/logo.png"
+            alt=""
+            width={28}
+            height={28}
+            className="size-[28px] shrink-0 rounded-md"
+          />
+          {/* At a 200% root font the wordmark outgrows what the phone controls
+              leave it; clipped, it no longer runs under the Search button. */}
+          <span className="truncate">Joblify</span>
         </Link>
 
         {/* Desktop nav */}
