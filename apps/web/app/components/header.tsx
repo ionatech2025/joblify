@@ -47,19 +47,27 @@ export function Header({ auth, mobileUser }: { auth?: ReactNode; mobileUser?: Re
   // stack underneath and need an exact offset to sit flush against it.
   return (
     <header className="glass border-border short:static sticky top-0 z-50 border-b">
-      <Container className="flex h-[var(--o-header-h)] items-center justify-between gap-4">
+      <Container className="flex h-[var(--o-header-h)] items-center justify-between gap-[16px]">
         <Link
           href="/"
           onClick={close}
-          className="text-fg flex items-center gap-2 font-display text-xl font-semibold no-underline"
+          className="text-fg flex min-w-0 items-center gap-[8px] font-display text-xl font-semibold no-underline"
         >
           {/* eslint-disable-next-line @next/next/no-img-element -- small fixed-size brand mark */}
-          <img src="/logo.png" alt="" width={28} height={28} className="size-7 rounded-md" />
-          Joblify
+          <img
+            src="/logo.png"
+            alt=""
+            width={28}
+            height={28}
+            className="size-[28px] shrink-0 rounded-md"
+          />
+          {/* At a 200% root font the wordmark outgrows what the phone controls
+              leave it; clipped, it no longer runs under the Search button. */}
+          <span className="truncate">Joblify</span>
         </Link>
 
         {/* Desktop nav */}
-        <nav aria-label="Main" className="hidden items-center gap-6 text-sm sm:flex">
+        <nav aria-label="Main" className="hidden items-center gap-5 text-sm sm:flex md:gap-6">
           {NAV.map((item) => (
             <Link key={item.href} href={item.href} className={navLink}>
               {item.label}
@@ -80,11 +88,14 @@ export function Header({ auth, mobileUser }: { auth?: ReactNode; mobileUser?: Re
           {auth}
         </nav>
 
-        {/* Mobile controls. The buttons are 36px in px, not size-9 (2.25rem):
+        {/* Mobile controls. The buttons and gaps (this row's and the one
+            beside the logo) are in px, not size-9 (2.25rem), gap-2 and gap-4:
             at a 200% root font size (Android's largest text setting) three
             rem-sized buttons total 248px and pushed "Toggle menu" off the
-            right edge, out of reach without horizontal scrolling. */}
-        <div className="flex items-center gap-2 sm:hidden">
+            right edge, out of reach without horizontal scrolling. For the same
+            reason the theme control moves into the menu panel on phones,
+            leaving room for the signed-in bell and avatar. */}
+        <div className="flex items-center gap-[8px] sm:hidden">
           <button
             type="button"
             onClick={() => {
@@ -96,7 +107,6 @@ export function Header({ auth, mobileUser }: { auth?: ReactNode; mobileUser?: Re
           >
             <Search aria-hidden className="size-4" />
           </button>
-          <ThemeToggle />
           {mobileUser}
           <button
             type="button"
@@ -143,6 +153,10 @@ export function Header({ auth, mobileUser }: { auth?: ReactNode; mobileUser?: Re
                 Dashboard
               </Link>
             )}
+            <div className="flex items-center justify-between py-1">
+              <span className="text-fg-muted">Theme</span>
+              <ThemeToggle />
+            </div>
           </Container>
         </nav>
       )}

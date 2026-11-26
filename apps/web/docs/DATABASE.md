@@ -98,10 +98,10 @@ These power the Jaccard skill overlap in `lib/search/ranking.ts`.
 
 ## Notifications + invitations
 
-| Model          | Use                                                                                                                                      |
-| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| `Notification` | In-app feed for jobseeker + company. Polled every 30 s by TanStack Query. Cleared by retention cron (read >6 months or unread >90 days). |
-| `Invitation`   | Company → jobseeker invitations. PENDING / ACCEPTED / DECLINED / EXPIRED / REVOKED. Purged 90 d after expiry.                            |
+| Model          | Use                                                                                                                                                                                            |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Notification` | In-app feed for jobseeker + company. Polled by TanStack Query every 2 min from the header bell and every 30 s on the list page. Cleared by retention cron (read >6 months or unread >90 days). |
+| `Invitation`   | Company → jobseeker invitations. PENDING / ACCEPTED / DECLINED / EXPIRED / REVOKED. Purged 90 d after expiry.                                                                                  |
 
 ## Audit log
 

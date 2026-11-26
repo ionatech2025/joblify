@@ -1,8 +1,19 @@
 import { Suspense } from 'react';
 import { redirect } from 'next/navigation';
 import { requireUser } from '@/lib/auth';
+import { ConsoleNav, type ConsoleNavLink } from '@/app/components/console/nav';
 import { ConsoleNavSkeleton } from '@/app/components/console/skeleton';
-import { JobseekerConsoleNav } from './jobseeker-console-nav';
+
+const LINKS: ConsoleNavLink[] = [
+  { href: '/jobseeker/applications', label: 'Applications', icon: 'BriefcaseBusiness' },
+  { href: '/jobseeker/matches', label: 'Matches', icon: 'Sparkles' },
+  { href: '/jobseeker/saved', label: 'Saved', icon: 'Bookmark' },
+  { href: '/jobseeker/resumes', label: 'Resumes', icon: 'FileText' },
+  { href: '/jobseeker/chats', label: 'Chats', icon: 'MessagesSquare' },
+  { href: '/jobseeker/subscriptions', label: 'Following', icon: 'Building2' },
+  { href: '/jobseeker/notifications', label: 'Notifications', icon: 'Bell' },
+  { href: '/jobseeker/profile', label: 'Profile', icon: 'UserRound' },
+];
 
 // Jobseeker workspace module menu. Authentication (signed in at all) is already
 // enforced by middleware and re-checked by the (authenticated) layout's gate;
@@ -27,7 +38,7 @@ export default function JobseekerLayout({ children }: { children: React.ReactNod
           — so it gets a hole of its own, at the bar's exact height, rather than
           pulling the page around it out of the shell with it. */}
       <Suspense fallback={<ConsoleNavSkeleton />}>
-        <JobseekerConsoleNav />
+        <ConsoleNav module="My workspace" moduleHref="/jobseeker/applications" links={LINKS} />
       </Suspense>
       {children}
     </>

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import { getQueryClient } from '@/lib/query/client';
 import { useAuthHint } from '@/lib/stores/auth-hint';
 import { followDraftWipesFromOtherTabs, reconcileDraftOwner } from '@/lib/stores/clear-drafts';
 
@@ -13,6 +14,8 @@ import { followDraftWipesFromOtherTabs, reconcileDraftOwner } from '@/lib/stores
 //     <DraftOwnerGuard>, which had to wait for clerk-js to load and then
 //     guess that "not loaded yet" was not "signed out". The server's answer has
 //     no such ambiguity, and arrives with the HTML instead of after a script.
+//     The same goes for the browser's QueryClient, which lives as long as the
+//     tab and which the header bell fills with notifications on every page.
 //
 // It is re-rendered with a new `userId` whenever the server components above it
 // are (router.refresh() after sign-in / sign-out, a full load), which is
@@ -21,6 +24,9 @@ export function AuthHint({ userId }: { userId: string | null }) {
   const setUserId = useAuthHint((s) => s.setUserId);
 
   useEffect(() => {
+    // Read from the store, not a ref, so a remount still sees who came before.
+    const previous = useAuthHint.getState().userId;
+    if (typeof previous === 'string' && previous !== userId) getQueryClient().clear();
     setUserId(userId);
     if (!userId) return;
     try {

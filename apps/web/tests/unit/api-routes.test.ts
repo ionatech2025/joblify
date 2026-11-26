@@ -27,6 +27,7 @@ vi.mock('@/lib/observability/logger', () => ({
 import { GET as getApplications } from '@/app/api/v1/applications/route';
 import { GET as getNotifications } from '@/app/api/v1/notifications/route';
 import { POST as markNotificationRead } from '@/app/api/v1/notifications/[id]/read/route';
+import { POST as markAllNotificationsRead } from '@/app/api/v1/notifications/read-all/route';
 import { POST as postConsent } from '@/app/api/v1/consent/route';
 import { POST as postUploadSign } from '@/app/api/v1/uploads/sign/route';
 
@@ -111,6 +112,50 @@ describe('GET /api/v1/notifications and POST /api/v1/notifications/[id]/read', (
       where: { id: 'n-1', userId: 'user-1', readAt: null },
       data: { readAt: expect.any(Date) },
     });
+  });
+});
+
+describe('POST /api/v1/notifications/read-all', () => {
+  const readAll = (body: unknown) =>
+    markAllNotificationsRead(
+      new Request('http://localhost/api/v1/notifications/read-all', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }),
+    );
+  const upTo = '2026-11-26T09:14:03.120Z';
+
+  it('needs a session before it reads the body', async () => {
+    m.currentUser.mockResolvedValueOnce(null);
+    const res = await readAll({ upTo });
+    expect(res.status).toBe(401);
+    expect(m.notifUpdateMany).not.toHaveBeenCalled();
+  });
+
+  it.each([[{}], [{ upTo: 'x' }], [{ upTo: 1764148443120 }]])(
+    'rejects %j with 400',
+    async (body) => {
+      const res = await readAll(body);
+      expect(res.status).toBe(400);
+      await expect(res.json()).resolves.toEqual({ error: 'invalid payload' });
+      expect(m.notifUpdateMany).not.toHaveBeenCalled();
+    },
+  );
+
+  it("marks only the user's unread rows up to the cutoff, and a repeat updates nothing", async () => {
+    m.notifUpdateMany.mockResolvedValueOnce({ count: 3 }).mockResolvedValueOnce({ count: 0 });
+    const first = await readAll({ upTo });
+    expect(first.status).toBe(200);
+    expect(first.headers.get('cache-control')).toBe('private, no-store');
+    await expect(first.json()).resolves.toEqual({ ok: true, updated: 3 });
+    expect(m.notifUpdateMany).toHaveBeenCalledWith({
+      where: { userId: 'user-1', readAt: null, createdAt: { lte: new Date(upTo) } },
+      data: { readAt: expect.any(Date) },
+    });
+
+    const repeat = await readAll({ upTo });
+    expect(repeat.status).toBe(200);
+    await expect(repeat.json()).resolves.toEqual({ ok: true, updated: 0 });
   });
 });
 

@@ -1,44 +1,47 @@
 'use client';
 
-import { useRef } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
-import { ArrowRight, BellOff } from 'lucide-react';
+import { BellOff, CheckCheck } from 'lucide-react';
 import {
   useNotifications,
   NOTIFICATION_POLL_MS,
   useMarkNotificationRead,
+  useMarkAllNotificationsRead,
+  unreadCount,
   type NotificationItem,
 } from '@/lib/query/notifications';
+import {
+  notificationHref,
+  notificationKind,
+  type NotificationAudience,
+} from '@/lib/ui/notifications';
+import { cn } from '@/lib/cn';
 import { EmptyState } from '@/app/components/ui/empty-state';
 import { buttonClasses } from '@/app/components/ui/button';
 import { TimeStamp } from '@/app/components/ui/timestamp';
 import { moveFocusFromRowAction } from '../move-focus';
 
-const KIND_LABEL: Record<string, string> = {
-  APPLICATION_SUBMITTED: 'Application submitted',
-  APPLICATION_STATUS_CHANGED: 'Application update',
-  NEW_APPLICANT: 'New applicant',
-  INTERVIEW_SCHEDULED: 'Interview scheduled',
-  INVITATION_RECEIVED: 'Invitation',
-  ACCOUNT_UPDATE: 'Account',
-  SYSTEM: 'System',
-  JOB_SHARED: 'Job shared with you',
-  CHAT_AREA_ADDED: 'Added to a chat',
-  NEW_SUBSCRIBER: 'New subscriber',
-  INVITATION_RESPONDED: 'Invitation answered',
-};
+// The title link's ::after covers its whole row (the <li> is `relative`), so
+// the row is one click target; "Mark read" sits above it with `relative z-10`.
+const ROW_COVER_LINK =
+  'text-fg focus-visible:after:ring-brand no-underline group-hover:underline after:absolute after:inset-0 focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-inset';
 
 export function NotificationsList({
   initial,
   role = 'JOB_SEEKER',
 }: {
   initial: NotificationItem[];
-  role?: 'JOB_SEEKER' | 'COMPANY';
+  role?: NotificationAudience;
 }) {
   const { data, isError } = useNotifications(NOTIFICATION_POLL_MS.list);
   const mark = useMarkNotificationRead();
+  const markAll = useMarkAllNotificationsRead();
+  const [onlyUnread, setOnlyUnread] = useState(false);
   const listRef = useRef<HTMLUListElement>(null);
   const items = data ?? initial;
+  const unread = unreadCount(items);
+  const shown = onlyUnread ? items.filter((n) => !n.readAt) : items;
 
   if (items.length === 0) {
     return (
@@ -62,6 +65,12 @@ export function NotificationsList({
     );
   }
 
+  // Opening a row is acting on it, so it counts as read. Navigation goes ahead
+  // either way; the mutation outlives this page.
+  const markOpened = (n: NotificationItem) => {
+    if (!n.readAt) mark.mutate(n.id);
+  };
+
   return (
     <>
       {isError && (
@@ -69,102 +78,121 @@ export function NotificationsList({
           Live updates are paused — showing the last known list. Refresh to try again.
         </p>
       )}
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+        <div role="group" aria-label="Show" className="flex items-center gap-1.5">
+          <FilterPill pressed={!onlyUnread} onClick={() => setOnlyUnread(false)}>
+            All
+          </FilterPill>
+          <FilterPill pressed={onlyUnread} onClick={() => setOnlyUnread(true)}>
+            Unread{' '}
+            {unread > 0 && (
+              <span className="bg-brand-subtle text-brand-subtle-fg rounded-pill px-1 text-[11px] font-semibold">
+                {unread}
+              </span>
+            )}
+          </FilterPill>
+        </div>
+        {unread > 0 && (
+          <button
+            type="button"
+            onClick={() => {
+              // This button is about to disappear with the last unread row.
+              listRef.current?.focus();
+              markAll.mutate(items[0]!.createdAt);
+            }}
+            className="text-brand inline-flex min-h-7 items-center gap-1 px-1 text-[13px] font-medium underline"
+          >
+            <CheckCheck aria-hidden className="size-3.5" />
+            Mark all as read
+          </button>
+        )}
+      </div>
       <ul
         ref={listRef}
         tabIndex={-1}
         aria-label="Notifications"
         className="border-border bg-surface rounded-card divide-border m-0 list-none divide-y overflow-hidden border p-0"
       >
-        {items.map((n) => {
+        {shown.length === 0 && (
+          <li className="px-4 py-6 text-center text-[13px]">
+            <p className="text-fg m-0 font-medium">No unread notifications</p>
+            <button
+              type="button"
+              onClick={() => {
+                listRef.current?.focus();
+                setOnlyUnread(false);
+              }}
+              className="text-brand mt-1 inline-flex min-h-7 items-center px-2 font-medium underline"
+            >
+              Show all
+            </button>
+          </li>
+        )}
+        {shown.map((n) => {
           const isRead = !!n.readAt;
+          const { label, icon: Icon } = notificationKind(n.kind);
+          const href = notificationHref(n, role);
           const { jobTitle, companyName } = n.payload;
+          const detailId = `notification-${n.id}-detail`;
+          const title = (
+            <>
+              {!isRead && (
+                <>
+                  <span
+                    aria-hidden
+                    className="bg-brand mr-1.5 inline-block size-2 rounded-full align-middle"
+                  />
+                  <span className="sr-only">Unread: </span>
+                </>
+              )}
+              {label}
+            </>
+          );
           return (
             <li
               key={n.id}
-              className={`flex items-start justify-between gap-4 px-4 py-3 transition-colors ${
-                isRead ? 'bg-surface' : 'bg-brand-subtle/60'
-              }`}
+              className={cn(
+                'group relative flex items-start gap-3 px-4 py-3 transition-colors',
+                isRead ? 'bg-surface' : 'bg-brand-subtle/60',
+              )}
             >
-              <div className="min-w-0">
+              <span
+                aria-hidden
+                className="bg-surface-sunken text-fg-muted grid size-8 shrink-0 place-items-center rounded-full"
+              >
+                <Icon className="size-4" />
+              </span>
+              <div className="min-w-0 flex-1">
                 <p
-                  className={`text-fg mb-0.5 text-[13px] ${isRead ? 'font-medium' : 'font-semibold'}`}
+                  className={cn(
+                    'text-fg mb-0.5 text-[13px]',
+                    isRead ? 'font-medium' : 'font-semibold',
+                  )}
                 >
-                  {!isRead && (
-                    <>
-                      <span
-                        aria-hidden
-                        className="bg-brand mr-1.5 inline-block size-2 rounded-full align-middle"
-                      />
-                      <span className="sr-only">Unread: </span>
-                    </>
-                  )}
-                  {KIND_LABEL[n.kind] ?? n.kind}
-                </p>
-                {typeof jobTitle === 'string' && typeof companyName === 'string' && (
-                  <p className="text-fg m-0 text-[13px]">
-                    {jobTitle} at {companyName}
-                  </p>
-                )}
-                <p className="text-fg-muted m-0 text-[13px]">{summarize(n.payload)}</p>
-                {role === 'JOB_SEEKER' && n.kind === 'APPLICATION_STATUS_CHANGED' && (
-                  <Link
-                    href="/jobseeker/applications"
-                    className="text-brand mt-1 inline-flex min-h-6 items-center gap-1 text-[13px] underline"
-                  >
-                    Track application
-                    <ArrowRight aria-hidden className="size-3.5" />
-                  </Link>
-                )}
-                {typeof n.payload.jobSlug === 'string' && (
-                  <Link
-                    href={`/jobs/${n.payload.jobSlug}`}
-                    className="text-brand mt-1 inline-flex min-h-6 items-center gap-1 text-[13px] underline"
-                  >
-                    View job
-                    <ArrowRight aria-hidden className="size-3.5" />
-                  </Link>
-                )}
-                {role === 'COMPANY' && typeof n.payload.jobId === 'string' && (
-                  <Link
-                    href={`/company/applicants/${n.payload.jobId}`}
-                    className="text-brand mt-1 inline-flex min-h-6 items-center gap-1 text-[13px] underline"
-                  >
-                    Review applicants
-                    <ArrowRight aria-hidden className="size-3.5" />
-                  </Link>
-                )}
-                {role === 'COMPANY' &&
-                  (n.kind === 'NEW_SUBSCRIBER' || n.kind === 'INVITATION_RESPONDED') && (
+                  {href ? (
                     <Link
-                      href="/company/jobseekers?filter=subscribed"
-                      className="text-brand mt-1 inline-flex min-h-6 items-center gap-1 text-[13px] underline"
+                      href={href}
+                      aria-describedby={detailId}
+                      onClick={() => markOpened(n)}
+                      onAuxClick={(e) => {
+                        if (e.button === 1) markOpened(n);
+                      }}
+                      className={ROW_COVER_LINK}
                     >
-                      View subscribers
-                      <ArrowRight aria-hidden className="size-3.5" />
+                      {title}
                     </Link>
+                  ) : (
+                    title
                   )}
-                {typeof n.payload.chatAreaId === 'string' && (
-                  <Link
-                    href={
-                      role === 'COMPANY'
-                        ? `/company/chats/${n.payload.chatAreaId}`
-                        : `/jobseeker/chats/${n.payload.chatAreaId}`
-                    }
-                    className="text-brand mt-1 inline-flex min-h-6 items-center gap-1 text-[13px] underline"
-                  >
-                    Open chat
-                    <ArrowRight aria-hidden className="size-3.5" />
-                  </Link>
-                )}
-                {typeof n.payload.invitationId === 'string' && n.kind === 'INVITATION_RECEIVED' && (
-                  <Link
-                    href="/jobseeker/subscriptions"
-                    className="text-brand mt-1 inline-flex min-h-6 items-center gap-1 text-[13px] underline"
-                  >
-                    View invitation
-                    <ArrowRight aria-hidden className="size-3.5" />
-                  </Link>
-                )}
+                </p>
+                <div id={detailId}>
+                  {typeof jobTitle === 'string' && typeof companyName === 'string' && (
+                    <p className="text-fg m-0 text-[13px]">
+                      {jobTitle} at {companyName}
+                    </p>
+                  )}
+                  <p className="text-fg-muted m-0 text-[13px]">{summarize(n.payload)}</p>
+                </div>
                 <p className="text-fg-subtle mt-1 mb-0 text-[12px]">
                   <TimeStamp value={n.createdAt} mode="datetime" />
                 </p>
@@ -179,7 +207,7 @@ export function NotificationsList({
                     mark.mutate(n.id);
                   }}
                   aria-disabled={mark.isPending || undefined}
-                  className="text-brand inline-flex min-h-7 shrink-0 items-center self-start px-2 text-[13px] font-medium underline aria-disabled:opacity-50"
+                  className="text-brand relative z-10 inline-flex min-h-7 shrink-0 items-center self-start px-2 text-[13px] font-medium underline aria-disabled:opacity-50"
                 >
                   Mark read
                 </button>
@@ -189,6 +217,32 @@ export function NotificationsList({
         })}
       </ul>
     </>
+  );
+}
+
+function FilterPill({
+  pressed,
+  onClick,
+  children,
+}: {
+  pressed: boolean;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={pressed}
+      onClick={onClick}
+      className={cn(
+        'rounded-pill inline-flex min-h-7 items-center gap-1.5 border px-3 text-[13px] font-medium transition-colors',
+        pressed
+          ? 'border-ink bg-ink text-ink-fg'
+          : 'border-border text-fg-muted hover:bg-surface-sunken hover:text-fg',
+      )}
+    >
+      {children}
+    </button>
   );
 }
 

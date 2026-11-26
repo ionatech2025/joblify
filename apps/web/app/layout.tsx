@@ -85,6 +85,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   // islands (<HeaderAuth>, <HeaderUserMobile>), which suspend on their own;
   // pages stream their own dynamic holes.
   //
+  // <Header> sits inside <Providers> so the notification bell shares the
+  // page's QueryClient (one cache, one poll). That costs the shell nothing:
+  // Providers renders no DOM and reads no request.
+  //
   // There is no Clerk provider around the tree. Clerk's browser SDK is loaded
   // on demand by <ClerkHost> (below) when something on the page needs a Clerk
   // widget; see app/components/clerk-host.tsx.
@@ -116,8 +120,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <AmbientCanvas variant="page" />
         </div>
         <SwRegister />
-        <Header auth={<HeaderAuth />} mobileUser={<HeaderUserMobile />} />
         <Providers>
+          <Header auth={<HeaderAuth />} mobileUser={<HeaderUserMobile />} />
           <div id="main-content" tabIndex={-1} className="focus:outline-none">
             {children}
           </div>
