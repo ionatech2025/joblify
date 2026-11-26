@@ -1,0 +1,93 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+#
+# CodeRabbit reviews every pull request against main. Its findings are a merge
+# gate: a PR merges only when CI is green and every CodeRabbit comment on the
+# head commit is fixed or answered with a concrete reason.
+language: en-US
+tone_instructions: >-
+  Be direct and concise. Lead with the concrete failure and how to reproduce
+  it. Skip praise, restated diffs and style nits a linter already enforces.
+
+reviews:
+  profile: chill
+  high_level_summary: true
+  poem: false
+  in_progress_fortune: false
+  sequence_diagrams: false
+  suggested_reviewers: false
+  auto_review:
+    enabled: true
+    drafts: false
+  path_filters:
+    - '!**/bun.lock'
+    - '!**/*.tsbuildinfo'
+    - '!apps/web/coverage/**'
+    - '!apps/web/test-results/**'
+    - '!apps/web/prisma/migrations/**/migration_lock.toml'
+  path_instructions:
+    - path: 'apps/web/app/**'
+      instructions: >-
+        Next.js 16 App Router with cacheComponents (Partial Prerendering). The
+        root layout must not read the request or wrap the tree in Suspense.
+        Uncached request data (cookies(), headers(), Clerk auth(), per-request
+        database reads, usePathname()) must be reached inside a Suspense
+        boundary, or the route loses its prerendered shell. Segment configs
+        `export const dynamic` and `revalidate` are not allowed. Server
+        Components must not import Clerk UI components; they name a widget
+        through ClerkSlot. Flag anything that breaks these rules
+        (docs/FRONTEND.md, "Cache Components (Next 16) conventions").
+    - path: 'apps/web/app/actions/**'
+      instructions: >-
+        Server Actions follow the contract in apps/web/docs/BACKEND.md: auth
+        (requireUser/requireRole), rate limit, zod-parse the input, check that
+        the user owns every ID taken from the input, write inside withAudit
+        where the action changes data, then invalidate cache tags. Expected
+        failures must be returned, not thrown, because production builds
+        replace a thrown message with a generic paragraph.
+    - path: 'apps/web/app/api/**'
+      instructions: >-
+        Route Handlers authenticate first (currentUser/requireUser) and return
+        401 `{ error: 'unauthenticated' }`. Parse bodies with zod at the
+        boundary and return `{ error: '<machine-code>' }` on failure, never a
+        stack trace. Every Prisma query must be scoped to the signed-in user's
+        rows. Per-user responses send `Cache-Control: private, no-store`.
+        Webhooks must verify their svix signature.
+    - path: 'apps/web/prisma/**'
+      instructions: >-
+        The production build runs `prisma migrate deploy`, so every migration
+        must apply to a live database without downtime: additive first, no
+        destructive change in the same deploy as the code that stops using a
+        column. Raw SQL uses tagged templates, never string concatenation.
+    - path: 'apps/web/tests/**'
+      instructions: >-
+        Tests must assert behavior a user or caller can observe (rendered
+        text, accessible names, hrefs, requests sent, returned values), not
+        internals. Flag tests that would keep passing if the feature broke.
+    - path: 'apps/web/lib/**'
+      instructions: >-
+        Shared server and client code. A module marked 'use client' cannot
+        export values that route handlers import (they receive a client
+        reference). Use lib/observability/logger.ts, never console.log of
+        request bodies.
+    - path: '**/*.md'
+      instructions: >-
+        Docs are part of the change. Check that the docs match the code in the
+        same PR and that user-visible changes have an entry in
+        apps/web/docs/changelog.md. Prefer short, plain sentences.
+  tools:
+    gitleaks:
+      enabled: true
+    eslint:
+      enabled: true
+    markdownlint:
+      enabled: true
+    actionlint:
+      enabled: true
+    shellcheck:
+      enabled: true
+
+chat:
+  auto_reply: true
+
+knowledge_base:
+  opt_out: false
